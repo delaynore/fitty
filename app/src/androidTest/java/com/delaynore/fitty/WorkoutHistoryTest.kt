@@ -1,8 +1,10 @@
 package com.delaynore.fitty
 
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -96,11 +98,14 @@ class WorkoutHistoryTest {
         awaitText("День А")
         tap("День А")
         tap("Начать тренировку")
-        awaitText("Жим лёжа")
     }
 
     private fun logSet(position: Int, weight: String, repetitions: String) {
-        enter("workout-weight-$position", weight)
+        val weightTag = "workout-weight-$position"
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasTestTag(weightTag) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        enter(weightTag, weight)
         enter("workout-repetitions-$position", repetitions)
         compose.onNodeWithContentDescription("Записать подход $position").performClick()
     }

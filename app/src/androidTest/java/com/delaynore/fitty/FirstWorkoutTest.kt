@@ -70,12 +70,12 @@ class FirstWorkoutTest {
 
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitText("Силовая")
+            tap("История")
             verifyCompletedWorkout(date)
         }
     }
 
     private fun verifyCompletedWorkout(date: String) {
-        tap("История")
         awaitText(date)
         tap("День А")
         awaitText("Жим лёжа")
