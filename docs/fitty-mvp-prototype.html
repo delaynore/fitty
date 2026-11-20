@@ -1,0 +1,1267 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty · прототип MVP</title>
+<!-- Standalone design prototype. Prototype data stays in this browser. -->
+<style>
+* { box-sizing:border-box; }
+body { margin:0; padding:10px 6px; font:15px system-ui,sans-serif; color:var(--foreground,#fafafa); background:var(--background,#1a1a1b); }
+[hidden] { display:none !important; }
+#storage-warning { max-width:400px; margin:5px auto; font-size:13px; }
+@scope (#home-shell) {
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 14px 8px 71px; background: var(--background, #232523); color: var(--foreground, #fff); font: 15px system-ui, sans-serif; }
+    body.single-variant { padding-bottom: 14px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .4; }
+    .examples { width: min(100%, 402px); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; margin: 0 auto 11px; }
+    .examples button, .switcher button { min-height: 38px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: inherit; padding: 6px 9px; font-size: 12px; }
+    .examples button:hover, .switcher button:hover { background: var(--accent, #41483e); color: var(--accent-foreground, #fff); }
+    .examples [aria-pressed="true"] { border-color: var(--border, #737a70); background: var(--card, #30372e); color: var(--card-foreground, #fff); }
+    .phone { color-scheme: dark; --lime: #c5fa55; --quiet: #b5c1b1; --edge: rgb(221 238 206 / .15); --surface: #20281e; position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; width: min(100%, 402px); height: min(638px, 169vw); min-height: 510px; margin: auto; border: 1px solid #414940; border-radius: 28px; color: #f2f4ef; background: radial-gradient(ellipse at 98% 0, #263422, transparent 54%), linear-gradient(160deg, #181e16, #0e110e 76%); box-shadow: 0 18px 48px #0004; }
+    .screen { flex: 1; min-height: 0; overflow: auto; padding: 24px 18px 100px; scrollbar-width: thin; }
+    .screen.full { padding-bottom: 20px; }
+    h1, h2, p { margin: 0; }
+    h1 { margin-bottom: 21px; font-size: 33px; line-height: 1.02; letter-spacing: -.045em; }
+    h2 { font-size: 19px; line-height: 1.17; letter-spacing: -.025em; }
+    .quiet-text { color: var(--quiet); font-size: 13px; }
+    .phone button { min-height: 44px; border-radius: 12px; border: 1px solid var(--edge); background: var(--surface); color: inherit; padding: 9px 12px; }
+    .phone :is(button, input):focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+    .phone .primary { font-weight: 750; color: #152000; background: var(--lime); border-color: var(--lime); }
+    .wide { width: 100%; }
+    .phone .link { background: transparent; border-color: transparent; }
+    .phone .secondary { background: rgb(222 244 205 / .07); }
+    .panel { border: 1px solid var(--edge); border-radius: 17px; padding: 16px; background: rgb(38 49 35 / .60); }
+    .panel > p { margin-top: 6px; }
+    .panel > button { margin-top: 15px; }
+    .hero { padding: 21px 17px 17px; background: linear-gradient(140deg, #314326, #202b1e 86%); }
+    .hero h2 { font-size: 29px; }
+    .hero p { max-width: 24ch; line-height: 1.4; }
+    .phone .program-banner { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 11px; width: 100%; margin-bottom: 16px; padding: 11px 13px; border-radius: 16px; text-align: left; background: linear-gradient(125deg, #2c3b24, #232d20); }
+    .program-banner strong { display: block; font-size: 16px; }
+    .program-banner small { display: block; margin-top: 3px; }
+    .program-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--lime); background: rgb(197 250 85 / .12); }
+    .program-icon::before { content: ''; width: 15px; height: 13px; border: 1.5px solid currentColor; border-radius: 3px; box-shadow: 3px 3px 0 -1px #354a2a, 4px 4px 0 -1px currentColor; transform: translate(-2px, -2px); }
+    .program-list { margin-bottom: 13px; }
+    .program-list .list-row { min-height: 70px; }
+    .program-row { display: flex; align-items: center; gap: 2px; min-height: 68px; padding: 3px 9px 3px 3px; border: 1px solid var(--edge); border-radius: 14px; background: rgb(222 244 205 / .07); }
+    .program-row[data-current] { border-color: rgb(197 250 85 / .29); }
+    .phone .program-row .program-detail { flex: 1; min-width: 0; min-height: 60px; text-align: left; background: transparent; border-color: transparent; }
+    .program-detail small { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+    .program-detail strong { overflow-wrap: anywhere; }
+    .phone .program-quick { flex: 0 0 auto; min-width: 44px; padding: 0 9px; border-color: rgb(197 250 85 / .36); background: rgb(197 250 85 / .075); color: var(--lime); }
+    .phone .program-quick:disabled { opacity: 1; cursor: default; }
+    .phone .program-quick.check-program { padding: 0; border-radius: 50%; font-size: 18px; }
+    .phone .program-quick.check-program:not(:disabled) { background: transparent; border-color: var(--edge); color: var(--quiet); }
+    .phone .program-quick.label-program { min-width: 88px; border-radius: 16px; font-size: 12px; font-weight: 700; }
+    .phone .program-quick.label-program:disabled { border-color: transparent; background: transparent; }
+    .selected-program { color: var(--lime); font-size: 12px; }
+    .program-days { margin-top: 14px; }
+    .program-actions { display: grid; gap: 7px; margin-top: 14px; }
+    .list { display: grid; gap: 8px; }
+    .section-title { margin-bottom: 10px; }
+    .phone .list-row { display: grid; width: 100%; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; padding: 10px 12px; }
+    .list-row small { display: block; margin-top: 3px; }
+    .day-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap: 6px; margin-bottom: 12px; }
+    .phone .day-columns button { padding: 5px; }
+    .phone .day-columns [aria-pressed="true"] { background: rgb(197 250 85 / .13); border-color: rgb(197 250 85 / .46); color: var(--lime); font-weight: 700; }
+    .exercise-list { list-style: none; padding: 0; margin: 9px 0 0; }
+    .exercise-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--edge); }
+    .exercise-list li:last-child { border-bottom: 0; }
+    .resume { margin-bottom: 15px; }
+    .resume > .link { margin-top: 2px; }
+    .muted-list { margin-top: 4px; }
+    .island { position: absolute; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(92%, 352px); padding: 5px; border: 1px solid rgb(227 244 216 / .19); border-radius: 24px; background: rgb(29 38 27 / .86); backdrop-filter: blur(17px); box-shadow: 0 6px 22px #0007; }
+    .phone .island button { min-height: 51px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 18px; background: transparent; color: var(--quiet); padding: 5px 2px; font-size: 11px; line-height: 1; }
+    .phone .island [aria-current="page"] { background: rgb(197 250 85 / .12); color: var(--lime); font-weight: 750; }
+    [data-variant="B"] .island { width: min(94%, 367px); border-radius: 20px; }
+    .phone[data-variant="B"] .island button { flex-direction: row; min-height: 45px; border-radius: 14px; gap: 5px; }
+    [data-variant="C"] .island { width: min(86%, 328px); border-color: transparent; }
+    .phone[data-variant="C"] .island [aria-current="page"] { background: transparent; }
+    .phone[data-variant="C"] .island [aria-current="page"] .nav-icon { background: rgb(197 250 85 / .17); box-shadow: 0 0 0 5px rgb(197 250 85 / .17); border-radius: 4px; }
+    .nav-icon { display: grid; place-items: center; width: 17px; height: 17px; position: relative; }
+    .nav-icon.home::before { content: ''; position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 5%, 98% 43%, 90% 51%, 82% 45%, 82% 93%, 58% 93%, 58% 66%, 42% 66%, 42% 93%, 18% 93%, 18% 45%, 10% 51%, 2% 43%, 50% 5%, 50% 18%, 28% 37%, 28% 82%, 32% 82%, 32% 56%, 68% 56%, 68% 82%, 72% 82%, 72% 37%, 50% 18%); }
+    .nav-icon.history { border: 1.5px solid currentColor; border-radius: 50%; }
+    .nav-icon.history::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 5px; border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; }
+    .nav-icon.settings { font-size: 19px; line-height: 1; }
+    .overlay { position: absolute; z-index: 2; inset: 0; display: flex; align-items: end; background: #04080382; backdrop-filter: blur(5px); }
+    .sheet { width: 100%; max-height: 87%; overflow: auto; border: 1px solid var(--edge); border-radius: 24px 24px 0 0; background: linear-gradient(160deg, #303c2b, #1a2119); padding: 15px 16px 18px; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 10px; }
+    .phone .sheet-head button { min-width: 44px; font-size: 20px; }
+    .sheet .primary { margin-top: 12px; }
+    .phone .back { margin: -9px 0 7px -8px; padding-inline: 8px; text-align: left; }
+    .editor-form { display: grid; gap: 11px; margin-top: 16px; }
+    .editor-form label { display: grid; gap: 5px; }
+    .editor-form input { width: 100%; height: 44px; border-radius: 9px; border: 1px solid var(--edge); background: #111610; color: #f2f4ef; padding: 7px 9px; }
+    .editor-form .field-name { font-weight: 650; }
+    .editor-form input[aria-invalid="true"] { border-color: #ffb0a5; }
+    .editor-error { padding: 9px 11px; border-radius: 9px; background: #603c32; color: #ffe3dd; font-size: 13px; }
+    .builder-section { display: grid; gap: 7px; margin-top: 7px; }
+    .builder-day { border: 1px solid var(--edge); border-radius: 14px; overflow: hidden; background: rgb(222 244 205 / .055); }
+    .phone .builder-day > button { border: 0; background: transparent; }
+    .builder-day-fields { display: grid; gap: 10px; padding: 12px; border-top: 1px solid var(--edge); }
+    .day-detail { padding: 0; border: 0; }
+    .builder-exercise { display: grid; gap: 6px; padding: 9px; border: 1px solid var(--edge); border-radius: 11px; background: rgb(222 244 205 / .035); }
+    .builder-exercise label { min-width: 0; }
+    .builder-exercise > .exercise-fields { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: end; gap: 5px; }
+    .phone .builder-remove { padding: 0; font-size: 19px; }
+    .recommendation summary { width: fit-content; min-height: 34px; padding-top: 7px; cursor: pointer; }
+    .recommendation-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 4px; }
+    .phone .remove-day { width: fit-content; padding-inline: 0; color: #f6beb5; font-size: 13px; }
+    .builder-swipe { position: relative; overflow: hidden; border-radius: 14px; background: #8d3235; touch-action: pan-y; }
+    .builder-swipe .builder-day { position: relative; transform: translateX(var(--day-offset, 0px)); background: var(--surface); }
+    .builder-swipe .list-row { cursor: grab; user-select: none; }
+    .phone .day-trash { position: absolute; inset: 0 auto 0 0; display: grid; place-items: center; width: 60px; padding: 0; border-radius: 0; border: 0; background: #8d3235; }
+    .trash-icon { position: relative; display: inline-block; width: 11px; height: 13px; border: 1.5px solid currentColor; border-radius: 1px 1px 3px 3px; }
+    .trash-icon::before, .trash-icon::after { content: ''; position: absolute; height: 1.5px; background: currentColor; }
+    .trash-icon::before { top: -4px; left: -3px; width: 14px; }
+    .trash-icon::after { top: -7px; left: 2px; width: 5px; }
+    .day-undo-stack { display: grid; flex-shrink: 0; gap: 5px; max-height: 130px; margin: 0 18px 8px; overflow: auto; }
+    .day-undo { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 7px; overflow: hidden; padding: 5px 5px 7px 10px; border-radius: 11px; background: #30392d; font-size: 13px; }
+    .day-undo button { flex-shrink: 0; }
+    .day-undo .quiet-text { margin-right: 4px; font-variant-numeric: tabular-nums; }
+    .day-undo::after { content: ''; position: absolute; inset: auto 0 0; height: 2px; background: #b2d288; transform: scaleX(var(--remaining, 1)); transform-origin: left; }
+    .editor-footer { flex: 0 0 auto; padding: 10px 18px 14px; border-top: 1px solid var(--edge); background: #171e16; }
+    .switcher { position: fixed; z-index: 4; left: 50%; bottom: 9px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--border, #575c54); border-radius: 13px; background: var(--card, #30352e); color: var(--card-foreground, #fff); white-space: nowrap; }
+    .switcher button { min-width: 39px; font-size: 16px; }
+    .switcher span { min-width: 152px; text-align: center; font-size: 13px; }
+    .single-variant .switcher { display: none; }
+
+    .themes { width: min(100%,402px); display: flex; gap: 5px; margin: 0 auto 10px; }
+    .themes[hidden], .themes:not([hidden]) ~ .examples { display: none; }
+    .themes button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 1px solid #666a67; border-radius: 12px; background: #222523; color: #f2f4f1; font-size: 13px; }
+    .themes button[aria-pressed=true] { border-color: var(--swatch); box-shadow: inset 0 -2px var(--swatch); }
+    .themes i { width: 9px; height: 9px; border-radius: 50%; background: var(--swatch); }
+    .phone[data-theme] { --base:#10130f; --surface:#21271f; --raised:#31382b; --glow:#39452a; --lime:#c2ef68; --quiet:#b1baaa; --shape:50%; --card-radius:19px; --edge:color-mix(in srgb,var(--quiet) 24%,transparent); background:radial-gradient(ellipse at 92% -8%,var(--glow),transparent 51%),var(--base); border-color:var(--edge); }
+    .phone[data-theme=ice] { --base:#10151d; --surface:#1d2836; --raised:#2c3b4d; --glow:#293f55; --lime:#93d3ff; --quiet:#afbdcd; --shape:12px; --card-radius:14px; }
+    .phone[data-theme=ember] { --base:#191312; --surface:#2d2220; --raised:#41302b; --glow:#50332b; --lime:#ffb28b; --quiet:#c9b3aa; --shape:15px 8px; --card-radius:21px 12px; }
+    .glyph { width:21px; height:21px; display:inline-block; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    [data-theme=ice] .glyph { stroke-linecap:square; stroke-linejoin:miter; stroke-width:1.65; }
+    [data-theme=ember] .glyph { stroke-width:2.2; }
+    .phone[data-theme] :is(.panel,.sheet,.editor-footer,.day-undo,.program-banner,.island,.builder-exercise,.secondary,.program-row,.builder-day,.editor-form input) { background:var(--surface); }
+    .phone[data-theme] .island { background:color-mix(in srgb,var(--surface) 88%,transparent); }
+    .phone[data-theme] :is(.panel,.program-row,.program-banner,.builder-day,.builder-swipe) { border-radius:var(--card-radius); }
+    .phone[data-theme] :is(.hero,.program-banner,.program-row[data-current]) { background:linear-gradient(120deg,color-mix(in srgb,var(--lime) 10%,var(--surface)),var(--surface) 86%); }
+    .phone[data-theme] :is(.program-row[data-current],.day-columns [aria-pressed=true]) { border-color:color-mix(in srgb,var(--lime) 43%,transparent); }
+    .phone[data-theme] :is(.day-columns [aria-pressed=true],.island [aria-current=page]) { color:var(--lime); background:color-mix(in srgb,var(--lime) 12%,transparent); }
+    .phone[data-theme] .primary { color:var(--base); }
+    .phone .back { display:inline-grid; place-items:center; width:44px; height:44px; margin:0 0 17px; padding:0; border:1px solid var(--edge); border-radius:var(--shape,50%); color:var(--lime); background:linear-gradient(150deg,var(--raised,var(--surface)),var(--surface)); box-shadow:inset 0 1px #ffffff0c; }
+    .entry-mark,.program-icon,.file-mark { display:inline-grid; place-items:center; flex:none; border-radius:var(--shape,50%); color:var(--lime); background:color-mix(in srgb,var(--lime) 10%,transparent); }
+    .entry-mark { width:29px; height:29px; }
+    .entry-mark .glyph { width:16px; height:16px; }
+    .program-icon::before { content:none; }
+    .file-mark { width:39px; height:42px; border-radius:12px; color:var(--quiet); background:var(--raised,var(--surface)); }
+    .program-row[data-current] .file-mark { color:var(--lime); }
+    .phone .program-row .program-detail { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:8px; }
+    .program-row { gap:4px; padding:5px 8px 5px 3px; }
+    .program-detail .entry-mark { background:transparent; width:18px; color:var(--quiet); }
+    .phone .pick { width:44px; min-height:44px; display:grid; place-items:center; padding:0; border:0; background:transparent; color:var(--quiet); }
+    .pick span { display:grid; place-items:center; width:29px; height:29px; border:1.5px solid var(--quiet); border-radius:50%; }
+    .pick .glyph { width:17px; height:17px; }
+    .pick:not(:disabled) .glyph { opacity:.48; }
+    .phone .pick:disabled { opacity:1; color:var(--base,#142000); }
+    .pick:disabled span { background:var(--lime); border-color:var(--lime); }
+    .detail-title { display:flex; align-items:center; justify-content:space-between; gap:9px; margin-bottom:18px; }
+    .detail-title h1 { margin:0; overflow-wrap:anywhere; }
+    .phone .edit-action { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .phone[data-theme] .screen { padding-top:20px; }
+    .phone[data-theme] .program-list { gap:10px; }
+    .phone[data-theme] .day-undo::after { background:var(--lime); }
+    .phone[data-theme=oled] {
+      --base:#000; --surface:#161618; --raised:#242427; --lime:#baff26;
+      --quiet:#b2b2b9; --edge:#343438; --shape:50%; --card-radius:18px;
+      color:#fafaf9; background:#000; border-color:#353538;
+    }
+    .phone[data-theme=oled] h1 { font-size:clamp(29px,8vw,38px); font-weight:820; letter-spacing:-.055em; }
+    .phone[data-theme=oled] .program-banner {
+      grid-template-columns:54px minmax(0,1fr) 32px; min-height:90px; padding:13px;
+      background:linear-gradient(115deg,#222226,#121213 76%); border-color:#424246;
+    }
+    [data-theme=oled] .program-banner strong { font-size:13px; font-weight:550; color:var(--quiet); }
+    [data-theme=oled] .program-banner small { color:#fafaf9; font-size:19px; line-height:1.2; font-weight:740; overflow-wrap:anywhere; }
+    [data-theme=oled] .program-icon { position:relative; width:54px; height:54px; background:#101011; border-radius:15px; }
+    [data-theme=oled] .program-icon .glyph { width:38px; height:38px; stroke-width:1.4; }
+    [data-theme=oled] .entry-mark { color:#fff; background:#29292c; }
+    [data-theme=oled] .back { color:white; border-color:#515156; background:#1d1d20; }
+    .phone[data-theme=oled] .program-row[data-current] { background:#18191a; border-color:#646a56; }
+    .phone[data-theme=oled] .file-mark { color:#c6c6cb; background:#252528; }
+    .phone[data-theme=oled] .program-row[data-current] .file-mark { color:var(--lime); background:#262b1a; }
+    .phone[data-theme=oled] .hero { background:#171719; }
+    .phone[data-theme=oled] .day-columns button { border-radius:24px; background:#121213; }
+    .phone[data-theme=oled] .day-columns [aria-pressed=true] { color:#fff; border-color:#66666b; background:#303034; }
+    [data-theme=oled] .day-columns [aria-pressed=true]::before { content:''; display:inline-block; margin:0 5px 2px 0; width:6px; height:6px; border-radius:50%; background:var(--lime); }
+    .phone[data-theme=oled] .exercise-list li { padding:11px 0; }
+    .phone[data-theme=oled] .primary { border-radius:26px; min-height:48px; background:var(--lime); color:#0a0a09; }
+    .phone[data-theme=oled] .island { background:rgb(28 28 31 / .94); border-color:#454549; }
+    .phone[data-theme=oled] .island [aria-current=page] { background:#2b3021; }
+    .phone[data-theme=oled] .editor-form input { background:#070708; border-color:#626268; }
+    [data-theme=oled] input::placeholder { color:#a3a3aa; }
+    .phone[data-theme=oled] .pick:not(:disabled) span { border-color:#88888e; }
+    .phone[data-theme=oled] .pick:not(:disabled) .glyph { opacity:.72; }
+  
+.phone .island { width:min(72%,265px); grid-template-columns:repeat(2,minmax(0,1fr)); }
+.phone .log-meta { margin:-9px 0 19px; }
+.phone .log-exercise { margin-bottom:12px; }
+.phone .log-exercise .list { margin-top:10px; }
+.phone .danger { background:#28191b; color:#ffb7b7; margin-top:12px; border-color:#734347; }
+.sheet p { margin-top:8px; }
+}
+@scope (#workout-shell) {
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px 8px 72px; background: var(--background, #232523); color: var(--foreground, #fff); font: 15px system-ui, sans-serif; }
+    body.single-variant { padding-bottom: 16px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .45; }
+    .phone { color-scheme: dark; --surface: #20261f; --glass: rgb(28 34 26 / .72); --edge: rgb(221 238 206 / .16); --quiet: #b6c0b0; --lime: #c5fa55; display: flex; flex-direction: column; position: relative; width: min(100%, 400px); height: min(690px, 177vw); min-height: 490px; margin: auto; overflow: hidden; border: 1px solid #424940; border-radius: 28px; background: radial-gradient(ellipse at 85% 0%, #263423 0%, transparent 48%), linear-gradient(165deg, #151a14, #0e110e 78%); color: #f2f4ef; box-shadow: 0 18px 48px #0004; }
+    .header, .footer { padding: 14px 17px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .header { position: relative; border-bottom: 1px solid var(--edge); background: rgb(16 20 15 / .48); backdrop-filter: blur(14px); }
+    .footer { border-top: 1px solid var(--edge); }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 17px; }
+    h2 { font-size: 30px; line-height: 1.08; letter-spacing: -.045em; }
+    h3 { font-size: 16px; }
+    .sub { color: var(--quiet); font-size: 13px; }
+    .header .sub { margin-top: 3px; }
+    .content { flex: 1; min-height: 0; overflow: auto; padding: 17px; scrollbar-color: #565c52 transparent; }
+    .phone button { min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--edge); background: var(--glass); color: inherit; }
+    .phone .primary { background: var(--lime); border-color: var(--lime); color: #152000; font-weight: 750; }
+    .phone .quiet { background: rgb(222 244 205 / .045); }
+    .phone :is(button, input):focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+    .phone .wide { width: 100%; }
+    .phone .timer { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .phone .running { color: var(--lime); }
+    .phone .rest-slot { display: flex; align-items: center; }
+    .phone .rest-slot[hidden], .phone .rest-start[hidden], .phone .rest-slot [hidden] { display: none; }
+    .phone .rest-start, .phone .rest-stop { min-width: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; }
+    .phone .rest-start { font-size: 23px; }
+    .rest-stop::before { content: ''; width: 11px; height: 11px; background: currentColor; border-radius: 2px; }
+    .rest-readout { font-size: 20px; font-weight: 750; color: var(--lime); font-variant-numeric: tabular-nums; }
+    .rest-caption { display: none; }
+    .rest-progress { display: none; }
+    .timer-a, .timer-b { gap: 6px; }
+    .phone .timer-a .rest-stop, .phone .timer-b .rest-stop { border-radius: 50%; }
+    .timer-c .rest-caption { display: block; }
+    .timer-b .rest-progress { display: block; position: absolute; inset: auto 0 -1px; height: 2px; background: #41483a; pointer-events: none; }
+    .rest-progress span { display: block; height: 100%; width: var(--remaining, 100%); background: var(--lime); }
+    .timer-c { margin: 4px 17px 10px; padding: 3px 6px 3px 12px; gap: 12px; border: 1px solid var(--edge); border-radius: 11px; background: var(--surface); }
+    .timer-c .rest-caption { margin-right: auto; }
+    .phone .timer-c .rest-stop { background: #272c24; }
+    .heading { display: grid; gap: 7px; margin: 0 0 18px; }
+    .indexed { display: flex; gap: 6px; margin: 0 0 18px; }
+    .indexed button { flex: 1; padding: 8px 4px; }
+    .indexed [aria-current="true"] { color: var(--lime); border-color: var(--lime); }
+    .exercise-intro { position: relative; display: grid; gap: 7px 10px; padding: 20px 17px 12px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    .intro-kicker, .intro-title { grid-column: 1; display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .phone .back-control { flex: 0 0 auto; min-width: 44px; padding: 0 10px; font-size: 21px; }
+    .phone[data-back="I"] .back-control { margin-left: -10px; background: transparent; border-color: transparent; }
+    .phone[data-back="J"] .back-control { border-radius: 50%; }
+    .phone[data-back="K"] .back-control { justify-self: start; grid-column: 1 / -1; grid-row: 1; margin-left: -10px; background: transparent; border-color: transparent; font-size: 14px; }
+    [data-back="K"] .intro-kicker { grid-row: 2; }
+    [data-back="K"] .intro-title, [data-back="K"] .exercise-intro .rest-slot { grid-row: 3; }
+    .exercise-intro .rest-slot { grid-column: 2; grid-row: 2; justify-self: end; min-width: 100px; justify-content: flex-end; }
+    .exercise-intro .rest-progress { inset-inline: 17px; }
+    .exercise-plan { grid-column: 1 / -1; }
+    .shortcuts { display: flex; flex-shrink: 0; align-items: stretch; gap: 7px; padding: 8px min(17px, 4%) 14px; }
+    .phone .shortcuts button { border: 0; }
+    .phone .shortcut { flex: 0 0 44px; padding: 0; border-radius: 50%; font-size: 21px; }
+    .phone .shortcut-picker { flex: 1; min-width: 0; padding-inline: 7px; border-radius: 24px; font-weight: 650; }
+    .phone .shortcut-finish { flex: 0 0 auto; padding-inline: 11px; border-radius: 24px; font-size: 12px; line-height: 1.15; }
+    .phone .finish-action { background: rgb(197 250 85 / .13); color: var(--lime); }
+    .phone .finish-action.shortcut { font-size: 20px; }
+    .phone .finish-action.shortcut-finish { padding-inline: 13px; font-size: 13px; font-weight: 700; }
+    .phone[data-design="F"] .shortcut { background: transparent; }
+    .phone[data-design="F"] .shortcut-picker { background: rgb(214 234 202 / .09); }
+    [data-design="G"] .intro-title { grid-row: 1; grid-column: 1 / -1; }
+    [data-design="G"] .intro-kicker { grid-row: 2; }
+    [data-design="G"] .exercise-intro .exercise-plan { grid-row: 3; }
+    .phone[data-design="G"] .shortcuts button:not(.primary) { background: #282f25; }
+    [data-design="H"] .exercise-intro { padding-top: 22px; }
+    [data-design="H"] .intro-title { grid-row: 2; }
+    [data-design="H"] .exercise-intro .rest-slot { grid-row: 1; }
+    [data-design="H"] .shortcuts { padding-top: 18px; background: linear-gradient(transparent, rgb(58 72 51 / .36)); }
+    .phone[data-design="H"] .shortcuts button:not(.primary) { background: rgb(214 234 202 / .095); }
+    .sets { display: grid; gap: 5px; margin: 12px 0; }
+    .columns, .set { display: grid; grid-template-columns: 25px 1fr 1fr 27px; gap: 6px; align-items: center; text-align: left; }
+    .columns { padding: 0 10px; }
+    .phone .set { padding: 6px 10px; font-variant-numeric: tabular-nums; background: rgb(205 244 149 / .075); border-color: rgb(205 244 149 / .14); }
+    .set strong { font-size: 18px; }
+    .check { color: var(--lime); text-align: center; }
+    .entry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
+    .entry label { display: grid; gap: 5px; }
+    .entry input { width: 100%; height: 46px; border: 1px solid var(--edge); border-radius: 12px; background: rgb(9 12 9 / .55); color: #f2f4ef; padding: 7px 11px; font-size: 19px; font-variant-numeric: tabular-nums; }
+    .entry button, .entry .error { grid-column: span 2; }
+    .error { color: #ffb0a5; font-size: 13px; }
+    .entry.inline-entry { display: block; }
+    .entry-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: 7px; align-items: end; }
+    .entry .entry-controls button { grid-column: auto; height: 46px; min-width: 46px; padding: 0 11px; }
+    .entry .entry-controls .icon-save { border-radius: 50%; padding: 0; font-size: 26px; line-height: 1; }
+    .entry-controls .text-save { font-size: 13px; }
+    .inline-grouped .entry-controls { gap: 0; padding: 4px; border: 1px solid var(--edge); border-radius: 17px; background: var(--glass); align-items: center; }
+    .inline-grouped .entry-controls label { padding: 0 8px; gap: 1px; }
+    .inline-grouped .entry-controls label + label { border-left: 1px solid var(--edge); }
+    .inline-grouped .entry-controls input { border: 0; background: transparent; padding: 1px 0; height: 30px; }
+    .inline-grouped .entry-controls .icon-save { border-radius: 13px; }
+    .inline-entry .error { margin-top: 7px; }
+    [data-set-rows] .sets { margin-bottom: 7px; }
+    [data-set-rows] .exercise-position { color: #e1ead8; font-size: 14px; font-weight: 650; }
+    [data-set-rows] .exercise-position strong { color: var(--lime); font-variant-numeric: tabular-nums; }
+    [data-set-rows] .columns, [data-set-rows] .set, .entry.set-draft { display: grid; grid-template-columns: 34px repeat(2, minmax(0, 1fr)) 44px; align-items: center; gap: 6px; padding-inline: 0; }
+    [data-set-rows] .columns, .entry.set-draft { border-inline: 1px solid transparent; }
+    [data-set-rows] .columns > span:first-child, .set-index { text-align: center; }
+    [data-set-rows] .columns > span:nth-child(2), [data-set-rows] .columns > span:nth-child(3) { padding-left: 9px; }
+    .phone[data-set-rows] .set { padding-block: 4px; background: rgb(221 238 206 / .045); border-color: var(--edge); }
+    [data-set-rows] .set strong { padding-inline: 9px; }
+    [data-set-rows] .set-index { color: #d5dfcc; font-variant-numeric: tabular-nums; }
+    .entry.set-draft { margin-top: 0; }
+    .set-draft input { min-width: 0; padding-inline: 9px; }
+    .set-draft .draft-save { grid-column: auto; padding: 0; border-radius: 12px; font-size: 20px; }
+    .set-draft .set-index { justify-self: center; min-width: 24px; padding-block: 3px; border-radius: 7px; color: var(--lime); background: rgb(197 250 85 / .12); font-weight: 700; }
+    .set-draft .error { grid-column: 2 / -1; }
+    .set-composer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--edge); }
+    .set-composer h3 { margin-bottom: 7px; }
+    .set-composer .inline-entry { margin-top: 0; }
+    .set-composer .text-save { white-space: nowrap; }
+    .phone[data-add-set] .set, .phone[data-add-set] .set-draft { min-height: 50px; padding: 2px 0; border: 1px solid var(--edge); border-radius: 12px; background: rgb(221 238 206 / .045); }
+    .phone[data-add-set] .set-draft .set-index { padding: 0; color: #d5dfcc; background: none; font-weight: 400; }
+    .phone[data-add-set] .set-draft input { height: 44px; border-color: transparent; background: transparent; font-size: 18px; font-weight: 700; }
+    .phone[data-add-set] .set-draft input:focus { border-color: var(--edge); background: #0e110e; outline-offset: 0; }
+    .phone[data-add-set] .draft-save { min-width: 0; margin-right: 3px; border-radius: 9px; border-color: transparent; background: rgb(197 250 85 / .12); color: var(--lime); }
+    .phone[data-add-set] .set-draft .error { padding: 0 8px 7px; }
+    .phone .add-set { display: inline-flex; align-items: center; gap: 9px; padding-inline: 4px 12px; background: transparent; border-color: transparent; font-weight: 650; }
+    .add-set span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(221 238 206 / .09); font-size: 21px; font-weight: 400; }
+    .swipe-item { position: relative; overflow: hidden; border-radius: 12px; background: #8d3235; touch-action: pan-y; }
+    .swipe-item .set, .swipe-item .set-draft { position: relative; transform: translateX(var(--drag, 0px)); width: 100%; user-select: none; }
+    .phone .swipe-item .set, .phone .swipe-item .set-draft { background: #20261e; }
+    .swipe-item .set { cursor: grab; }
+    .swipe-item input { user-select: text; }
+    .phone[data-sequential] .set-draft:not([data-next]) input { opacity: .45; }
+    .phone[data-sequential] .set-draft :disabled { pointer-events: none; }
+    .phone[data-sequential] .set-draft[data-next] input { border-color: #65745c; background: #121812; }
+    .phone[data-sequential] .set-draft[data-next] input::placeholder { color: #b1beaa; font-size: 14px; font-weight: 600; }
+    .phone[data-sequential] .set-draft[data-next] .draft-save { background: var(--lime); color: #152000; }
+    .phone .swipe-trash { position: absolute; inset: 0 auto 0 0; min-width: 60px; padding: 0; border-radius: 0; border: 0; background: #8d3235; color: #fff; font-size: 21px; }
+    .trash-icon { display: inline-block; width: 11px; height: 13px; border: 1.5px solid currentColor; border-radius: 1px 1px 3px 3px; position: relative; vertical-align: -1px; }
+    .trash-icon::before, .trash-icon::after { content: ''; position: absolute; height: 1.5px; background: currentColor; }
+    .trash-icon::before { top: -4px; left: -3px; width: 14px; }
+    .trash-icon::after { top: -7px; left: 2px; width: 5px; }
+    .undo-stack { display: grid; flex-shrink: 0; gap: 5px; max-height: 150px; overflow: auto; margin: 0 14px 3px; }
+    .undo-entry { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 8px 11px; border-radius: 11px; overflow: hidden; background: #30392d; font-size: 13px; }
+    .undo-summary { display: grid; gap: 2px; min-width: 0; }
+    .undo-summary .sub { font-size: 12px; }
+    .undo-actions { display: flex; align-items: center; gap: 5px; }
+    .undo-seconds { min-width: 23px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .phone .undo-entry button { padding-inline: 8px; color: var(--lime); border-color: transparent; font-size: 13px; }
+    .undo-progress { position: absolute; inset: auto 0 0; height: 2px; background: #b2d288; transform: scaleX(var(--remaining, 1)); transform-origin: left; }
+    .phone .swipe-item .set.recent-save { animation: confirm-set .45s ease-out; }
+    @keyframes confirm-set { from { background: #43572a; border-color: var(--lime); } }
+    @media (prefers-reduced-motion: reduce) { .phone .swipe-item .set.recent-save { animation: none; } }
+    .phone .entry input[aria-invalid="true"] { border-color: #ffb0a5; }
+    .journal { display: grid; gap: 22px; }
+    .journal section + section { border-top: 1px solid var(--edge); padding-top: 14px; }
+    .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .queue { display: grid; gap: 7px; }
+    .phone .queue-row { display: grid; grid-template-columns: 23px 1fr auto; align-items: center; text-align: left; gap: 8px; min-height: 57px; }
+    .queue-row small { display: block; margin-top: 3px; }
+    .queue-row strong { color: var(--lime); font-variant-numeric: tabular-nums; }
+    .phone .queue-row[aria-current="true"] { border-color: var(--lime); }
+    .overlay { position: absolute; inset: 0; display: flex; align-items: end; background: #02060282; backdrop-filter: blur(5px); }
+    .sheet { width: 100%; max-height: 93%; overflow: auto; padding: 17px; border: 1px solid var(--edge); border-radius: 24px 24px 0 0; background: linear-gradient(160deg, rgb(44 55 41 / .93), rgb(22 28 22 / .95)); box-shadow: 0 -14px 40px #0005; }
+    .sheet h2 { font-size: 22px; }
+    .sheet > p { margin-top: 9px; }
+    .sheet > .queue { margin-top: 14px; }
+    .sheet > .primary, .sheet > .quiet { margin-top: 10px; }
+    .switcher { position: fixed; bottom: 9px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; white-space: nowrap; padding: 4px; background: var(--card, #30352e); color: var(--card-foreground, #fff); border: 1px solid var(--border, #575c54); border-radius: 14px; }
+    .single-variant .switcher { display: none; }
+    .switcher span { text-align: center; min-width: 170px; }
+    .switcher button { min-width: 40px; min-height: 40px; background: transparent; color: inherit; border: 0; border-radius: 9px; }
+    .switcher button:hover { background: var(--accent, #475145); color: var(--accent-foreground, #fff); }
+    .phone[data-oled] { --lime:#baff26; --surface:#161618; --glass:#202023; --edge:#343438; --quiet:#b2b2b9; color:#fafaf9; background:#000; border-color:#353538; }
+    [data-oled] .exercise-intro { padding:18px 18px 19px; gap:12px 8px; border-bottom:1px solid #333336; }
+    [data-oled] .intro-title h2 { font-size:clamp(26px,7vw,33px); line-height:1.04; letter-spacing:-.045em; font-weight:810; }
+    [data-oled] .exercise-position { font-weight:600; }
+    .phone[data-oled] :is(.back-control,.rest-start,.rest-stop,.shortcut) { display:inline-grid; place-items:center; margin:0; padding:0; width:44px; height:44px; border-radius:50%; border:1px solid #515156; color:#fafafa; background:#1d1d20; }
+    .phone[data-oled] [hidden] { display:none; }
+    [data-oled] .control-icon { width:21px; height:21px; stroke:currentColor; stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    [data-oled] .rest-stop::before { width:9px; height:9px; }
+    [data-oled] .timer-b .rest-progress { inset-inline:0; background:#29292b; }
+    [data-oled] .sets { gap:8px; }
+    .phone[data-oled] .swipe-item .set { background:#181b12; border-color:#393e2a; }
+    .phone[data-oled] .swipe-item .set-draft { background:#101012; border-color:#333337; }
+    .phone[data-oled] .set-draft[data-next] { background:#19191b; border-color:#76767b; }
+    .phone[data-oled] .set-draft[data-next] input { background:#030303; border-color:#6f6f75; color:#fff; }
+    .phone[data-oled] .set-draft[data-next] input::placeholder { color:#c0c0c7; }
+    .phone[data-oled] .set-draft[data-next] input:focus { outline:2px solid var(--lime); outline-offset:-2px; }
+    .phone[data-oled] .set-index { color:#d4d4d8; }
+    [data-oled] .check { display:grid; place-items:center; justify-self:center; width:27px; height:27px; border-radius:50%; color:var(--lime); background:#2a331c; }
+    .phone[data-oled] .draft-save:disabled { color:#a3a3a9; background:#212124; }
+    .phone[data-oled] .shortcut-picker { background:#242427; border:1px solid #444448; }
+    .phone[data-oled] .finish-action { background:var(--lime); color:#080808; }
+    [data-oled] .sheet,[data-oled] .undo-entry { background:#1a1a1c; }
+    [data-oled] .undo-progress { background:var(--lime); }
+    .phone[data-oled] .sheet .entry input { background:#080809; border-color:#737379; }
+  }
+.stage .phone { height:min(710px,179vw); min-height:500px; width:min(100%,402px); }
+</style></head><body>
+<p id="storage-warning" role="status" hidden>В этом окне сохранение недоступно. Открой HTML-файл в браузере, чтобы продолжать после закрытия.</p>
+<div id="home-shell" class="stage"><main id="phone" class="phone" aria-label="Fitty"></main></div>
+<div id="workout-shell" class="stage" hidden><main id="workout" class="phone" data-oled data-back="I" data-design="F" data-set-rows data-add-set data-sequential aria-label="Тренировка"></main></div>
+<script>
+    const phone = document.querySelector('#phone');
+    const variant = 'G';
+    const exercise = (name = '', sets = '', reps = '') => ({ name, sets: String(sets), reps: String(reps) });
+    const emptyDay = () => ({ name: '', exercises: [exercise()] });
+    const sample = [
+      { name: 'День A', exercises: [exercise('Жим лёжа', 4, 8), exercise('Тяга гантели'), exercise('Жим гантелей сидя', 3, 10), exercise('Тяга верхнего блока', 3, 12), exercise('Сгибание рук')] },
+      { name: 'День B', exercises: [exercise('Приседания', 4, 6), exercise('Румынская тяга', 3, 8), exercise('Подъёмы на носки')] },
+      { name: 'День C', exercises: [exercise('Становая тяга', 3, 5), exercise('Жим над головой', 3, 8), exercise('Тяга горизонтального блока', 3, 10)] },
+    ];
+    const samplePrograms = [
+      { name: 'Силовая A/B/C', days: sample },
+      { name: 'Всё тело', days: [{ name: 'День A', exercises: [exercise('Приседания', 3, 8), exercise('Жим гантелей', 3, 10), exercise('Тяга гантели', 3, 10)] }] },
+    ];
+    const tabs = { home: 'Главная', history: 'История' };
+    const plural = new Intl.PluralRules('ru');
+    const amount = count => `${count} ${{ one: 'упражнение', few: 'упражнения', many: 'упражнений' }[plural.select(count)]}`;
+    const dayAmount = count => `${count} ${{ one: 'тренировочный день', few: 'тренировочных дня', many: 'тренировочных дней' }[plural.select(count)]}`;
+    const escape = value => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    const storageKey = 'fitty-mvp-prototype-v1';
+    let logs = [];
+    let editSet = null;
+    let tab;
+    let programs;
+    let selectedProgram;
+    let previewProgram;
+    let active;
+    let chosen;
+    let overlay;
+    let page;
+    let historyIndex;
+    let builder;
+    let nextDayId = 0;
+    let openDay = null;
+    let daySwipe = null;
+    let suppressSwipeClick = false;
+    const dayUndoDuration = 5000;
+    const currentDays = () => programs[selectedProgram]?.days ?? [];
+
+    function exerciseList(day) {
+      return `<ul class="exercise-list">${day.exercises.map(({ name, sets, reps }) => {
+        const plan = sets && reps ? `${sets} × ${reps}` : sets ? `${sets} подх.` : reps ? `${reps} повт.` : '';
+        return `<li><span>${escape(name)}</span>${plan ? `<span class="quiet-text">${plan}</span>` : ''}</li>`;
+      }).join('')}</ul>`;
+    }
+
+    const paths = {
+      back: 'M19 12H5m7-7-7 7 7 7', enter: 'm9 5 7 7-7 7',
+      library: 'm2.5 8.2 9.5-5 9.5 5-9.5 5z M2.5 12.4l9.5 5 9.5-5 M2.5 16.5l9.5 5 9.5-5',
+      plan: 'M5 4h14v16H5z M9 9h6m-6 4h4',
+      home: 'm3 10 9-7 9 7v10h-6v-6H9v6H3z',
+      history: 'M4 8a9 9 0 1 1-1 7 M4 3v5h5 M12 7v5l3 2',
+      settings: 'M3 7h7m5 0h6M3 17h11m5 0h2 M10 4h5v6h-5z M14 14h5v6h-5z',
+      check: 'm5 12 4 4L19 6'
+    };
+    function glyph(name) {
+      const path = paths[name];
+      return `<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
+    }
+    const entryMark = () => `<span class="entry-mark" aria-hidden="true">${glyph('enter')}</span>`;
+    function programPick(index) {
+      const current = index === selectedProgram;
+      const name = escape(programs[index].name);
+      const label = current ? `На главной выбрана программа «${name}»` : `Выбрать программу «${name}» для главной`;
+      return `<button type="button" class="pick" data-action="use-program" data-index="${index}" aria-label="${label}" title="${label}" aria-pressed="${current}" ${current ? 'disabled' : ''}><span>${glyph('check')}</span></button>`;
+    }
+
+    function programBanner() {
+      const current = programs[selectedProgram];
+      return `<button class="program-banner" type="button" data-action="programs"><span class="program-icon" aria-hidden="true">${glyph('library')}</span><span><strong>Мои программы</strong><small class="quiet-text">${current ? escape(current.name) : 'Добавь первую программу'}</small></span>${entryMark()}</button>`;
+    }
+
+    function home() {
+      const days = currentDays();
+      const title = `<h1>Главная</h1>${programBanner()}`;
+
+      if (!days.length) {
+        return '<h1>Главная</h1><section class="panel hero"><h2>Создай программу</h2><p class="quiet-text">Добавь тренировочный день и первое упражнение.</p><button type="button" class="primary wide" data-action="create-program">Создать программу</button><button type="button" class="link wide" data-action="demo">Попробовать на примере</button></section>';
+      }
+      if (active) {
+        return `<h1>Главная</h1><section class="panel hero resume"><h2>${escape(active.day.name)}</h2><p class="quiet-text">Незавершённая тренировка · Записано подходов: ${setCount(active)}</p><button type="button" class="primary wide" data-action="resume">Продолжить тренировку</button><button type="button" class="link wide" data-action="cancel">Отменить тренировку</button></section>${programBanner()}`;
+      }
+      return `${title}<div class="day-columns" aria-label="Тренировочные дни">${days.map(({ name }, index) => `<button type="button" data-action="select" data-index="${index}" aria-pressed="${index === chosen}">${escape(name)}</button>`).join('')}</div>
+        <section class="panel"><h2>Упражнения</h2>${exerciseList(days[chosen])}<button type="button" class="primary wide" data-action="start">Начать тренировку</button></section>`;
+    }
+
+    
+    function setCount(session) { return session.rows.flat().filter(row => row.values).length; }
+    function save() {
+      try { localStorage.setItem(storageKey, JSON.stringify({programs,selectedProgram,chosen,active,logs})); }
+      catch { document.querySelector('#storage-warning').hidden = false; }
+    }
+    function restore() {
+      let data;
+      try { data = JSON.parse(localStorage.getItem(storageKey)); } catch { document.querySelector('#storage-warning').hidden = false; }
+      programs = data?.programs ?? []; selectedProgram = data?.selectedProgram ?? null;
+      chosen = data?.chosen ?? 0; active = data?.active ?? null; logs = data?.logs ?? [];
+      tab = 'home'; page = overlay = null;
+    }
+    function newSession() {
+      const day = structuredClone(currentDays()[chosen]);
+      let id = 0;
+      return {day, program:programs[selectedProgram].name, selected:0, deadline:0, removed:[],
+        rows:day.exercises.map(ex => Array.from({length:Math.min(Number(ex.sets) || 4, 100)}, () => ({
+          id:++id, values:null, draft:{weight:'',reps:''}
+        }))), nextId:id};
+    }
+    const dateLabel = stamp => new Date(stamp).toLocaleString('ru-RU',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+function historyScreen(){
+  const entries = logs.map((log, index) => `<button class="list-row secondary" type="button" data-action="history-detail" data-index="${index}"><span><strong>${escape(log.day.name)}</strong><small class="quiet-text">${dateLabel(log.date)} · ${escape(log.program)}</small></span>${entryMark()}</button>`);
+  return `<h1>История</h1>${entries.length ? `<div class="list">${entries.join('')}</div>` : '<p class="quiet-text">Здесь появятся завершённые тренировки.</p>'}`;
+}
+
+function historyDetail(){
+  const log = logs[historyIndex];
+  const sections = log.day.exercises.map((ex, i) => {
+    const rows = log.rows[i].map((row, j) => `<button type="button" class="list-row secondary" data-action="history-set" data-index="${i}" data-item="${j}"><span>Подход ${j+1}</span><strong>${row.values[0].toLocaleString('ru-RU')} кг × ${row.values[1]}</strong></button>`).join('');
+    return `<section class="panel log-exercise"><h2>${escape(ex.name)}</h2><div class="list">${rows || '<p class="quiet-text">Без записанных подходов</p>'}</div></section>`;
+  });
+  return `<h1>${escape(log.day.name)}</h1><p class="quiet-text log-meta">${dateLabel(log.date)} · ${escape(log.program)}</p>${sections.join('')}<button class="danger wide" type="button" data-action="history-remove">Удалить тренировку</button>`;
+}
+
+function historyOverlay(){
+  const log = logs[historyIndex];
+  const deleting = overlay === 'history-remove';
+  const ex = editSet && log.day.exercises[editSet.i];
+  const values = editSet && log.rows[editSet.i][editSet.j]?.values;
+  const last = setCount(log) === 1;
+  const title = deleting ? 'Удалить тренировку?' : `Подход ${editSet.j + 1}`;
+  const content = deleting ? `<p class="quiet-text">${escape(log.day.name)} · ${dateLabel(log.date)}. Все записанные подходы будут удалены из истории.</p><button type="button" class="danger wide" data-action="confirm-remove">Удалить тренировку</button>` :
+    `<p class="quiet-text">${escape(ex.name)}</p><form id="history-form" class="editor-form" novalidate><label>Вес, кг<input name="weight" inputmode="decimal" value="${String(values[0]).replace('.',',')}"></label><label>Повторения<input name="reps" inputmode="numeric" value="${values[1]}"></label><p class="editor-error" role="alert" hidden></p><button class="primary" type="submit">Сохранить</button></form>
+    ${last ? '<p class="quiet-text">Это последний подход. Чтобы убрать его из истории, удали тренировку целиком.</p><button class="danger wide" data-action="history-remove">Удалить тренировку целиком</button>' : '<button class="danger wide" data-action="remove-history-set">Удалить подход</button>'}`;
+  return `<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><h2>${title}</h2><button type="button" class="link" data-action="close" aria-label="Закрыть">×</button></div>${content}</section></div>`;
+}    function programsScreen() {
+      const rows = programs.map(({ name, days }, index) => {
+        const current = index === selectedProgram;
+        const programName = escape(name);
+        const summary = `<strong>${programName}</strong><small class="quiet-text">${dayAmount(days.length)}</small>`;
+          return `<div class="program-row" ${current ? 'data-current' : ''}><button class="program-detail" type="button" data-action="program-detail" data-index="${index}" aria-label="Открыть программу «${programName}»"><span class="file-mark">${glyph('plan')}</span><span>${summary}</span>${entryMark()}</button>${programPick(index)}</div>`;
+      }).join('');
+      return `<h1>Мои программы</h1>${rows ? `<div class="list program-list">${rows}</div>` : '<p class="quiet-text program-list">У тебя пока нет программ.</p>'}<button type="button" class="secondary wide" data-action="create-program">＋ Новая программа</button>`;
+    }
+
+    function programDetail() {
+      const { name, days } = programs[previewProgram];
+      const heading = `<div class="detail-title"><h1>${escape(name)}</h1>${programPick(previewProgram)}</div>`;
+      return `${heading}<div class="list program-days">${days.map(day => `<section class="panel"><h2>${escape(day.name)}</h2>${exerciseList(day)}</section>`).join('')}</div>
+        <div class="program-actions"><button type="button" class="secondary wide edit-action" data-action="edit-program">Редактировать программу ${entryMark()}</button></div>`;
+    }
+
+    function beginBuilder(programIndex) {
+      const source = programIndex === undefined ? { name: '', days: [emptyDay()] } : structuredClone(programs[programIndex]);
+      const days = source.days.map(day => ({ ...day, id: ++nextDayId }));
+      builder = { name: source.name, days, removed: [], programIndex, returnPage: page, dayIndex: 0, dayOpen: false, error: null };
+      openDay = null;
+      page = 'editor';
+    }
+
+    function builderField(label, field, value, { day, item, placeholder, numeric } = {}) {
+      const error = builder.error;
+      const invalid = error && error.field === field && error.day === day && error.item === item;
+      return `<label><span class="quiet-text field-name">${label}</span><input name="${field}" value="${escape(value)}" ${day === undefined ? '' : `data-day="${day}"`} ${item === undefined ? '' : `data-item="${item}"`} ${placeholder ? `placeholder="${placeholder}"` : ''} ${numeric ? 'inputmode="numeric"' : ''} ${invalid ? 'aria-invalid="true"' : ''} autocomplete="off"></label>`;
+    }
+
+    function dayFields(index, detail = false) {
+      const day = builder.days[index];
+      const rows = day.exercises.map(({ name, sets, reps }, item) => `<div class="builder-exercise"><div class="exercise-fields">
+        ${builderField('Название упражнения', 'exercise', name, { day: index, item, placeholder: 'Жим лёжа' })}
+        <button type="button" class="link builder-remove" data-action="remove-exercise" data-index="${index}" data-item="${item}" aria-label="Убрать упражнение ${item + 1}">×</button></div>
+        <details class="recommendation" ${sets || reps || (builder.error?.day === index && builder.error?.item === item && ['sets', 'reps'].includes(builder.error.field)) ? 'open' : ''}><summary class="quiet-text">Рекомендации</summary>
+          <div class="recommendation-fields">${builderField('Подходы', 'sets', sets, { day: index, item, numeric: true })}${builderField('Повторения', 'reps', reps, { day: index, item, numeric: true })}</div></details></div>`).join('');
+      return `<section class="builder-day-fields${detail ? ' day-detail' : ''}">
+        ${builderField('Название тренировочного дня', 'day', day.name, { day: index, placeholder: 'День A' })}
+        <h2>Упражнения</h2>${rows}<button class="secondary wide" type="button" data-action="add-exercise" data-index="${index}">＋ Добавить упражнение</button>
+        ${detail ? '' : `<button class="link remove-day" type="button" data-action="remove-day" data-index="${index}">Убрать день из программы</button>`}</section>`;
+    }
+
+    function editingDay() {
+      return variant === 'G' && builder.dayOpen;
+    }
+
+    function programEditor() {
+      const error = builder.error ? `<p class="editor-error" role="alert">${builder.error.message}</p>` : '';
+      if (editingDay()) {
+        const day = builder.days[builder.dayIndex];
+        return `<h1>${escape(day.name.trim()) || `День ${builder.dayIndex + 1}`}</h1><form class="editor-form" id="program-form" novalidate>${error}${dayFields(builder.dayIndex, true)}</form>`;
+      }
+      const days = builder.days.map((day, index) => {
+        const expanded = variant !== 'G' && index === builder.dayIndex;
+        const count = day.exercises.filter(item => item.name.trim()).length;
+        const title = escape(day.name.trim()) || `День ${index + 1}`;
+        const card = `<div class="builder-day"><button class="list-row" type="button" data-action="edit-day" data-index="${index}" ${variant === 'G' ? '' : `aria-expanded="${expanded}"`}>
+          <span><strong>${title}</strong><small class="quiet-text">${count ? amount(count) : 'Упражнений пока нет'}</small></span>${expanded ? '<span aria-hidden="true">−</span>' : entryMark()}</button>${expanded ? dayFields(index) : ''}</div>`;
+        if (variant !== 'G') return card;
+        const open = openDay === day.id;
+        return `<div class="builder-swipe" data-day-id="${day.id}" ${open ? 'style="--day-offset:60px"' : ''}>
+          <button class="day-trash" type="button" data-action="remove-day" data-index="${index}" aria-label="Убрать день ${title}" ${open ? '' : 'tabindex="-1" aria-hidden="true"'}><span class="trash-icon" aria-hidden="true"></span></button>${card}</div>`;
+      }).join('');
+      return `<h1>${builder.programIndex === undefined ? 'Новая программа' : 'Редактировать программу'}</h1><form class="editor-form" id="program-form" novalidate>${error}
+        ${builderField('Название программы', 'program', builder.name, { placeholder: 'Силовая A/B/C' })}
+        <div class="builder-section"><h2>Тренировочные дни</h2>${days}<button class="secondary wide" type="button" data-action="builder-add-day">＋ Добавить тренировочный день</button></div></form>`;
+    }
+
+    function dayError(day, index) {
+      if (!day.name.trim()) return { field: 'day', day: index, message: 'Введи название тренировочного дня.' };
+      if (!day.exercises.length) return { day: index, message: 'Добавь хотя бы одно упражнение.' };
+      for (const [item, { name, sets, reps }] of day.exercises.entries()) {
+        if (!name.trim()) return { field: 'exercise', day: index, item, message: 'Введи название упражнения или убери пустую строку.' };
+        for (const [field, value] of [['sets', sets], ['reps', reps]]) {
+          if (value.trim() && (!/^\d+$/.test(value.trim()) || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
+            return { field, day: index, item, message: 'Укажи целое число от 1 или оставь поле пустым.' };
+          }
+        }
+      }
+      return null;
+    }
+
+    function showBuilderError(error) {
+      builder.error = error;
+      if (error.day !== undefined) {
+        builder.dayIndex = error.day;
+        builder.dayOpen = true;
+      }
+      render();
+      phone.querySelector('[aria-invalid="true"]')?.focus();
+    }
+
+    function removeDay(index) {
+      const [day] = builder.days.splice(index, 1);
+      builder.removed.unshift({ day, title: day.name.trim() || `День ${index + 1}`, expiresAt: performance.now() + dayUndoDuration });
+      builder.dayIndex = Math.min(index, builder.days.length - 1);
+      builder.dayOpen = false;
+      builder.error = null;
+    }
+
+    function undoDay(id) {
+      const removal = builder.removed.find(entry => entry.day.id === id);
+      if (!removal || removal.expiresAt <= performance.now()) return;
+      const current = builder.days[builder.dayIndex];
+      const next = builder.days.findIndex(day => day.id > id);
+      builder.days.splice(next < 0 ? builder.days.length : next, 0, removal.day);
+      builder.dayIndex = current ? builder.days.indexOf(current) : 0;
+      builder.removed = builder.removed.filter(entry => entry !== removal);
+      builder.error = null;
+    }
+
+    function renderDayUndo() {
+      const now = performance.now();
+      const cards = builder.removed.filter(entry => entry.expiresAt > now).map(({ day, title }) =>
+        `<div class="day-undo" data-removed-day="${day.id}"><span role="status">Убран день «${escape(title)}»</span><button type="button" class="link" data-action="undo-day" data-index="${day.id}"><span class="quiet-text undo-time" aria-hidden="true"></span>Вернуть</button></div>`);
+      return cards.length ? `<div class="day-undo-stack" ${overlay ? 'inert' : ''}>${cards.join('')}</div>` : '';
+    }
+
+    function updateDayUndo() {
+      if (!builder?.removed.length) return;
+      const now = performance.now();
+      builder.removed = builder.removed.filter(entry => entry.expiresAt > now);
+      const stack = phone.querySelector('.day-undo-stack');
+      if (!stack) return;
+      for (const card of Array.from(stack.children)) {
+        const removal = builder.removed.find(entry => entry.day.id === Number(card.dataset.removedDay));
+        if (!removal) { card.remove(); continue; }
+        const remaining = removal.expiresAt - now;
+        const time = card.querySelector('.undo-time');
+        const label = `${Math.ceil(remaining / 1000)} с`;
+        if (time.textContent !== label) time.textContent = label;
+        card.style.setProperty('--remaining', remaining / dayUndoDuration);
+      }
+      if (!stack.children.length) stack.remove();
+    }
+
+    function detail() {
+      const back = `<button type="button" class="back" data-action="back" aria-label="Назад" title="Назад">${glyph('back')}</button>`;
+      if (page === 'history') return back + historyDetail();
+      if (page === 'programs') return back + programsScreen();
+      if (page === 'program-detail') return back + programDetail();
+      return back + programEditor();
+    }
+
+    function renderOverlay() {
+      if (!overlay) return '';
+      if (overlay.startsWith('history-')) return historyOverlay();
+      const title = overlay === 'builder-exit' ? 'Выйти без сохранения?' : 'Отменить тренировку?';
+      const body = overlay === 'builder-exit' ? '<button type="button" class="secondary wide" data-action="discard-builder">Выйти</button>'
+        : '<p class="quiet-text">Текущая тренировка и её подходы будут удалены.</p><button type="button" class="secondary wide" data-action="discard">Отменить тренировку</button>';
+      return `<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><h2>${title}</h2><button type="button" class="link" data-action="close" aria-label="Закрыть">×</button></div>${body}</section></div>`;
+    }
+
+    function render({ keepScroll = false } = {}) {
+      const scroll = keepScroll ? phone.querySelector('.screen')?.scrollTop : 0;
+      const island = `<nav class="island" aria-label="Разделы Fitty" ${overlay ? 'inert' : ''}>${Object.entries(tabs).map(([key, name]) => `<button type="button" data-action="tab" data-tab="${key}" ${tab === key ? 'aria-current="page"' : ''}>${glyph(key)}${name}</button>`).join('')}</nav>`;
+      const screens = { home, history: historyScreen };
+      const editor = page === 'editor';
+      const full = page === 'workout' || editor;
+      const footer = editor ? `${renderDayUndo()}<footer class="editor-footer" ${overlay ? 'inert' : ''}><button type="submit" form="program-form" class="primary wide">${editingDay() ? 'День готов' : 'Сохранить программу'}</button></footer>` : '';
+      phone.dataset.theme = 'oled';
+      phone.innerHTML = `<div class="screen${full ? ' full' : ''}" ${overlay ? 'inert' : ''}>${page ? detail() : screens[tab]()}</div>${footer}${full ? '' : island}${renderOverlay()}`;
+      phone.querySelector('.screen').scrollTop = scroll || 0;
+      save();
+      updateDayUndo();
+    }
+
+    phone.addEventListener('click', event => {
+      if (suppressSwipeClick && event.detail !== 0) {
+        suppressSwipeClick = false;
+        event.preventDefault();
+        return;
+      }
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const { action, index, item } = button.dataset;
+      let focusField = null;
+      openDay = null;
+      switch (action) {
+        case 'demo': if(!programs.length) { programs = structuredClone(samplePrograms); selectedProgram = chosen = 0; } break;
+        case 'history-set': editSet = {i:Number(index),j:Number(item)}; overlay = 'history-edit'; break;
+        case 'history-remove': overlay = 'history-remove'; break;
+        case 'confirm-remove': logs.splice(historyIndex,1); overlay = page = editSet = null; break;
+        case 'remove-history-set':
+          if(setCount(logs[historyIndex]) > 1) logs[historyIndex].rows[editSet.i].splice(editSet.j,1);
+          overlay = editSet = null; break;
+        case 'tab': tab = button.dataset.tab; page = null; break;
+        case 'programs': page = 'programs'; break;
+        case 'program-detail': previewProgram = Number(index); page = 'program-detail'; break;
+        case 'create-program': beginBuilder(); break;
+        case 'edit-program': beginBuilder(previewProgram); break;
+        case 'edit-day':
+          builder.dayIndex = variant !== 'G' && builder.dayIndex === Number(index) ? -1 : Number(index);
+          builder.dayOpen = variant === 'G';
+          builder.error = null;
+          break;
+        case 'builder-add-day':
+          builder.days.push({ ...emptyDay(), id: ++nextDayId });
+          builder.dayIndex = builder.days.length - 1;
+          builder.dayOpen = variant === 'G';
+          builder.error = null;
+          focusField = `input[name="day"][data-day="${builder.dayIndex}"]`;
+          break;
+        case 'add-exercise': {
+          const items = builder.days[Number(index)].exercises;
+          items.push(exercise());
+          builder.error = null;
+          focusField = `input[name="exercise"][data-day="${index}"][data-item="${items.length - 1}"]`;
+          break;
+        }
+        case 'remove-exercise': builder.days[Number(index)].exercises.splice(Number(item), 1); builder.error = null; break;
+        case 'remove-day': removeDay(Number(index)); break;
+        case 'undo-day': undoDay(Number(index)); break;
+        case 'discard-builder': page = builder.returnPage; builder = null; overlay = null; break;
+        case 'use-program':
+          selectedProgram = index === undefined ? previewProgram : Number(index);
+          chosen = 0;
+          page = null;
+          tab = 'home';
+          break;
+        case 'select': chosen = Number(index); break;
+        case 'close': overlay = null; editSet = null; break;
+        case 'start': if(!active) active = newSession(); save(); showWorkout(); return;
+        case 'resume': showWorkout(); return;
+        case 'cancel': overlay = 'cancel'; break;
+        case 'discard': active = null; overlay = null; break;
+        case 'history-detail': historyIndex = Number(index); page = 'history'; break;
+        case 'back':
+          if (page === 'editor') {
+            if (editingDay()) { builder.dayOpen = false; builder.error = null; }
+            else overlay = 'builder-exit';
+          } else page = page === 'program-detail' ? 'programs' : null;
+          break;
+      }
+      render({ keepScroll: action === 'remove-day' || action === 'undo-day' });
+      if (overlay) phone.querySelector('.sheet button').focus({ preventScroll: true });
+      else if (focusField) phone.querySelector(focusField).focus();
+    });
+
+    phone.addEventListener('input', event => {
+      const input = event.target;
+      if (!input.closest('#program-form')) return;
+      const { name, value } = input;
+      const { day, item } = input.dataset;
+      if (name === 'program') builder.name = value;
+      else if (name === 'day') builder.days[Number(day)].name = value;
+      else builder.days[Number(day)].exercises[Number(item)][name === 'exercise' ? 'name' : name] = value;
+      input.removeAttribute('aria-invalid');
+    });
+
+    phone.addEventListener('submit', event => {
+      event.preventDefault();
+      if (event.target.id === 'history-form') {
+        const form = event.target;
+        const value = parseSet(form);
+        if (!value) return;
+        logs[historyIndex].rows[editSet.i][editSet.j].values = value;
+        overlay = editSet = null; render(); return;
+      }
+      if (editingDay()) {
+        const error = dayError(builder.days[builder.dayIndex], builder.dayIndex);
+        if (error) { showBuilderError(error); return; }
+        builder.dayOpen = false;
+        builder.error = null;
+        render();
+        return;
+      }
+      const name = builder.name.trim();
+      if (!name) { showBuilderError({ field: 'program', message: 'Введи название программы.' }); return; }
+      if (!builder.days.length) { showBuilderError({ message: 'Добавь хотя бы один тренировочный день.' }); return; }
+      for (const [index, day] of builder.days.entries()) {
+        const error = dayError(day, index);
+        if (error) { showBuilderError(error); return; }
+      }
+      const days = builder.days.map(day => ({ name: day.name.trim(), exercises: day.exercises.map(item => exercise(item.name.trim(), item.sets.trim(), item.reps.trim())) }));
+      if (builder.programIndex === undefined) {
+        programs.push({ name, days });
+        if (selectedProgram === null) {
+          selectedProgram = 0;
+          chosen = 0;
+          page = null;
+          tab = 'home';
+        } else page = 'programs';
+      } else {
+        programs[builder.programIndex] = { name, days };
+        if (builder.programIndex === selectedProgram) chosen = Math.min(chosen, days.length - 1);
+        page = 'program-detail';
+      }
+      builder = null;
+      render();
+    });
+
+    phone.addEventListener('pointerdown', event => {
+      suppressSwipeClick = false;
+      const item = event.target.closest('.builder-swipe');
+      if (!item || event.button !== 0 || event.target.closest('.day-trash')) return;
+      daySwipe = { item, id: Number(item.dataset.dayId), pointer: event.pointerId, x: event.clientX, y: event.clientY, dragging: false, delta: 0 };
+    });
+
+    phone.addEventListener('pointermove', event => {
+      const gesture = daySwipe;
+      if (!gesture || gesture.pointer !== event.pointerId) return;
+      const delta = event.clientX - gesture.x;
+      if (!gesture.dragging) {
+        const vertical = Math.abs(event.clientY - gesture.y);
+        if (vertical > 12 && vertical > Math.abs(delta)) { daySwipe = null; return; }
+        if (Math.abs(delta) < 12 || (delta < 0 && openDay !== gesture.id)) return;
+        gesture.dragging = true;
+        gesture.item.setPointerCapture(event.pointerId);
+      }
+      gesture.delta = delta;
+      const offset = openDay === gesture.id ? 60 : 0;
+      gesture.item.style.setProperty('--day-offset', `${Math.max(0, Math.min(84, offset + delta))}px`);
+    });
+
+    phone.addEventListener('pointerup', event => {
+      const gesture = daySwipe;
+      if (!gesture || gesture.pointer !== event.pointerId) return;
+      daySwipe = null;
+      if (!gesture.dragging) return;
+      suppressSwipeClick = true;
+      if (gesture.delta >= 40) openDay = gesture.id;
+      else if (gesture.delta < -24) openDay = null;
+      render({ keepScroll: true });
+    });
+
+    phone.addEventListener('pointercancel', event => {
+      const gesture = daySwipe;
+      if (!gesture || gesture.pointer !== event.pointerId) return;
+      gesture.item.style.setProperty('--day-offset', openDay === gesture.id ? '60px' : '0px');
+      daySwipe = null;
+    });
+
+    phone.addEventListener('keydown', event => {
+      const row = event.target.closest('.builder-swipe');
+      if (!row || event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      event.stopPropagation();
+      openDay = Number(row.dataset.dayId);
+      render({ keepScroll: true });
+      phone.querySelector(`.builder-swipe[data-day-id="${openDay}"] .day-trash`).focus();
+    });
+
+
+    function showWorkout() {
+      document.querySelector('#home-shell').hidden = true;
+      document.querySelector('#workout-shell').hidden = false;
+      workout.open(active);
+    }
+    function leaveWorkout(finished) {
+      if(finished) {
+        const rows = active.rows.map(list => list.filter(row => row.values).map(({values}) => ({values})));
+        logs.unshift({program:active.program, day:active.day, date:Date.now(), rows});
+        active = null; historyIndex = 0; tab = 'history'; page = 'history';
+      } else { tab = 'home'; page = null; }
+      document.querySelector('#home-shell').hidden = false;
+      document.querySelector('#workout-shell').hidden = true;
+      render();
+    }
+    function parseSet(form) {
+      const weight = form.elements.weight.value.trim().replace(',', '.');
+      const reps = form.elements.reps.value.trim();
+      const invalidWeight = !/^\d+(\.\d{1,4})?$/.test(weight) || !Number.isFinite(Number(weight));
+      const invalidReps = !/^\d+$/.test(reps) || !Number.isSafeInteger(Number(reps)) || Number(reps)<1;
+      if(!invalidWeight && !invalidReps) return [Number(weight),Number(reps)];
+      const error = form.querySelector('[role="alert"]');
+      error.textContent = invalidWeight ? 'Введи вес в килограммах, например 62,5.' : 'Введи целое число повторений от 1.';
+      error.hidden = false; form.elements[invalidWeight ? 'weight' : 'reps'].focus();
+      return null;
+    }
+    document.addEventListener('keydown', event => {
+      if(event.key === 'Escape' && overlay) { overlay=null; render(); }
+    });
+    restore(); render(); setInterval(updateDayUndo,100);
+
+const workout = (() => {
+    const phone = document.querySelector('#workout');
+    const variant = 'U', sequentialSets = true;
+    let exercises = [], swipeRows = [], selected = 0, deadline = 0, nextRowId = 0;
+    let openSwipe = null, recentlySaved = null, swipeGesture = null, suppressSwipeClick = false, sheet = null, removedRows = [];
+    const count = () => exercises.reduce((n,ex)=>n+ex.sets.length,0);
+    const number = value => value.toLocaleString('ru-RU',{maximumFractionDigits:4,useGrouping:false});
+    const timerVariant = () => 'B', compareLayouts = false;
+    function controlIcon(name) {
+      const paths = { back:'M19 12H5m7-7-7 7 7 7', next:'M5 12h14m-7-7 7 7-7 7', timer:'M10 2h4m-2 0v3m6 1 2-2 M12 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4v4l3 2' };
+      return `<svg class="control-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
+    }
+    const newSwipeRow = values => ({ id: ++nextRowId, values: values ?? null, draft: { weight: '', reps: '' } });
+    const undoDuration = 5000;
+    const repetitionPlural = new Intl.PluralRules('ru');
+    const validWeight = value => /^\d+(\.\d{1,4})?$/.test(value) && Number.isFinite(Number(value));
+    const validReps = value => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
+    const nextUnrecordedRow = exercise => swipeRows[exercise].find(row => !row.values);
+
+    function syncSwipeSets(exercise) {
+      exercises[exercise].sets = swipeRows[exercise].flatMap(row => row.values ? [row.values] : []);
+    }
+
+    function removeSwipeRow(id) {
+      const rows = swipeRows[selected];
+      const index = rows.findIndex(row => row.id === id);
+      if (index < 0) return;
+      const [row] = rows.splice(index, 1);
+      removedRows.unshift({ row, exercise: selected, position: index + 1, expiresAt: Date.now() + undoDuration });
+      openSwipe = null;
+      syncSwipeSets(selected);
+    }
+
+    function undoRemoval(id) {
+      const removal = removedRows.find(({ row }) => row.id === id);
+      if (!removal || removal.expiresAt <= Date.now()) return;
+      const { row, exercise } = removal;
+      const rows = swipeRows[exercise];
+      const after = rows.findIndex(item => item.id > id);
+      rows.splice(after < 0 ? rows.length : after, 0, row);
+      removedRows = removedRows.filter(entry => entry !== removal);
+      syncSwipeSets(exercise);
+    }
+
+    function renderSwipeLog() {
+      let savedIndex = 0;
+      const next = nextUnrecordedRow(selected);
+      const rows = swipeRows[selected].map(({ id, values }, index) => {
+        const position = index + 1;
+        const label = `<span class="sub set-index">${position}</span>`;
+        const open = openSwipe === id;
+        const highlight = recentlySaved?.id === id && performance.now() - recentlySaved.at < 450;
+        const isNext = sequentialSets && next?.id === id;
+        const locked = sequentialSets && !isNext ? 'disabled' : '';
+        const controls = values
+          ? `<button type="button" class="set${highlight ? ' recent-save' : ''}" data-action="edit" data-exercise="${selected}" data-set="${savedIndex++}" data-position="${position}" aria-label="Изменить подход ${position}, ${number(values[0])} кг, повторения: ${values[1]}">${label}<strong>${number(values[0])}</strong><strong>${values[1]}</strong><span class="check" aria-hidden="true">✓</span></button>`
+          : `<form class="entry set-draft" data-exercise="${selected}" data-set="" data-row="${id}" ${isNext ? 'data-next' : ''} novalidate>${label}
+            <input name="weight" type="text" inputmode="decimal" autocomplete="off" placeholder="${isNext ? 'Вес' : locked ? '—' : ''}" aria-label="Вес, кг, подход ${position}" ${locked}>
+            <input name="reps" type="text" inputmode="numeric" autocomplete="off" placeholder="${isNext ? 'Повторы' : locked ? '—' : ''}" aria-label="Повторения, подход ${position}" ${locked}>
+            <button class="primary draft-save" type="submit" aria-label="Записать подход ${position}" ${locked}>✓</button><p class="error" role="alert" hidden></p></form>`;
+        return `<div class="swipe-item" data-row="${id}" tabindex="0" aria-label="Подход ${position}" ${open ? 'style="--drag:60px"' : ''}>
+          <button type="button" class="swipe-trash" data-action="trash" data-row="${id}" aria-label="Удалить подход ${position}" ${open ? '' : 'tabindex="-1" aria-hidden="true"'}><span class="trash-icon" aria-hidden="true"></span></button>${controls}</div>`;
+      });
+      const columns = '<div class="columns sub"><span>№</span><span>Вес, кг</span><span>Повторения</span><span></span></div>';
+      const blockAdd = sequentialSets && next;
+      return `<div class="sets">${rows.length ? columns + rows.join('') : ''}</div><button class="add-set" type="button" data-action="add-row" ${blockAdd ? 'disabled title="Сначала запиши подходы из списка"' : ''}><span aria-hidden="true">+</span>${rows.length ? 'Ещё подход' : 'Добавить подход'}</button>`;
+    }
+
+    function renderUndo() {
+      const now = Date.now();
+      const cards = removedRows.filter(entry => entry.expiresAt > now).map(({ row, exercise, position }) => {
+        const draftWeight = row.draft.weight.trim().replace(',', '.');
+        const draftReps = row.draft.reps.trim();
+        const [weight, reps] = row.values ?? [validWeight(draftWeight) ? Number(draftWeight) : null, validReps(draftReps) ? Number(draftReps) : null];
+        const parts = [];
+        if (weight !== null) parts.push(`${number(weight)} кг`);
+        if (reps !== null) {
+          const word = { one: 'повторение', few: 'повторения', many: 'повторений' }[repetitionPlural.select(reps)];
+          parts.push(`${reps} ${word}`);
+        }
+        if (!row.values) parts.push(row.draft.weight || row.draft.reps ? 'Черновик' : 'Пустая строка');
+        const detail = parts.join(' · ');
+        return `<div class="undo-entry" data-removed="${row.id}">
+          <div class="undo-summary" role="status"><strong>Удалён подход ${position}</strong><span class="sub">${exercises[exercise].name} · ${detail}</span></div>
+          <div class="undo-actions"><span class="sub undo-seconds" aria-hidden="true"></span><button class="quiet" type="button" data-action="undo-row" data-row="${row.id}" aria-label="Вернуть подход ${position}, ${exercises[exercise].name}">Вернуть</button></div>
+          <div class="undo-progress" aria-hidden="true"></div></div>`;
+      });
+      return cards.length ? `<div class="undo-stack" aria-label="Удалённые подходы" ${sheet ? 'inert' : ''}>${cards.join('')}</div>` : '';
+    }
+
+    function updateUndo() {
+      if (!removedRows.length) return;
+      const now = Date.now();
+      removedRows = removedRows.filter(entry => entry.expiresAt > now);
+      const stack = phone.querySelector('.undo-stack');
+      if (!stack) return;
+      for (const card of Array.from(stack.children)) {
+        const entry = removedRows.find(({ row }) => row.id === Number(card.dataset.removed));
+        if (!entry) { card.remove(); continue; }
+        const remaining = entry.expiresAt - now;
+        const label = card.querySelector('.undo-seconds');
+        const seconds = `${Math.ceil(remaining / 1000)} с`;
+        if (label.textContent !== seconds) label.textContent = seconds;
+        card.style.setProperty('--remaining', remaining / undoDuration);
+      }
+      if (!stack.children.length) stack.remove();
+    }
+
+function open(session) {
+  selected=session.selected; deadline=session.deadline; nextRowId=session.nextId;
+  swipeRows=session.rows; removedRows=session.removed;
+  exercises=session.day.exercises.map(ex => ({
+    name:escape(ex.name), plan:ex.sets && ex.reps ? `${ex.sets} × ${ex.reps}` : ex.sets ? `${ex.sets} подх.` : ex.reps ? `${ex.reps} повт.` : '', sets:[]
+  }));
+  exercises.forEach((_,i)=>syncSwipeSets(i));
+  openSwipe=sheet=recentlySaved=swipeGesture=null;
+  render();
+}
+
+function persist() {
+  Object.assign(active,{selected,deadline,nextId:nextRowId,removed:removedRows});
+  save();
+}
+
+function renderSheet() {
+  if (!sheet) return '';
+  let title, body;
+  if(sheet.mode === 'choose') {
+    title='Все упражнения';
+    body=renderQueue(true);
+  } else if (sheet.mode === 'edit') {
+    const {exercise,set,position}=sheet;
+    const [weight,reps]=exercises[exercise].sets[set];
+    title=`Подход ${position} · ${exercises[exercise].name}`;
+    body=`<form class="entry" data-exercise="${exercise}" data-set="${set}" novalidate><label>Вес, кг<input name="weight" inputmode="decimal" value="${number(weight)}"></label><label>Повторения<input name="reps" inputmode="numeric" value="${reps}"></label><button class="primary" type="submit">Сохранить</button><p role="alert" class="error" hidden></p></form>`;
+  } else {
+    title='Завершить тренировку?';
+    body=`<p class="sub">${escape(active.day.name)} · Записано подходов: ${count()}</p><button type="button" class="primary wide" data-action="confirm">Завершить и сохранить</button>`;
+  }
+  return `<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="between"><h2>${title}</h2><button type="button" class="quiet" aria-label="Закрыть" data-action="close">×</button></div>${body}</section></div>`;
+}
+    function renderExerciseIntro(timer) {
+      const { name, plan } = exercises[selected];
+      const back = `<button class="back-control" type="button" data-action="home" aria-label="На главный экран">${controlIcon('back')}</button>`;
+      const position = `<strong>${selected + 1}</strong> из ${exercises.length}`;
+      return `<div class="exercise-intro" ${sheet ? 'inert' : ''}>
+        <div class="intro-kicker">${back}<span class="sub exercise-position">Упражнение ${position}</span></div>
+        <div class="intro-title"><h2>${name}</h2></div>${timer}${plan ? `<p class="sub exercise-plan">Рекомендация · ${plan}</p>` : ''}
+      </div>`;
+    }
+
+    function renderShortcuts() {
+      const rightAction = selected === exercises.length - 1
+        ? `<button type="button" class="finish-action shortcut-finish" data-action="finish" aria-label="Завершить тренировку" ${count() ? '' : 'disabled'}>Завершить</button>`
+        : `<button type="button" class="shortcut" data-action="next-exercise" aria-label="Следующее упражнение">${controlIcon('next')}</button>`;
+      return `<nav class="shortcuts" aria-label="Управление тренировкой" ${sheet ? 'inert' : ''}>
+        <button type="button" class="shortcut" data-action="previous-exercise" aria-label="Предыдущее упражнение" ${selected === 0 ? 'disabled' : ''}>${controlIcon('back')}</button>
+        <button type="button" class="shortcut-picker" data-action="choose" aria-haspopup="dialog">Все упражнения</button>
+        ${rightAction}
+      </nav>`;
+    }
+
+    function renderQueue(picker = false) {
+      return `<div class="queue">${exercises.map(({ name, plan, sets }, index) => {
+        const detail = picker ? sets.map(([weight, reps]) => `${number(weight)} кг × ${reps}`).join(' · ') : plan;
+        return `<button type="button" class="queue-row" data-action="${picker ? 'select' : 'open'}" data-exercise="${index}" ${picker ? `aria-current="${index === selected}"` : ''}><span class="sub">${index + 1}</span><span>${name}${detail ? `<small class="sub">${detail}</small>` : ''}</span><strong>${sets.length}<span class="sub">${picker ? ' подх.' : ' ›'}</span></strong></button>`;
+      }).join('')}</div>`;
+    }
+
+    function updateTimer() {
+      const milliseconds = Math.max(0, deadline - Date.now());
+      const remaining = Math.ceil(milliseconds / 1000);
+      const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+      if (compareLayouts) {
+        const button = phone.querySelector('.timer');
+        if (!button) return;
+        button.classList.toggle('running', remaining > 0);
+        button.textContent = remaining ? `${clock} · Сбросить` : 'Отдых 2:00';
+        return;
+      }
+      const slot = phone.querySelector('.rest-slot');
+      if (!slot) return;
+      const start = phone.querySelector('.rest-start');
+      const stop = slot.querySelector('.rest-stop');
+      const readout = slot.querySelector('.rest-readout');
+      const progress = slot.querySelector('.rest-progress');
+      start.hidden = remaining > 0;
+      if (timerVariant() === 'C') slot.hidden = !remaining;
+      stop.hidden = !remaining;
+      readout.hidden = !remaining;
+      if (readout.textContent !== clock) readout.textContent = clock;
+      if (progress) {
+        progress.hidden = !remaining;
+        progress.style.setProperty('--remaining', `${100 * milliseconds / 120000}%`);
+      }
+    }
+
+    function renderTimer() {
+      if (compareLayouts) return { header: '<button type="button" class="timer" data-action="timer"></button>' };
+      const start = `<button type="button" class="quiet rest-start" data-action="timer" aria-label="Запустить таймер отдыха на 2 минуты" title="Отдых 2:00">${controlIcon('timer')}</button>`;
+      const clock = '<span class="rest-readout" role="timer" aria-label="Осталось на отдых"></span><button type="button" class="quiet rest-stop" data-action="timer" aria-label="Сбросить таймер" title="Сбросить таймер"></button>';
+      const placement = timerVariant();
+      if (placement !== 'C') {
+        const progress = placement === 'B' ? '<div class="rest-progress" aria-hidden="true" hidden><span></span></div>' : '';
+        return { header: `<div class="rest-slot timer-${placement.toLowerCase()}">${start}${clock}${progress}</div>` };
+      }
+      const panel = `<div class="rest-slot timer-c" ${sheet ? 'inert' : ''} hidden><span class="rest-caption sub">Отдых</span>${clock}</div>`;
+      return { header: start, bottom: panel };
+    }
+
+function render({keepScroll=false}={}) {
+  const scroll= keepScroll ? phone.querySelector('.content')?.scrollTop : 0;
+  phone.innerHTML = renderExerciseIntro(renderTimer().header)+`<div class="content" ${sheet ? 'inert' : ''}>${renderSwipeLog()}</div>`+renderUndo()+renderShortcuts()+renderSheet();
+  phone.querySelector('.content').scrollTop = scroll || 0;
+  for(const form of phone.querySelectorAll('.set-draft')){
+    const row=swipeRows[selected].find(row=>row.id===Number(form.dataset.row));
+    form.elements.weight.value=row.draft.weight; form.elements.reps.value=row.draft.reps;
+  }
+  updateTimer(); updateUndo(); persist();
+}
+    function revealInWorkout(control) {
+      const content = phone.querySelector('.content');
+      const overflow = control.getBoundingClientRect().bottom - content.getBoundingClientRect().bottom;
+      if (overflow > 0) content.scrollTop += overflow;
+    }
+
+    phone.addEventListener('click', event => {
+      if (suppressSwipeClick && event.detail !== 0) {
+        suppressSwipeClick = false;
+        event.preventDefault();
+        return;
+      }
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const { action, exercise, set, position, row } = button.dataset;
+      if (action !== 'timer') openSwipe = null;
+      switch (action) {
+        case 'timer':
+          deadline = deadline > Date.now() ? 0 : Date.now() + 120000;
+          updateTimer();
+          persist();
+          if (event.detail === 0) phone.querySelector(deadline ? '.rest-stop' : '.rest-start').focus();
+          return;
+        case 'select': selected = Number(exercise); sheet = null; break;
+        case 'choose': sheet = { mode: 'choose' }; break;
+        case 'next-exercise': selected += 1; break;
+        case 'previous-exercise': selected -= 1; break;
+        case 'add-row':
+          if (sequentialSets && nextUnrecordedRow(selected)) return;
+          swipeRows[selected].push(newSwipeRow());
+          break;
+        case 'trash': removeSwipeRow(Number(row)); break;
+        case 'undo-row': undoRemoval(Number(row)); break;
+        case 'edit': sheet = { mode: 'edit', exercise: Number(exercise), set: Number(set), position: position ? Number(position) : undefined }; break;
+        case 'finish': sheet = { mode: 'finish' }; break;
+        case 'close': sheet=null; break;
+        case 'confirm': if(count()) leaveWorkout(true); return;
+        case 'home': persist(); leaveWorkout(false); return;
+      }
+      render({keepScroll:!['select','next-exercise','previous-exercise'].includes(action)});
+      if(action==='add-row') phone.querySelector('.set-draft[data-next] input')?.focus();
+      if(sheet) phone.querySelector('.sheet button')?.focus();
+    });
+    phone.addEventListener('input', event=>{
+      const form=event.target.closest('.set-draft');
+      if(!form) return;
+      const row=swipeRows[selected].find(row=>row.id===Number(form.dataset.row));
+      row.draft[event.target.name]=event.target.value;
+      persist();
+    });
+    phone.addEventListener('submit', event=>{
+      event.preventDefault();
+      const form=event.target, exercise=Number(form.dataset.exercise);
+      const {set,row}=form.dataset;
+      const target=set==='' ? nextUnrecordedRow(exercise) : swipeRows[exercise].filter(r=>r.values)[Number(set)];
+      if(!target || (set==='' && target.id!==Number(row))) return;
+      const value=parseSet(form);
+      if(!value) return;
+      target.values=value; syncSwipeSets(exercise); openSwipe=null;
+      if(set==='') recentlySaved={id:target.id,at:performance.now()}; else sheet=null;
+      render({keepScroll:true});
+      if(set===''){
+        const next=phone.querySelector('.set-draft[data-next],.add-set');
+        revealInWorkout(next); (next.querySelector('input') ?? next).focus({preventScroll:true});
+      }
+    });
+      phone.addEventListener('pointerdown', event => {
+        suppressSwipeClick = false;
+        const item = event.target.closest('.swipe-item');
+        if (!item || event.button !== 0 || event.target.closest('.swipe-trash')) return;
+        swipeGesture = { id: Number(item.dataset.row), item, pointer: event.pointerId, x: event.clientX, y: event.clientY, delta: 0, dragging: false };
+      });
+
+      phone.addEventListener('pointermove', event => {
+        const gesture = swipeGesture;
+        if (!gesture || gesture.pointer !== event.pointerId) return;
+        const delta = event.clientX - gesture.x;
+        if (!gesture.dragging) {
+          const vertical = Math.abs(event.clientY - gesture.y);
+          if (vertical > 12 && vertical > Math.abs(delta)) { swipeGesture = null; return; }
+          if (Math.abs(delta) < 12 || (delta < 0 && openSwipe !== gesture.id)) return;
+          gesture.dragging = true;
+          gesture.item.setPointerCapture(event.pointerId);
+        }
+        gesture.delta = delta;
+        const offset = openSwipe === gesture.id ? 60 : 0;
+        const position = Math.max(0, Math.min(gesture.item.clientWidth * .68, offset + delta));
+        gesture.item.style.setProperty('--drag', `${position}px`);
+      });
+
+      phone.addEventListener('pointerup', event => {
+        const gesture = swipeGesture;
+        if (!gesture || gesture.pointer !== event.pointerId) return;
+        swipeGesture = null;
+        if (!gesture.dragging) return;
+        suppressSwipeClick = true;
+        const fullSwipe = Math.min(145, gesture.item.clientWidth * .48);
+        if (variant === 'V' && gesture.delta >= fullSwipe) removeSwipeRow(gesture.id);
+        else if (gesture.delta >= 40) openSwipe = gesture.id;
+        else if (gesture.delta < -24) openSwipe = null;
+        render({ keepScroll: true });
+      });
+
+      phone.addEventListener('pointercancel', event => {
+        const gesture = swipeGesture;
+        if (!gesture || gesture.pointer !== event.pointerId) return;
+        gesture.item.style.setProperty('--drag', openSwipe === gesture.id ? '60px' : '0px');
+        swipeGesture = null;
+      });
+
+      phone.addEventListener('keydown', event => {
+        const item = event.target.closest('.swipe-item');
+        if (!item || event.target.matches('input')) return;
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          event.stopPropagation();
+          openSwipe = Number(item.dataset.row);
+          render({ keepScroll: true });
+          phone.querySelector(`.swipe-item[data-row="${openSwipe}"] .swipe-trash`).focus();
+        }
+      });
+    
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape' && !document.querySelector('#workout-shell').hidden && sheet) { sheet=null; render({keepScroll:true}); }
+    });
+    setInterval(()=>{if(!document.querySelector('#workout-shell').hidden){updateTimer();updateUndo();}},100);
+    return {open};
+  })();
+</script></body></html>
