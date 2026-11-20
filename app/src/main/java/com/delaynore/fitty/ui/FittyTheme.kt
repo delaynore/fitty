@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -71,7 +72,7 @@ internal fun PageHeader(title: String, onBack: (() -> Unit)? = null) {
     }
 }
 
-internal enum class FittyIcon { Home, History, Back, Check }
+internal enum class FittyIcon { Home, History, Back, Check, Stopwatch, Stop }
 
 @Composable
 internal fun FittyGlyph(icon: FittyIcon) {
@@ -111,6 +112,17 @@ internal fun FittyGlyph(icon: FittyIcon) {
                 path.lineTo(10 * scale, 17 * scale)
                 path.lineTo(19 * scale, 7 * scale)
             }
+            FittyIcon.Stopwatch -> {
+                drawCircle(color, radius = 7.5f * scale, center = Offset(12 * scale, 13.5f * scale), style = stroke)
+                path.moveTo(10 * scale, 3 * scale)
+                path.lineTo(14 * scale, 3 * scale)
+                path.moveTo(12 * scale, 3 * scale)
+                path.lineTo(12 * scale, 6 * scale)
+                path.moveTo(12 * scale, 10 * scale)
+                path.lineTo(12 * scale, 14 * scale)
+                path.lineTo(15 * scale, 14 * scale)
+            }
+            FittyIcon.Stop -> drawRect(color, topLeft = Offset(7 * scale, 7 * scale), size = Size(10 * scale, 10 * scale))
         }
         drawPath(path, color, style = stroke)
     }

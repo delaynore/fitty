@@ -4,6 +4,7 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -22,6 +24,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -35,6 +38,33 @@ class InProgressWorkoutTest {
     @Before
     fun resetDatabase() {
         ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+    }
+
+    @Test
+    fun restTimerStartsManuallyKeepsSetRowsInPlaceAndCanBeReset() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            startWorkout(secondExercise = "Тяга")
+            logSet(1, "60", "6")
+            closeSoftKeyboard()
+            val firstRow = compose.onNodeWithTag("workout-set-row-1")
+            val idleBounds = firstRow.getUnclippedBoundsInRoot()
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+
+            tap("Запустить таймер отдыха", description = true)
+            compose.onNodeWithText("2:00").assertExists()
+            assertEquals(idleBounds, firstRow.getUnclippedBoundsInRoot())
+
+            tap("Следующее упражнение", description = true)
+            awaitText("Тяга")
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertExists()
+            tap("Назад", description = true)
+            awaitText("Продолжить тренировку")
+            tap("Продолжить тренировку")
+            awaitText("Тяга")
+            tap("Сбросить таймер отдыха", description = true)
+            compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+        }
     }
 
     @Test
@@ -176,11 +206,13 @@ class InProgressWorkoutTest {
             tap("Добавить упражнение")
             enter("exercise-name-2", secondExercise)
         }
+        closeSoftKeyboard()
         tap("Сохранить день")
         tap("Сохранить программу")
         awaitText("День А")
         tap("День А")
-        tap("Начать тренировку")
+        awaitText("Начать тренировку")
+        compose.onNodeWithText("Начать тренировку").performScrollTo().performClick()
         awaitTag("workout-weight-1")
     }
 

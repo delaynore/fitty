@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 private val weightPattern = Regex("[0-9]+([.,][0-9]{1,4})?")
 private val repetitionsPattern = Regex("[0-9]+")
 private const val UNDO_MILLIS = 5_000L
+internal const val REST_DURATION_MILLIS = 120_000L
 
 internal data class SetInput(
     val weight: String = "",
@@ -80,6 +81,8 @@ internal class WorkoutViewModel(private val workouts: WorkoutsRepository) : View
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    var restDeadlineMillis by mutableStateOf<Long?>(null)
+        private set
 
     fun open(id: Long) {
         if (id == sessionId.value) return
@@ -88,7 +91,16 @@ internal class WorkoutViewModel(private val workouts: WorkoutsRepository) : View
         exerciseIndex = 0
         savedPosition = null
         error = null
+        resetRestTimer()
         sessionId.value = id
+    }
+
+    fun startRestTimer() {
+        restDeadlineMillis = SystemClock.elapsedRealtime() + REST_DURATION_MILLIS
+    }
+
+    fun resetRestTimer() {
+        restDeadlineMillis = null
     }
 
     fun selectExercise(index: Int) {
@@ -169,6 +181,7 @@ internal class WorkoutViewModel(private val workouts: WorkoutsRepository) : View
     fun finish(sessionId: Long, onFinished: () -> Unit) {
         save("Не удалось завершить тренировку") {
             if (!workouts.finishWorkout(sessionId)) return@save false
+            resetRestTimer()
             onFinished()
             true
         }
