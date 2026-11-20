@@ -35,6 +35,8 @@ internal data class WorkoutExerciseEntity(
     val sessionId: Long,
     val position: Int,
     val name: String,
+    val recommendedSets: Int? = null,
+    val recommendedRepetitions: Int? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 

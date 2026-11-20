@@ -7,14 +7,14 @@ import com.delaynore.fitty.data.local.FittyDatabase
 open class FittyApplication : Application() {
     protected open val databaseName = "fitty.db"
 
-    private val room = lazy {
-        Room.databaseBuilder(this, FittyDatabase::class.java, databaseName).build()
-    }
+    private var room: FittyDatabase? = null
 
-    internal val database by room
+    internal val database: FittyDatabase
+        get() = room ?: Room.databaseBuilder(this, FittyDatabase::class.java, databaseName).build().also { room = it }
 
     internal fun deleteDatabase() {
-        if (room.isInitialized()) database.close()
+        room?.close()
+        room = null
         deleteDatabase(databaseName)
     }
 }

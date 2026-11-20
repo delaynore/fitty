@@ -27,13 +27,14 @@ internal class HomeViewModel(programs: ProgramsRepository, private val workouts:
     var error by mutableStateOf<String?>(null)
         private set
 
-    fun selectDay(dayId: Long) {
+    fun selectDay(dayId: Long?) {
         selectedDayId = dayId
         error = null
     }
 
     fun startWorkout(onStarted: (Long) -> Unit) {
-        val dayId = selectedDayId ?: return
+        val program = home.value?.program ?: return
+        val dayId = program.days.firstOrNull { it.id == selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
         if (starting) return
         starting = true
         error = null
