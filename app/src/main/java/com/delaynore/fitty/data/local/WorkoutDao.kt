@@ -1,0 +1,100 @@
+package com.delaynore.fitty.data.local
+
+import androidx.room.Dao
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.Insert
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.Relation
+import androidx.room.Transaction
+import kotlinx.coroutines.flow.Flow
+
+@Entity(tableName = "workout_sessions")
+internal data class WorkoutSessionEntity(
+    val programName: String,
+    val dayName: String,
+    val startedAtMillis: Long,
+    val finishedAtMillis: Long? = null,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+)
+
+@Entity(
+    tableName = "workout_exercises",
+    foreignKeys = [ForeignKey(
+        entity = WorkoutSessionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["sessionId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index(value = ["sessionId", "position"], unique = true)],
+)
+internal data class WorkoutExerciseEntity(
+    val sessionId: Long,
+    val position: Int,
+    val name: String,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+)
+
+@Entity(
+    tableName = "logged_sets",
+    foreignKeys = [ForeignKey(
+        entity = WorkoutExerciseEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["exerciseId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index(value = ["exerciseId", "position"], unique = true)],
+)
+internal data class LoggedSetEntity(
+    val exerciseId: Long,
+    val position: Int,
+    val weightKg: Double,
+    val repetitions: Int,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+)
+
+internal data class StoredWorkoutExercise(
+    @Embedded val exercise: WorkoutExerciseEntity,
+    @Relation(parentColumn = "id", entityColumn = "exerciseId") val sets: List<LoggedSetEntity>,
+)
+
+internal data class StoredWorkout(
+    @Embedded val session: WorkoutSessionEntity,
+    @Relation(entity = WorkoutExerciseEntity::class, parentColumn = "id", entityColumn = "sessionId")
+    val exercises: List<StoredWorkoutExercise>,
+)
+
+@Dao
+internal interface WorkoutDao {
+    @Query("SELECT id FROM workout_sessions WHERE finishedAtMillis IS NULL LIMIT 1")
+    fun observeInProgressWorkoutId(): Flow<Long?>
+
+    @Query("SELECT id FROM workout_sessions WHERE finishedAtMillis IS NULL LIMIT 1")
+    suspend fun inProgressWorkoutId(): Long?
+
+    @Query("SELECT * FROM workout_sessions WHERE finishedAtMillis IS NOT NULL ORDER BY finishedAtMillis DESC, id DESC")
+    fun observeHistory(): Flow<List<WorkoutSessionEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM workout_sessions WHERE id = :id")
+    fun observeWorkout(id: Long): Flow<StoredWorkout?>
+
+    @Insert suspend fun insertSession(session: WorkoutSessionEntity): Long
+    @Insert suspend fun insertExercises(exercises: List<WorkoutExerciseEntity>)
+    @Insert suspend fun insertSet(set: LoggedSetEntity)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId)")
+    suspend fun exerciseBelongsToWorkout(exerciseId: Long, sessionId: Long): Boolean
+
+    @Query("SELECT COALESCE(MAX(position), 0) + 1 FROM logged_sets WHERE exerciseId = :exerciseId")
+    suspend fun nextSetPosition(exerciseId: Long): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM logged_sets JOIN workout_exercises ON logged_sets.exerciseId = workout_exercises.id WHERE workout_exercises.sessionId = :sessionId)")
+    suspend fun hasLoggedSets(sessionId: Long): Boolean
+
+    @Query("UPDATE workout_sessions SET finishedAtMillis = :finishedAtMillis WHERE id = :sessionId AND finishedAtMillis IS NULL")
+    suspend fun finishWorkout(sessionId: Long, finishedAtMillis: Long): Int
+}

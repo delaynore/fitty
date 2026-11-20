@@ -1,0 +1,96 @@
+package com.delaynore.fitty.ui.home
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.delaynore.fitty.ui.PageHeader
+import com.delaynore.fitty.ui.ScreenColumn
+
+@Composable
+internal fun HomeScreen(viewModel: HomeViewModel, onCreateProgram: () -> Unit, onWorkout: (Long) -> Unit) {
+    val state by viewModel.home.collectAsStateWithLifecycle()
+
+    ScreenColumn {
+        PageHeader("Fitty")
+        val home = state
+        val program = home?.program
+        when {
+            home == null -> CircularProgressIndicator()
+            program == null -> Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Тренировочные программы", style = MaterialTheme.typography.titleLarge)
+                    Text("Добавь тренировочный день и упражнение, чтобы начать тренировку.")
+                    Button(onClick = onCreateProgram, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Создать программу")
+                    }
+                }
+            }
+            else -> {
+                val selectedDay = program.days.firstOrNull { it.id == viewModel.selectedDayId }
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp)) {
+                    Text(
+                        program.name,
+                        Modifier.fillMaxWidth().padding(18.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                val inProgress = home.inProgressWorkoutId
+                if (inProgress != null) {
+                    Button(onClick = { onWorkout(inProgress) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Продолжить тренировку")
+                    }
+                }
+                Text("Тренировочный день", style = MaterialTheme.typography.titleMedium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(program.days, key = { it.id }) { day ->
+                        FilterChip(
+                            selected = day.id == selectedDay?.id,
+                            onClick = { viewModel.selectDay(day.id) },
+                            label = { Text(day.name) },
+                        )
+                    }
+                }
+                if (selectedDay != null) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Упражнения", style = MaterialTheme.typography.titleMedium)
+                            selectedDay.exercises.forEachIndexed { index, exercise ->
+                                if (index > 0) HorizontalDivider()
+                                Text(exercise)
+                            }
+                        }
+                    }
+                    if (inProgress == null) {
+                        Button(
+                            onClick = { viewModel.startWorkout(onWorkout) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            enabled = !viewModel.starting && selectedDay.exercises.isNotEmpty(),
+                        ) { Text("Начать тренировку") }
+                    }
+                }
+            }
+        }
+        viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    }
+}
