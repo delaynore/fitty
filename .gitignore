@@ -6,3 +6,9 @@
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Android and Gradle local output
+.gradle/
+.kotlin/
+build/
+local.properties
