@@ -48,11 +48,9 @@ class FirstWorkoutTest {
             tap("Сохранить день")
             tap("Сохранить программу")
 
-            awaitText("Силовая")
-            tap("День А")
-            awaitText("Жим лёжа")
+            awaitText("Начать тренировку")
             tap("Начать тренировку")
-            awaitText("Жим лёжа")
+            awaitText("Завершить")
             compose.onNodeWithText("Завершить").assertIsNotEnabled()
             enter("workout-weight-1", "60,5")
             enter("workout-repetitions-1", "8")

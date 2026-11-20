@@ -95,8 +95,7 @@ class WorkoutHistoryTest {
         enter("exercise-name", "Жим лёжа")
         tap("Сохранить день")
         tap("Сохранить программу")
-        awaitText("День А")
-        tap("День А")
+        awaitText("Начать тренировку")
         tap("Начать тренировку")
     }
 
