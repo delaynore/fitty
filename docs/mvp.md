@@ -12,7 +12,7 @@ The bottom bar has two tabs, Home and History. From Home, the lifter can create 
 
 A workout shows one exercise at a time. The bottom bar has previous and next arrows and an All Exercises button for jumping to any exercise. On the last exercise, Finish replaces the next arrow. The lifter records weight and repetitions in the same row. Fitty shows four set rows when the exercise has no recommended set count.
 
-The prototype shows the flow from the first launch through editing a completed workout in History. Download the HTML file and open it in a browser to try the flow. [Interactive prototype](https://github.com/delaynore/fitty/blob/b1f7658a8899ca1dc6014cff95c876615c31b273/docs/fitty-mvp-prototype.html)
+The prototype shows the flow from the first launch through editing a completed workout in History. Download the HTML file and open it in a browser to try the flow. [Interactive prototype](fitty-mvp-prototype.html)
 
 ## Build order
 
@@ -25,15 +25,22 @@ The first three steps are enough to try the full logging workflow at the gym. Th
 
 ## Workout records
 
+- Starting a workout creates an in-progress session with a snapshot of the training day: its name, the exercise names in order, and each exercise's recommended sets and repetitions, if provided. Resuming the session uses that snapshot. A new session uses the program as it stands at its own start.
+- Finishing marks the session as completed. Cancelling deletes the in-progress session and its logged sets together. The lifter can start a fresh session from the same training day.
 - Fitty stores the programs, the program selected for Home, the in-progress workout, and history in a SQLite database in the app's internal storage. It saves the workout at start and writes each set and correction immediately. Finishing moves the workout to History in a single transaction.
 - App updates preserve the data, including when the database schema changes. Reinstalling Fitty or changing phones may start with an empty database.
 - During a workout, the lifter can correct the weight or repetitions of any logged set or delete an extra set. The lifter can finish with fewer sets than recommended as long as they logged at least one set.
 - In History, the lifter can still correct weight and repetitions or delete individual sets. To remove the last set, they delete the workout.
 - History keeps exercise names from the time of the workout. Renaming or removing an exercise in the program only affects future workouts.
+- Workout history records the sets the lifter actually completed. Training day recommendations change only when the lifter edits the program.
 
 ## Android implementation and installation
 
 - Build the Android app in Kotlin with Jetpack Compose for the UI and Room for the SQLite database.
+- Keep the MVP in one Gradle module, `:app`. Group screens with their ViewModels in `ui/home/`, `ui/programs/`, `ui/workout/`, and `ui/history/`. Keep navigation in `navigation/`.
+- Put training program operations in `data/programs/`. Both the workout screen and workout history use the workout repository in `data/workouts/`. Keep Room entities, DAOs, and database migrations in `data/local/`.
+- Compose screens send user actions to their `ViewModel` and render the state it exposes. The `ViewModel` calls repositories directly. Repositories access Room through DAOs and enforce rules for changes to stored data. For example, the workout repository checks for a logged set and completes the workout in the same transaction.
+- Extract a use case when several screens need the same business logic or when coordinating a complex operation would make a `ViewModel` hard to follow.
 - Install the signed APK directly on the phone. To update, install the new APK over the existing app with the same `applicationId` and signing key and a higher `versionCode`. Retain the signing key for future updates.
 - When the schema changes, provide a Room migration and verify that an update preserves the programs, the program selected for Home, an in-progress workout, and workout history.
 - Calculate the remaining rest time from the manual start using `SystemClock.elapsedRealtime()`. Recalculate on return to the app and use the workout screen to show any remaining time.
