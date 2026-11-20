@@ -64,6 +64,7 @@ class FirstWorkoutTest {
             compose.onNodeWithTag("workout-logged-repetitions-1").assertTextEquals("8")
             tap("Завершить")
             awaitText("60,5 кг × 8")
+            compose.onNodeWithContentDescription("Назад").performClick()
             verifyCompletedWorkout(date)
         }
 

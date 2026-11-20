@@ -12,7 +12,9 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +23,11 @@ import org.junit.runner.RunWith
 class WorkoutHistoryTest {
     @get:Rule
     val compose = createEmptyComposeRule()
+
+    @Before
+    fun resetDatabase() {
+        ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+    }
 
     @Test
     fun editsToCompletedWorkoutSurviveReopeningFitty() {
