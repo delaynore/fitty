@@ -5,6 +5,12 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val fittyVersionCode = providers.gradleProperty("fittyVersionCode").map { value ->
+    requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) {
+        "fittyVersionCode must be a positive integer"
+    }
+}.getOrElse(2)
+
 android {
     namespace = "com.delaynore.fitty"
     compileSdk = 36
@@ -13,7 +19,7 @@ android {
         applicationId = "com.delaynore.fitty"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
+        versionCode = fittyVersionCode
         versionName = "1.0"
         testInstrumentationRunner = "com.delaynore.fitty.FittyTestRunner"
     }
