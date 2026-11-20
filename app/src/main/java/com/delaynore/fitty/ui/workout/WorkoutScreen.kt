@@ -69,6 +69,7 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
+import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SwipeToRevealDelete
 import com.delaynore.fitty.ui.formatRecommendation
 import com.delaynore.fitty.ui.formatWeight
@@ -82,7 +83,6 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
     val exercise = workout?.exercises?.getOrNull(viewModel.exerciseIndex)
     var showExercises by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<Pair<Int, LoggedSet>?>(null) }
     val focus = LocalFocusManager.current
 
     Column(Modifier.fillMaxSize()) {
@@ -97,11 +97,12 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                 restDeadlineMillis = viewModel.restDeadlineMillis,
                 onStartRest = viewModel::startRestTimer,
                 onResetRest = viewModel::resetRestTimer,
+                onExpireRest = viewModel::expireRestTimer,
                 onBack = onBack,
             )
             SetHeadings(Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
             key(exercise.id) {
-                WorkoutSetList(id, exercise, viewModel, { number, set -> editing = number to set }, Modifier.weight(1f))
+                WorkoutSetList(id, exercise, viewModel, Modifier.weight(1f))
             }
             viewModel.error?.let {
                 Text(it, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.error)
@@ -158,10 +159,15 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                     },
                 )
             }
-            editing?.let { (number, set) ->
-                EditSetSheet(exercise, number, set, viewModel.saving, viewModel.error, onDismiss = { editing = null }) { updated ->
-                    viewModel.editSet(id, exercise, updated) { editing = null }
-                }
+            viewModel.editingSet?.let { edit ->
+                EditSetSheet(
+                    edit = edit,
+                    saving = viewModel.saving,
+                    error = viewModel.error,
+                    onInput = viewModel::changeSetEdit,
+                    onDismiss = viewModel::closeSetEditor,
+                    onSave = { viewModel.saveSetEdit(id) },
+                )
             }
         }
     }
@@ -175,6 +181,7 @@ private fun WorkoutHeader(
     restDeadlineMillis: Long?,
     onStartRest: () -> Unit,
     onResetRest: () -> Unit,
+    onExpireRest: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -189,6 +196,7 @@ private fun WorkoutHeader(
                 delay(minOf(remainingMillis, 100L))
                 remainingMillis = remainingRestMillis(restDeadlineMillis)
             }
+            onExpireRest(restDeadlineMillis)
         }
     }
     Column(Modifier.fillMaxWidth()) {
@@ -255,12 +263,11 @@ private fun WorkoutSetList(
     sessionId: Long,
     exercise: WorkoutExercise,
     viewModel: WorkoutViewModel,
-    onEdit: (Int, LoggedSet) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rows = remember(exercise.id) { viewModel.rows(exercise.id) }
+    val rows = viewModel.rowDrafts(exercise.id)
     val logged = remember(exercise.sets) { exercise.sets.associateBy(LoggedSet::position) }
-    val removedPositions = rows.removedPositions.keys.sorted()
+    val removedPositions = remember(exercise.removedPositions) { exercise.removedPositions.sorted() }
     val lastPosition = maxOf(
         exercise.recommendedSets ?: 4,
         rows.addedThrough,
@@ -268,7 +275,7 @@ private fun WorkoutSetList(
         removedPositions.lastOrNull() ?: 0,
     )
     val rowCount = lastPosition - removedPositions.size
-    val activePosition = (1..lastPosition).firstOrNull { it !in logged && it !in rows.removedPositions }
+    val activePosition = (1..lastPosition).firstOrNull { it !in logged && it !in exercise.removedPositions }
     val listState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
     val focus = LocalFocusManager.current
@@ -308,9 +315,9 @@ private fun WorkoutSetList(
                     val active = position == activePosition
                     DraftSetRow(
                         number = number,
-                        input = rows.drafts[position] ?: SetInput(),
+                        input = rows.inputs[position] ?: SetInput(),
                         enabled = active && !viewModel.saving,
-                        onInput = { rows.drafts[position] = it },
+                        onInput = { viewModel.changeDraft(exercise.id, position, it) },
                         onLog = { viewModel.logSet(sessionId, exercise.id, position) },
                         weightModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
                     )
@@ -324,14 +331,14 @@ private fun WorkoutSetList(
                 } else {
                     LoggedSetRow(number, loggedSet) {
                         focus.clearFocus()
-                        onEdit(number, loggedSet)
+                        viewModel.openSetEditor(exercise, number, loggedSet)
                     }
                 }
             }
         }
         if (activePosition == null && lastPosition < Int.MAX_VALUE) {
             item {
-                OutlinedButton(onClick = { rows.addedThrough = lastPosition + 1 }, enabled = !viewModel.saving) {
+                OutlinedButton(onClick = { viewModel.addSetRow(exercise.id, lastPosition) }, enabled = !viewModel.saving) {
                     Text("Ещё подход")
                 }
             }
@@ -499,16 +506,14 @@ private fun SetFields(
     repetitionsModifier: Modifier,
     showLabels: Boolean = false,
 ) {
-    val invalidWeight = input.validated && input.parsedWeight == null
-    val invalidRepetitions = input.validated && input.parsedRepetitions == null
     OutlinedTextField(
         value = input.weight,
         onValueChange = { onInput(input.copy(weight = it)) },
         enabled = enabled,
         label = if (showLabels) ({ Text("Вес, кг") }) else null,
         singleLine = true,
-        isError = invalidWeight,
-        supportingText = if (invalidWeight) ({ Text("Введи вес, например 62,5") }) else null,
+        isError = input.errors?.weight != null,
+        supportingText = input.errors?.weight?.let { message -> { Text(message) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
         modifier = weightModifier,
     )
@@ -518,8 +523,8 @@ private fun SetFields(
         enabled = enabled,
         label = if (showLabels) ({ Text("Повторения") }) else null,
         singleLine = true,
-        isError = invalidRepetitions,
-        supportingText = if (invalidRepetitions) ({ Text("Целое число от 1") }) else null,
+        isError = input.errors?.repetitions != null,
+        supportingText = input.errors?.repetitions?.let { message -> { Text(message) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
         modifier = repetitionsModifier,
     )
@@ -549,23 +554,21 @@ private fun LoggedSetRow(number: Int, set: LoggedSet, onEdit: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditSetSheet(
-    exercise: WorkoutExercise,
-    number: Int,
-    set: LoggedSet,
+    edit: WorkoutSetEdit,
     saving: Boolean,
     error: String?,
+    onInput: (SetInput) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (LoggedSet) -> Unit,
+    onSave: () -> Unit,
 ) {
-    var input by remember(set) { mutableStateOf(set.toInput()) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(exercise.name, style = MaterialTheme.typography.titleLarge)
-            Text("Подход $number", style = MaterialTheme.typography.titleMedium)
+            Text(edit.exerciseName, style = MaterialTheme.typography.titleLarge)
+            Text("Подход ${edit.number}", style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SetFields(
-                    input,
-                    onInput = { input = it },
+                    edit.input,
+                    onInput = onInput,
                     enabled = !saving,
                     weightModifier = Modifier.weight(1f).testTag("workout-edit-weight"),
                     repetitionsModifier = Modifier.weight(1f).testTag("workout-edit-repetitions"),
@@ -574,10 +577,7 @@ private fun EditSetSheet(
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
-                onClick = {
-                    val updated = input.toLoggedSet(set.position)
-                    if (updated == null) input = input.copy(validated = true) else onSave(updated)
-                },
+                onClick = onSave,
                 enabled = !saving,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Сохранить") }

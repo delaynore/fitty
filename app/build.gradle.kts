@@ -9,7 +9,7 @@ val fittyVersionCode = providers.gradleProperty("fittyVersionCode").map { value 
     requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) {
         "fittyVersionCode must be a positive integer"
     }
-}.getOrElse(2)
+}.getOrElse(3)
 
 android {
     namespace = "com.delaynore.fitty"

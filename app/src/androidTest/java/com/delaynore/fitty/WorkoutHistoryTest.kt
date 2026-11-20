@@ -1,17 +1,14 @@
 package com.delaynore.fitty
 
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -35,14 +32,20 @@ class WorkoutHistoryTest {
     @Test
     fun editsToCompletedWorkoutSurviveReopeningFitty() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            createWorkout()
-            logSet(1, "60", "6")
+            compose.createAndStartWorkout()
+            compose.logSet(1, "60", "6")
             tap("Завершить")
             tap("Завершить тренировку")
             awaitText("60 кг × 6")
 
             tap("60 кг × 6")
             awaitText("Изменить подход")
+            compose.onNodeWithTag("history-set-weight").performTextReplacement("62,50001")
+            compose.onNodeWithTag("history-set-repetitions").performTextReplacement("0")
+            closeSoftKeyboard()
+            tap("Сохранить")
+            awaitText("Введи вес, например 62,5")
+            awaitText("Целое число от 1")
             compose.onNodeWithTag("history-set-weight").performTextReplacement("62,5")
             compose.onNodeWithTag("history-set-repetitions").performTextReplacement("7")
             tap("Сохранить")
@@ -60,11 +63,11 @@ class WorkoutHistoryTest {
     @Test
     fun deletingTheLastSetRequiresDeletingTheWorkout() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            createWorkout(secondExercise = "Тяга")
-            logSet(1, "60", "6")
+            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.logSet(1, "60", "6")
             compose.onNodeWithContentDescription("Следующее упражнение").performClick()
             awaitText("Тяга")
-            logSet(1, "55", "8")
+            compose.logSet(1, "55", "8")
             tap("Завершить")
             tap("Завершить тренировку")
             awaitText("60 кг × 6")
@@ -91,42 +94,7 @@ class WorkoutHistoryTest {
         }
     }
 
-    private fun createWorkout(secondExercise: String? = null) {
-        awaitText("Создать программу")
-        tap("Создать программу")
-        enter("program-name", "Силовая")
-        tap("Добавить день")
-        enter("day-name", "День А")
-        enter("exercise-name", "Жим лёжа")
-        if (secondExercise != null) {
-            closeSoftKeyboard()
-            tap("Добавить упражнение")
-            enter("exercise-name-2", secondExercise)
-        }
-        tap("Сохранить день")
-        tap("Сохранить программу")
-        awaitText("Начать тренировку")
-        tap("Начать тренировку")
-    }
-
-    private fun logSet(position: Int, weight: String, repetitions: String) {
-        val weightTag = "workout-weight-$position"
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag(weightTag) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
-        }
-        enter(weightTag, weight)
-        enter("workout-repetitions-$position", repetitions)
-        compose.onNodeWithContentDescription("Записать подход $position").performClick()
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag("workout-logged-weight-$position"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-    }
-
     private fun tap(text: String) = compose.onNodeWithText(text).performClick()
-
-    private fun enter(tag: String, text: String) =
-        compose.onNodeWithTag(tag).performScrollTo().performTextInput(text)
 
     private fun awaitText(text: String) {
         compose.waitUntil(timeoutMillis = 5_000) {

@@ -3,6 +3,7 @@ package com.delaynore.fitty.data.workouts
 import androidx.room.withTransaction
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.LoggedSetEntity
+import com.delaynore.fitty.data.local.RemovedSetPositionEntity
 import com.delaynore.fitty.data.local.WorkoutExerciseEntity
 import com.delaynore.fitty.data.local.WorkoutSessionEntity
 import kotlinx.coroutines.flow.map
@@ -22,7 +23,10 @@ internal data class WorkoutExercise(
     val sets: List<LoggedSet>,
     val recommendedSets: Int? = null,
     val recommendedRepetitions: Int? = null,
+    val removedPositions: Set<Int> = emptySet(),
 )
+
+internal data class RemovedWorkoutSet(val set: LoggedSet?)
 
 internal data class WorkoutSession(val summary: WorkoutSummary, val exercises: List<WorkoutExercise>)
 
@@ -49,6 +53,7 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         sets = exercise.sets.sortedBy { set -> set.position }.map { set -> set.toLoggedSet() },
                         recommendedSets = exercise.exercise.recommendedSets,
                         recommendedRepetitions = exercise.exercise.recommendedRepetitions,
+                        removedPositions = exercise.removedPositions.toSet(),
                     )
                 },
             )
@@ -83,7 +88,10 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
     suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
-            if (!isInProgressExercise(sessionId, exerciseId) || workouts.loggedSetAtPosition(exerciseId, set.position) != null) {
+            if (!isInProgressExercise(sessionId, exerciseId) ||
+                workouts.isRemovedSetPosition(exerciseId, set.position) ||
+                workouts.loggedSetAtPosition(exerciseId, set.position) != null
+            ) {
                 return@withTransaction false
             }
             workouts.insertSet(LoggedSetEntity(exerciseId, set.position, set.weightKg, set.repetitions, id = set.id))
@@ -99,12 +107,31 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         }
     }
 
-    suspend fun deleteInProgressSet(sessionId: Long, exerciseId: Long, position: Int): LoggedSet? = database.withTransaction {
-        if (!isInProgressExercise(sessionId, exerciseId)) return@withTransaction null
-        val set = workouts.loggedSetAtPosition(exerciseId, position) ?: return@withTransaction null
-        if (workouts.deleteInProgressSet(set.id) != 1) return@withTransaction null
-        set.toLoggedSet()
+    suspend fun removeSetPosition(
+        sessionId: Long,
+        exerciseId: Long,
+        position: Int,
+        isRecorded: Boolean,
+    ): RemovedWorkoutSet? = database.withTransaction {
+        if (position <= 0 || !isInProgressExercise(sessionId, exerciseId)) return@withTransaction null
+        val set = workouts.loggedSetAtPosition(exerciseId, position)
+        if ((set != null) != isRecorded) return@withTransaction null
+        if (workouts.insertRemovedSetPosition(RemovedSetPositionEntity(exerciseId, position)) == -1L) {
+            return@withTransaction null
+        }
+        if (set != null) workouts.deleteInProgressSet(set.id)
+        RemovedWorkoutSet(set?.toLoggedSet())
     }
+
+    suspend fun restoreSetPosition(sessionId: Long, exerciseId: Long, position: Int, set: LoggedSet?): Boolean =
+        database.withTransaction {
+            if (set != null && (set.position != position || !set.isValid())) return@withTransaction false
+            if (!isInProgressExercise(sessionId, exerciseId) || workouts.restoreSetPosition(exerciseId, position) != 1) {
+                return@withTransaction false
+            }
+            if (set != null) workouts.insertSet(LoggedSetEntity(exerciseId, position, set.weightKg, set.repetitions, id = set.id))
+            true
+        }
 
     suspend fun finishWorkout(sessionId: Long): Boolean = database.withTransaction {
         workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, System.currentTimeMillis()) == 1

@@ -6,8 +6,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.ui.SetInputErrors
+import com.delaynore.fitty.ui.toInput
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -26,23 +29,28 @@ internal class HistoryViewModel(private val workouts: WorkoutsRepository) : View
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    var setErrors by mutableStateOf<SetInputErrors?>(null)
+        private set
 
     fun clearError() {
         error = null
+        setErrors = null
     }
 
-    fun saveSet(sessionId: Long, setId: Long, weight: String, repetitions: String, onSaved: () -> Unit) {
-        val kg = weight.trim().replace(',', '.').toDoubleOrNull()
-        val reps = repetitions.trim().toIntOrNull()
-        error = when {
-            kg == null || !kg.isFinite() || kg < 0 -> "Укажи вес от 0 кг"
-            reps == null || reps <= 0 -> "Укажи целое число повторений от 1"
-            else -> null
+    fun changeSetInput(set: LoggedSet, weight: String, repetitions: String) {
+        error = null
+        if (setErrors != null) setErrors = set.toInput().copy(weight = weight, repetitions = repetitions).validate().errors
+    }
+
+    fun saveSet(sessionId: Long, set: LoggedSet, weight: String, repetitions: String, onSaved: () -> Unit) {
+        val input = set.toInput().copy(weight = weight, repetitions = repetitions)
+        val updated = input.toLoggedSet(set.position)
+        if (updated == null) {
+            setErrors = input.validate().errors
+            return
         }
-        if (kg != null && reps != null && error == null) {
-            changeHistory("Не удалось сохранить подход", onSaved) {
-                workouts.updateCompletedSet(sessionId, setId, kg, reps)
-            }
+        changeHistory("Не удалось сохранить подход", onSaved) {
+            workouts.updateCompletedSet(sessionId, set.id, updated.weightKg, updated.repetitions)
         }
     }
 

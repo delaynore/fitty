@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+import com.delaynore.fitty.ui.SetInputErrors
 import com.delaynore.fitty.ui.formatWeight
 import java.time.Instant
 import java.time.ZoneId
@@ -172,8 +173,9 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                 saving = viewModel.saving,
                 error = viewModel.error,
                 onDismiss = closeEditor,
-                onEdit = viewModel::clearError,
-                onSave = { weight, repetitions -> viewModel.saveSet(id, set.id, weight, repetitions, closeEditor) },
+                setErrors = viewModel.setErrors,
+                onEdit = { weight, repetitions -> viewModel.changeSetInput(set, weight, repetitions) },
+                onSave = { weight, repetitions -> viewModel.saveSet(id, set, weight, repetitions, closeEditor) },
                 onDeleteSet = { viewModel.deleteSet(id, set.id, closeEditor) },
                 onDeleteWorkout = confirmDeletion,
             )
@@ -235,8 +237,9 @@ private fun EditSetSheet(
     lastSet: Boolean,
     saving: Boolean,
     error: String?,
+    setErrors: SetInputErrors?,
     onDismiss: () -> Unit,
-    onEdit: () -> Unit,
+    onEdit: (String, String) -> Unit,
     onSave: (String, String) -> Unit,
     onDeleteSet: () -> Unit,
     onDeleteWorkout: () -> Unit,
@@ -257,10 +260,12 @@ private fun EditSetSheet(
                 value = weight,
                 onValueChange = {
                     weight = it
-                    onEdit()
+                    onEdit(weight, repetitions)
                 },
                 modifier = Modifier.fillMaxWidth().testTag("history-set-weight"),
                 label = { Text("Вес, кг") },
+                isError = setErrors?.weight != null,
+                supportingText = setErrors?.weight?.let { message -> { Text(message) } },
                 enabled = !saving,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
@@ -269,10 +274,12 @@ private fun EditSetSheet(
                 value = repetitions,
                 onValueChange = {
                     repetitions = it
-                    onEdit()
+                    onEdit(weight, repetitions)
                 },
                 modifier = Modifier.fillMaxWidth().testTag("history-set-repetitions"),
                 label = { Text("Повторения") },
+                isError = setErrors?.repetitions != null,
+                supportingText = setErrors?.repetitions?.let { message -> { Text(message) } },
                 enabled = !saving,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),

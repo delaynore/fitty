@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -13,7 +14,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -43,8 +43,8 @@ class InProgressWorkoutTest {
     @Test
     fun restTimerStartsManuallyKeepsSetRowsInPlaceAndCanBeReset() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            startWorkout(secondExercise = "Тяга")
-            logSet(1, "60", "6")
+            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.logSet(1, "60", "6")
             closeSoftKeyboard()
             val firstRow = compose.onNodeWithTag("workout-set-row-1")
             val idleBounds = firstRow.getUnclippedBoundsInRoot()
@@ -74,7 +74,7 @@ class InProgressWorkoutTest {
         try {
             check(shell("settings get global airplane_mode_on") == "1")
             ActivityScenario.launch(MainActivity::class.java).use {
-                startWorkout()
+                compose.createAndStartWorkout()
                 compose.onNodeWithText("Завершить").assertIsNotEnabled()
                 enter("workout-weight-1", "60,5")
                 enter("workout-repetitions-1", "6")
@@ -90,8 +90,15 @@ class InProgressWorkoutTest {
                 compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60,5")
                 tap("Изменить подход 1", description = true)
                 awaitTag("workout-edit-weight")
-                replace("workout-edit-weight", "62,5")
+                replace("workout-edit-weight", "62.50001")
+                replace("workout-edit-repetitions", "0")
+                closeSoftKeyboard()
+                tap("Сохранить")
+                awaitText("Введи вес, например 62,5")
+                awaitText("Целое число от 1")
+                replace("workout-edit-weight", "62.5")
                 replace("workout-edit-repetitions", "7")
+                closeSoftKeyboard()
                 tap("Сохранить")
                 awaitText("62,5")
             }
@@ -115,7 +122,7 @@ class InProgressWorkoutTest {
     @Test
     fun cancelledWorkoutDisappearsAndItsTrainingDayCanBeStartedAgain() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            startWorkout()
+            compose.createAndStartWorkout()
             enter("workout-weight-1", "60")
             enter("workout-repetitions-1", "6")
             tap("Записать подход 1", description = true)
@@ -149,9 +156,9 @@ class InProgressWorkoutTest {
     @Test
     fun twoRemovedSetsCanBeRestoredIndependentlyInReverseOrder() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            startWorkout(secondExercise = "Тяга")
-            logSet(1, "60", "6")
-            logSet(2, "65", "5")
+            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.logSet(1, "60", "6")
+            compose.logSet(2, "65", "5")
             closeSoftKeyboard()
             compose.onNodeWithTag("workout-sets").performScrollToIndex(0)
 
@@ -179,41 +186,34 @@ class InProgressWorkoutTest {
         }
     }
 
-    private fun logSet(position: Int, weight: String, repetitions: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag("workout-weight-$position") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+    @Test
+    fun deletedSetStaysGoneAfterUndoExpiresAndWorkoutReopens() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.createAndStartWorkout()
+            compose.logSet(1, "60", "6")
+            compose.logSet(2, "65", "5")
+            closeSoftKeyboard()
+            compose.onNodeWithTag("workout-sets").performScrollToIndex(0)
+            removeSet(1)
+            awaitText("60 кг × 6")
+            compose.waitUntil(timeoutMillis = 8_000) {
+                compose.onAllNodes(hasContentDescription("Вернуть подход 1, Жим лёжа"))
+                    .fetchSemanticsNodes().isEmpty()
+            }
         }
-        enter("workout-weight-$position", weight)
-        enter("workout-repetitions-$position", repetitions)
-        tap("Записать подход $position", description = true)
-        awaitTag("workout-logged-weight-$position")
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitText("Продолжить тренировку")
+            tap("Продолжить тренировку")
+            awaitTag("workout-logged-weight-1")
+            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("65")
+            compose.logSet(2, "70", "4")
+            compose.onNodeWithTag("workout-logged-weight-2", useUnmergedTree = true).assertTextEquals("70")
+        }
     }
 
     private fun removeSet(position: Int) {
         compose.onNodeWithTag("workout-set-row-$position").performTouchInput { swipeRight() }
         tap("Удалить подход $position", description = true)
-    }
-
-    private fun startWorkout(secondExercise: String? = null) {
-        awaitText("Создать программу")
-        tap("Создать программу")
-        enter("program-name", "Силовая")
-        tap("Добавить день")
-        enter("day-name", "День А")
-        enter("exercise-name", "Жим лёжа")
-        if (secondExercise != null) {
-            closeSoftKeyboard()
-            tap("Добавить упражнение")
-            enter("exercise-name-2", secondExercise)
-        }
-        closeSoftKeyboard()
-        tap("Сохранить день")
-        tap("Сохранить программу")
-        awaitText("День А")
-        tap("День А")
-        awaitText("Начать тренировку")
-        compose.onNodeWithText("Начать тренировку").performScrollTo().performClick()
-        awaitTag("workout-weight-1")
     }
 
     private fun tap(text: String, description: Boolean = false) {

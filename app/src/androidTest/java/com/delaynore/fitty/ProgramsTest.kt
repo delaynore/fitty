@@ -5,9 +5,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -138,8 +136,8 @@ class ProgramsTest {
             tap("Начать тренировку")
             awaitText("Упражнение 1 из 2")
             awaitText("3 × 8")
-            logSet(1)
-            logSet(2)
+            compose.logSet(1, "60", "6")
+            compose.logSet(2, "60", "6")
             closeSoftKeyboard()
             action("Следующее упражнение")
             awaitText("Разведения")
@@ -198,20 +196,6 @@ class ProgramsTest {
             tap("День жима")
             assertRecordedBenchPress()
             compose.onNodeWithText("Жим гантелей").assertDoesNotExist()
-        }
-    }
-
-    private fun logSet(position: Int) {
-        val weightTag = "workout-weight-$position"
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag(weightTag) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
-        }
-        replace(weightTag, "60")
-        replace("workout-repetitions-$position", "6")
-        action("Записать подход $position")
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag("workout-logged-weight-$position"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
         }
     }
 

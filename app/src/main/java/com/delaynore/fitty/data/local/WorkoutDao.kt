@@ -6,6 +6,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
@@ -58,9 +59,23 @@ internal data class LoggedSetEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 
+@Entity(
+    tableName = "removed_set_positions",
+    primaryKeys = ["exerciseId", "position"],
+    foreignKeys = [ForeignKey(
+        entity = WorkoutExerciseEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["exerciseId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+)
+internal data class RemovedSetPositionEntity(val exerciseId: Long, val position: Int)
+
 internal data class StoredWorkoutExercise(
     @Embedded val exercise: WorkoutExerciseEntity,
     @Relation(parentColumn = "id", entityColumn = "exerciseId") val sets: List<LoggedSetEntity>,
+    @Relation(parentColumn = "id", entityColumn = "exerciseId", entity = RemovedSetPositionEntity::class, projection = ["position"])
+    val removedPositions: List<Int>,
 )
 
 internal data class StoredWorkout(
@@ -96,6 +111,14 @@ internal interface WorkoutDao {
     @Insert suspend fun insertSession(session: WorkoutSessionEntity): Long
     @Insert suspend fun insertExercises(exercises: List<WorkoutExerciseEntity>)
     @Insert suspend fun insertSet(set: LoggedSetEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertRemovedSetPosition(position: RemovedSetPositionEntity): Long
+
+    @Query("SELECT EXISTS(SELECT 1 FROM removed_set_positions WHERE exerciseId = :exerciseId AND position = :position)")
+    suspend fun isRemovedSetPosition(exerciseId: Long, position: Int): Boolean
+
+    @Query("DELETE FROM removed_set_positions WHERE exerciseId = :exerciseId AND position = :position")
+    suspend fun restoreSetPosition(exerciseId: Long, position: Int): Int
 
     @Query("SELECT EXISTS(SELECT 1 FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId)")
     suspend fun exerciseBelongsToWorkout(exerciseId: Long, sessionId: Long): Boolean

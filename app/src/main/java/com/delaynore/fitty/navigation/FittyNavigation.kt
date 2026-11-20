@@ -1,5 +1,6 @@
 package com.delaynore.fitty.navigation
 
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -23,7 +24,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
@@ -54,6 +57,11 @@ internal fun FittyNavigation(programs: ProgramsRepository, workouts: WorkoutsRep
     val home = viewModel { HomeViewModel(programs, workouts) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val history = viewModel { HistoryViewModel(workouts) }
+    val context = LocalContext.current
+    val workout = viewModel {
+        val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount)
+    }
 
     val closeEditor = {
         confirmDiscard = false
@@ -142,7 +150,7 @@ internal fun FittyNavigation(programs: ProgramsRepository, workouts: WorkoutsRep
                 Destination.DayEditor -> TrainingDayEditorScreen(programEditor, back)
                 Destination.Workout -> WorkoutScreen(
                     id = workoutId,
-                    viewModel = viewModel { WorkoutViewModel(workouts) },
+                    viewModel = workout,
                     onBack = back,
                     onFinished = { destination = Destination.WorkoutDetails },
                 )

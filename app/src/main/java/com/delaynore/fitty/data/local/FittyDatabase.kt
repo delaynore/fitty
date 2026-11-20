@@ -1,7 +1,7 @@
 package com.delaynore.fitty.data.local
 
-import androidx.room.Database
 import androidx.room.AutoMigration
+import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
@@ -13,9 +13,10 @@ import androidx.room.RoomDatabase
         WorkoutSessionEntity::class,
         WorkoutExerciseEntity::class,
         LoggedSetEntity::class,
+        RemovedSetPositionEntity::class,
     ],
-    version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    version = 3,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 internal abstract class FittyDatabase : RoomDatabase() {
     abstract fun programs(): ProgramDao
