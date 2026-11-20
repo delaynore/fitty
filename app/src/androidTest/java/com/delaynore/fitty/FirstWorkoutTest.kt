@@ -48,11 +48,9 @@ class FirstWorkoutTest {
             tap("Сохранить день")
             tap("Сохранить программу")
 
-            awaitText("Силовая")
-            tap("День А")
-            awaitText("Жим лёжа")
+            awaitText("Начать тренировку")
             tap("Начать тренировку")
-            awaitText("Жим лёжа")
+            awaitText("Завершить")
             compose.onNodeWithText("Завершить").assertIsNotEnabled()
             enter("workout-weight-1", "60,5")
             enter("workout-repetitions-1", "8")
@@ -65,17 +63,18 @@ class FirstWorkoutTest {
             tap("Завершить")
             tap("Завершить тренировку")
             awaitText("60,5 кг × 8")
+            compose.onNodeWithContentDescription("Назад").performClick()
             verifyCompletedWorkout(date)
         }
 
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitText("Силовая")
+            tap("История")
             verifyCompletedWorkout(date)
         }
     }
 
     private fun verifyCompletedWorkout(date: String) {
-        tap("История")
         awaitText(date)
         tap("День А")
         awaitText("Жим лёжа")

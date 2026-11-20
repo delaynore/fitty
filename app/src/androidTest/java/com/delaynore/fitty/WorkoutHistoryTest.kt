@@ -1,0 +1,136 @@
+package com.delaynore.fitty
+
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class WorkoutHistoryTest {
+    @get:Rule
+    val compose = createEmptyComposeRule()
+
+    @Before
+    fun resetDatabase() {
+        ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+    }
+
+    @Test
+    fun editsToCompletedWorkoutSurviveReopeningFitty() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            createWorkout()
+            logSet(1, "60", "6")
+            tap("Завершить")
+            tap("Завершить тренировку")
+            awaitText("60 кг × 6")
+
+            tap("60 кг × 6")
+            awaitText("Изменить подход")
+            compose.onNodeWithTag("history-set-weight").performTextReplacement("62,5")
+            compose.onNodeWithTag("history-set-repetitions").performTextReplacement("7")
+            tap("Сохранить")
+            awaitText("62,5 кг × 7")
+        }
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            tap("История")
+            awaitText("День А")
+            tap("День А")
+            awaitText("62,5 кг × 7")
+        }
+    }
+
+    @Test
+    fun deletingTheLastSetRequiresDeletingTheWorkout() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            createWorkout(secondExercise = "Тяга")
+            logSet(1, "60", "6")
+            compose.onNodeWithContentDescription("Следующее упражнение").performClick()
+            awaitText("Тяга")
+            logSet(1, "55", "8")
+            tap("Завершить")
+            tap("Завершить тренировку")
+            awaitText("60 кг × 6")
+
+            tap("60 кг × 6")
+            awaitText("Изменить подход")
+            compose.onNodeWithText("Удалить подход").performScrollTo().performClick()
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasText("60 кг × 6")).fetchSemanticsNodes().isEmpty()
+            }
+            awaitText("55 кг × 8")
+
+            compose.onNodeWithText("Удалить тренировку").performScrollTo().performClick()
+            awaitText("Удалить тренировку?")
+            tap("Отмена")
+
+            compose.onNodeWithText("55 кг × 8").performScrollTo().performClick()
+            awaitText("Изменить подход")
+            compose.onNodeWithText("Удалить подход").assertDoesNotExist()
+            compose.onNodeWithText("Удалить тренировку целиком").performScrollTo().performClick()
+            awaitText("Удалить тренировку?")
+            compose.onNode(hasAnyAncestor(isDialog()) and hasText("Удалить тренировку")).performClick()
+            awaitText("Завершённых тренировок пока нет")
+        }
+    }
+
+    private fun createWorkout(secondExercise: String? = null) {
+        awaitText("Создать программу")
+        tap("Создать программу")
+        enter("program-name", "Силовая")
+        tap("Добавить день")
+        enter("day-name", "День А")
+        enter("exercise-name", "Жим лёжа")
+        if (secondExercise != null) {
+            closeSoftKeyboard()
+            tap("Добавить упражнение")
+            enter("exercise-name-2", secondExercise)
+        }
+        tap("Сохранить день")
+        tap("Сохранить программу")
+        awaitText("Начать тренировку")
+        tap("Начать тренировку")
+    }
+
+    private fun logSet(position: Int, weight: String, repetitions: String) {
+        val weightTag = "workout-weight-$position"
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasTestTag(weightTag) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        enter(weightTag, weight)
+        enter("workout-repetitions-$position", repetitions)
+        compose.onNodeWithContentDescription("Записать подход $position").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasTestTag("workout-logged-weight-$position"), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun tap(text: String) = compose.onNodeWithText(text).performClick()
+
+    private fun enter(tag: String, text: String) =
+        compose.onNodeWithTag(tag).performScrollTo().performTextInput(text)
+
+    private fun awaitText(text: String) {
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+}

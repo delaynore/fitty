@@ -73,6 +73,7 @@ class InProgressWorkoutTest {
                 tap("Завершить")
                 tap("Завершить тренировку")
                 awaitText("62,5 кг × 7")
+                tap("Назад", description = true)
                 tap("Главная")
                 compose.onNodeWithText("Продолжить тренировку").assertDoesNotExist()
             }
@@ -149,10 +150,13 @@ class InProgressWorkoutTest {
     }
 
     private fun logSet(position: Int, weight: String, repetitions: String) {
-        awaitTag("workout-weight-$position")
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasTestTag("workout-weight-$position") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
         enter("workout-weight-$position", weight)
         enter("workout-repetitions-$position", repetitions)
         tap("Записать подход $position", description = true)
+        awaitTag("workout-logged-weight-$position")
     }
 
     private fun removeSet(position: Int) {
