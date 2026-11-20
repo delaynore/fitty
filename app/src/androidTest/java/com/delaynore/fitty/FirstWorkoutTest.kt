@@ -58,11 +58,12 @@ class FirstWorkoutTest {
             enter("workout-repetitions-1", "8")
             compose.onNodeWithContentDescription("Записать подход 1").performClick()
             compose.waitUntil(timeoutMillis = 5_000) {
-                compose.onAllNodes(hasTestTag("workout-logged-weight-1")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasTestTag("workout-logged-weight-1"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithTag("workout-logged-weight-1").assertTextEquals("60,5")
-            compose.onNodeWithTag("workout-logged-repetitions-1").assertTextEquals("8")
+            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60,5")
+            compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("8")
             tap("Завершить")
+            tap("Завершить тренировку")
             awaitText("60,5 кг × 8")
             verifyCompletedWorkout(date)
         }

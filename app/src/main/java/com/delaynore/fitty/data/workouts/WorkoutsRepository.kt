@@ -26,11 +26,15 @@ internal data class WorkoutExercise(
 
 internal data class WorkoutSession(val summary: WorkoutSummary, val exercises: List<WorkoutExercise>)
 
+internal data class InProgressWorkout(val id: Long, val dayName: String, val setCount: Int)
+
 internal class WorkoutsRepository(private val database: FittyDatabase) {
     private val workouts = database.workouts()
     private val programs = database.programs()
 
-    val inProgressWorkoutId = workouts.observeInProgressWorkoutId()
+    val inProgressWorkout = workouts.observeInProgressWorkout().map { workout ->
+        workout?.let { InProgressWorkout(it.id, it.dayName, it.setCount) }
+    }
 
     val history = workouts.observeHistory().map { history -> history.map { it.toSummary() } }
 
@@ -78,20 +82,42 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         sessionId
     }
 
-    suspend fun logSet(sessionId: Long, exerciseId: Long, weightKg: Double, repetitions: Int): Boolean {
-        if (!weightKg.isFinite() || weightKg < 0 || repetitions <= 0) return false
+    suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
+        if (!set.isValid()) return false
         return database.withTransaction {
-            if (workouts.inProgressWorkoutId() != sessionId || !workouts.exerciseBelongsToWorkout(exerciseId, sessionId)) {
+            if (!isInProgressExercise(sessionId, exerciseId) || workouts.loggedSetAtPosition(exerciseId, set.position) != null) {
                 return@withTransaction false
             }
-            workouts.insertSet(LoggedSetEntity(exerciseId, workouts.nextSetPosition(exerciseId), weightKg, repetitions))
+            workouts.insertSet(LoggedSetEntity(exerciseId, set.position, set.weightKg, set.repetitions))
             true
         }
+    }
+
+    suspend fun updateInProgressSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
+        if (!set.isValid()) return false
+        return database.withTransaction {
+            isInProgressExercise(sessionId, exerciseId) &&
+                workouts.updateInProgressSet(exerciseId, set.position, set.weightKg, set.repetitions) == 1
+        }
+    }
+
+    suspend fun deleteInProgressSet(sessionId: Long, exerciseId: Long, position: Int): LoggedSet? = database.withTransaction {
+        if (!isInProgressExercise(sessionId, exerciseId)) return@withTransaction null
+        val set = workouts.loggedSetAtPosition(exerciseId, position) ?: return@withTransaction null
+        if (workouts.deleteInProgressSet(set.id) != 1) return@withTransaction null
+        LoggedSet(set.position, set.weightKg, set.repetitions)
     }
 
     suspend fun finishWorkout(sessionId: Long): Boolean = database.withTransaction {
         workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, System.currentTimeMillis()) == 1
     }
+
+    suspend fun cancelWorkout(sessionId: Long): Boolean = workouts.cancelWorkout(sessionId) == 1
+
+    private suspend fun isInProgressExercise(sessionId: Long, exerciseId: Long) =
+        workouts.inProgressWorkoutId() == sessionId && workouts.exerciseBelongsToWorkout(exerciseId, sessionId)
+
+    private fun LoggedSet.isValid() = position > 0 && weightKg.isFinite() && weightKg >= 0 && repetitions > 0
 
     private fun WorkoutSessionEntity.toSummary() = WorkoutSummary(id, programName, dayName, finishedAtMillis)
 }

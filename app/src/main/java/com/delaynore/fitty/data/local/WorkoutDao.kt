@@ -69,10 +69,19 @@ internal data class StoredWorkout(
     val exercises: List<StoredWorkoutExercise>,
 )
 
+internal data class StoredInProgressWorkout(val id: Long, val dayName: String, val setCount: Int)
+
 @Dao
 internal interface WorkoutDao {
-    @Query("SELECT id FROM workout_sessions WHERE finishedAtMillis IS NULL LIMIT 1")
-    fun observeInProgressWorkoutId(): Flow<Long?>
+    @Query("""
+        SELECT workout_sessions.id, dayName, (
+            SELECT COUNT(*) FROM logged_sets
+            JOIN workout_exercises ON logged_sets.exerciseId = workout_exercises.id
+            WHERE workout_exercises.sessionId = workout_sessions.id
+        ) AS setCount
+        FROM workout_sessions WHERE finishedAtMillis IS NULL LIMIT 1
+    """)
+    fun observeInProgressWorkout(): Flow<StoredInProgressWorkout?>
 
     @Query("SELECT id FROM workout_sessions WHERE finishedAtMillis IS NULL LIMIT 1")
     suspend fun inProgressWorkoutId(): Long?
@@ -91,12 +100,21 @@ internal interface WorkoutDao {
     @Query("SELECT EXISTS(SELECT 1 FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId)")
     suspend fun exerciseBelongsToWorkout(exerciseId: Long, sessionId: Long): Boolean
 
-    @Query("SELECT COALESCE(MAX(position), 0) + 1 FROM logged_sets WHERE exerciseId = :exerciseId")
-    suspend fun nextSetPosition(exerciseId: Long): Int
+    @Query("SELECT * FROM logged_sets WHERE exerciseId = :exerciseId AND position = :position")
+    suspend fun loggedSetAtPosition(exerciseId: Long, position: Int): LoggedSetEntity?
+
+    @Query("UPDATE logged_sets SET weightKg = :weightKg, repetitions = :repetitions WHERE exerciseId = :exerciseId AND position = :position")
+    suspend fun updateInProgressSet(exerciseId: Long, position: Int, weightKg: Double, repetitions: Int): Int
+
+    @Query("DELETE FROM logged_sets WHERE id = :id")
+    suspend fun deleteInProgressSet(id: Long): Int
 
     @Query("SELECT EXISTS(SELECT 1 FROM logged_sets JOIN workout_exercises ON logged_sets.exerciseId = workout_exercises.id WHERE workout_exercises.sessionId = :sessionId)")
     suspend fun hasLoggedSets(sessionId: Long): Boolean
 
     @Query("UPDATE workout_sessions SET finishedAtMillis = :finishedAtMillis WHERE id = :sessionId AND finishedAtMillis IS NULL")
     suspend fun finishWorkout(sessionId: Long, finishedAtMillis: Long): Int
+
+    @Query("DELETE FROM workout_sessions WHERE id = :sessionId AND finishedAtMillis IS NULL")
+    suspend fun cancelWorkout(sessionId: Long): Int
 }

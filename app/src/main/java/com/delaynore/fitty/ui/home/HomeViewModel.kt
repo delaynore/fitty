@@ -8,16 +8,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingProgram
+import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-internal data class HomeState(val program: TrainingProgram?, val inProgressWorkoutId: Long?)
+internal data class HomeState(val program: TrainingProgram?, val inProgressWorkout: InProgressWorkout?)
 
 internal class HomeViewModel(programs: ProgramsRepository, private val workouts: WorkoutsRepository) : ViewModel() {
-    val home = combine(programs.homeProgram, workouts.inProgressWorkoutId, ::HomeState)
+    val home = combine(programs.homeProgram, workouts.inProgressWorkout, ::HomeState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     var selectedDayId by mutableStateOf<Long?>(null)
@@ -45,6 +46,22 @@ internal class HomeViewModel(programs: ProgramsRepository, private val workouts:
                 else onStarted(sessionId)
             } catch (_: SQLiteException) {
                 error = "Не удалось начать тренировку"
+            } finally {
+                starting = false
+            }
+        }
+    }
+
+    fun cancelWorkout(id: Long, onCancelled: () -> Unit) {
+        if (starting) return
+        starting = true
+        error = null
+        viewModelScope.launch {
+            try {
+                if (workouts.cancelWorkout(id)) onCancelled()
+                else error = "Не удалось отменить тренировку"
+            } catch (_: SQLiteException) {
+                error = "Не удалось отменить тренировку"
             } finally {
                 starting = false
             }
