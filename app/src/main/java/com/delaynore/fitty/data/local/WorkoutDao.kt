@@ -97,4 +97,35 @@ internal interface WorkoutDao {
 
     @Query("UPDATE workout_sessions SET finishedAtMillis = :finishedAtMillis WHERE id = :sessionId AND finishedAtMillis IS NULL")
     suspend fun finishWorkout(sessionId: Long, finishedAtMillis: Long): Int
+
+    @Query(
+        """
+        UPDATE logged_sets SET weightKg = :weightKg, repetitions = :repetitions
+        WHERE id = :setId AND exerciseId IN (
+            SELECT workout_exercises.id FROM workout_exercises
+            JOIN workout_sessions ON workout_sessions.id = workout_exercises.sessionId
+            WHERE workout_sessions.id = :sessionId AND workout_sessions.finishedAtMillis IS NOT NULL
+        )
+        """,
+    )
+    suspend fun updateCompletedSet(sessionId: Long, setId: Long, weightKg: Double, repetitions: Int): Int
+
+    @Query(
+        """
+        DELETE FROM logged_sets
+        WHERE id = :setId AND exerciseId IN (
+            SELECT workout_exercises.id FROM workout_exercises
+            JOIN workout_sessions ON workout_sessions.id = workout_exercises.sessionId
+            WHERE workout_sessions.id = :sessionId AND workout_sessions.finishedAtMillis IS NOT NULL
+        ) AND (
+            SELECT COUNT(*) FROM logged_sets
+            JOIN workout_exercises ON workout_exercises.id = logged_sets.exerciseId
+            WHERE workout_exercises.sessionId = :sessionId
+        ) > 1
+        """,
+    )
+    suspend fun deleteCompletedSet(sessionId: Long, setId: Long): Int
+
+    @Query("DELETE FROM workout_sessions WHERE id = :sessionId AND finishedAtMillis IS NOT NULL")
+    suspend fun deleteCompletedWorkout(sessionId: Long): Int
 }

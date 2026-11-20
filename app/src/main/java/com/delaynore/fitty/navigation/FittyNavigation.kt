@@ -59,7 +59,7 @@ internal fun FittyNavigation(programs: ProgramsRepository, workouts: WorkoutsRep
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (destination in listOf(Destination.Home, Destination.History, Destination.WorkoutDetails)) {
+            if (destination == Destination.Home || destination == Destination.History) {
                 TabBar(
                     homeSelected = destination == Destination.Home,
                     onHome = { destination = Destination.Home },

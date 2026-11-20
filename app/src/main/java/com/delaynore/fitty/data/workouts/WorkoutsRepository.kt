@@ -14,7 +14,7 @@ internal data class WorkoutSummary(
     val finishedAtMillis: Long?,
 )
 
-internal data class LoggedSet(val position: Int, val weightKg: Double, val repetitions: Int)
+internal data class LoggedSet(val position: Int, val weightKg: Double, val repetitions: Int, val id: Long = 0)
 
 internal data class WorkoutExercise(val id: Long, val name: String, val sets: List<LoggedSet>)
 
@@ -37,7 +37,12 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         id = exercise.exercise.id,
                         name = exercise.exercise.name,
                         sets = exercise.sets.sortedBy { set -> set.position }.map { set ->
-                            LoggedSet(set.position, set.weightKg, set.repetitions)
+                            LoggedSet(
+                                position = set.position,
+                                weightKg = set.weightKg,
+                                repetitions = set.repetitions,
+                                id = set.id,
+                            )
                         },
                     )
                 },
@@ -78,6 +83,17 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
     suspend fun finishWorkout(sessionId: Long): Boolean = database.withTransaction {
         workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, System.currentTimeMillis()) == 1
     }
+
+    suspend fun updateCompletedSet(sessionId: Long, setId: Long, weightKg: Double, repetitions: Int): Boolean {
+        if (!weightKg.isFinite() || weightKg < 0 || repetitions <= 0) return false
+        return workouts.updateCompletedSet(sessionId, setId, weightKg, repetitions) == 1
+    }
+
+    suspend fun deleteCompletedSet(sessionId: Long, setId: Long): Boolean =
+        workouts.deleteCompletedSet(sessionId, setId) == 1
+
+    suspend fun deleteCompletedWorkout(sessionId: Long): Boolean =
+        workouts.deleteCompletedWorkout(sessionId) == 1
 
     private fun WorkoutSessionEntity.toSummary() = WorkoutSummary(id, programName, dayName, finishedAtMillis)
 }
