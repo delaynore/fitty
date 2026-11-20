@@ -16,7 +16,13 @@ internal data class WorkoutSummary(
 
 internal data class LoggedSet(val position: Int, val weightKg: Double, val repetitions: Int)
 
-internal data class WorkoutExercise(val id: Long, val name: String, val sets: List<LoggedSet>)
+internal data class WorkoutExercise(
+    val id: Long,
+    val name: String,
+    val sets: List<LoggedSet>,
+    val recommendedSets: Int? = null,
+    val recommendedRepetitions: Int? = null,
+)
 
 internal data class WorkoutSession(val summary: WorkoutSummary, val exercises: List<WorkoutExercise>)
 
@@ -39,6 +45,8 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         sets = exercise.sets.sortedBy { set -> set.position }.map { set ->
                             LoggedSet(set.position, set.weightKg, set.repetitions)
                         },
+                        recommendedSets = exercise.exercise.recommendedSets,
+                        recommendedRepetitions = exercise.exercise.recommendedRepetitions,
                     )
                 },
             )
@@ -59,7 +67,13 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
             ),
         )
         workouts.insertExercises(day.exercises.sortedBy { it.id }.mapIndexed { position, exercise ->
-            WorkoutExerciseEntity(sessionId, position, exercise.name)
+            WorkoutExerciseEntity(
+                sessionId = sessionId,
+                position = position,
+                name = exercise.name,
+                recommendedSets = exercise.recommendedSets,
+                recommendedRepetitions = exercise.recommendedRepetitions,
+            )
         })
         sessionId
     }

@@ -6,10 +6,12 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "training_programs")
@@ -47,6 +49,8 @@ internal data class TrainingDayEntity(
 internal data class TrainingExerciseEntity(
     val dayId: Long,
     val name: String,
+    val recommendedSets: Int? = null,
+    val recommendedRepetitions: Int? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 
@@ -77,11 +81,27 @@ internal data class StoredTrainingProgram(
     val days: List<StoredTrainingDay>,
 )
 
+internal data class StoredProgramSelection(
+    @Embedded val program: TrainingProgramEntity,
+    val selected: Boolean,
+)
+
 @Dao
 internal interface ProgramDao {
     @Transaction
     @Query("SELECT training_programs.* FROM training_programs JOIN home_program ON home_program.programId = training_programs.id WHERE home_program.id = 0")
     fun observeHomeProgram(): Flow<StoredTrainingProgram?>
+
+    @Query("SELECT *, id = COALESCE((SELECT programId FROM home_program WHERE id = 0), 0) AS selected FROM training_programs ORDER BY id")
+    fun observePrograms(): Flow<List<StoredProgramSelection>>
+
+    @Transaction
+    @Query("SELECT * FROM training_programs WHERE id = :programId")
+    fun observeProgram(programId: Long): Flow<StoredTrainingProgram?>
+
+    @Transaction
+    @Query("SELECT * FROM training_programs WHERE id = :programId")
+    suspend fun trainingProgram(programId: Long): StoredTrainingProgram?
 
     @Query("SELECT programId FROM home_program WHERE id = 0")
     suspend fun homeProgramId(): Long?
@@ -96,5 +116,15 @@ internal interface ProgramDao {
     @Insert suspend fun insertProgram(program: TrainingProgramEntity): Long
     @Insert suspend fun insertDay(day: TrainingDayEntity): Long
     @Insert suspend fun insertExercise(exercise: TrainingExerciseEntity)
-    @Insert suspend fun selectHomeProgram(selection: HomeProgramEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun selectHomeProgram(selection: HomeProgramEntity)
+
+    @Update suspend fun updateProgram(program: TrainingProgramEntity)
+    @Update suspend fun updateDay(day: TrainingDayEntity)
+    @Update suspend fun updateExercise(exercise: TrainingExerciseEntity)
+
+    @Query("DELETE FROM training_days WHERE id IN (:ids)")
+    suspend fun deleteDays(ids: List<Long>)
+
+    @Query("DELETE FROM training_exercises WHERE id IN (:ids)")
+    suspend fun deleteExercises(ids: List<Long>)
 }

@@ -11,10 +11,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,6 +25,11 @@ import org.junit.runner.RunWith
 class FirstWorkoutTest {
     @get:Rule
     val compose = createEmptyComposeRule()
+
+    @Before
+    fun resetDatabase() {
+        ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+    }
 
     @Test
     fun firstWorkoutIsAvailableInHistoryAfterReopeningFitty() {

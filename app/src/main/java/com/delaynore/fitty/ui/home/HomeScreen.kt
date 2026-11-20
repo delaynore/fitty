@@ -2,6 +2,7 @@ package com.delaynore.fitty.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -17,14 +18,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+import com.delaynore.fitty.ui.formatRecommendation
 
 @Composable
-internal fun HomeScreen(viewModel: HomeViewModel, onCreateProgram: () -> Unit, onWorkout: (Long) -> Unit) {
+internal fun HomeScreen(
+    viewModel: HomeViewModel,
+    onCreateProgram: () -> Unit,
+    onPrograms: () -> Unit,
+    onWorkout: (Long) -> Unit,
+) {
     val state by viewModel.home.collectAsStateWithLifecycle()
 
     ScreenColumn {
@@ -46,14 +54,23 @@ internal fun HomeScreen(viewModel: HomeViewModel, onCreateProgram: () -> Unit, o
                 }
             }
             else -> {
-                val selectedDay = program.days.firstOrNull { it.id == viewModel.selectedDayId }
-                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp)) {
-                    Text(
-                        program.name,
+                val selectedDay = program.days.firstOrNull { it.id == viewModel.selectedDayId } ?: program.days.firstOrNull()
+                Surface(
+                    onClick = onPrograms,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(20.dp),
+                ) {
+                    Row(
                         Modifier.fillMaxWidth().padding(18.dp),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Мои программы", style = MaterialTheme.typography.labelLarge)
+                            Text(program.name, style = MaterialTheme.typography.titleLarge)
+                        }
+                        Text("›", style = MaterialTheme.typography.titleLarge)
+                    }
                 }
                 val inProgress = home.inProgressWorkoutId
                 if (inProgress != null) {
@@ -77,7 +94,12 @@ internal fun HomeScreen(viewModel: HomeViewModel, onCreateProgram: () -> Unit, o
                             Text("Упражнения", style = MaterialTheme.typography.titleMedium)
                             selectedDay.exercises.forEachIndexed { index, exercise ->
                                 if (index > 0) HorizontalDivider()
-                                Text(exercise)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(exercise.name, Modifier.weight(1f))
+                                    formatRecommendation(exercise.recommendedSets, exercise.recommendedRepetitions)?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
                     }

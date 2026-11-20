@@ -22,4 +22,6 @@ class FittyTestRunner : AndroidJUnitRunner() {
 
 class FittyTestApplication : FittyApplication() {
     override val databaseName = "fitty-test-${UUID.randomUUID()}.db"
+
+    fun resetDatabase() = deleteDatabase()
 }
