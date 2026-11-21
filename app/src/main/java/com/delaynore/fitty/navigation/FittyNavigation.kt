@@ -48,7 +48,11 @@ import com.delaynore.fitty.ui.workout.WorkoutViewModel
 private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails }
 
 @Composable
-internal fun FittyNavigation(programs: ProgramsRepository, workouts: WorkoutsRepository) {
+internal fun FittyNavigation(
+    programs: ProgramsRepository,
+    workouts: WorkoutsRepository,
+    restTimerClock: () -> Long,
+) {
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var workoutId by rememberSaveable { mutableLongStateOf(0L) }
     var programId by rememberSaveable { mutableLongStateOf(0L) }
@@ -60,7 +64,7 @@ internal fun FittyNavigation(programs: ProgramsRepository, workouts: WorkoutsRep
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
-        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount)
+        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, restTimerClock)
     }
 
     val closeEditor = {

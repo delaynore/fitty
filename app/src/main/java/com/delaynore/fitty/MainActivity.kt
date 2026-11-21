@@ -17,11 +17,12 @@ class MainActivity : ComponentActivity() {
         val systemBar = SystemBarStyle.dark(Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = systemBar, navigationBarStyle = systemBar)
 
-        val database = (application as FittyApplication).database
+        val fitty = application as FittyApplication
+        val database = fitty.database
         val programs = ProgramsRepository(database)
         val workouts = WorkoutsRepository(database)
         setContent {
-            FittyTheme { FittyNavigation(programs, workouts) }
+            FittyTheme { FittyNavigation(programs, workouts, fitty::restTimerElapsedRealtime) }
         }
     }
 }

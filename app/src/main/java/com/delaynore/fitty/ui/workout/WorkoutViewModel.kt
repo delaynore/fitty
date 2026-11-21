@@ -58,6 +58,7 @@ internal class WorkoutViewModel(
     private val workouts: WorkoutsRepository,
     private val savedState: SavedStateHandle,
     private val bootCount: Int,
+    private val restTimerClock: () -> Long,
 ) : ViewModel() {
     private val sessionId = MutableStateFlow<Long?>(null)
     private val rowsByExercise = mutableStateMapOf<Long, WorkoutRows>()
@@ -98,7 +99,7 @@ internal class WorkoutViewModel(
 
     fun startRestTimer() {
         val id = sessionId.value ?: return
-        val deadline = SystemClock.elapsedRealtime() + REST_DURATION_MILLIS
+        val deadline = restTimerClock() + REST_DURATION_MILLIS
         restDeadlineMillis = deadline
         if (bootCount >= 0) savedState[REST_TIMER_KEY] = longArrayOf(id, deadline, bootCount.toLong())
     }
@@ -109,15 +110,17 @@ internal class WorkoutViewModel(
     }
 
     fun expireRestTimer(deadline: Long) {
-        if (restDeadlineMillis == deadline && deadline <= SystemClock.elapsedRealtime()) resetRestTimer()
+        if (restDeadlineMillis == deadline && remainingRestMillis(deadline) == 0L) resetRestTimer()
     }
+
+    fun remainingRestMillis(deadline: Long): Long = (deadline - restTimerClock()).coerceAtLeast(0L)
 
     private fun restoreRestTimer(id: Long) {
         val timer = savedState.get<LongArray>(REST_TIMER_KEY)
         if (timer != null) {
             val (workoutId, deadline, savedBootCount) = timer
             if (workoutId == id && bootCount >= 0 && savedBootCount == bootCount.toLong() &&
-                deadline > SystemClock.elapsedRealtime()
+                remainingRestMillis(deadline) > 0L
             ) {
                 restDeadlineMillis = deadline
                 return
