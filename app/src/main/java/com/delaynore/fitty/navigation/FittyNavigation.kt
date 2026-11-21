@@ -69,7 +69,7 @@ internal fun FittyNavigation(
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val history = viewModel { HistoryViewModel(workouts) }
     val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts, createSavedStateHandle()) }
-    UpdateInstallerEffect(settings)
+    UpdateInstallerEffect(settings) { destination == Destination.Settings }
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)

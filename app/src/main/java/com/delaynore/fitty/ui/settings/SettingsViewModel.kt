@@ -13,8 +13,12 @@ import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import java.io.File
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
 private const val PERMISSION_APK_PATH = "updatePermissionApkPath"
@@ -31,7 +35,7 @@ internal sealed interface UpdateInstallState {
     data object Idle : UpdateInstallState
     data object CheckingWorkout : UpdateInstallState
     data object Warning : UpdateInstallState
-    data object Downloading : UpdateInstallState
+    data class Downloading(val percent: Int? = null) : UpdateInstallState
     data class Ready(val apk: File) : UpdateInstallState
     data class RequestingPermission(val apk: File) : UpdateInstallState
     data class PermissionDenied(val apk: File) : UpdateInstallState
@@ -65,6 +69,7 @@ internal class SettingsViewModel(
             ?: UpdateInstallState.Idle,
     )
     val updateInstall = install.asStateFlow()
+    private var downloadJob: Job? = null
 
     fun checkForUpdate() {
         if (check.value == UpdateCheckState.Checking || !install.value.canCheckForUpdates) return
@@ -101,6 +106,14 @@ internal class SettingsViewModel(
         val update = availableUpdate() ?: return
         if (install.value != UpdateInstallState.Warning) return
         download(update)
+    }
+
+    fun cancelDownload() {
+        if (install.value !is UpdateInstallState.Downloading) return
+        val attempt = downloadJob
+        downloadJob = null
+        install.value = UpdateInstallState.Idle
+        attempt?.cancel()
     }
 
     fun continueInstallation() {
@@ -144,19 +157,42 @@ internal class SettingsViewModel(
         }
     }
 
+    override fun onCleared() {
+        when (val state = install.value) {
+            is UpdateInstallState.Ready -> state.apk.delete()
+            is UpdateInstallState.PermissionDenied -> state.apk.delete()
+            else -> Unit
+        }
+    }
+
     private fun availableUpdate(): FittyUpdate? {
         val result = (check.value as? UpdateCheckState.Checked)?.result
         return (result as? UpdateCheckResult.Available)?.update
     }
 
     private fun download(update: FittyUpdate) {
-        install.value = UpdateInstallState.Downloading
-        viewModelScope.launch {
-            install.value = when (val result = updateService.download(update, installedApp.versionCode)) {
+        install.value = UpdateInstallState.Downloading()
+        val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            val attempt = currentCoroutineContext().job
+            val result = updateService.download(update, installedApp.versionCode) { percent ->
+                viewModelScope.launch {
+                    if (attempt.isActive && install.value is UpdateInstallState.Downloading) {
+                        install.value = UpdateInstallState.Downloading(percent)
+                    }
+                }
+            }
+            if (!attempt.isActive) {
+                (result as? UpdateDownloadResult.Downloaded)?.apk?.delete()
+                return@launch
+            }
+            downloadJob = null
+            install.value = when (result) {
                 is UpdateDownloadResult.Downloaded -> UpdateInstallState.Ready(result.apk)
                 is UpdateDownloadResult.Failed -> UpdateInstallState.DownloadFailed(result.reason)
             }
         }
+        downloadJob = job
+        job.start()
     }
 
     private fun failToOpenInstaller(apk: File) {

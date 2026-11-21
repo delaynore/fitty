@@ -2,6 +2,9 @@ package com.delaynore.fitty
 
 import android.content.Intent
 import android.os.Build
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -10,6 +13,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
@@ -17,11 +21,17 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
+import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -186,7 +196,144 @@ class SettingsTest {
         }
     }
 
-    private fun offerUpdate() = FakeUpdates { installedCode ->
+    @Test
+    fun aDownloadThatFinishesOnAnotherTabOnlyOpensTheInstallerOnceBackInSettings() {
+        val download = CompletableDeferred<UpdateDownloadResult>()
+        val updates = offerUpdate { download.await() }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
+            compose.onNodeWithText("История").performClick()
+            compose.runOnIdle { download.complete(UpdateDownloadResult.Downloaded(updates.apk)) }
+            compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
+
+            compose.onNodeWithText("Настройки").performClick()
+            assertInstallerOpened(updates)
+            compose.onNodeWithText("Главная").performClick()
+            compose.onNodeWithText("Настройки").performClick()
+            compose.runOnIdle { assertEquals(1, updates.installAttempts.get()) }
+        }
+    }
+
+    @Test
+    fun aDownloadOnSettingsWaitsForTheAppToResumeBeforeOpeningTheInstaller() {
+        val download = CompletableDeferred<UpdateDownloadResult>()
+        val updates = offerUpdate { download.await() }
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
+
+            scenario.moveToState(Lifecycle.State.STARTED)
+            scenario.onActivity { download.complete(UpdateDownloadResult.Downloaded(updates.apk)) }
+            compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
+
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            assertInstallerOpened(updates)
+            compose.runOnIdle { assertEquals(1, updates.installAttempts.get()) }
+        }
+    }
+
+    @Test
+    fun downloadShowsProgressAsItBecomesAvailableAndWhenReturningToSettings() {
+        val progress = CompletableDeferred<(Int) -> Unit>()
+        offerUpdate { reportProgress ->
+            progress.complete(reportProgress)
+            awaitCancellation()
+        }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            assertProgress(ProgressBarRangeInfo.Indeterminate)
+            val reportProgress = runBlocking { withTimeout(5_000) { progress.await() } }
+            compose.runOnIdle { reportProgress(25) }
+            assertProgress(ProgressBarRangeInfo(0.25f, 0f..1f))
+
+            compose.onNodeWithText("История").performClick()
+            compose.runOnIdle { reportProgress(70) }
+            compose.onNodeWithText("Настройки").performClick()
+            assertProgress(ProgressBarRangeInfo(0.7f, 0f..1f))
+        }
+    }
+
+    @Test
+    fun cancelStopsTheDownloadAndIgnoresItsLateProgressAndApkAfterRetry() {
+        val cancelledApk = File.createTempFile("cancelled-update-", ".apk", application.cacheDir)
+        val firstProgress = CompletableDeferred<(Int) -> Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val lateResult = CompletableDeferred<UpdateDownloadResult>()
+        val secondDownload = CompletableDeferred<UpdateDownloadResult>()
+        var attempts = 0
+        val updates = offerUpdate { reportProgress ->
+            if (++attempts == 1) {
+                firstProgress.complete(reportProgress)
+                try {
+                    awaitCancellation()
+                } catch (_: CancellationException) {
+                    cancelled.complete(Unit)
+                    withContext(NonCancellable) { lateResult.await() }
+                }
+            } else {
+                reportProgress(25)
+                secondDownload.await()
+            }
+        }
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use {
+                findUpdate()
+                compose.onNodeWithText("Обновить").performClick()
+                val reportLateProgress = runBlocking { withTimeout(5_000) { firstProgress.await() } }
+                compose.onNodeWithText("Отменить").performClick()
+                runBlocking { withTimeout(5_000) { cancelled.await() } }
+                compose.onNodeWithText("Скачиваем обновление…").assertDoesNotExist()
+                compose.onNodeWithText("Обновить").performClick()
+                assertProgress(ProgressBarRangeInfo(0.25f, 0f..1f))
+
+                compose.runOnIdle {
+                    reportLateProgress(80)
+                    lateResult.complete(UpdateDownloadResult.Downloaded(cancelledApk))
+                }
+                assertProgress(ProgressBarRangeInfo(0.25f, 0f..1f))
+                compose.runOnIdle {
+                    assertEquals(0, updates.installAttempts.get())
+                    assertFalse(cancelledApk.exists())
+                }
+
+                secondDownload.complete(UpdateDownloadResult.Downloaded(updates.apk))
+                assertInstallerOpened(updates)
+            }
+        } finally {
+            lateResult.complete(UpdateDownloadResult.Downloaded(cancelledApk))
+            cancelledApk.delete()
+        }
+    }
+
+    @Test
+    fun aFailedDownloadExplainsTheErrorAndCanBeRetriedWithoutAnotherUpdateCheck() {
+        val retry = CompletableDeferred<UpdateDownloadResult>()
+        var attempts = 0
+        val updates = offerUpdate {
+            if (++attempts == 1) UpdateDownloadResult.Failed(UpdateDownloadFailure.Unavailable) else retry.await()
+        }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Не удалось скачать обновление.").assertIsDisplayed()
+            compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
+
+            compose.onNodeWithText("Повторить загрузку").performClick()
+            compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
+            retry.complete(UpdateDownloadResult.Downloaded(updates.apk))
+            assertInstallerOpened(updates)
+        }
+    }
+
+    private fun assertProgress(progress: ProgressBarRangeInfo) {
+        compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, progress)).assertIsDisplayed()
+    }
+
+    private fun offerUpdate(download: (suspend ((Int) -> Unit) -> UpdateDownloadResult)? = null) = FakeUpdates(download) { installedCode ->
         val nextCode = installedCode + 1
         UpdateCheckResult.Available(
             FittyUpdate("1.1", nextCode, "https://github.com/delaynore/fitty/releases/download/test/fitty-$nextCode.apk"),
@@ -204,20 +351,25 @@ class SettingsTest {
     }
 }
 
-private class FakeUpdates(private val check: suspend (Long) -> UpdateCheckResult) : UpdateService {
+private class FakeUpdates(
+    private val downloadResult: (suspend ((Int) -> Unit) -> UpdateDownloadResult)? = null,
+    private val check: suspend (Long) -> UpdateCheckResult,
+) : UpdateService {
     val apk = File("downloaded-update.apk")
     val downloadStarted = CompletableDeferred<FittyUpdate>()
     val installerOpened = CompletableDeferred<File>()
+    val installAttempts = AtomicInteger()
 
     override suspend fun checkForUpdate(installedVersionCode: Long) = check(installedVersionCode)
-    override suspend fun download(update: FittyUpdate, installedVersionCode: Long): UpdateDownloadResult {
+    override suspend fun download(update: FittyUpdate, installedVersionCode: Long, onProgress: (Int) -> Unit): UpdateDownloadResult {
         downloadStarted.complete(update)
-        return UpdateDownloadResult.Downloaded(apk)
+        return downloadResult?.invoke(onProgress) ?: UpdateDownloadResult.Downloaded(apk)
     }
 
     override fun canRequestInstall() = true
     override fun requestInstallPermission(launch: (Intent) -> Unit) = error("Installation permission is already granted")
     override fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean {
+        installAttempts.incrementAndGet()
         installerOpened.complete(apk)
         return true
     }

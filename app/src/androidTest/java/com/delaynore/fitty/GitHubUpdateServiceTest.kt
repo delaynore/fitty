@@ -13,8 +13,15 @@ import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import java.io.File
 import java.net.UnknownHostException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -115,7 +122,7 @@ class GitHubUpdateServiceTest {
 
     @Test
     fun aDownloadThatDoesNotContainAnApkCannotReachTheInstaller() = runBlocking {
-        val updates = GitHubUpdateService(context, fetchApk = { _, destination ->
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination, _ ->
             destination.writeText("A broken APK")
         })
         val update = FittyUpdate("1.0", 8, apkUrl)
@@ -129,7 +136,7 @@ class GitHubUpdateServiceTest {
         @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         val code = PackageInfoCompat.getLongVersionCode(info)
-        val updates = GitHubUpdateService(context, fetchApk = { _, destination ->
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination, _ ->
             apk.copyTo(destination, overwrite = true)
         })
 
@@ -140,5 +147,46 @@ class GitHubUpdateServiceTest {
         for (update in mismatchedUpdates) {
             assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), updates.download(update, code - 1))
         }
+    }
+
+    @Test
+    fun removingAnEarlierDownloadsApkLeavesTheRetryAvailableForInstallation() = runBlocking {
+        val installedApk = File(context.applicationInfo.sourceDir)
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        val code = PackageInfoCompat.getLongVersionCode(info)
+        val update = FittyUpdate(info.versionName.orEmpty(), code, apkUrl)
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination, _ ->
+            installedApk.copyTo(destination, overwrite = true)
+        })
+
+        val previous = updates.download(update, code - 1) as UpdateDownloadResult.Downloaded
+        try {
+            val retry = updates.download(update, code - 1) as UpdateDownloadResult.Downloaded
+            try {
+                assertTrue(previous.apk.delete())
+                assertTrue(retry.apk.isFile)
+            } finally {
+                retry.apk.delete()
+            }
+        } finally {
+            previous.apk.delete()
+        }
+    }
+
+    @Test
+    fun cancellingADownloadRemovesItsPartialApk() = runBlocking {
+        val started = CompletableDeferred<File>()
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination, _ ->
+            destination.writeText("Incomplete download")
+            started.complete(destination)
+            awaitCancellation()
+        })
+        val download = async { updates.download(FittyUpdate("1.0", 8, apkUrl), 7) }
+        val partial = withTimeout(5_000) { started.await() }
+
+        download.cancelAndJoin()
+
+        assertFalse(partial.exists())
     }
 }

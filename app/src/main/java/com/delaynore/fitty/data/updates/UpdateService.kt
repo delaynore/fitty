@@ -5,7 +5,11 @@ import java.io.File
 
 internal interface UpdateService {
     suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult
-    suspend fun download(update: FittyUpdate, installedVersionCode: Long): UpdateDownloadResult
+    suspend fun download(
+        update: FittyUpdate,
+        installedVersionCode: Long,
+        onProgress: (percent: Int) -> Unit = {},
+    ): UpdateDownloadResult
     fun canRequestInstall(): Boolean
     fun requestInstallPermission(launch: (Intent) -> Unit): Boolean
     fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean
@@ -23,6 +27,7 @@ internal sealed interface UpdateCheckResult {
 internal enum class UpdateCheckFailure { Network, GitHub, MissingApk }
 
 internal sealed interface UpdateDownloadResult {
+    /** A validated APK owned by this download's caller. */
     data class Downloaded(val apk: File) : UpdateDownloadResult
     data class Failed(val reason: UpdateDownloadFailure) : UpdateDownloadResult
 }

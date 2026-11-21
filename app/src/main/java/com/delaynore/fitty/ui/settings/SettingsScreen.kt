@@ -38,6 +38,7 @@ internal fun SettingsScreen(viewModel: SettingsViewModel, onUpdate: () -> Unit) 
         onUpdate = onUpdate,
         onConfirmDownload = viewModel::confirmDownload,
         onDismissWarning = viewModel::dismissWarning,
+        onCancelDownload = viewModel::cancelDownload,
         onContinueInstallation = viewModel::continueInstallation,
     )
 }
@@ -51,6 +52,7 @@ internal fun SettingsContent(
     onUpdate: () -> Unit,
     onConfirmDownload: () -> Unit,
     onDismissWarning: () -> Unit,
+    onCancelDownload: () -> Unit,
     onContinueInstallation: () -> Unit,
 ) {
     ScreenColumn {
@@ -73,14 +75,16 @@ internal fun SettingsContent(
                             Text("Проверяем обновления…")
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                         }
-                        is UpdateCheckState.Checked -> {
-                            UpdateCheckResultContent(check.result)
-                            if (check.result is UpdateCheckResult.Available && install.canStartAnotherUpdate) {
-                                Button(onClick = onUpdate) { Text("Обновить") }
-                            }
+                        is UpdateCheckState.Checked -> UpdateCheckResultContent(check.result)
+                    }
+                    UpdateInstallContent(install, onCancelDownload, onContinueInstallation)
+                    if (check is UpdateCheckState.Checked && check.result is UpdateCheckResult.Available &&
+                        install.canStartAnotherUpdate
+                    ) {
+                        Button(onClick = onUpdate) {
+                            Text(if (install is UpdateInstallState.DownloadFailed) "Повторить загрузку" else "Обновить")
                         }
                     }
-                    UpdateInstallContent(install, onContinueInstallation)
                 }
             }
         }
@@ -117,12 +121,22 @@ private fun UpdateCheckResultContent(result: UpdateCheckResult) {
 }
 
 @Composable
-private fun UpdateInstallContent(state: UpdateInstallState, onContinueInstallation: () -> Unit) {
+private fun UpdateInstallContent(
+    state: UpdateInstallState,
+    onCancelDownload: () -> Unit,
+    onContinueInstallation: () -> Unit,
+) {
     val error = MaterialTheme.colorScheme.error
     when (state) {
-        UpdateInstallState.Downloading -> {
+        is UpdateInstallState.Downloading -> {
             Text("Скачиваем обновление…")
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+            val percent = state.percent
+            if (percent == null) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            } else {
+                LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+            }
+            TextButton(onClick = onCancelDownload) { Text("Отменить") }
         }
         is UpdateInstallState.PermissionDenied -> {
             Text("Чтобы продолжить, разреши Android устанавливать обновления из Fitty.")
