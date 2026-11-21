@@ -8,11 +8,14 @@ Set up JDK 17 and the Android SDK as described below. From the repository root, 
 .\gradlew.bat :app:assembleDebug :app:lintDebug
 ```
 
-Run the instrumented tests on a dedicated Android emulator. Gradle runs them on connected devices, so keep only the test emulator connected. The tests use a separate Room database and temporarily toggle airplane mode.
+Start a dedicated Android emulator and list connected devices to find its serial. Pass that serial to the test script. The tests use a separate Room database and temporarily toggle airplane mode.
 
 ```powershell
-.\gradlew.bat :app:connectedDebugAndroidTest
+& "$env:ANDROID_HOME/platform-tools/adb.exe" devices
+.\scripts\test-android.ps1 -Serial emulator-5556
 ```
+
+The script prints the test log path under `build/reports/android-device/`. GitHub Actions runs build and lint on every pull request and runs the instrumented tests in a separate job on an Android 16 emulator.
 
 ## Build and sign an APK
 
