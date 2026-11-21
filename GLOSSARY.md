@@ -25,3 +25,6 @@ _Avoid_: Planned set
 
 **Workout history**:
 The record of completed workout sessions and the sets logged in each. Exercises appear under the names they had at the time of the workout.
+
+**Fitty update**:
+A newer Fitty release that can replace the installed app while preserving the lifter's training programs and workout records.
