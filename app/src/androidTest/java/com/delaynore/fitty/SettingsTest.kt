@@ -1,10 +1,11 @@
 package com.delaynore.fitty
 
-import android.os.Build
 import android.content.Intent
+import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -142,13 +143,23 @@ class SettingsTest {
     }
 
     @Test
-    fun anAvailableUpdateCanStartWithoutAWorkoutWarning() {
+    fun aCompletedWorkoutDoesNotRequireAnUpdateWarning() {
         val updates = offerUpdate()
         ActivityScenario.launch(MainActivity::class.java).use {
+            compose.createAndStartWorkout()
+            compose.logSet(1, "60", "6")
+            closeSoftKeyboard()
+            compose.onNodeWithText("Завершить").performClick()
+            compose.onNodeWithText("Завершить тренировку").performClick()
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasText("60 кг × 6")).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithContentDescription("Назад").performClick()
+
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
             compose.onNodeWithText("Продолжить обновление?").assertDoesNotExist()
-            assertEquals(updates.apk, runBlocking { withTimeout(5_000) { updates.installerOpened.await() } })
+            assertInstallerOpened(updates)
         }
     }
 
@@ -170,7 +181,8 @@ class SettingsTest {
 
             compose.onNodeWithText("Обновить").performClick()
             compose.onNodeWithText("Продолжить").performClick()
-            assertEquals(updates.apk, runBlocking { withTimeout(5_000) { updates.installerOpened.await() } })
+            compose.onNodeWithText("Продолжить обновление?").assertDoesNotExist()
+            assertInstallerOpened(updates)
         }
     }
 
@@ -184,6 +196,11 @@ class SettingsTest {
     private fun findUpdate() {
         compose.onNodeWithText("Настройки").performClick()
         compose.onNodeWithText("Проверить обновления").performClick()
+    }
+
+    private fun assertInstallerOpened(updates: FakeUpdates) {
+        compose.waitUntil(timeoutMillis = 5_000) { updates.installerOpened.isCompleted }
+        assertEquals(updates.apk, runBlocking { updates.installerOpened.await() })
     }
 }
 

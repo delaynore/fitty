@@ -49,7 +49,8 @@ For an update, compare the `Signer #1 certificate SHA-256 digest` with the previ
 
 1. In the public `delaynore/fitty` repository, open **Releases** and choose **Draft a new release**. Tag the commit used to build the APK. Use a unique tag such as `v1.1-build-5` so a later build can reuse the Android version name.
 2. Set the release title to the exact `versionName` from the APK, such as `1.1`.
-3. Attach one signed APK named `fitty-<versionCode>.apk`. Use the code reported by `aapt`. Leave **Set as a pre-release** clear and publish the release as the latest stable release. Fitty reads that release to offer updates. [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+3. Attach one signed APK named `fitty-<versionCode>.apk`. Use the code reported by `aapt`.
+4. Leave **This is a pre-release** clear and select **Set as latest release**. Click **Publish release**. Fitty reads that release to offer updates. [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
 
 ## Install or update Fitty
 

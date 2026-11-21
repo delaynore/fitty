@@ -1,6 +1,7 @@
 package com.delaynore.fitty
 
 import android.content.Context
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.updates.FittyUpdate
@@ -10,6 +11,7 @@ import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
+import java.io.File
 import java.net.UnknownHostException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -119,5 +121,24 @@ class GitHubUpdateServiceTest {
         val update = FittyUpdate("1.0", 8, apkUrl)
 
         assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), updates.download(update, 7))
+    }
+
+    @Test
+    fun anApkWithADifferentVersionNameOrCodeFromTheReleaseCannotReachTheInstaller() = runBlocking {
+        val apk = File(context.applicationInfo.sourceDir)
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        val code = PackageInfoCompat.getLongVersionCode(info)
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination ->
+            apk.copyTo(destination, overwrite = true)
+        })
+
+        val mismatchedUpdates = listOf(
+            FittyUpdate(info.versionName.orEmpty(), code + 1, apkUrl),
+            FittyUpdate("${info.versionName}-other", code, apkUrl),
+        )
+        for (update in mismatchedUpdates) {
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), updates.download(update, code - 1))
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.delaynore.fitty.ui.settings
 import android.app.Activity
 import android.content.Intent
 import android.database.sqlite.SQLiteException
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.updates.FittyUpdate
@@ -15,6 +16,8 @@ import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private const val PERMISSION_APK_PATH = "updatePermissionApkPath"
 
 internal data class InstalledApp(val versionName: String, val versionCode: Long)
 
@@ -53,10 +56,14 @@ internal class SettingsViewModel(
     val installedApp: InstalledApp,
     private val updateService: UpdateService,
     private val workouts: WorkoutsRepository,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     private val check = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
     val updateCheck = check.asStateFlow()
-    private val install = MutableStateFlow<UpdateInstallState>(UpdateInstallState.Idle)
+    private val install = MutableStateFlow<UpdateInstallState>(
+        savedState.get<String>(PERMISSION_APK_PATH)?.let { UpdateInstallState.RequestingPermission(File(it)) }
+            ?: UpdateInstallState.Idle,
+    )
     val updateInstall = install.asStateFlow()
 
     fun checkForUpdate() {
@@ -111,6 +118,7 @@ internal class SettingsViewModel(
             install.value = UpdateInstallState.Installing(ready.apk)
             if (!updateService.openInstaller(ready.apk, launchInstaller)) failToOpenInstaller(ready.apk)
         } else {
+            savedState[PERMISSION_APK_PATH] = ready.apk.path
             install.value = UpdateInstallState.RequestingPermission(ready.apk)
             if (!updateService.requestInstallPermission(launchPermission)) failToOpenInstaller(ready.apk)
         }
@@ -118,6 +126,7 @@ internal class SettingsViewModel(
 
     fun onInstallPermissionReturned() {
         val requesting = install.value as? UpdateInstallState.RequestingPermission ?: return
+        savedState.remove<String>(PERMISSION_APK_PATH)
         install.value = if (updateService.canRequestInstall()) {
             UpdateInstallState.Ready(requesting.apk)
         } else {
@@ -151,6 +160,7 @@ internal class SettingsViewModel(
     }
 
     private fun failToOpenInstaller(apk: File) {
+        savedState.remove<String>(PERMISSION_APK_PATH)
         apk.delete()
         install.value = UpdateInstallState.InstallerUnavailable
     }
