@@ -6,10 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.pm.PackageInfoCompat
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.navigation.FittyNavigation
 import com.delaynore.fitty.ui.FittyTheme
+import com.delaynore.fitty.ui.settings.InstalledApp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,8 +23,13 @@ class MainActivity : ComponentActivity() {
         val database = fitty.database
         val programs = ProgramsRepository(database)
         val workouts = WorkoutsRepository(database)
+        @Suppress("DEPRECATION")
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        val installedApp = InstalledApp(packageInfo.versionName.orEmpty(), PackageInfoCompat.getLongVersionCode(packageInfo))
         setContent {
-            FittyTheme { FittyNavigation(programs, workouts, fitty::restTimerElapsedRealtime) }
+            FittyTheme {
+                FittyNavigation(programs, workouts, fitty::restTimerElapsedRealtime, installedApp, fitty.updateService)
+            }
         }
     }
 }

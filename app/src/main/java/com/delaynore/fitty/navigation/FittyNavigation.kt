@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.delaynore.fitty.data.programs.ProgramsRepository
+import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
@@ -42,16 +43,21 @@ import com.delaynore.fitty.ui.programs.ProgramEditorScreen
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.programs.ProgramsScreen
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
+import com.delaynore.fitty.ui.settings.InstalledApp
+import com.delaynore.fitty.ui.settings.SettingsScreen
+import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
-private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails }
+private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails, Settings }
 
 @Composable
 internal fun FittyNavigation(
     programs: ProgramsRepository,
     workouts: WorkoutsRepository,
     restTimerClock: () -> Long,
+    installedApp: InstalledApp,
+    updateService: UpdateService,
 ) {
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var workoutId by rememberSaveable { mutableLongStateOf(0L) }
@@ -61,6 +67,7 @@ internal fun FittyNavigation(
     val home = viewModel { HomeViewModel(programs, workouts) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val history = viewModel { HistoryViewModel(workouts) }
+    val settings = viewModel { SettingsViewModel(installedApp, updateService) }
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
@@ -107,12 +114,10 @@ internal fun FittyNavigation(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (destination == Destination.Home || destination == Destination.History) {
-                TabBar(
-                    homeSelected = destination == Destination.Home,
-                    onHome = { destination = Destination.Home },
-                    onHistory = { destination = Destination.History },
-                )
+            when (destination) {
+                Destination.Home, Destination.History, Destination.Settings ->
+                    TabBar(selected = destination, onSelect = { destination = it })
+                else -> Unit
             }
         },
     ) { padding ->
@@ -163,13 +168,14 @@ internal fun FittyNavigation(
                     destination = Destination.WorkoutDetails
                 }
                 Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
+                Destination.Settings -> SettingsScreen(settings)
             }
         }
     }
 }
 
 @Composable
-private fun TabBar(homeSelected: Boolean, onHome: () -> Unit, onHistory: () -> Unit) {
+private fun TabBar(selected: Destination, onSelect: (Destination) -> Unit) {
     NavigationBar(
         modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(26.dp)),
@@ -177,16 +183,22 @@ private fun TabBar(homeSelected: Boolean, onHome: () -> Unit, onHistory: () -> U
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
         NavigationBarItem(
-            selected = homeSelected,
-            onClick = onHome,
+            selected = selected == Destination.Home,
+            onClick = { onSelect(Destination.Home) },
             label = { Text("Главная") },
             icon = { FittyGlyph(FittyIcon.Home) },
         )
         NavigationBarItem(
-            selected = !homeSelected,
-            onClick = onHistory,
+            selected = selected == Destination.History,
+            onClick = { onSelect(Destination.History) },
             label = { Text("История") },
             icon = { FittyGlyph(FittyIcon.History) },
+        )
+        NavigationBarItem(
+            selected = selected == Destination.Settings,
+            onClick = { onSelect(Destination.Settings) },
+            label = { Text("Настройки") },
+            icon = { FittyGlyph(FittyIcon.Settings) },
         )
     }
 }
