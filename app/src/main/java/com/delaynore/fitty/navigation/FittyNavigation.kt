@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.delaynore.fitty.data.programs.ProgramsRepository
+import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
@@ -42,25 +43,42 @@ import com.delaynore.fitty.ui.programs.ProgramEditorScreen
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.programs.ProgramsScreen
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
+import com.delaynore.fitty.ui.settings.InstalledApp
+import com.delaynore.fitty.ui.settings.SettingsScreen
+import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
+import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
-private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails }
+private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails, Settings }
+
+private data class BottomTab(val destination: Destination, val label: String, val icon: FittyIcon)
+
+private val bottomTabs = listOf(
+    BottomTab(Destination.Home, "Главная", FittyIcon.Home),
+    BottomTab(Destination.History, "История", FittyIcon.History),
+    BottomTab(Destination.Settings, "Настройки", FittyIcon.Settings),
+)
 
 @Composable
 internal fun FittyNavigation(
     programs: ProgramsRepository,
     workouts: WorkoutsRepository,
     restTimerClock: () -> Long,
+    installedApp: InstalledApp,
+    updateService: UpdateService,
 ) {
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var workoutId by rememberSaveable { mutableLongStateOf(0L) }
     var programId by rememberSaveable { mutableLongStateOf(0L) }
+    var settingsOrigin by rememberSaveable { mutableStateOf<Destination?>(null) }
     var editorOrigin by rememberSaveable { mutableStateOf(Destination.Home) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
     val home = viewModel { HomeViewModel(programs, workouts) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val history = viewModel { HistoryViewModel(workouts) }
+    val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts, createSavedStateHandle()) }
+    UpdateInstallerEffect(settings) { destination == Destination.Settings }
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
@@ -72,6 +90,11 @@ internal fun FittyNavigation(
         programEditor.closeEditor()
         destination = editorOrigin
     }
+    val editorSettings = {
+        settingsOrigin = destination
+        destination = Destination.Settings
+    }
+    val settingsFromEditor = settingsOrigin != null && programEditor.editing
     val back = {
         when (destination) {
             Destination.DayEditor -> destination = Destination.ProgramEditor
@@ -80,6 +103,10 @@ internal fun FittyNavigation(
             }
             Destination.ProgramDetails -> destination = Destination.Programs
             Destination.WorkoutDetails -> destination = Destination.History
+            Destination.Settings -> {
+                destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
+                settingsOrigin = null
+            }
             else -> destination = Destination.Home
         }
     }
@@ -107,12 +134,8 @@ internal fun FittyNavigation(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (destination == Destination.Home || destination == Destination.History) {
-                TabBar(
-                    homeSelected = destination == Destination.Home,
-                    onHome = { destination = Destination.Home },
-                    onHistory = { destination = Destination.History },
-                )
+            if (!settingsFromEditor && bottomTabs.any { it.destination == destination }) {
+                TabBar(selected = destination, onSelect = { destination = it })
             }
         },
     ) { padding ->
@@ -149,9 +172,10 @@ internal fun FittyNavigation(
                     viewModel = programEditor,
                     onBack = back,
                     onEditDay = { destination = Destination.DayEditor },
+                    onSettings = editorSettings,
                     onSaved = { destination = editorOrigin },
                 )
-                Destination.DayEditor -> TrainingDayEditorScreen(programEditor, back)
+                Destination.DayEditor -> TrainingDayEditorScreen(programEditor, back, editorSettings)
                 Destination.Workout -> WorkoutScreen(
                     id = workoutId,
                     viewModel = workout,
@@ -163,30 +187,29 @@ internal fun FittyNavigation(
                     destination = Destination.WorkoutDetails
                 }
                 Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
+                Destination.Settings -> SettingsScreen(settings, onBack = back.takeIf { settingsFromEditor }) {
+                    settings.startUpdate(programEditor.editing && programEditor.hasChanges)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TabBar(homeSelected: Boolean, onHome: () -> Unit, onHistory: () -> Unit) {
+private fun TabBar(selected: Destination, onSelect: (Destination) -> Unit) {
     NavigationBar(
         modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(26.dp)),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
-        NavigationBarItem(
-            selected = homeSelected,
-            onClick = onHome,
-            label = { Text("Главная") },
-            icon = { FittyGlyph(FittyIcon.Home) },
-        )
-        NavigationBarItem(
-            selected = !homeSelected,
-            onClick = onHistory,
-            label = { Text("История") },
-            icon = { FittyGlyph(FittyIcon.History) },
-        )
+        bottomTabs.forEach { tab ->
+            NavigationBarItem(
+                selected = selected == tab.destination,
+                onClick = { onSelect(tab.destination) },
+                label = { Text(tab.label) },
+                icon = { FittyGlyph(tab.icon) },
+            )
+        }
     }
 }

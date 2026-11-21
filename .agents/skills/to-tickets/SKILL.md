@@ -26,6 +26,8 @@ Look for opportunities to prefactor the code to make the implementation easier. 
 
 Break the work into **tracer bullet** tickets.
 
+Write acceptance criteria from the user's entry point. For each condition that changes the outcome, name the starting screen or precondition, the actions that reach it, and the visible result. Example: open Settings from a program editor with unsaved changes, start an update, dismiss the warning, and return to the same draft.
+
 <vertical-slice-rules>
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer

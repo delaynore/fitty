@@ -8,7 +8,9 @@ See the [glossary](../GLOSSARY.md) for training terms.
 
 ## Interface
 
-The bottom bar has two tabs, Home and History. From Home, the lifter can create a program or open My Programs. Tapping a program opens its details. Tapping its checkmark selects it for Home, where the lifter chooses a training day and sees its exercises. Each day opens in its own editor.
+The bottom bar has three tabs, Home, History, and Settings. In Settings, the lifter can see the installed version and check for app updates. If the lifter has unsaved changes in the editor, they can open Settings and return to the same draft. [App updates](app-updates.md)
+
+From Home, the lifter can create a program or open My Programs. Tapping a program opens its details. Tapping its checkmark selects it for Home, where the lifter chooses a training day and sees its exercises. Each day opens in its own editor.
 
 A workout shows one exercise at a time. The bottom bar has previous and next arrows and an All Exercises button for jumping to any exercise. On the last exercise, Finish replaces the next arrow. The lifter records weight and repetitions in the same row. Fitty shows four set rows when the exercise has no recommended set count.
 

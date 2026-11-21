@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -45,7 +46,9 @@ class FirstWorkoutTest {
             tap("Добавить день")
             enter("day-name", "День А")
             enter("exercise-name", "Жим лёжа")
+            closeSoftKeyboard()
             tap("Сохранить день")
+            awaitText("Сохранить программу")
             tap("Сохранить программу")
 
             awaitText("Начать тренировку")

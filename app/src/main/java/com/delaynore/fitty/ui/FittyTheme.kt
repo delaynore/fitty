@@ -61,18 +61,24 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable Co
 }
 
 @Composable
-internal fun PageHeader(title: String, onBack: (() -> Unit)? = null) {
+internal fun PageHeader(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    actions: (@Composable () -> Unit)? = null,
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (onBack != null) {
             IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                 FittyGlyph(FittyIcon.Back)
             }
         }
-        Text(title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        val titleModifier = if (actions == null) Modifier else Modifier.weight(1f)
+        Text(title, modifier = titleModifier, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        actions?.invoke()
     }
 }
 
-internal enum class FittyIcon { Home, History, Back, Check, Stopwatch, Stop }
+internal enum class FittyIcon { Home, History, Settings, Back, Check, Stopwatch, Stop }
 
 @Composable
 internal fun FittyGlyph(icon: FittyIcon) {
@@ -99,6 +105,17 @@ internal fun FittyGlyph(icon: FittyIcon) {
                 path.moveTo(12 * scale, 7 * scale)
                 path.lineTo(12 * scale, 12 * scale)
                 path.lineTo(16 * scale, 14 * scale)
+            }
+            FittyIcon.Settings -> {
+                drawLine(color, Offset(4 * scale, 7 * scale), Offset(20 * scale, 7 * scale), stroke.width, StrokeCap.Round)
+                drawLine(color, Offset(4 * scale, 12 * scale), Offset(20 * scale, 12 * scale), stroke.width, StrokeCap.Round)
+                drawLine(color, Offset(4 * scale, 17 * scale), Offset(20 * scale, 17 * scale), stroke.width, StrokeCap.Round)
+                path.moveTo(9 * scale, 5 * scale)
+                path.lineTo(9 * scale, 9 * scale)
+                path.moveTo(15 * scale, 10 * scale)
+                path.lineTo(15 * scale, 14 * scale)
+                path.moveTo(9 * scale, 15 * scale)
+                path.lineTo(9 * scale, 19 * scale)
             }
             FittyIcon.Back -> {
                 path.moveTo(13 * scale, 5 * scale)
