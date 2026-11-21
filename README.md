@@ -2,6 +2,8 @@
 
 Fitty is a personal strength training log for Android. It stores training programs, an in-progress workout, and workout history on the device.
 
+See the [MVP overview](docs/mvp.md) for the workout workflow and Android architecture.
+
 ## Build and sign an APK
 
 Install JDK 17 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
