@@ -61,14 +61,20 @@ internal fun ScreenColumn(modifier: Modifier = Modifier, content: @Composable Co
 }
 
 @Composable
-internal fun PageHeader(title: String, onBack: (() -> Unit)? = null) {
+internal fun PageHeader(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    actions: (@Composable () -> Unit)? = null,
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (onBack != null) {
             IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                 FittyGlyph(FittyIcon.Back)
             }
         }
-        Text(title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        val titleModifier = if (actions == null) Modifier else Modifier.weight(1f)
+        Text(title, modifier = titleModifier, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        actions?.invoke()
     }
 }
 

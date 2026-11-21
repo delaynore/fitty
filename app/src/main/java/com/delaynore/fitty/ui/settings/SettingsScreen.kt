@@ -27,13 +27,14 @@ import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
-internal fun SettingsScreen(viewModel: SettingsViewModel, onUpdate: () -> Unit) {
+internal fun SettingsScreen(viewModel: SettingsViewModel, onBack: (() -> Unit)?, onUpdate: () -> Unit) {
     val check by viewModel.updateCheck.collectAsStateWithLifecycle()
     val install by viewModel.updateInstall.collectAsStateWithLifecycle()
     SettingsContent(
         installedApp = viewModel.installedApp,
         check = check,
         install = install,
+        onBack = onBack,
         onCheck = viewModel::checkForUpdate,
         onUpdate = onUpdate,
         onConfirmDownload = viewModel::confirmDownload,
@@ -48,6 +49,7 @@ internal fun SettingsContent(
     installedApp: InstalledApp,
     check: UpdateCheckState,
     install: UpdateInstallState,
+    onBack: (() -> Unit)?,
     onCheck: () -> Unit,
     onUpdate: () -> Unit,
     onConfirmDownload: () -> Unit,
@@ -56,7 +58,7 @@ internal fun SettingsContent(
     onContinueInstallation: () -> Unit,
 ) {
     ScreenColumn {
-        PageHeader("Настройки")
+        PageHeader("Настройки", onBack)
         Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)

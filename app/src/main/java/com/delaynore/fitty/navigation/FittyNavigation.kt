@@ -71,6 +71,7 @@ internal fun FittyNavigation(
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var workoutId by rememberSaveable { mutableLongStateOf(0L) }
     var programId by rememberSaveable { mutableLongStateOf(0L) }
+    var settingsOrigin by rememberSaveable { mutableStateOf<Destination?>(null) }
     var editorOrigin by rememberSaveable { mutableStateOf(Destination.Home) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
     val home = viewModel { HomeViewModel(programs, workouts) }
@@ -89,6 +90,11 @@ internal fun FittyNavigation(
         programEditor.closeEditor()
         destination = editorOrigin
     }
+    val editorSettings = {
+        settingsOrigin = destination
+        destination = Destination.Settings
+    }
+    val settingsFromEditor = settingsOrigin != null && programEditor.editing
     val back = {
         when (destination) {
             Destination.DayEditor -> destination = Destination.ProgramEditor
@@ -97,6 +103,10 @@ internal fun FittyNavigation(
             }
             Destination.ProgramDetails -> destination = Destination.Programs
             Destination.WorkoutDetails -> destination = Destination.History
+            Destination.Settings -> {
+                destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
+                settingsOrigin = null
+            }
             else -> destination = Destination.Home
         }
     }
@@ -124,7 +134,7 @@ internal fun FittyNavigation(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (bottomTabs.any { it.destination == destination }) {
+            if (!settingsFromEditor && bottomTabs.any { it.destination == destination }) {
                 TabBar(selected = destination, onSelect = { destination = it })
             }
         },
@@ -162,9 +172,10 @@ internal fun FittyNavigation(
                     viewModel = programEditor,
                     onBack = back,
                     onEditDay = { destination = Destination.DayEditor },
+                    onSettings = editorSettings,
                     onSaved = { destination = editorOrigin },
                 )
-                Destination.DayEditor -> TrainingDayEditorScreen(programEditor, back)
+                Destination.DayEditor -> TrainingDayEditorScreen(programEditor, back, editorSettings)
                 Destination.Workout -> WorkoutScreen(
                     id = workoutId,
                     viewModel = workout,
@@ -176,7 +187,7 @@ internal fun FittyNavigation(
                     destination = Destination.WorkoutDetails
                 }
                 Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
-                Destination.Settings -> SettingsScreen(settings) {
+                Destination.Settings -> SettingsScreen(settings, onBack = back.takeIf { settingsFromEditor }) {
                     settings.startUpdate(programEditor.editing && programEditor.hasChanges)
                 }
             }

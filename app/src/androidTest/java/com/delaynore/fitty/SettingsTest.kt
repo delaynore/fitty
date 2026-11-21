@@ -1,7 +1,6 @@
 package com.delaynore.fitty
 
 import android.content.Intent
-import android.os.Build
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -12,7 +11,10 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -66,12 +68,7 @@ class SettingsTest {
             scenario.onActivity { activity ->
                 @Suppress("DEPRECATION")
                 val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-                @Suppress("DEPRECATION")
-                val build = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    info.longVersionCode
-                } else {
-                    info.versionCode.toLong()
-                }
+                val build = PackageInfoCompat.getLongVersionCode(info)
                 installedVersion = "Версия ${info.versionName} · сборка $build"
             }
             compose.onNodeWithText("Настройки").performClick()
@@ -93,12 +90,7 @@ class SettingsTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             @Suppress("DEPRECATION")
             val installed = application.packageManager.getPackageInfo(application.packageName, 0)
-            @Suppress("DEPRECATION")
-            val installedBuild = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                installed.longVersionCode
-            } else {
-                installed.versionCode.toLong()
-            }
+            val installedBuild = PackageInfoCompat.getLongVersionCode(installed)
             compose.onNodeWithText("Настройки").performClick()
             compose.onNodeWithText("О приложении").assertIsDisplayed()
             compose.runOnIdle { assertFalse(checkStarted.isCompleted) }
@@ -194,6 +186,26 @@ class SettingsTest {
             compose.onNodeWithText("Продолжить").performClick()
             compose.onNodeWithText("Продолжить обновление?").assertDoesNotExist()
             assertInstallerOpened(updates)
+        }
+    }
+
+    @Test
+    fun unsavedProgramWarnsBeforeDownloadAndRemainsInTheEditor() {
+        val updates = offerUpdate()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.onNodeWithText("Создать программу").performClick()
+            compose.onNodeWithTag("program-name").performTextInput("Черновик программы")
+            closeSoftKeyboard()
+
+            compose.onNodeWithContentDescription("Настройки").performClick()
+            compose.onNodeWithText("Проверить обновления").performClick()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Продолжить обновление?").assertIsDisplayed()
+            compose.onNodeWithText("Назад").performClick()
+            compose.runOnIdle { assertFalse(updates.downloadStarted.isCompleted) }
+
+            compose.onNodeWithContentDescription("Назад").performClick()
+            compose.onNodeWithText("Черновик программы").assertIsDisplayed()
         }
     }
 

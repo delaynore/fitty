@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.delaynore.fitty.ui.DeleteIconButton
+import com.delaynore.fitty.ui.FittyGlyph
+import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 import com.delaynore.fitty.ui.SwipeToRevealDelete
@@ -43,12 +46,23 @@ internal fun ProgramEditorScreen(
     viewModel: ProgramEditorViewModel,
     onBack: () -> Unit,
     onEditDay: () -> Unit,
+    onSettings: () -> Unit,
     onSaved: () -> Unit,
 ) {
     val focus = LocalFocusManager.current
     Column(Modifier.fillMaxHeight()) {
         ScreenColumn(Modifier.weight(1f)) {
-            PageHeader(if (viewModel.editingExistingProgram) "Редактирование программы" else "Новая программа", onBack)
+            PageHeader(
+                if (viewModel.editingExistingProgram) "Редактирование программы" else "Новая программа",
+                onBack,
+            ) {
+                if (viewModel.hasChanges && !viewModel.saving) {
+                    EditorSettingsButton {
+                        focus.clearFocus()
+                        onSettings()
+                    }
+                }
+            }
             OutlinedTextField(
                 value = viewModel.name,
                 onValueChange = viewModel::changeName,
@@ -136,13 +150,27 @@ internal fun ProgramEditorScreen(
 }
 
 @Composable
-internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: () -> Unit) {
+private fun EditorSettingsButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = "Настройки" }) {
+        FittyGlyph(FittyIcon.Settings)
+    }
+}
+
+@Composable
+internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: () -> Unit, onSettings: () -> Unit) {
     val focus = LocalFocusManager.current
     val day = viewModel.editingDay ?: return
     val showErrors = viewModel.showDayErrors
     Column(Modifier.fillMaxHeight()) {
         ScreenColumn(Modifier.weight(1f)) {
-            PageHeader("Тренировочный день", onBack)
+            PageHeader("Тренировочный день", onBack) {
+                if (viewModel.hasChanges) {
+                    EditorSettingsButton {
+                        focus.clearFocus()
+                        onSettings()
+                    }
+                }
+            }
             OutlinedTextField(
                 value = day.name,
                 onValueChange = viewModel::changeDayName,
