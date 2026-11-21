@@ -4,6 +4,20 @@ Fitty is a personal strength training log for Android. It stores training progra
 
 See the [MVP overview](docs/mvp.md) for the workout workflow and Android architecture.
 
+## Run checks
+
+Set up JDK 17 and the Android SDK as described below. From the repository root, build the app and run Android lint.
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:lintDebug
+```
+
+Run the instrumented tests on a dedicated Android emulator. Gradle runs them on connected devices, so keep only the test emulator connected. The tests use a separate Room database and temporarily toggle airplane mode.
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
+
 ## Build and sign an APK
 
 Install JDK 17 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
