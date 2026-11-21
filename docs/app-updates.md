@@ -15,6 +15,6 @@ Fitty checks for updates only when the lifter taps the button. It reads the late
 
 ## Publish and verify
 
-Build and sign `fitty-<versionCode>.apk` with the existing application ID and signing key. Increase the Android version code with every release and use the same code in the APK filename so Fitty can compare builds before downloading. Attach the signed APK to a stable GitHub Release. Keep the release version consistent with the version shown in the app.
+Build and sign `fitty-<versionCode>.apk` with the existing application ID and signing key. Attach one signed APK to the latest stable GitHub Release. Its filename contains the APK's Android version code and the release title matches the APK's Android version name. [Publishing steps](android-development.md#publish-on-github)
 
 Install the first build with Settings using the existing APK installation process. Verify the new flow with two signed builds: install the older one with training data, run the check and update from Settings, then verify the installed version and saved data. Follow the existing device checks for an APK update. [Android development](android-development.md#install-or-update-fitty) · [Update channel decision](adr/0001-distribute-app-updates-through-github-releases.md)

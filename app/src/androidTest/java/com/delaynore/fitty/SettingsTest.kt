@@ -1,19 +1,24 @@
 package com.delaynore.fitty
 
 import android.os.Build
+import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
+import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
+import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -69,7 +74,7 @@ class SettingsTest {
     fun checkingOnlyStartsOnRequestAndShowsTheNewBuildEvenWhenTheVersionNameMatches() {
         val checkStarted = CompletableDeferred<Long>()
         val result = CompletableDeferred<UpdateCheckResult>()
-        application.updateServiceOverride = UpdateService { installedVersionCode ->
+        application.updateServiceOverride = FakeUpdates { installedVersionCode ->
             checkStarted.complete(installedVersionCode)
             result.await()
         }
@@ -111,7 +116,7 @@ class SettingsTest {
             UpdateCheckFailure.MissingApk to "В стабильном релизе нет подходящего APK для Fitty. Попробуй ещё раз позже.",
         )
         val results = (failures.map { UpdateCheckResult.Failed(it.first) } + UpdateCheckResult.UpToDate).iterator()
-        application.updateServiceOverride = UpdateService { results.next() }
+        application.updateServiceOverride = FakeUpdates { results.next() }
 
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("Настройки").performClick()
@@ -128,11 +133,75 @@ class SettingsTest {
 
     @Test
     fun settingsReportsWhenThereAreNoStableReleases() {
-        application.updateServiceOverride = UpdateService { UpdateCheckResult.NoStableRelease }
+        application.updateServiceOverride = FakeUpdates { UpdateCheckResult.NoStableRelease }
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("Настройки").performClick()
             compose.onNodeWithText("Проверить обновления").performClick()
             compose.onNodeWithText("Стабильных релизов пока нет.").assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun anAvailableUpdateCanStartWithoutAWorkoutWarning() {
+        val updates = offerUpdate()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Продолжить обновление?").assertDoesNotExist()
+            assertEquals(updates.apk, runBlocking { withTimeout(5_000) { updates.installerOpened.await() } })
+        }
+    }
+
+    @Test
+    fun anInProgressWorkoutWarnsBeforeDownloadAndLetsTheLifterGoBackOrContinue() {
+        val updates = offerUpdate()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.createAndStartWorkout()
+            compose.logSet(1, "60", "6")
+            closeSoftKeyboard()
+            compose.onNodeWithContentDescription("Назад").performClick()
+
+            findUpdate()
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Продолжить обновление?").assertIsDisplayed()
+            compose.onNodeWithText("Записанные подходы сохранятся. Несохранённый ввод может пропасть.").assertIsDisplayed()
+            compose.onNodeWithText("Назад").performClick()
+            compose.runOnIdle { assertFalse(updates.downloadStarted.isCompleted) }
+
+            compose.onNodeWithText("Обновить").performClick()
+            compose.onNodeWithText("Продолжить").performClick()
+            assertEquals(updates.apk, runBlocking { withTimeout(5_000) { updates.installerOpened.await() } })
+        }
+    }
+
+    private fun offerUpdate() = FakeUpdates { installedCode ->
+        val nextCode = installedCode + 1
+        UpdateCheckResult.Available(
+            FittyUpdate("1.1", nextCode, "https://github.com/delaynore/fitty/releases/download/test/fitty-$nextCode.apk"),
+        )
+    }.also { application.updateServiceOverride = it }
+
+    private fun findUpdate() {
+        compose.onNodeWithText("Настройки").performClick()
+        compose.onNodeWithText("Проверить обновления").performClick()
+    }
+}
+
+private class FakeUpdates(private val check: suspend (Long) -> UpdateCheckResult) : UpdateService {
+    val apk = File("downloaded-update.apk")
+    val downloadStarted = CompletableDeferred<FittyUpdate>()
+    val installerOpened = CompletableDeferred<File>()
+
+    override suspend fun checkForUpdate(installedVersionCode: Long) = check(installedVersionCode)
+    override suspend fun download(update: FittyUpdate, installedVersionCode: Long): UpdateDownloadResult {
+        downloadStarted.complete(update)
+        return UpdateDownloadResult.Downloaded(apk)
+    }
+
+    override fun canRequestInstall() = true
+    override fun requestInstallPermission(launch: (Intent) -> Unit) = error("Installation permission is already granted")
+    override fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean {
+        installerOpened.complete(apk)
+        return true
     }
 }

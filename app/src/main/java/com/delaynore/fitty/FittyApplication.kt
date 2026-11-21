@@ -17,7 +17,7 @@ open class FittyApplication : Application() {
 
     internal open fun restTimerElapsedRealtime(): Long = SystemClock.elapsedRealtime()
 
-    internal open val updateService: UpdateService by lazy { GitHubUpdateService() }
+    internal open val updateService: UpdateService by lazy { GitHubUpdateService(this) }
 
     internal fun deleteDatabase() {
         room?.close()

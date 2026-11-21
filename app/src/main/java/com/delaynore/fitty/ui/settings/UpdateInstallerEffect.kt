@@ -1,0 +1,30 @@
+package com.delaynore.fitty.ui.settings
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@Composable
+internal fun UpdateInstallerEffect(viewModel: SettingsViewModel) {
+    val state by viewModel.updateInstall.collectAsStateWithLifecycle()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateFlow.collectAsState()
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        viewModel.onInstallPermissionReturned()
+    }
+    val installer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        viewModel.onInstallationReturned(it.resultCode)
+    }
+    val ready = state as? UpdateInstallState.Ready
+    LaunchedEffect(ready, lifecycleState) {
+        if (ready != null && lifecycleState == Lifecycle.State.RESUMED) {
+            viewModel.openInstaller(ready, { permission.launch(it) }, { installer.launch(it) })
+        }
+    }
+}

@@ -1,11 +1,15 @@
 package com.delaynore.fitty
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.GitHubReleaseResponse
 import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
+import com.delaynore.fitty.data.updates.UpdateDownloadFailure
+import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import java.net.UnknownHostException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -14,6 +18,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class GitHubUpdateServiceTest {
+    private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val apkUrl = "https://github.com/delaynore/fitty/releases/download/v1.0-build-8/fitty-8.apk"
     private val stableRelease = """
         {
@@ -38,14 +43,14 @@ class GitHubUpdateServiceTest {
 
     @Test
     fun offersTheApkFromTheStableReleaseWithAHigherBuildCode() = runBlocking {
-        val updates = GitHubUpdateService { GitHubReleaseResponse(200, stableRelease) }
+        val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, stableRelease) }
 
         assertEquals(UpdateCheckResult.Available(FittyUpdate("1.0", 8, apkUrl)), updates.checkForUpdate(7))
     }
 
     @Test
     fun equalAndOlderReleaseBuildsLeaveTheInstalledBuildCurrent() = runBlocking {
-        val updates = GitHubUpdateService { GitHubReleaseResponse(200, stableRelease) }
+        val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, stableRelease) }
 
         assertEquals(UpdateCheckResult.UpToDate, updates.checkForUpdate(8))
         assertEquals(UpdateCheckResult.UpToDate, updates.checkForUpdate(9))
@@ -55,7 +60,7 @@ class GitHubUpdateServiceTest {
     fun ignoresDraftsAndPrereleasesEvenWhenTheyContainANewerApk() = runBlocking {
         for (flag in listOf("draft", "prerelease")) {
             val release = stableRelease.replace("\"$flag\": false", "\"$flag\": true")
-            val updates = GitHubUpdateService { GitHubReleaseResponse(200, release) }
+            val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, release) }
 
             assertEquals(UpdateCheckResult.NoStableRelease, updates.checkForUpdate(1))
         }
@@ -63,7 +68,7 @@ class GitHubUpdateServiceTest {
 
     @Test
     fun missingLatestReleaseMeansThereIsNoStableRelease() = runBlocking {
-        val updates = GitHubUpdateService { GitHubReleaseResponse(404, """{"message":"Not Found"}""") }
+        val updates = GitHubUpdateService(context) { GitHubReleaseResponse(404, """{"message":"Not Found"}""") }
 
         assertEquals(UpdateCheckResult.NoStableRelease, updates.checkForUpdate(1))
     }
@@ -74,7 +79,7 @@ class GitHubUpdateServiceTest {
         val externalUrl = stableRelease.replace(apkUrl, "https://example.com/fitty-8.apk")
         val unfinishedUpload = stableRelease.replace("\"state\": \"uploaded\"", "\"state\": \"starter\"")
         for (release in listOf(wrongFilename, externalUrl, unfinishedUpload)) {
-            val updates = GitHubUpdateService { GitHubReleaseResponse(200, release) }
+            val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, release) }
 
             assertEquals(UpdateCheckResult.Failed(UpdateCheckFailure.MissingApk), updates.checkForUpdate(1))
         }
@@ -85,7 +90,7 @@ class GitHubUpdateServiceTest {
         val rateLimited = GitHubReleaseResponse(403, """{"message":"API rate limit exceeded"}""")
         val malformedRelease = GitHubReleaseResponse(200, "{")
         for (response in listOf(rateLimited, malformedRelease)) {
-            val updates = GitHubUpdateService { response }
+            val updates = GitHubUpdateService(context) { response }
 
             assertEquals(UpdateCheckResult.Failed(UpdateCheckFailure.GitHub), updates.checkForUpdate(1))
         }
@@ -93,8 +98,26 @@ class GitHubUpdateServiceTest {
 
     @Test
     fun unreachableNetworkFailsTheCheckWithANetworkError() = runBlocking {
-        val updates = GitHubUpdateService { throw UnknownHostException("api.github.com") }
+        val updates = GitHubUpdateService(context) { throw UnknownHostException("api.github.com") }
 
         assertEquals(UpdateCheckResult.Failed(UpdateCheckFailure.Network), updates.checkForUpdate(1))
+    }
+
+    @Test
+    fun theReleaseTitleMustProvideTheVersionName() = runBlocking {
+        val unnamedRelease = stableRelease.replace("\"name\": \"1.0\"", "\"name\": \"\"")
+        val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, unnamedRelease) }
+
+        assertEquals(UpdateCheckResult.Failed(UpdateCheckFailure.GitHub), updates.checkForUpdate(7))
+    }
+
+    @Test
+    fun aDownloadThatDoesNotContainAnApkCannotReachTheInstaller() = runBlocking {
+        val updates = GitHubUpdateService(context, fetchApk = { _, destination ->
+            destination.writeText("A broken APK")
+        })
+        val update = FittyUpdate("1.0", 8, apkUrl)
+
+        assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), updates.download(update, 7))
     }
 }

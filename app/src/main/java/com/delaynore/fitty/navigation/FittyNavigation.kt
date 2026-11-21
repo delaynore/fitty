@@ -45,6 +45,7 @@ import com.delaynore.fitty.ui.programs.ProgramsScreen
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.SettingsScreen
+import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
 import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
@@ -67,7 +68,8 @@ internal fun FittyNavigation(
     val home = viewModel { HomeViewModel(programs, workouts) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val history = viewModel { HistoryViewModel(workouts) }
-    val settings = viewModel { SettingsViewModel(installedApp, updateService) }
+    val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts) }
+    UpdateInstallerEffect(settings)
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
@@ -168,7 +170,9 @@ internal fun FittyNavigation(
                     destination = Destination.WorkoutDetails
                 }
                 Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
-                Destination.Settings -> SettingsScreen(settings)
+                Destination.Settings -> SettingsScreen(settings) {
+                    settings.startUpdate(programEditor.editing && programEditor.hasChanges)
+                }
             }
         }
     }

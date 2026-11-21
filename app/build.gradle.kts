@@ -11,6 +11,13 @@ val fittyVersionCode = providers.gradleProperty("fittyVersionCode").map { value 
     }
 }.getOrElse(3)
 
+val fittyVersionName = providers.gradleProperty("fittyVersionName").map { value ->
+    require(value.isNotBlank() && value == value.trim()) {
+        "fittyVersionName must be non-blank and have no surrounding whitespace"
+    }
+    value
+}.getOrElse("1.0")
+
 android {
     namespace = "com.delaynore.fitty"
     compileSdk = 36
@@ -20,7 +27,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = fittyVersionCode
-        versionName = "1.0"
+        versionName = fittyVersionName
         testInstrumentationRunner = "com.delaynore.fitty.FittyTestRunner"
     }
 

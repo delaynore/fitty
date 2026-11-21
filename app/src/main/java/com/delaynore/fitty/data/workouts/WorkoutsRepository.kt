@@ -42,6 +42,8 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
 
     val history = workouts.observeHistory().map { history -> history.map { it.toSummary() } }
 
+    suspend fun hasInProgressWorkout(): Boolean = workouts.inProgressWorkoutId() != null
+
     fun observeWorkout(id: Long) = workouts.observeWorkout(id).map { stored ->
         stored?.let {
             WorkoutSession(

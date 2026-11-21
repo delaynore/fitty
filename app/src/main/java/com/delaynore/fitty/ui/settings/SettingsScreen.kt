@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,17 +22,37 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
+import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
-internal fun SettingsScreen(viewModel: SettingsViewModel) {
+internal fun SettingsScreen(viewModel: SettingsViewModel, onUpdate: () -> Unit) {
     val check by viewModel.updateCheck.collectAsStateWithLifecycle()
-    SettingsContent(viewModel.installedApp, check, viewModel::checkForUpdate)
+    val install by viewModel.updateInstall.collectAsStateWithLifecycle()
+    SettingsContent(
+        installedApp = viewModel.installedApp,
+        check = check,
+        install = install,
+        onCheck = viewModel::checkForUpdate,
+        onUpdate = onUpdate,
+        onConfirmDownload = viewModel::confirmDownload,
+        onDismissWarning = viewModel::dismissWarning,
+        onContinueInstallation = viewModel::continueInstallation,
+    )
 }
 
 @Composable
-internal fun SettingsContent(installedApp: InstalledApp, check: UpdateCheckState, onCheck: () -> Unit) {
+internal fun SettingsContent(
+    installedApp: InstalledApp,
+    check: UpdateCheckState,
+    install: UpdateInstallState,
+    onCheck: () -> Unit,
+    onUpdate: () -> Unit,
+    onConfirmDownload: () -> Unit,
+    onDismissWarning: () -> Unit,
+    onContinueInstallation: () -> Unit,
+) {
     ScreenColumn {
         PageHeader("Настройки")
         Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
@@ -38,7 +60,7 @@ internal fun SettingsContent(installedApp: InstalledApp, check: UpdateCheckState
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
                 Text("Fitty", style = MaterialTheme.typography.titleLarge)
                 Text("Версия ${installedApp.versionName} · сборка ${installedApp.versionCode}")
-                Button(onClick = onCheck, enabled = check != UpdateCheckState.Checking) {
+                Button(onClick = onCheck, enabled = check != UpdateCheckState.Checking && install.canCheckForUpdates) {
                     Text("Проверить обновления")
                 }
                 Column(
@@ -51,11 +73,26 @@ internal fun SettingsContent(installedApp: InstalledApp, check: UpdateCheckState
                             Text("Проверяем обновления…")
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                         }
-                        is UpdateCheckState.Checked -> UpdateCheckResultContent(check.result)
+                        is UpdateCheckState.Checked -> {
+                            UpdateCheckResultContent(check.result)
+                            if (check.result is UpdateCheckResult.Available && install.canStartAnotherUpdate) {
+                                Button(onClick = onUpdate) { Text("Обновить") }
+                            }
+                        }
                     }
+                    UpdateInstallContent(install, onContinueInstallation)
                 }
             }
         }
+    }
+    if (install == UpdateInstallState.Warning) {
+        AlertDialog(
+            onDismissRequest = onDismissWarning,
+            title = { Text("Продолжить обновление?") },
+            text = { Text("Записанные подходы сохранятся. Несохранённый ввод может пропасть.") },
+            confirmButton = { TextButton(onClick = onConfirmDownload) { Text("Продолжить") } },
+            dismissButton = { TextButton(onClick = onDismissWarning) { Text("Назад") } },
+        )
     }
 }
 
@@ -76,5 +113,32 @@ private fun UpdateCheckResultContent(result: UpdateCheckResult) {
             },
             color = MaterialTheme.colorScheme.error,
         )
+    }
+}
+
+@Composable
+private fun UpdateInstallContent(state: UpdateInstallState, onContinueInstallation: () -> Unit) {
+    val error = MaterialTheme.colorScheme.error
+    when (state) {
+        UpdateInstallState.Downloading -> {
+            Text("Скачиваем обновление…")
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+        is UpdateInstallState.PermissionDenied -> {
+            Text("Чтобы продолжить, разреши Android устанавливать обновления из Fitty.")
+            Button(onClick = onContinueInstallation) { Text("Разрешить установку") }
+        }
+        is UpdateInstallState.DownloadFailed -> Text(
+            text = when (state.reason) {
+                UpdateDownloadFailure.Unavailable -> "Не удалось скачать обновление."
+                UpdateDownloadFailure.InvalidApk -> "Скачанный APK повреждён или не соответствует релизу Fitty."
+            },
+            color = error,
+        )
+        UpdateInstallState.WorkoutCheckFailed -> Text("Не удалось проверить, есть ли незавершённая тренировка.", color = error)
+        UpdateInstallState.InstallerUnavailable -> Text("Не удалось открыть установщик Android.", color = error)
+        UpdateInstallState.InstallCancelled -> Text("Установка отменена.")
+        UpdateInstallState.InstallFailed -> Text("Android не смог установить обновление.", color = error)
+        else -> Unit
     }
 }
