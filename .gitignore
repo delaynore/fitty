@@ -6,3 +6,22 @@
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Android and Gradle local output
+.gradle/
+.kotlin/
+build/
+local.properties
+
+# Android Studio local files
+/.idea/
+*.iml
+/captures/
+
+# Android packages and signing keys
+*.apk
+*.aab
+*.idsig
+*.jks
+*.keystore
+*.p12

@@ -198,7 +198,7 @@ body { margin:0; padding:10px 6px; font:15px system-ui,sans-serif; color:var(--f
     [data-theme=oled] input::placeholder { color:#a3a3aa; }
     .phone[data-theme=oled] .pick:not(:disabled) span { border-color:#88888e; }
     .phone[data-theme=oled] .pick:not(:disabled) .glyph { opacity:.72; }
-  
+
 .phone .island { width:min(72%,265px); grid-template-columns:repeat(2,minmax(0,1fr)); }
 .phone .log-meta { margin:-9px 0 19px; }
 .phone .log-exercise { margin-bottom:12px; }
@@ -492,7 +492,7 @@ body { margin:0; padding:10px 6px; font:15px system-ui,sans-serif; color:var(--f
         <section class="panel"><h2>Упражнения</h2>${exerciseList(days[chosen])}<button type="button" class="primary wide" data-action="start">Начать тренировку</button></section>`;
     }
 
-    
+
     function setCount(session) { return session.rows.flat().filter(row => row.values).length; }
     function save() {
       try { localStorage.setItem(storageKey, JSON.stringify({programs,selectedProgram,chosen,active,logs})); }
@@ -1257,7 +1257,7 @@ function render({keepScroll=false}={}) {
           phone.querySelector(`.swipe-item[data-row="${openSwipe}"] .swipe-trash`).focus();
         }
       });
-    
+
     document.addEventListener('keydown',event=>{
       if(event.key==='Escape' && !document.querySelector('#workout-shell').hidden && sheet) { sheet=null; render({keepScroll:true}); }
     });
