@@ -93,7 +93,7 @@ internal fun SettingsContent(
         AlertDialog(
             onDismissRequest = onDismissWarning,
             title = { Text("Продолжить обновление?") },
-            text = { Text("Записанные подходы сохранятся. Несохранённый ввод может пропасть.") },
+            text = { Text("Сохранённые программы и записанные подходы останутся. Несохранённый ввод может пропасть.") },
             confirmButton = { TextButton(onClick = onConfirmDownload) { Text("Продолжить") } },
             dismissButton = { TextButton(onClick = onDismissWarning) { Text("Назад") } },
         )
@@ -144,7 +144,9 @@ private fun UpdateInstallContent(
         }
         is UpdateInstallState.DownloadFailed -> Text(
             text = when (state.reason) {
-                UpdateDownloadFailure.Unavailable -> "Не удалось скачать обновление."
+                UpdateDownloadFailure.Network -> "Не удалось скачать обновление. Проверь интернет и попробуй ещё раз."
+                UpdateDownloadFailure.Delivery -> "Не удалось получить APK целиком с GitHub. Попробуй ещё раз позже."
+                UpdateDownloadFailure.LocalWrite -> "Не удалось сохранить APK. Освободи место на устройстве и попробуй ещё раз."
                 UpdateDownloadFailure.InvalidApk -> "Скачанный APK повреждён или не соответствует релизу Fitty."
             },
             color = error,

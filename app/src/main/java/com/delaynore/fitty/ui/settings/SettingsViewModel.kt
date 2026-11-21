@@ -64,11 +64,13 @@ internal class SettingsViewModel(
 ) : ViewModel() {
     private val check = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
     val updateCheck = check.asStateFlow()
+    private val pendingPermissionApk = savedState.get<String>(PERMISSION_APK_PATH)?.let(::File)
     private val install = MutableStateFlow<UpdateInstallState>(
-        savedState.get<String>(PERMISSION_APK_PATH)?.let { UpdateInstallState.RequestingPermission(File(it)) }
+        pendingPermissionApk?.let { UpdateInstallState.RequestingPermission(it) }
             ?: UpdateInstallState.Idle,
     )
     val updateInstall = install.asStateFlow()
+    private val pruneDownloads = viewModelScope.launch { updateService.pruneAbandonedDownloads(pendingPermissionApk) }
     private var downloadJob: Job? = null
 
     fun checkForUpdate() {
@@ -174,6 +176,7 @@ internal class SettingsViewModel(
         install.value = UpdateInstallState.Downloading()
         val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             val attempt = currentCoroutineContext().job
+            pruneDownloads.join()
             val result = updateService.download(update, installedApp.versionCode) { percent ->
                 viewModelScope.launch {
                     if (attempt.isActive && install.value is UpdateInstallState.Downloading) {

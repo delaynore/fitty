@@ -185,7 +185,8 @@ class SettingsTest {
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
             compose.onNodeWithText("Продолжить обновление?").assertIsDisplayed()
-            compose.onNodeWithText("Записанные подходы сохранятся. Несохранённый ввод может пропасть.").assertIsDisplayed()
+            compose.onNodeWithText("Сохранённые программы и записанные подходы останутся. Несохранённый ввод может пропасть.")
+                .assertIsDisplayed()
             compose.onNodeWithText("Назад").performClick()
             compose.runOnIdle { assertFalse(updates.downloadStarted.isCompleted) }
 
@@ -312,17 +313,24 @@ class SettingsTest {
     @Test
     fun aFailedDownloadExplainsTheErrorAndCanBeRetriedWithoutAnotherUpdateCheck() {
         val retry = CompletableDeferred<UpdateDownloadResult>()
-        var attempts = 0
+        val failures = listOf(
+            UpdateDownloadFailure.Network to "Не удалось скачать обновление. Проверь интернет и попробуй ещё раз.",
+            UpdateDownloadFailure.Delivery to "Не удалось получить APK целиком с GitHub. Попробуй ещё раз позже.",
+            UpdateDownloadFailure.LocalWrite to "Не удалось сохранить APK. Освободи место на устройстве и попробуй ещё раз.",
+            UpdateDownloadFailure.InvalidApk to "Скачанный APK повреждён или не соответствует релизу Fitty.",
+        )
+        val results = failures.iterator()
         val updates = offerUpdate {
-            if (++attempts == 1) UpdateDownloadResult.Failed(UpdateDownloadFailure.Unavailable) else retry.await()
+            if (results.hasNext()) UpdateDownloadResult.Failed(results.next().first) else retry.await()
         }
         ActivityScenario.launch(MainActivity::class.java).use {
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
-            compose.onNodeWithText("Не удалось скачать обновление.").assertIsDisplayed()
-            compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
-
-            compose.onNodeWithText("Повторить загрузку").performClick()
+            failures.forEach { (_, message) ->
+                compose.onNodeWithText(message).assertIsDisplayed()
+                compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
+                compose.onNodeWithText("Повторить загрузку").performClick()
+            }
             compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
             retry.complete(UpdateDownloadResult.Downloaded(updates.apk))
             assertInstallerOpened(updates)
@@ -361,6 +369,8 @@ private class FakeUpdates(
     val installAttempts = AtomicInteger()
 
     override suspend fun checkForUpdate(installedVersionCode: Long) = check(installedVersionCode)
+    override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) = Unit
+
     override suspend fun download(update: FittyUpdate, installedVersionCode: Long, onProgress: (Int) -> Unit): UpdateDownloadResult {
         downloadStarted.complete(update)
         return downloadResult?.invoke(onProgress) ?: UpdateDownloadResult.Downloaded(apk)

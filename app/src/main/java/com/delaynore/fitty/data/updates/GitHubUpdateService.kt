@@ -7,9 +7,12 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.core.content.pm.PackageInfoCompat
+import java.io.EOFException
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
+import java.net.ProtocolException
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URL
@@ -23,6 +26,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
@@ -31,15 +36,23 @@ private const val LATEST_RELEASE_URL = "https://api.github.com/repos/delaynore/f
 private const val RELEASE_DOWNLOAD_PATH = "/delaynore/fitty/releases/download/"
 private const val REQUEST_TIMEOUT_MILLIS = 10_000
 private const val MAX_DOWNLOAD_REDIRECTS = 5
+private const val CACHED_APK_PREFIX = "fitty-update-"
+private const val APK_SUFFIX = ".apk"
 private val apkName = Regex("""fitty-([1-9][0-9]*)\.apk""")
 
 internal data class GitHubReleaseResponse(val status: Int, val body: String = "")
 
 internal class GitHubUpdateService(
     private val context: Context,
-    private val fetchApk: suspend (String, File, (Int) -> Unit) -> Unit = ::downloadReleaseApk,
+    private val fetchApk: suspend (FittyUpdate, File, (Int) -> Unit) -> Unit = { update, file, progress ->
+        downloadReleaseApk(update, file, progress)
+    },
     private val fetchLatestRelease: () -> GitHubReleaseResponse = ::requestLatestRelease,
 ) : UpdateService {
+    private val updatesDirectory = File(context.cacheDir, "updates")
+    private val pruneLock = Mutex()
+    private var prunedAtStartup = false
+
     override suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult =
         withContext(Dispatchers.IO) {
             val response = try {
@@ -54,6 +67,18 @@ internal class GitHubUpdateService(
             }
         }
 
+    override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) = withContext(Dispatchers.IO) {
+        pruneLock.withLock {
+            if (prunedAtStartup) return@withLock
+            updatesDirectory.listFiles { file ->
+                file.isFile && file.name.startsWith(CACHED_APK_PREFIX) && file.name.endsWith(APK_SUFFIX)
+            }?.forEach { apk ->
+                if (apk != pendingPermissionApk) apk.delete()
+            }
+            prunedAtStartup = true
+        }
+    }
+
     override suspend fun download(
         update: FittyUpdate,
         installedVersionCode: Long,
@@ -62,11 +87,12 @@ internal class GitHubUpdateService(
         var pendingApk: File? = null
         try {
             val result = withContext(Dispatchers.IO) {
-                val directory = File(context.cacheDir, "updates")
-                directory.mkdirs()
-                val apk = File.createTempFile("fitty-update-", ".apk", directory)
+                val apk = writeToCache {
+                    updatesDirectory.mkdirs()
+                    File.createTempFile(CACHED_APK_PREFIX, APK_SUFFIX, updatesDirectory)
+                }
                 pendingApk = apk
-                fetchApk(update.apkUrl, apk, onProgress)
+                fetchApk(update, apk, onProgress)
                 currentCoroutineContext().ensureActive()
                 @Suppress("DEPRECATION")
                 val archive = context.packageManager.getPackageArchiveInfo(apk.path, 0)
@@ -81,8 +107,10 @@ internal class GitHubUpdateService(
             // Keep ownership until withContext delivers the result to the caller's dispatcher.
             if (result is UpdateDownloadResult.Downloaded) pendingApk = null
             return result
-        } catch (_: IOException) {
-            return UpdateDownloadResult.Failed(UpdateDownloadFailure.Unavailable)
+        } catch (failure: ApkDownloadException) {
+            return UpdateDownloadResult.Failed(failure.reason)
+        } catch (failure: IOException) {
+            return UpdateDownloadResult.Failed(transferFailure(failure))
         } finally {
             pendingApk?.let { apk ->
                 withContext(NonCancellable + Dispatchers.IO) { apk.delete() }
@@ -127,25 +155,29 @@ private fun parseRelease(body: String, installedVersionCode: Long): UpdateCheckR
         val assets = release.getJSONArray("assets")
         val apk = (0 until assets.length()).mapNotNull { parseApk(assets.getJSONObject(it)) }.singleOrNull()
             ?: return UpdateCheckResult.Failed(UpdateCheckFailure.MissingApk)
-        val (versionCode, apkUrl) = apk
-        if (versionCode <= installedVersionCode) return UpdateCheckResult.UpToDate
+        if (apk.versionCode <= installedVersionCode) return UpdateCheckResult.UpToDate
 
         val versionName = (release.opt("name") as? String)?.takeIf { it.isNotBlank() }
             ?: return UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
-        return UpdateCheckResult.Available(FittyUpdate(versionName, versionCode, apkUrl))
+        return UpdateCheckResult.Available(FittyUpdate(versionName, apk.versionCode, apk.url, apk.sizeBytes))
     } catch (_: JSONException) {
         return UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
     }
 }
 
-private suspend fun downloadReleaseApk(apkUrl: String, destination: File, onProgress: (Int) -> Unit) = coroutineScope {
-    var url = URL(apkUrl)
+internal suspend fun downloadReleaseApk(
+    update: FittyUpdate,
+    destination: File,
+    onProgress: (Int) -> Unit,
+    openConnection: (URL) -> HttpsURLConnection = { it.openConnection() as HttpsURLConnection },
+) = coroutineScope {
+    var url = URL(update.apkUrl)
     repeat(MAX_DOWNLOAD_REDIRECTS + 1) {
         if (url.protocol != "https" || url.host.isBlank() || url.userInfo != null) {
-            throw IOException("Release download requires HTTPS")
+            throw ApkDownloadException(UpdateDownloadFailure.Delivery)
         }
         currentCoroutineContext().ensureActive()
-        val connection = url.openConnection() as HttpsURLConnection
+        val connection = openConnection(url)
         val transfer = this
         val disconnectOnCancel = launch(start = CoroutineStart.UNDISPATCHED) {
             try {
@@ -162,48 +194,72 @@ private suspend fun downloadReleaseApk(apkUrl: String, destination: File, onProg
             currentCoroutineContext().ensureActive()
             when (connection.responseCode) {
                 HttpURLConnection.HTTP_OK -> {
-                    val expectedBytes = connection.contentLengthLong
+                    val expectedBytes = connection.contentLengthLong.takeIf { it >= 0 } ?: update.apkSizeBytes
                     var receivedBytes = 0L
                     var lastPercent = 0
-                    if (expectedBytes > 0) onProgress(lastPercent)
+                    if (expectedBytes != null && expectedBytes > 0) onProgress(lastPercent)
                     connection.inputStream.use { input ->
-                        destination.outputStream().buffered().use { output ->
-                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                            while (true) {
-                                currentCoroutineContext().ensureActive()
-                                val count = input.read(buffer)
-                                currentCoroutineContext().ensureActive()
-                                if (count == -1) break
-                                output.write(buffer, 0, count)
-                                receivedBytes += count
-                                if (expectedBytes > 0) {
-                                    val percent = (receivedBytes * 100.0 / expectedBytes).toInt().coerceAtMost(100)
-                                    if (percent != lastPercent) {
-                                        lastPercent = percent
-                                        onProgress(percent)
+                        writeToCache {
+                            destination.outputStream().buffered().use { output ->
+                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                while (true) {
+                                    currentCoroutineContext().ensureActive()
+                                    val count = try {
+                                        input.read(buffer)
+                                    } catch (failure: IOException) {
+                                        throw ApkDownloadException(transferFailure(failure))
+                                    }
+                                    currentCoroutineContext().ensureActive()
+                                    if (count == -1) break
+                                    output.write(buffer, 0, count)
+                                    receivedBytes += count
+                                    if (expectedBytes != null && expectedBytes > 0) {
+                                        val percent = (receivedBytes * 100.0 / expectedBytes).toInt().coerceAtMost(100)
+                                        if (percent != lastPercent) {
+                                            lastPercent = percent
+                                            onProgress(percent)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    if (expectedBytes >= 0 && receivedBytes != expectedBytes) throw IOException("Incomplete download")
+                    if (expectedBytes != null && receivedBytes != expectedBytes) {
+                        throw ApkDownloadException(UpdateDownloadFailure.Delivery)
+                    }
                     return@coroutineScope
                 }
                 301, 302, 303, 307, 308 -> {
-                    val location = connection.getHeaderField("Location") ?: throw IOException("Missing redirect")
+                    val location = connection.getHeaderField("Location")
+                        ?: throw ApkDownloadException(UpdateDownloadFailure.Delivery)
                     url = URL(url, location)
                 }
-                else -> throw IOException("GitHub could not deliver the APK")
+                else -> throw ApkDownloadException(UpdateDownloadFailure.Delivery)
             }
         } finally {
             disconnectOnCancel.cancel()
             connection.disconnect()
         }
     }
-    throw IOException("Too many release download redirects")
+    throw ApkDownloadException(UpdateDownloadFailure.Delivery)
 }
 
-private fun parseApk(asset: JSONObject): Pair<Long, String>? {
+private class ApkDownloadException(val reason: UpdateDownloadFailure) : Exception()
+
+private fun transferFailure(failure: IOException): UpdateDownloadFailure = when (failure) {
+    is EOFException, is MalformedURLException, is ProtocolException -> UpdateDownloadFailure.Delivery
+    else -> UpdateDownloadFailure.Network
+}
+
+private inline fun <T> writeToCache(write: () -> T): T = try {
+    write()
+} catch (_: IOException) {
+    throw ApkDownloadException(UpdateDownloadFailure.LocalWrite)
+}
+
+private data class ReleaseApk(val versionCode: Long, val url: String, val sizeBytes: Long?)
+
+private fun parseApk(asset: JSONObject): ReleaseApk? {
     val name = asset.optString("name")
     val versionCode = apkName.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull() ?: return null
     if (asset.optString("state") != "uploaded") return null
@@ -221,7 +277,8 @@ private fun parseApk(asset: JSONObject): Pair<Long, String>? {
     ) {
         return null
     }
-    return versionCode to apkUrl
+    val sizeBytes = (asset.opt("size") as? Number)?.toLong()?.takeIf { it > 0 }
+    return ReleaseApk(versionCode, apkUrl, sizeBytes)
 }
 
 private fun requestLatestRelease(): GitHubReleaseResponse {

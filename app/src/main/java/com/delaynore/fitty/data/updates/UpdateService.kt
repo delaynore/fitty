@@ -5,6 +5,7 @@ import java.io.File
 
 internal interface UpdateService {
     suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult
+    suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?)
     suspend fun download(
         update: FittyUpdate,
         installedVersionCode: Long,
@@ -15,7 +16,12 @@ internal interface UpdateService {
     fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean
 }
 
-internal data class FittyUpdate(val versionName: String, val versionCode: Long, val apkUrl: String)
+internal data class FittyUpdate(
+    val versionName: String,
+    val versionCode: Long,
+    val apkUrl: String,
+    val apkSizeBytes: Long? = null,
+)
 
 internal sealed interface UpdateCheckResult {
     data class Available(val update: FittyUpdate) : UpdateCheckResult
@@ -32,4 +38,4 @@ internal sealed interface UpdateDownloadResult {
     data class Failed(val reason: UpdateDownloadFailure) : UpdateDownloadResult
 }
 
-internal enum class UpdateDownloadFailure { Unavailable, InvalidApk }
+internal enum class UpdateDownloadFailure { Network, Delivery, LocalWrite, InvalidApk }

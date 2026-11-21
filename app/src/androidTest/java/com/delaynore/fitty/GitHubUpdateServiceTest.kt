@@ -1,6 +1,7 @@
 package com.delaynore.fitty
 
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,8 +12,13 @@ import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
+import com.delaynore.fitty.data.updates.downloadReleaseApk
 import java.io.File
+import java.net.URL
 import java.net.UnknownHostException
+import java.security.cert.Certificate
+import javax.net.ssl.HttpsURLConnection
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -55,6 +61,14 @@ class GitHubUpdateServiceTest {
         val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, stableRelease) }
 
         assertEquals(UpdateCheckResult.Available(FittyUpdate("1.0", 8, apkUrl)), updates.checkForUpdate(7))
+    }
+
+    @Test
+    fun includesTheApkSizeWhenTheReleaseProvidesIt() = runBlocking {
+        val releaseWithSize = stableRelease.replace("\"name\": \"fitty-8.apk\",", "\"name\": \"fitty-8.apk\", \"size\": 16384,")
+        val updates = GitHubUpdateService(context) { GitHubReleaseResponse(200, releaseWithSize) }
+
+        assertEquals(UpdateCheckResult.Available(FittyUpdate("1.0", 8, apkUrl, 16_384)), updates.checkForUpdate(7))
     }
 
     @Test
@@ -131,6 +145,77 @@ class GitHubUpdateServiceTest {
     }
 
     @Test
+    fun progressUsesTheReleaseSizeWhenHttpOmitsTheLength() = runBlocking {
+        val body = ByteArray(DEFAULT_BUFFER_SIZE * 2)
+        val updates = releaseDownload { FakeApkResponse(it, body = body) }
+        val progress = mutableListOf<Int>()
+
+        val result = updates.download(FittyUpdate("1.0", 8, apkUrl, body.size.toLong()), 7, progress::add)
+
+        assertEquals(listOf(0, 50, 100), progress)
+        assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), result)
+    }
+
+    @Test
+    fun progressUsesTheHttpLengthAheadOfTheReleaseSize() = runBlocking {
+        val body = ByteArray(DEFAULT_BUFFER_SIZE * 2)
+        val updates = releaseDownload { FakeApkResponse(it, body = body, length = body.size.toLong()) }
+        val progress = mutableListOf<Int>()
+
+        val result = updates.download(FittyUpdate("1.0", 8, apkUrl, 1), 7, progress::add)
+
+        assertEquals(listOf(0, 50, 100), progress)
+        assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk), result)
+    }
+
+    @Test
+    fun distinguishesNetworkDeliveryAndCacheWriteFailures() = runBlocking {
+        val update = FittyUpdate("1.0", 8, apkUrl, 4)
+        val offline = releaseDownload { throw UnknownHostException(it.host) }
+        val missingApk = releaseDownload { FakeApkResponse(it, status = 404) }
+        val incomplete = releaseDownload { FakeApkResponse(it, body = ByteArray(2)) }
+        val notADirectory = File.createTempFile("fitty-test-cache-", ".tmp", context.cacheDir)
+        val unwritableCache = object : ContextWrapper(context) {
+            override fun getCacheDir() = notADirectory
+        }
+        val cannotWrite = GitHubUpdateService(unwritableCache, fetchApk = { _, _, _ -> error("APK file creation failed") })
+
+        try {
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.Network), offline.download(update, 7))
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.Delivery), missingApk.download(update, 7))
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.Delivery), incomplete.download(update, 7))
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.LocalWrite), cannotWrite.download(update, 7))
+        } finally {
+            notADirectory.delete()
+        }
+    }
+
+    @Test
+    fun aNewProcessPrunesOldApksAndKeepsTheApkAwaitingPermission() = runBlocking {
+        val cache = createTempDirectory(context.cacheDir.toPath(), "fitty-test-cache-").toFile()
+        val isolatedContext = object : ContextWrapper(context) {
+            override fun getCacheDir() = cache
+        }
+        try {
+            val directory = File(cache, "updates").apply { mkdir() }
+            val abandoned = File.createTempFile("fitty-update-", ".apk", directory)
+            val waiting = File.createTempFile("fitty-update-", ".apk", directory)
+            val unrelated = File(directory, "other.apk").apply { writeText("Unrelated file") }
+            val updates = GitHubUpdateService(isolatedContext)
+
+            updates.pruneAbandonedDownloads(waiting)
+
+            assertFalse(abandoned.exists())
+            assertTrue(waiting.isFile)
+            assertTrue(unrelated.isFile)
+            updates.pruneAbandonedDownloads(null)
+            assertTrue(waiting.isFile)
+        } finally {
+            cache.deleteRecursively()
+        }
+    }
+
+    @Test
     fun anApkWithADifferentVersionNameOrCodeFromTheReleaseCannotReachTheInstaller() = runBlocking {
         val apk = File(context.applicationInfo.sourceDir)
         @Suppress("DEPRECATION")
@@ -189,4 +274,26 @@ class GitHubUpdateServiceTest {
 
         assertFalse(partial.exists())
     }
+
+    private fun releaseDownload(openConnection: (URL) -> HttpsURLConnection) =
+        GitHubUpdateService(context, fetchApk = { update, destination, onProgress ->
+            downloadReleaseApk(update, destination, onProgress, openConnection)
+        })
+}
+
+private class FakeApkResponse(
+    url: URL,
+    private val status: Int = 200,
+    private val body: ByteArray = byteArrayOf(),
+    private val length: Long = -1,
+) : HttpsURLConnection(url) {
+    override fun getResponseCode() = status
+    override fun getInputStream() = body.inputStream()
+    override fun getContentLengthLong() = length
+    override fun connect() = Unit
+    override fun disconnect() = Unit
+    override fun usingProxy() = false
+    override fun getCipherSuite() = "fake"
+    override fun getLocalCertificates(): Array<Certificate>? = null
+    override fun getServerCertificates() = emptyArray<Certificate>()
 }

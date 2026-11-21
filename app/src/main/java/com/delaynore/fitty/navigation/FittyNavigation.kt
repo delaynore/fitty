@@ -52,6 +52,14 @@ import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
 private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails, Settings }
 
+private data class BottomTab(val destination: Destination, val label: String, val icon: FittyIcon)
+
+private val bottomTabs = listOf(
+    BottomTab(Destination.Home, "Главная", FittyIcon.Home),
+    BottomTab(Destination.History, "История", FittyIcon.History),
+    BottomTab(Destination.Settings, "Настройки", FittyIcon.Settings),
+)
+
 @Composable
 internal fun FittyNavigation(
     programs: ProgramsRepository,
@@ -116,10 +124,8 @@ internal fun FittyNavigation(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            when (destination) {
-                Destination.Home, Destination.History, Destination.Settings ->
-                    TabBar(selected = destination, onSelect = { destination = it })
-                else -> Unit
+            if (bottomTabs.any { it.destination == destination }) {
+                TabBar(selected = destination, onSelect = { destination = it })
             }
         },
     ) { padding ->
@@ -186,23 +192,13 @@ private fun TabBar(selected: Destination, onSelect: (Destination) -> Unit) {
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
-        NavigationBarItem(
-            selected = selected == Destination.Home,
-            onClick = { onSelect(Destination.Home) },
-            label = { Text("Главная") },
-            icon = { FittyGlyph(FittyIcon.Home) },
-        )
-        NavigationBarItem(
-            selected = selected == Destination.History,
-            onClick = { onSelect(Destination.History) },
-            label = { Text("История") },
-            icon = { FittyGlyph(FittyIcon.History) },
-        )
-        NavigationBarItem(
-            selected = selected == Destination.Settings,
-            onClick = { onSelect(Destination.Settings) },
-            label = { Text("Настройки") },
-            icon = { FittyGlyph(FittyIcon.Settings) },
-        )
+        bottomTabs.forEach { tab ->
+            NavigationBarItem(
+                selected = selected == tab.destination,
+                onClick = { onSelect(tab.destination) },
+                label = { Text(tab.label) },
+                icon = { FittyGlyph(tab.icon) },
+            )
+        }
     }
 }
