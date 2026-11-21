@@ -23,5 +23,10 @@ class FittyTestRunner : AndroidJUnitRunner() {
 class FittyTestApplication : FittyApplication() {
     override val databaseName = "fitty-test-${UUID.randomUUID()}.db"
 
+    @Volatile
+    var restTimeMillis: Long? = null
+
+    override fun restTimerElapsedRealtime(): Long = restTimeMillis ?: super.restTimerElapsedRealtime()
+
     fun resetDatabase() = deleteDatabase()
 }

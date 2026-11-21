@@ -1,6 +1,5 @@
 ﻿package com.delaynore.fitty.ui.workout
 
-import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +40,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -95,6 +95,7 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                 exerciseIndex = viewModel.exerciseIndex,
                 exerciseCount = workout.exercises.size,
                 restDeadlineMillis = viewModel.restDeadlineMillis,
+                remainingRestMillis = viewModel::remainingRestMillis,
                 onStartRest = viewModel::startRestTimer,
                 onResetRest = viewModel::resetRestTimer,
                 onExpireRest = viewModel::expireRestTimer,
@@ -179,16 +180,18 @@ private fun WorkoutHeader(
     exerciseIndex: Int,
     exerciseCount: Int,
     restDeadlineMillis: Long?,
+    remainingRestMillis: (Long) -> Long,
     onStartRest: () -> Unit,
     onResetRest: () -> Unit,
     onExpireRest: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var remainingMillis by remember(restDeadlineMillis) {
-        mutableLongStateOf(remainingRestMillis(restDeadlineMillis))
+    val currentOnExpireRest by rememberUpdatedState(onExpireRest)
+    var remainingMillis by remember(restDeadlineMillis, remainingRestMillis) {
+        mutableLongStateOf(restDeadlineMillis?.let(remainingRestMillis) ?: 0L)
     }
-    LaunchedEffect(restDeadlineMillis, lifecycle) {
+    LaunchedEffect(restDeadlineMillis, lifecycle, remainingRestMillis) {
         if (restDeadlineMillis == null) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             remainingMillis = remainingRestMillis(restDeadlineMillis)
@@ -196,7 +199,7 @@ private fun WorkoutHeader(
                 delay(minOf(remainingMillis, 100L))
                 remainingMillis = remainingRestMillis(restDeadlineMillis)
             }
-            onExpireRest(restDeadlineMillis)
+            currentOnExpireRest(restDeadlineMillis)
         }
     }
     Column(Modifier.fillMaxWidth()) {
@@ -230,9 +233,6 @@ private fun WorkoutHeader(
         }
     }
 }
-
-private fun remainingRestMillis(deadlineMillis: Long?): Long =
-    deadlineMillis?.let { (it - SystemClock.elapsedRealtime()).coerceAtLeast(0L) } ?: 0L
 
 @Composable
 private fun RestTimerControls(remainingMillis: Long, onStart: () -> Unit, onReset: () -> Unit) {

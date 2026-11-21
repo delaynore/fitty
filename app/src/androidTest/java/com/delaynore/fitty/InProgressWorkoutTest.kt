@@ -19,11 +19,13 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -35,9 +37,16 @@ class InProgressWorkoutTest {
     @get:Rule
     val compose = createEmptyComposeRule()
 
+    private val application get() = ApplicationProvider.getApplicationContext<FittyTestApplication>()
+
     @Before
     fun resetDatabase() {
-        ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+        application.resetDatabase()
+    }
+
+    @After
+    fun resetRestClock() {
+        application.restTimeMillis = null
     }
 
     @Test
@@ -50,8 +59,7 @@ class InProgressWorkoutTest {
             val idleBounds = firstRow.getUnclippedBoundsInRoot()
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
 
-            tap("Запустить таймер отдыха", description = true)
-            compose.onNodeWithText("2:00").assertExists()
+            startRestTimerAtKnownTime()
             assertEquals(idleBounds, firstRow.getUnclippedBoundsInRoot())
 
             tap("Следующее упражнение", description = true)
@@ -64,6 +72,48 @@ class InProgressWorkoutTest {
             tap("Сбросить таймер отдыха", description = true)
             compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun restTimerUsesElapsedTimeOnReturnFromBackground() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            compose.createAndStartWorkout()
+            startRestTimerAtKnownTime()
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.restTimeMillis = 55_000L
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            awaitText("1:15")
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.restTimeMillis = 130_000L
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasContentDescription("Запустить таймер отдыха")).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun restTimerAndLoggedSetReturnWithSavedStateAfterViewModelsAreLost() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            compose.createAndStartWorkout()
+            compose.logSet(1, "60", "6")
+            closeSoftKeyboard()
+            startRestTimerAtKnownTime()
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.restTimeMillis = 55_000L
+            // Keep the activity's saved state while discarding the in-memory ViewModels.
+            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.recreate()
+            scenario.moveToState(Lifecycle.State.RESUMED)
+
+            awaitText("1:15")
+            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
+            compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("6")
         }
     }
 
@@ -209,6 +259,12 @@ class InProgressWorkoutTest {
             compose.logSet(2, "70", "4")
             compose.onNodeWithTag("workout-logged-weight-2", useUnmergedTree = true).assertTextEquals("70")
         }
+    }
+
+    private fun startRestTimerAtKnownTime() {
+        application.restTimeMillis = 10_000L
+        tap("Запустить таймер отдыха", description = true)
+        compose.onNodeWithText("2:00").assertExists()
     }
 
     private fun removeSet(position: Int) {
