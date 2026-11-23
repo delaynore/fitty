@@ -44,6 +44,8 @@ internal enum class TechniqueDifficulty(val label: String) {
     ADVANCED("Продвинутый"),
 }
 
+internal const val CUSTOM_EXERCISE_ID_PREFIX = "custom:"
+
 internal data class CatalogExercise(
     val id: String,
     val name: String,
@@ -53,4 +55,6 @@ internal data class CatalogExercise(
     val assistingMuscles: Set<MuscleGroup> = emptySet(),
     val difficulty: TechniqueDifficulty? = null,
     val technique: String? = null,
-)
+) {
+    val isCustom: Boolean get() = id.startsWith(CUSTOM_EXERCISE_ID_PREFIX)
+}

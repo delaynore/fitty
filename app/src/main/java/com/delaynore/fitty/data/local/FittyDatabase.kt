@@ -16,19 +16,22 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WorkoutExerciseEntity::class,
         LoggedSetEntity::class,
         RemovedSetPositionEntity::class,
+        CustomExerciseEntity::class,
     ],
-    version = 6,
+    version = 7,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6, spec = PreserveLegacySetTypes::class),
+        AutoMigration(from = 6, to = 7),
     ],
 )
 internal abstract class FittyDatabase : RoomDatabase() {
     abstract fun programs(): ProgramDao
     abstract fun workouts(): WorkoutDao
+    abstract fun customExercises(): CustomExerciseDao
 }
 
 internal class PreserveLegacySetTypes : AutoMigrationSpec {
