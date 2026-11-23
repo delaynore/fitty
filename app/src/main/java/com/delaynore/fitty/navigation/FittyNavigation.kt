@@ -27,14 +27,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.exercises.ExerciseCatalog
+import com.delaynore.fitty.ui.exercises.ExerciseEditorScreen
+import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryScreen
 import com.delaynore.fitty.ui.history.HistoryViewModel
 import com.delaynore.fitty.ui.history.WorkoutDetailsScreen
@@ -53,8 +57,8 @@ import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
 private enum class Destination {
-    Home, Programs, ProgramDetails, ProgramEditor, DayEditor, DayEditorCatalog, Workout, History, WorkoutDetails,
-    Settings, SettingsCatalog,
+    Home, Programs, ProgramDetails, ProgramEditor, DayEditor, DayEditorCatalog, CreateExercise,
+    Workout, History, WorkoutDetails, Settings, SettingsCatalog, EditExerciseDetails,
 }
 
 private data class BottomTab(val destination: Destination, val label: String, val icon: FittyIcon)
@@ -69,6 +73,7 @@ private val bottomTabs = listOf(
 internal fun FittyNavigation(
     programs: ProgramsRepository,
     workouts: WorkoutsRepository,
+    catalog: ExerciseCatalogRepository,
     restTimerClock: () -> Long,
     installedApp: InstalledApp,
     updateService: UpdateService,
@@ -82,6 +87,8 @@ internal fun FittyNavigation(
     var legacyExerciseId by rememberSaveable { mutableStateOf<Long?>(null) }
     val home = viewModel { HomeViewModel(programs, workouts) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
+    val exerciseEditor = viewModel { ExerciseEditorViewModel(catalog) }
+    val catalogExercises by catalog.allExercises.collectAsStateWithLifecycle(initialValue = null)
     val history = viewModel { HistoryViewModel(workouts) }
     val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts, createSavedStateHandle()) }
     UpdateInstallerEffect(settings) { destination == Destination.Settings }
@@ -94,6 +101,7 @@ internal fun FittyNavigation(
     val closeEditor = {
         confirmDiscard = false
         legacyExerciseId = null
+        exerciseEditor.close()
         programEditor.closeEditor()
         destination = editorOrigin
     }
@@ -109,12 +117,20 @@ internal fun FittyNavigation(
                 legacyExerciseId = null
                 destination = Destination.DayEditor
             }
+            Destination.CreateExercise -> if (exerciseEditor.state?.saving != true) {
+                exerciseEditor.close()
+                destination = Destination.DayEditorCatalog
+            }
             Destination.ProgramEditor -> if (!programEditor.saving) {
                 if (programEditor.hasChanges) confirmDiscard = true else closeEditor()
             }
             Destination.ProgramDetails -> destination = Destination.Programs
             Destination.WorkoutDetails -> destination = Destination.History
             Destination.SettingsCatalog -> destination = Destination.Settings
+            Destination.EditExerciseDetails -> if (exerciseEditor.state?.saving != true) {
+                exerciseEditor.close()
+                destination = Destination.SettingsCatalog
+            }
             Destination.Settings -> {
                 destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
                 settingsOrigin = null
@@ -129,9 +145,30 @@ internal fun FittyNavigation(
     }
     LaunchedEffect(destination) {
         val inEditor = destination == Destination.ProgramEditor ||
-            destination == Destination.DayEditor || destination == Destination.DayEditorCatalog
+            destination == Destination.DayEditor || destination == Destination.DayEditorCatalog ||
+            destination == Destination.CreateExercise
         if (inEditor && !programEditor.editing) {
             closeEditor()
+        } else if (destination == Destination.EditExerciseDetails && exerciseEditor.state == null) {
+            destination = Destination.SettingsCatalog
+        }
+    }
+    val savedExercise = exerciseEditor.savedExercise
+    LaunchedEffect(savedExercise, destination) {
+        if (savedExercise != null) {
+            when (destination) {
+                Destination.CreateExercise -> if (programEditor.editing) {
+                    exerciseEditor.close()
+                    programEditor.selectExercise(savedExercise, legacyExerciseId)
+                    legacyExerciseId = null
+                    destination = Destination.DayEditor
+                }
+                Destination.EditExerciseDetails -> {
+                    exerciseEditor.close()
+                    destination = Destination.SettingsCatalog
+                }
+                else -> Unit
+            }
         }
     }
     BackHandler(enabled = destination != Destination.Home, onBack = back)
@@ -189,26 +226,35 @@ internal fun FittyNavigation(
                     onSettings = editorSettings,
                     onSaved = { destination = editorOrigin },
                 )
-                Destination.DayEditor, Destination.DayEditorCatalog -> {
-                    val dayState = rememberSaveableStateHolder()
-                    if (destination == Destination.DayEditor) {
-                        dayState.SaveableStateProvider("day") {
+                Destination.DayEditor, Destination.DayEditorCatalog, Destination.CreateExercise -> {
+                    val editorState = rememberSaveableStateHolder()
+                    when (destination) {
+                        Destination.DayEditor -> editorState.SaveableStateProvider("day") {
                             TrainingDayEditorScreen(programEditor, back, editorSettings) { existingExerciseId ->
+                                editorState.removeState("catalog")
                                 legacyExerciseId = existingExerciseId
                                 destination = Destination.DayEditorCatalog
                             }
                         }
-                    } else {
-                        ExerciseCatalog(
-                            onBack = back,
-                            replacingLegacyExercise = legacyExerciseId != null,
-                            onSelect = { exercise ->
-                                if (destination == Destination.DayEditorCatalog) {
-                                    programEditor.selectExercise(exercise, legacyExerciseId)
-                                    back()
-                                }
-                            },
-                        )
+                        Destination.DayEditorCatalog -> editorState.SaveableStateProvider("catalog") {
+                            ExerciseCatalog(
+                                exercises = catalogExercises,
+                                onBack = back,
+                                replacingLegacyExercise = legacyExerciseId != null,
+                                onSelect = { exercise ->
+                                    if (destination == Destination.DayEditorCatalog) {
+                                        programEditor.selectExercise(exercise, legacyExerciseId)
+                                        back()
+                                    }
+                                },
+                                onCreate = { name ->
+                                    exerciseEditor.open(name)
+                                    destination = Destination.CreateExercise
+                                },
+                            )
+                        }
+                        Destination.CreateExercise -> ExerciseEditorScreen(exerciseEditor, back)
+                        else -> Unit
                     }
                 }
                 Destination.Workout -> WorkoutScreen(
@@ -228,7 +274,23 @@ internal fun FittyNavigation(
                     onBrowseExercises = { destination = Destination.SettingsCatalog },
                     onUpdate = { settings.startUpdate(programEditor.editing && programEditor.hasChanges) },
                 )
-                Destination.SettingsCatalog -> ExerciseCatalog(onBack = back)
+                Destination.SettingsCatalog, Destination.EditExerciseDetails -> {
+                    val catalogState = rememberSaveableStateHolder()
+                    if (destination == Destination.SettingsCatalog) {
+                        catalogState.SaveableStateProvider("catalog") {
+                            ExerciseCatalog(
+                                exercises = catalogExercises,
+                                onBack = back,
+                                onEdit = { exercise ->
+                                    exerciseEditor.open(exercise)
+                                    destination = Destination.EditExerciseDetails
+                                },
+                            )
+                        }
+                    } else {
+                        ExerciseEditorScreen(exerciseEditor, back)
+                    }
+                }
             }
         }
     }
