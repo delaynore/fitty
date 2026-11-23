@@ -23,7 +23,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.exercises.ExerciseGoal
-import com.delaynore.fitty.data.programs.ProgramsRepository
+import com.delaynore.fitty.data.programs.RoomProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
@@ -201,7 +201,7 @@ class ProgramsTest {
     fun choosingACardForALegacyExerciseChangesFutureWorkoutsAndKeepsRecordedHistory() {
         val app = ApplicationProvider.getApplicationContext<FittyTestApplication>()
         runBlocking {
-            ProgramsRepository(app.database).saveProgram(TrainingProgram(0, "Силовая", listOf(
+            RoomProgramsRepository(app.database).saveProgram(TrainingProgram(0, "Силовая", listOf(
                 TrainingDay(0, "День жима", listOf(
                     TrainingExercise(0, "Жим", 3, ExerciseGoal.Repetitions(8)),
                     TrainingExercise(0, "Разведения", null, null),

@@ -7,9 +7,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.pm.PackageInfoCompat
-import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
-import com.delaynore.fitty.data.programs.ProgramsRepository
-import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.data.exercises.RoomExerciseCatalogRepository
+import com.delaynore.fitty.data.programs.RoomProgramsRepository
+import com.delaynore.fitty.data.workouts.RoomWorkoutsRepository
 import com.delaynore.fitty.navigation.FittyNavigation
 import com.delaynore.fitty.ui.FittyTheme
 import com.delaynore.fitty.ui.settings.InstalledApp
@@ -22,9 +22,9 @@ class MainActivity : ComponentActivity() {
 
         val fitty = application as FittyApplication
         val database = fitty.database
-        val catalog = ExerciseCatalogRepository(database)
-        val programs = ProgramsRepository(database)
-        val workouts = WorkoutsRepository(database)
+        val catalog = RoomExerciseCatalogRepository(database)
+        val programs = RoomProgramsRepository(database)
+        val workouts = RoomWorkoutsRepository(database)
         @Suppress("DEPRECATION")
         val packageInfo = packageManager.getPackageInfo(packageName, 0)
         val installedApp = InstalledApp(packageInfo.versionName.orEmpty(), PackageInfoCompat.getLongVersionCode(packageInfo))
