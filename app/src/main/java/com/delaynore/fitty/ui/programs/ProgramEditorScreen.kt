@@ -162,9 +162,35 @@ internal fun TrainingDayEditorScreen(
     onSettings: () -> Unit,
     onPickExercise: (Long?) -> Unit,
 ) {
-    val focus = LocalFocusManager.current
     val day = viewModel.editingDay ?: return
-    val showErrors = viewModel.showDayErrors
+    TrainingDayEditorContent(
+        day = day,
+        showErrors = viewModel.showDayErrors,
+        onBack = onBack,
+        onSettings = if (viewModel.hasChanges) onSettings else null,
+        onPickExercise = onPickExercise,
+        onDayNameChange = viewModel::changeDayName,
+        onChangeExercise = viewModel::changeExercise,
+        onDeleteExercise = viewModel::deleteExercise,
+        onMoveExercise = viewModel::moveExercise,
+        onSave = { viewModel.finishDay(onBack) },
+    )
+}
+
+@Composable
+internal fun TrainingDayEditorContent(
+    day: TrainingDayDraft,
+    showErrors: Boolean,
+    onBack: () -> Unit,
+    onSettings: (() -> Unit)?,
+    onPickExercise: (Long?) -> Unit,
+    onDayNameChange: (String) -> Unit,
+    onChangeExercise: (ExerciseDraft) -> Unit,
+    onDeleteExercise: (Long) -> Unit,
+    onMoveExercise: (Long, Int) -> Unit,
+    onSave: () -> Unit,
+) {
+    val focus = LocalFocusManager.current
     val scrollState = rememberScrollState()
     var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxHeight()) {
@@ -173,7 +199,7 @@ internal fun TrainingDayEditorScreen(
             scrollState = scrollState,
         ) {
             PageHeader("Тренировочный день", onBack) {
-                if (viewModel.hasChanges) {
+                if (onSettings != null) {
                     EditorSettingsButton {
                         focus.clearFocus()
                         onSettings()
@@ -182,7 +208,7 @@ internal fun TrainingDayEditorScreen(
             }
             OutlinedTextField(
                 value = day.name,
-                onValueChange = viewModel::changeDayName,
+                onValueChange = onDayNameChange,
                 label = { Text("Название дня") },
                 singleLine = true,
                 isError = showErrors && day.name.isBlank(),
@@ -195,9 +221,9 @@ internal fun TrainingDayEditorScreen(
                 scrollState = scrollState,
                 viewport = { viewport },
                 onPickExercise = onPickExercise,
-                onChange = viewModel::changeExercise,
-                onDelete = viewModel::deleteExercise,
-                onMove = viewModel::moveExercise,
+                onChange = onChangeExercise,
+                onDelete = onDeleteExercise,
+                onMove = onMoveExercise,
             )
             if (showErrors && day.exercises.isEmpty()) {
                 Text("Добавь хотя бы одно упражнение", color = MaterialTheme.colorScheme.error)
@@ -206,7 +232,7 @@ internal fun TrainingDayEditorScreen(
         Button(
             onClick = {
                 focus.clearFocus()
-                viewModel.finishDay(onBack)
+                onSave()
             },
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)
                 .heightIn(min = 52.dp),

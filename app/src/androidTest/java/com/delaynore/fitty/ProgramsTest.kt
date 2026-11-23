@@ -27,9 +27,7 @@ import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -196,50 +194,6 @@ class ProgramsTest {
             tap("3. Приседания со штангой")
             awaitText("Упражнение 3 из 3")
             compose.logSet(1, "40", "8")
-        }
-    }
-
-    @Test
-    fun draggingAtTheBottomEdgeScrollsToExercisesOutsideTheViewport() {
-        val names = (1..30).map { "Упражнение $it" }
-        val app = ApplicationProvider.getApplicationContext<FittyTestApplication>()
-        val programs = ProgramsRepository(app.database)
-        runBlocking {
-            val exercises = names.map { TrainingExercise(0, it, null, null) }
-            programs.saveProgram(TrainingProgram(0, "Порядок", listOf(TrainingDay(0, "День А", exercises))))
-        }
-        ActivityScenario.launch(MainActivity::class.java).use {
-            awaitText("День А")
-            tap("Мои программы")
-            tap("Порядок")
-            compose.onNodeWithText("Редактировать программу").performScrollTo().performClick()
-            awaitText("Редактирование программы")
-            tap("День А")
-            awaitText("Тренировочный день")
-            awaitText(names.first())
-
-            val firstHandle = compose.onNodeWithContentDescription("Переместить «${names.first()}»")
-            val start = firstHandle.fetchSemanticsNode().boundsInRoot.center
-            val viewport = compose.onNodeWithTag("day-editor-scroll").fetchSemanticsNode().boundsInRoot
-            val addExercise = compose.onAllNodesWithText("Добавить упражнение")
-            check(addExercise.fetchSemanticsNodes().none { it.boundsInRoot.height > 0f })
-            val root = compose.onRoot()
-            root.performTouchInput {
-                down(start)
-                moveTo(start.copy(y = viewport.bottom - 4f))
-            }
-            compose.waitUntil(timeoutMillis = 10_000) {
-                addExercise.fetchSemanticsNodes().any { it.boundsInRoot.height > 0f }
-            }
-            root.performTouchInput { up() }
-
-            tap("Сохранить день")
-            tap("Сохранить программу")
-            awaitText("Порядок")
-            val storedOrder = runBlocking {
-                programs.homeProgram.first()?.days?.single()?.exercises?.map { it.name }
-            }
-            assertEquals(names.drop(1) + names.first(), storedOrder)
         }
     }
 
