@@ -130,11 +130,13 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         true
     }
 
-    suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
+    suspend fun logSet(sessionId: Long, expectedExercise: WorkoutExercise, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
+            val exerciseId = expectedExercise.id
             val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
             if (exercise.type != set.result.type ||
+                exercise.catalogExerciseId != expectedExercise.catalogExerciseId ||
                 workouts.isRemovedSetPosition(exerciseId, set.position) ||
                 workouts.loggedSetAtPosition(exerciseId, set.position) != null
             ) {
@@ -157,12 +159,16 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
 
     suspend fun removeSetPosition(
         sessionId: Long,
-        exerciseId: Long,
+        expectedExercise: WorkoutExercise,
         position: Int,
         isRecorded: Boolean,
     ): RemovedWorkoutSet? = database.withTransaction {
         if (position <= 0) return@withTransaction null
+        val exerciseId = expectedExercise.id
         val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction null
+        if (exercise.catalogExerciseId != expectedExercise.catalogExerciseId || exercise.type != expectedExercise.type) {
+            return@withTransaction null
+        }
         val set = workouts.loggedSetAtPosition(exerciseId, position)
         if ((set != null) != isRecorded) return@withTransaction null
         if (workouts.insertRemovedSetPosition(RemovedSetPositionEntity(exerciseId, position)) == -1L) {

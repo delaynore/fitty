@@ -53,6 +53,7 @@ import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.SettingsScreen
 import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
 import com.delaynore.fitty.ui.settings.SettingsViewModel
+import com.delaynore.fitty.ui.workout.SetTimerSignals
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
@@ -74,9 +75,10 @@ internal fun FittyNavigation(
     programs: ProgramsRepository,
     workouts: WorkoutsRepository,
     catalog: ExerciseCatalogRepository,
-    restTimerClock: () -> Long,
+    workoutTimerClock: () -> Long,
     installedApp: InstalledApp,
     updateService: UpdateService,
+    setTimerSignals: SetTimerSignals,
 ) {
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var workoutId by rememberSaveable { mutableLongStateOf(0L) }
@@ -85,7 +87,7 @@ internal fun FittyNavigation(
     var editorOrigin by rememberSaveable { mutableStateOf(Destination.Home) }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
     var legacyExerciseId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val home = viewModel { HomeViewModel(programs, workouts) }
+    val home = viewModel { HomeViewModel(programs, workouts, setTimerSignals::cancelWorkout) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val exerciseEditor = viewModel { ExerciseEditorViewModel(catalog) }
     val catalogExercises by catalog.allExercises.collectAsStateWithLifecycle(initialValue = null)
@@ -95,7 +97,7 @@ internal fun FittyNavigation(
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
-        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, restTimerClock, catalog)
+        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, workoutTimerClock, setTimerSignals, catalog)
     }
 
     val closeEditor = {

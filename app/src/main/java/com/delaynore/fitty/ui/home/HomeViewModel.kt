@@ -17,7 +17,11 @@ import kotlinx.coroutines.launch
 
 internal data class HomeState(val program: TrainingProgram?, val inProgressWorkout: InProgressWorkout?)
 
-internal class HomeViewModel(programs: ProgramsRepository, private val workouts: WorkoutsRepository) : ViewModel() {
+internal class HomeViewModel(
+    programs: ProgramsRepository,
+    private val workouts: WorkoutsRepository,
+    private val onWorkoutCancelled: (Long) -> Unit,
+) : ViewModel() {
     val home = combine(programs.homeProgram, workouts.inProgressWorkout, ::HomeState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -58,8 +62,12 @@ internal class HomeViewModel(programs: ProgramsRepository, private val workouts:
         error = null
         viewModelScope.launch {
             try {
-                if (workouts.cancelWorkout(id)) onCancelled()
-                else error = "Не удалось отменить тренировку"
+                if (workouts.cancelWorkout(id)) {
+                    onWorkoutCancelled(id)
+                    onCancelled()
+                } else {
+                    error = "Не удалось отменить тренировку"
+                }
             } catch (_: SQLiteException) {
                 error = "Не удалось отменить тренировку"
             } finally {
