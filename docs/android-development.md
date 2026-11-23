@@ -2,10 +2,10 @@
 
 ## Run checks
 
-Set up JDK 17 and the Android SDK as described below. From the repository root, build the app and run Android lint.
+Set up JDK 17 and the Android SDK as described below. From the repository root, run the JVM tests, build the app, and run Android lint.
 
 ```powershell
-.\gradlew.bat :app:assembleDebug :app:lintDebug
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
 Start a dedicated Android emulator and list connected devices to find its serial. Pass that serial to the test script. The tests use a separate Room database and temporarily toggle airplane mode.
@@ -15,7 +15,7 @@ Start a dedicated Android emulator and list connected devices to find its serial
 .\scripts\test-android.ps1 -Serial emulator-5556
 ```
 
-The script prints the test log path under `build/reports/android-device/`. GitHub Actions runs build and lint on every pull request and runs the instrumented tests in a separate job on an Android 16 emulator.
+The script prints the test log path under `build/reports/android-device/`. GitHub Actions runs build and lint on every pull request and runs the JVM tests before starting the Android 16 emulator for instrumented tests.
 
 ## Build and sign an APK
 

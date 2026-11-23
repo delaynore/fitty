@@ -37,23 +37,13 @@ internal class GitHubUpdateService(
     private val fetchApk: suspend (FittyUpdate, File, (Int) -> Unit) -> Unit = { update, file, progress ->
         downloadReleaseApk(update, file, progress)
     },
-    private val fetchLatestRelease: () -> GitHubReleaseResponse = ::requestLatestRelease,
 ) : UpdateService {
     private val cache = UpdateApkCache(context)
     private val installer = AndroidUpdateInstaller(context)
 
     override suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult =
         withContext(Dispatchers.IO) {
-            val response = try {
-                fetchLatestRelease()
-            } catch (_: IOException) {
-                return@withContext UpdateCheckResult.Failed(UpdateCheckFailure.Network)
-            }
-            when (response.status) {
-                HttpURLConnection.HTTP_OK -> parseRelease(response.body, installedVersionCode)
-                HttpURLConnection.HTTP_NOT_FOUND -> UpdateCheckResult.NoStableRelease
-                else -> UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
-            }
+            checkLatestRelease(installedVersionCode, ::requestLatestRelease)
         }
 
     override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) =
@@ -78,6 +68,19 @@ internal class GitHubUpdateService(
 
     override fun openInstaller(apk: File, launch: (Intent) -> Unit) = installer.openInstaller(apk, launch)
 
+}
+
+internal fun checkLatestRelease(installedVersionCode: Long, fetchLatestRelease: () -> GitHubReleaseResponse): UpdateCheckResult {
+    val response = try {
+        fetchLatestRelease()
+    } catch (_: IOException) {
+        return UpdateCheckResult.Failed(UpdateCheckFailure.Network)
+    }
+    return when (response.status) {
+        HttpURLConnection.HTTP_OK -> parseRelease(response.body, installedVersionCode)
+        HttpURLConnection.HTTP_NOT_FOUND -> UpdateCheckResult.NoStableRelease
+        else -> UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
+    }
 }
 
 private fun parseRelease(body: String, installedVersionCode: Long): UpdateCheckResult {

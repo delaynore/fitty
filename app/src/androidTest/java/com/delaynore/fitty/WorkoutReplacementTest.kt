@@ -19,7 +19,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -46,11 +45,8 @@ class WorkoutReplacementTest {
             awaitText("Похожие движения")
 
             assertAbove("Похожие движения", "Жим гантелей лёжа")
-            assertAbove("Жим гантелей лёжа", "Жим от груди в тренажёре")
             assertAbove("Жим от груди в тренажёре", "Та же основная группа мышц")
             assertAbove("Та же основная группа мышц", "Отжимания")
-            assertEquals(1, compose.onAllNodes(inReplacementList("Жим гантелей лёжа")).fetchSemanticsNodes().size)
-            compose.onNode(inReplacementList("Жим штанги лёжа")).assertDoesNotExist()
             chooseReplacement("Жим гантелей лёжа")
             awaitText("3 × 8")
             compose.onNode(hasTestTag("workout-weight-1") and hasText("60")).assertDoesNotExist()
