@@ -212,21 +212,24 @@ class ProgramsTest {
             awaitText("День А")
             tap("Мои программы")
             tap("Порядок")
-            tap("Редактировать программу")
+            compose.onNodeWithText("Редактировать программу").performScrollTo().performClick()
+            awaitText("Редактирование программы")
             tap("День А")
+            awaitText("Тренировочный день")
+            awaitText(names.first())
 
             val firstHandle = compose.onNodeWithContentDescription("Переместить «${names.first()}»")
             val start = firstHandle.fetchSemanticsNode().boundsInRoot.center
             val viewport = compose.onNodeWithTag("day-editor-scroll").fetchSemanticsNode().boundsInRoot
-            val addExercise = compose.onNodeWithText("Добавить упражнение")
-            check(addExercise.fetchSemanticsNode().boundsInRoot.height == 0f)
+            val addExercise = compose.onAllNodesWithText("Добавить упражнение")
+            check(addExercise.fetchSemanticsNodes().none { it.boundsInRoot.height > 0f })
             val root = compose.onRoot()
             root.performTouchInput {
                 down(start)
                 moveTo(start.copy(y = viewport.bottom - 4f))
             }
             compose.waitUntil(timeoutMillis = 10_000) {
-                addExercise.fetchSemanticsNode().boundsInRoot.height > 0f
+                addExercise.fetchSemanticsNodes().any { it.boundsInRoot.height > 0f }
             }
             root.performTouchInput { up() }
 

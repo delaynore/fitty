@@ -86,6 +86,7 @@ class WorkoutSetTimerTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             startPlankWorkout(goal = null)
             tap("Старт")
+            awaitText("Стоп")
             application.workoutTimeMillis = 10_999L
             awaitText("0:00")
             tap("Стоп")
@@ -97,7 +98,9 @@ class WorkoutSetTimerTest {
             compose.onNodeWithTag("history-set-duration").performTextReplacement("0")
             closeSoftKeyboard()
             tap("Сохранить")
-            compose.onNodeWithTag("history-set-duration").assertDoesNotExist()
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasTestTag("history-set-duration")).fetchSemanticsNodes().isEmpty()
+            }
             awaitText("0 с")
         }
     }
