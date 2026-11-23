@@ -28,7 +28,9 @@ class MainActivity : ComponentActivity() {
         val installedApp = InstalledApp(packageInfo.versionName.orEmpty(), PackageInfoCompat.getLongVersionCode(packageInfo))
         setContent {
             FittyTheme {
-                FittyNavigation(programs, workouts, fitty::restTimerElapsedRealtime, installedApp, fitty.updateService)
+                FittyNavigation(
+                    programs, workouts, fitty::workoutTimerElapsedRealtime, installedApp, fitty.updateService, fitty.setTimerSignals,
+                )
             }
         }
     }

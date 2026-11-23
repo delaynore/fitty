@@ -46,7 +46,7 @@ class InProgressWorkoutTest {
 
     @After
     fun resetRestClock() {
-        application.restTimeMillis = null
+        application.workoutTimeMillis = null
     }
 
     @Test
@@ -82,12 +82,12 @@ class InProgressWorkoutTest {
             startRestTimerAtKnownTime()
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 55_000L
+            application.workoutTimeMillis = 55_000L
             scenario.moveToState(Lifecycle.State.RESUMED)
             awaitText("1:15")
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 130_000L
+            application.workoutTimeMillis = 130_000L
             scenario.moveToState(Lifecycle.State.RESUMED)
             compose.waitUntil(timeoutMillis = 5_000) {
                 compose.onAllNodes(hasContentDescription("Запустить таймер отдыха")).fetchSemanticsNodes().isNotEmpty()
@@ -105,7 +105,7 @@ class InProgressWorkoutTest {
             startRestTimerAtKnownTime()
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 55_000L
+            application.workoutTimeMillis = 55_000L
             // Keep the activity's saved state while discarding the in-memory ViewModels.
             scenario.onActivity { it.viewModelStore.clear() }
             scenario.recreate()
@@ -262,7 +262,7 @@ class InProgressWorkoutTest {
     }
 
     private fun startRestTimerAtKnownTime() {
-        application.restTimeMillis = 10_000L
+        application.workoutTimeMillis = 10_000L
         tap("Запустить таймер отдыха", description = true)
         compose.onNodeWithText("2:00").assertExists()
     }

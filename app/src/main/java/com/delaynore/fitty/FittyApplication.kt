@@ -6,6 +6,9 @@ import androidx.room.Room
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.ui.workout.SetTimerSignals
+import com.delaynore.fitty.ui.workout.playSetTimerCue
+import kotlinx.coroutines.delay
 
 open class FittyApplication : Application() {
     protected open val databaseName = "fitty.db"
@@ -15,7 +18,19 @@ open class FittyApplication : Application() {
     internal val database: FittyDatabase
         get() = room ?: Room.databaseBuilder(this, FittyDatabase::class.java, databaseName).build().also { room = it }
 
-    internal open fun restTimerElapsedRealtime(): Long = SystemClock.elapsedRealtime()
+    internal open fun workoutTimerElapsedRealtime(): Long = SystemClock.elapsedRealtime()
+
+    internal val setTimerSignals by lazy { SetTimerSignals(this) }
+
+    internal open suspend fun awaitSetTimerDeadline(deadlineMillis: Long) {
+        var remainingMillis = deadlineMillis - workoutTimerElapsedRealtime()
+        while (remainingMillis > 0L) {
+            delay(remainingMillis)
+            remainingMillis = deadlineMillis - workoutTimerElapsedRealtime()
+        }
+    }
+
+    internal open suspend fun playSetTimerSignal() = playSetTimerCue(this)
 
     internal open val updateService: UpdateService by lazy { GitHubUpdateService(this) }
 

@@ -102,10 +102,13 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         sessionId
     }
 
-    suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
+    suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet, expectedExercise: WorkoutExercise? = null): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
-            if (inProgressExercise(sessionId, exerciseId)?.type != set.result.type ||
+            val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
+            if (exercise.type != set.result.type ||
+                (expectedExercise != null &&
+                    (exercise.id != expectedExercise.id || exercise.catalogExerciseId != expectedExercise.catalogExerciseId)) ||
                 workouts.isRemovedSetPosition(exerciseId, set.position) ||
                 workouts.loggedSetAtPosition(exerciseId, set.position) != null
             ) {

@@ -1,6 +1,7 @@
 ﻿package com.delaynore.fitty.ui.workout
 
 import android.database.sqlite.SQLiteException
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -11,23 +12,30 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.delaynore.fitty.data.exercises.ExerciseGoal
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.LoggedSet
+import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
+import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.toInput
+import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val UNDO_MILLIS = 5_000L
 internal const val REST_DURATION_MILLIS = 120_000L
 private const val REST_TIMER_KEY = "workoutRestTimer"
+private const val SET_TIMER_KEY = "workoutSetTimer"
 
 private class WorkoutRows {
     var addedThrough by mutableIntStateOf(0)
@@ -58,7 +66,8 @@ internal class WorkoutViewModel(
     private val workouts: WorkoutsRepository,
     private val savedState: SavedStateHandle,
     private val bootCount: Int,
-    private val restTimerClock: () -> Long,
+    private val timerClock: () -> Long,
+    private val setTimerSignals: SetTimerSignals,
 ) : ViewModel() {
     private val sessionId = MutableStateFlow<Long?>(null)
     private val rowsByExercise = mutableStateMapOf<Long, WorkoutRows>()
@@ -66,8 +75,9 @@ internal class WorkoutViewModel(
     val pendingRemovals: List<RemovedWorkoutRow> get() = removedRows.toList()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val session = sessionId.flatMapLatest { id -> if (id == null) flowOf(null) else workouts.observeWorkout(id) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val session = sessionId.flatMapLatest { id ->
+        if (id == null) flowOf(null) else workouts.observeWorkout(id).onEach { validateSetTimer(id, it) }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     var exerciseIndex by mutableIntStateOf(0)
         private set
@@ -81,6 +91,8 @@ internal class WorkoutViewModel(
         private set
     var restDeadlineMillis by mutableStateOf<Long?>(null)
         private set
+    var setTimer by mutableStateOf<SetTimer?>(null)
+        private set
 
     fun open(id: Long) {
         if (id == sessionId.value) {
@@ -93,13 +105,16 @@ internal class WorkoutViewModel(
         savedPosition = null
         error = null
         editingSet = null
+        discardSetTimer()
+        setTimer = SetTimer.restore(savedState.get<Bundle>(SET_TIMER_KEY), id, bootCount, timerClock())
+        if (setTimer == null) savedState.remove<Bundle>(SET_TIMER_KEY)
         restoreRestTimer(id)
         sessionId.value = id
     }
 
     fun startRestTimer() {
         val id = sessionId.value ?: return
-        val deadline = restTimerClock() + REST_DURATION_MILLIS
+        val deadline = timerClock() + REST_DURATION_MILLIS
         restDeadlineMillis = deadline
         if (bootCount >= 0) savedState[REST_TIMER_KEY] = longArrayOf(id, deadline, bootCount.toLong())
     }
@@ -113,7 +128,76 @@ internal class WorkoutViewModel(
         if (restDeadlineMillis == deadline && remainingRestMillis(deadline) == 0L) resetRestTimer()
     }
 
-    fun remainingRestMillis(deadline: Long): Long = (deadline - restTimerClock()).coerceAtLeast(0L)
+    fun remainingRestMillis(deadline: Long): Long = (deadline - timerClock()).coerceAtLeast(0L)
+
+    fun startSetTimer(workoutId: Long, exerciseId: Long, position: Int) {
+        if (saving || setTimer != null) return
+        val workout = session.value?.takeIf { it.summary.id == workoutId && it.summary.finishedAtMillis == null } ?: return
+        val exercise = workout.exercises.getOrNull(exerciseIndex) ?: return
+        if (exercise.id != exerciseId || exercise.type != ExerciseType.DURATION ||
+            position in exercise.removedPositions || exercise.sets.any { it.position == position }
+        ) return
+        error = null
+        val startedAt = timerClock()
+        val goalAt = (exercise.goal as? ExerciseGoal.Duration)?.let { startedAt + it.seconds * 1_000L }
+        val timer = SetTimer(
+            UUID.randomUUID().toString(), workoutId, exerciseId, exercise.catalogExerciseId, position, startedAt, goalAt,
+        )
+        storeSetTimer(timer)
+        if (goalAt != null && !setTimerSignals.schedule(timer.token, workoutId, goalAt)) {
+            error = "Не удалось запустить сигнал цели"
+        }
+    }
+
+    fun elapsedSetMillis(timer: SetTimer): Long = timer.elapsedMillis(timerClock())
+
+    fun stopSetTimer(token: String) {
+        val timer = setTimer?.takeIf { it.token == token } ?: return
+        if (saving) return
+        val workout = session.value?.takeIf { it.summary.id == timer.workoutId && it.summary.finishedAtMillis == null }
+        val exercise = workout?.exercises?.firstOrNull(timer::matches)
+        if (exercise == null) {
+            discardSetTimer()
+            return
+        }
+        val stoppedAt = timer.stoppedAtMillis ?: timerClock()
+        val stopped = timer.copy(stoppedAtMillis = stoppedAt)
+        storeSetTimer(stopped)
+        if (timer.goalAtMillis == null || stoppedAt < timer.goalAtMillis) setTimerSignals.cancel(token)
+        val seconds = (stopped.elapsedMillis(stoppedAt) / 1_000L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+        val set = LoggedSet(timer.position, SetResult.Duration(seconds))
+        save("Не удалось записать подход") {
+            if (!persistSet(timer.workoutId, timer.exerciseId, set, expectedExercise = exercise)) return@save false
+            if (setTimer?.token == token) clearSetTimer()
+            true
+        }
+    }
+
+    private fun storeSetTimer(timer: SetTimer) {
+        setTimer = timer
+        if (bootCount >= 0) savedState[SET_TIMER_KEY] = timer.saved(bootCount)
+    }
+
+    private fun validateSetTimer(id: Long, workout: WorkoutSession?) {
+        val timer = setTimer?.takeIf { it.workoutId == id } ?: return
+        val exercise = workout?.takeIf { it.summary.finishedAtMillis == null }?.exercises?.firstOrNull(timer::matches)
+        if (exercise == null || timer.position in exercise.removedPositions) {
+            discardSetTimer()
+        } else if (exercise.sets.any { it.position == timer.position }) {
+            if (timer.stoppedAtMillis == null) discardSetTimer() else clearSetTimer()
+        }
+    }
+
+    private fun discardSetTimer() {
+        val timer = setTimer ?: return
+        setTimerSignals.cancel(timer.token)
+        clearSetTimer()
+    }
+
+    private fun clearSetTimer() {
+        setTimer = null
+        savedState.remove<Bundle>(SET_TIMER_KEY)
+    }
 
     private fun restoreRestTimer(id: Long) {
         val timer = savedState.get<LongArray>(REST_TIMER_KEY)
@@ -162,12 +246,23 @@ internal class WorkoutViewModel(
     }
 
     fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet) {
+        if (setTimer?.let { it.exerciseId == exerciseId && it.position == set.position } == true) return
         save("Не удалось записать подход") {
-            if (!workouts.logSet(sessionId, exerciseId, set)) return@save false
-            rows(exerciseId).drafts.remove(set.position)
+            if (!persistSet(sessionId, exerciseId, set)) return@save false
             savedPosition = set.position
             true
         }
+    }
+
+    private suspend fun persistSet(
+        sessionId: Long,
+        exerciseId: Long,
+        set: LoggedSet,
+        expectedExercise: WorkoutExercise? = null,
+    ): Boolean {
+        if (!workouts.logSet(sessionId, exerciseId, set, expectedExercise)) return false
+        rows(exerciseId).drafts.remove(set.position)
+        return true
     }
 
     fun clearFocusRequest() {
@@ -238,6 +333,8 @@ internal class WorkoutViewModel(
     fun finish(sessionId: Long, onFinished: () -> Unit) {
         save("Не удалось завершить тренировку") {
             if (!workouts.finishWorkout(sessionId)) return@save false
+            discardSetTimer()
+            setTimerSignals.cancelWorkout(sessionId)
             resetRestTimer()
             onFinished()
             true

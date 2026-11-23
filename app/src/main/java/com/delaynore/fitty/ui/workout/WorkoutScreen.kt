@@ -103,9 +103,9 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                 onExpireRest = viewModel::expireRestTimer,
                 onBack = onBack,
             )
-            SetHeadings(exercise.type, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
             key(exercise.id) {
-                WorkoutSetList(id, exercise, viewModel, Modifier.weight(1f))
+                val measuredExercise = workout.exercises.firstOrNull { current -> viewModel.setTimer?.matches(current) == true }
+                WorkoutSetList(id, exercise, measuredExercise, viewModel, Modifier.weight(1f))
             }
             viewModel.error?.let {
                 Text(it, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.error)
@@ -264,6 +264,7 @@ private fun RestTimerControls(remainingMillis: Long, onStart: () -> Unit, onRese
 private fun WorkoutSetList(
     sessionId: Long,
     exercise: WorkoutExercise,
+    measuredExercise: WorkoutExercise?,
     viewModel: WorkoutViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -282,6 +283,7 @@ private fun WorkoutSetList(
     val focusRequester = remember { FocusRequester() }
     val focus = LocalFocusManager.current
     val savedPosition = viewModel.savedPosition
+    val timer = viewModel.setTimer
     val advanceFocus = savedPosition != null && savedPosition in logged
     LaunchedEffect(advanceFocus, activePosition) {
         if (advanceFocus) {
@@ -294,6 +296,22 @@ private fun WorkoutSetList(
             }
         }
     }
+    if (exercise.type == ExerciseType.DURATION || measuredExercise != null) {
+        WorkoutSetTimerControls(
+            timer = timer,
+            otherExerciseName = measuredExercise?.takeIf { it.id != exercise.id }?.name,
+            enabled = !viewModel.saving && (timer != null || activePosition != null),
+            elapsedMillis = viewModel::elapsedSetMillis,
+            onStart = {
+                if (activePosition != null) {
+                    focus.clearFocus()
+                    viewModel.startSetTimer(sessionId, exercise.id, activePosition)
+                }
+            },
+            onStop = viewModel::stopSetTimer,
+        )
+    }
+    SetHeadings(exercise.type, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
     LazyColumn(
         modifier.fillMaxWidth().testTag("workout-sets"),
         state = listState,
@@ -315,15 +333,16 @@ private fun WorkoutSetList(
             ) {
                 if (loggedSet == null) {
                     val active = position == activePosition
+                    val measuring = timer?.let { it.matches(exercise) && it.position == position } == true
                     DraftSetRow(
                         number = number,
                         input = rows.inputs[position] ?: SetInput(exercise.type),
-                        enabled = active && !viewModel.saving,
+                        enabled = active && !measuring && !viewModel.saving,
                         onInput = { viewModel.changeDraft(exercise.id, position, it) },
                         onLog = { viewModel.logSet(sessionId, exercise.id, position) },
                         firstFieldModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
                     )
-                    if (active && advanceFocus && !viewModel.saving) {
+                    if (active && advanceFocus && !measuring && !viewModel.saving) {
                         LaunchedEffect(position) {
                             withFrameNanos { }
                             focusRequester.requestFocus()
