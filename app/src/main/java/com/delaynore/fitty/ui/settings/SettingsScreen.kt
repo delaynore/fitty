@@ -9,6 +9,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,7 +28,12 @@ import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
-internal fun SettingsScreen(viewModel: SettingsViewModel, onBack: (() -> Unit)?, onUpdate: () -> Unit) {
+internal fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onBack: (() -> Unit)?,
+    onBrowseExercises: () -> Unit,
+    onUpdate: () -> Unit,
+) {
     val check by viewModel.updateCheck.collectAsStateWithLifecycle()
     val install by viewModel.updateInstall.collectAsStateWithLifecycle()
     SettingsContent(
@@ -35,6 +41,7 @@ internal fun SettingsScreen(viewModel: SettingsViewModel, onBack: (() -> Unit)?,
         check = check,
         install = install,
         onBack = onBack,
+        onBrowseExercises = onBrowseExercises,
         onCheck = viewModel::checkForUpdate,
         onUpdate = onUpdate,
         onConfirmDownload = viewModel::confirmDownload,
@@ -50,6 +57,7 @@ internal fun SettingsContent(
     check: UpdateCheckState,
     install: UpdateInstallState,
     onBack: (() -> Unit)?,
+    onBrowseExercises: () -> Unit,
     onCheck: () -> Unit,
     onUpdate: () -> Unit,
     onConfirmDownload: () -> Unit,
@@ -59,6 +67,9 @@ internal fun SettingsContent(
 ) {
     ScreenColumn {
         PageHeader("Настройки", onBack)
+        OutlinedButton(onClick = onBrowseExercises, modifier = Modifier.fillMaxWidth()) {
+            Text("Каталог упражнений")
+        }
         Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)

@@ -7,23 +7,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.delaynore.fitty.data.exercises.CatalogExercise
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
+import com.delaynore.fitty.ui.inputText
+import com.delaynore.fitty.ui.parseGoal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal data class ExerciseDraft(
     val id: Long,
-    val name: String = "",
+    val name: String,
     val sets: String = "",
-    val repetitions: String = "",
+    val target: String = "",
+    val catalogExerciseId: String? = null,
+    val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 ) {
     val valid: Boolean
-        get() = name.isNotBlank() && sets.validRecommendation() && repetitions.validRecommendation()
+        get() = name.isNotBlank() && sets.validRecommendation() && validTarget
 
-    fun toExercise() = TrainingExercise(id, name, sets.trim().toIntOrNull(), repetitions.trim().toIntOrNull())
+    val goal get() = type.parseGoal(target)
+    val validTarget get() = target.isBlank() || goal != null
+
+    fun toExercise() = TrainingExercise(
+        id = id,
+        name = name,
+        recommendedSets = sets.trim().toIntOrNull(),
+        goal = goal,
+        catalogExerciseId = catalogExerciseId,
+        type = type,
+    )
 }
 
 internal fun String.validRecommendation() = isBlank() || (trim().toIntOrNull() ?: 0) > 0
@@ -77,7 +93,9 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
                     exercise.id,
                     exercise.name,
                     exercise.recommendedSets?.toString().orEmpty(),
-                    exercise.recommendedRepetitions?.toString().orEmpty(),
+                    exercise.goal?.inputText().orEmpty(),
+                    exercise.catalogExerciseId,
+                    exercise.type,
                 )
             })
         }
@@ -118,7 +136,7 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
     }
 
     fun addDay() {
-        val day = TrainingDayDraft(nextDraftId--, "", listOf(ExerciseDraft(nextDraftId--)))
+        val day = TrainingDayDraft(nextDraftId--, "", emptyList())
         days = days + day
         openDay(day.id)
     }
@@ -131,12 +149,41 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
 
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
 
-    fun addExercise() = updateDay { it.copy(exercises = it.exercises + ExerciseDraft(nextDraftId--)) }
+    fun selectExercise(exercise: CatalogExercise, legacyId: Long?) = updateDay { day ->
+        if (legacyId == null) {
+            day.copy(exercises = day.exercises + ExerciseDraft(
+                id = nextDraftId--,
+                name = exercise.name,
+                catalogExerciseId = exercise.id,
+                type = exercise.type,
+            ))
+        } else {
+            day.copy(exercises = day.exercises.map { draft ->
+                if (draft.id != legacyId || draft.catalogExerciseId != null) draft else draft.copy(
+                    name = exercise.name,
+                    target = if (draft.type == exercise.type) draft.target else "",
+                    catalogExerciseId = exercise.id,
+                    type = exercise.type,
+                )
+            })
+        }
+    }
 
     fun deleteExercise(id: Long) = updateDay { day -> day.copy(exercises = day.exercises.filterNot { it.id == id }) }
 
     fun changeExercise(exercise: ExerciseDraft) = updateDay { day ->
         day.copy(exercises = day.exercises.map { if (it.id == exercise.id) exercise else it })
+    }
+
+    fun moveExercise(id: Long, destination: Int) = updateDay { day ->
+        val source = day.exercises.indexOfFirst { it.id == id }
+        if (source == -1 || destination !in day.exercises.indices || source == destination) {
+            day
+        } else {
+            val exercises = day.exercises.toMutableList()
+            exercises.add(destination, exercises.removeAt(source))
+            day.copy(exercises = exercises)
+        }
     }
 
     fun finishDay(onFinished: () -> Unit) {

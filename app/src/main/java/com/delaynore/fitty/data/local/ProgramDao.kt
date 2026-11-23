@@ -1,5 +1,6 @@
 package com.delaynore.fitty.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
@@ -12,6 +13,8 @@ import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
+import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.exercises.restoreGoal
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "training_programs")
@@ -52,7 +55,15 @@ internal data class TrainingExerciseEntity(
     val recommendedSets: Int? = null,
     val recommendedRepetitions: Int? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "0") val position: Int = 0,
+    val catalogExerciseId: String? = null,
+    @ColumnInfo(defaultValue = "'WEIGHT_AND_REPS'") val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
+    val recommendedDurationSeconds: Int? = null,
+    val recommendedDistanceMeters: Double? = null,
 )
+
+internal val TrainingExerciseEntity.goal
+    get() = type.restoreGoal(recommendedRepetitions, recommendedDurationSeconds, recommendedDistanceMeters)
 
 @Entity(
     tableName = "home_program",
@@ -74,6 +85,10 @@ internal data class StoredTrainingDay(
     @Relation(parentColumn = "id", entityColumn = "dayId")
     val exercises: List<TrainingExerciseEntity>,
 )
+
+// Migrated exercises all have position 0. Their IDs preserve the original order.
+internal fun StoredTrainingDay.orderedExercises() =
+    exercises.sortedWith(compareBy(TrainingExerciseEntity::position, TrainingExerciseEntity::id))
 
 internal data class StoredTrainingProgram(
     @Embedded val program: TrainingProgramEntity,

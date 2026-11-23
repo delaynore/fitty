@@ -46,13 +46,13 @@ class InProgressWorkoutTest {
 
     @After
     fun resetRestClock() {
-        application.restTimeMillis = null
+        application.workoutTimeMillis = null
     }
 
     @Test
     fun restTimerStartsManuallyKeepsSetRowsInPlaceAndCanBeReset() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.createAndStartWorkout(secondExercise = "Тяга верхнего блока")
             compose.logSet(1, "60", "6")
             closeSoftKeyboard()
             val firstRow = compose.onNodeWithTag("workout-set-row-1")
@@ -63,12 +63,12 @@ class InProgressWorkoutTest {
             assertEquals(idleBounds, firstRow.getUnclippedBoundsInRoot())
 
             tap("Следующее упражнение", description = true)
-            awaitText("Тяга")
+            awaitText("Тяга верхнего блока")
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertExists()
             tap("Назад", description = true)
             awaitText("Продолжить тренировку")
             tap("Продолжить тренировку")
-            awaitText("Тяга")
+            awaitText("Тяга верхнего блока")
             tap("Сбросить таймер отдыха", description = true)
             compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
@@ -82,12 +82,12 @@ class InProgressWorkoutTest {
             startRestTimerAtKnownTime()
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 55_000L
+            application.workoutTimeMillis = 55_000L
             scenario.moveToState(Lifecycle.State.RESUMED)
             awaitText("1:15")
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 130_000L
+            application.workoutTimeMillis = 130_000L
             scenario.moveToState(Lifecycle.State.RESUMED)
             compose.waitUntil(timeoutMillis = 5_000) {
                 compose.onAllNodes(hasContentDescription("Запустить таймер отдыха")).fetchSemanticsNodes().isNotEmpty()
@@ -105,7 +105,7 @@ class InProgressWorkoutTest {
             startRestTimerAtKnownTime()
 
             scenario.moveToState(Lifecycle.State.CREATED)
-            application.restTimeMillis = 55_000L
+            application.workoutTimeMillis = 55_000L
             // Keep the activity's saved state while discarding the in-memory ViewModels.
             scenario.onActivity { it.viewModelStore.clear() }
             scenario.recreate()
@@ -206,7 +206,7 @@ class InProgressWorkoutTest {
     @Test
     fun twoRemovedSetsCanBeRestoredIndependentlyInReverseOrder() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.createAndStartWorkout(secondExercise = "Тяга верхнего блока")
             compose.logSet(1, "60", "6")
             compose.logSet(2, "65", "5")
             closeSoftKeyboard()
@@ -217,18 +217,18 @@ class InProgressWorkoutTest {
             awaitText("60 кг × 6")
             awaitText("65 кг × 5")
             tap("Следующее упражнение", description = true)
-            awaitText("Тяга")
+            awaitText("Тяга верхнего блока")
             compose.onNodeWithText("Завершить").assertIsNotEnabled()
 
-            tap("Вернуть подход 1, Жим лёжа", description = true)
-            tap("Вернуть подход 2, Жим лёжа", description = true)
+            tap("Вернуть подход 1, Жим штанги лёжа", description = true)
+            tap("Вернуть подход 2, Жим штанги лёжа", description = true)
             compose.waitUntil(timeoutMillis = 5_000) {
                 compose.onAllNodes(hasText("Завершить") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Завершить").assertIsEnabled()
             tap("Все упражнения")
             awaitText("Записано подходов: 2")
-            tap("1. Жим лёжа")
+            tap("1. Жим штанги лёжа")
             awaitTag("workout-logged-weight-1")
             awaitTag("workout-logged-weight-2")
             compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
@@ -247,7 +247,7 @@ class InProgressWorkoutTest {
             removeSet(1)
             awaitText("60 кг × 6")
             compose.waitUntil(timeoutMillis = 8_000) {
-                compose.onAllNodes(hasContentDescription("Вернуть подход 1, Жим лёжа"))
+                compose.onAllNodes(hasContentDescription("Вернуть подход 1, Жим штанги лёжа"))
                     .fetchSemanticsNodes().isEmpty()
             }
         }
@@ -262,7 +262,7 @@ class InProgressWorkoutTest {
     }
 
     private fun startRestTimerAtKnownTime() {
-        application.restTimeMillis = 10_000L
+        application.workoutTimeMillis = 10_000L
         tap("Запустить таймер отдыха", description = true)
         compose.onNodeWithText("2:00").assertExists()
     }

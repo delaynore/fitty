@@ -1,19 +1,25 @@
 package com.delaynore.fitty.data.programs
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.ExerciseGoal
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.HomeProgramEntity
 import com.delaynore.fitty.data.local.StoredTrainingProgram
 import com.delaynore.fitty.data.local.TrainingDayEntity
 import com.delaynore.fitty.data.local.TrainingExerciseEntity
 import com.delaynore.fitty.data.local.TrainingProgramEntity
+import com.delaynore.fitty.data.local.goal
+import com.delaynore.fitty.data.local.orderedExercises
 import kotlinx.coroutines.flow.map
 
 internal data class TrainingExercise(
     val id: Long,
     val name: String,
     val recommendedSets: Int?,
-    val recommendedRepetitions: Int?,
+    val goal: ExerciseGoal?,
+    val catalogExerciseId: String? = null,
+    val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 )
 
 internal data class TrainingDay(val id: Long, val name: String, val exercises: List<TrainingExercise>)
@@ -41,7 +47,7 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
         require(program.days.all { day ->
             day.name.isNotBlank() && day.exercises.isNotEmpty() && day.exercises.all {
                 it.name.isNotBlank() && (it.recommendedSets == null || it.recommendedSets > 0) &&
-                    (it.recommendedRepetitions == null || it.recommendedRepetitions > 0)
+                    (it.goal == null || it.goal.isValidFor(it.type))
             }
         })
 
@@ -65,13 +71,18 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                 }
                 val priorExerciseIds = prior?.exercises.orEmpty().map { it.id }.toSet()
                 dao.deleteExercises((priorExerciseIds - day.exercises.map { it.id }.toSet()).toList())
-                for (exercise in day.exercises) {
+                for ((position, exercise) in day.exercises.withIndex()) {
                     val exerciseEntity = TrainingExerciseEntity(
                         dayId = dayId,
                         name = exercise.name.trim(),
                         recommendedSets = exercise.recommendedSets,
-                        recommendedRepetitions = exercise.recommendedRepetitions,
+                        recommendedRepetitions = (exercise.goal as? ExerciseGoal.Repetitions)?.repetitions,
+                        recommendedDurationSeconds = (exercise.goal as? ExerciseGoal.Duration)?.seconds,
+                        recommendedDistanceMeters = (exercise.goal as? ExerciseGoal.Distance)?.meters,
+                        catalogExerciseId = exercise.catalogExerciseId,
+                        type = exercise.type,
                         id = exercise.id.takeIf { it in priorExerciseIds } ?: 0,
+                        position = position,
                     )
                     if (exerciseEntity.id == 0L) dao.insertExercise(exerciseEntity)
                     else dao.updateExercise(exerciseEntity)
@@ -85,9 +96,17 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
         id = program.id,
         name = program.name,
         days = days.sortedBy { it.day.id }.map { stored ->
-            TrainingDay(stored.day.id, stored.day.name, stored.exercises.sortedBy { it.id }.map {
-                TrainingExercise(it.id, it.name, it.recommendedSets, it.recommendedRepetitions)
-            })
+            val exercises = stored.orderedExercises().map {
+                TrainingExercise(
+                    id = it.id,
+                    name = it.name,
+                    recommendedSets = it.recommendedSets,
+                    goal = it.goal,
+                    catalogExerciseId = it.catalogExerciseId,
+                    type = it.type,
+                )
+            }
+            TrainingDay(stored.day.id, stored.day.name, exercises)
         },
     )
 }

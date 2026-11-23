@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
@@ -24,17 +23,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.delaynore.fitty.ui.DeleteIconButton
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
@@ -157,14 +156,50 @@ private fun EditorSettingsButton(onClick: () -> Unit) {
 }
 
 @Composable
-internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: () -> Unit, onSettings: () -> Unit) {
-    val focus = LocalFocusManager.current
+internal fun TrainingDayEditorScreen(
+    viewModel: ProgramEditorViewModel,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+    onPickExercise: (Long?) -> Unit,
+) {
     val day = viewModel.editingDay ?: return
-    val showErrors = viewModel.showDayErrors
+    TrainingDayEditorContent(
+        day = day,
+        showErrors = viewModel.showDayErrors,
+        onBack = onBack,
+        onSettings = if (viewModel.hasChanges) onSettings else null,
+        onPickExercise = onPickExercise,
+        onDayNameChange = viewModel::changeDayName,
+        onChangeExercise = viewModel::changeExercise,
+        onDeleteExercise = viewModel::deleteExercise,
+        onMoveExercise = viewModel::moveExercise,
+        onSave = { viewModel.finishDay(onBack) },
+    )
+}
+
+@Composable
+internal fun TrainingDayEditorContent(
+    day: TrainingDayDraft,
+    showErrors: Boolean,
+    onBack: () -> Unit,
+    onSettings: (() -> Unit)?,
+    onPickExercise: (Long?) -> Unit,
+    onDayNameChange: (String) -> Unit,
+    onChangeExercise: (ExerciseDraft) -> Unit,
+    onDeleteExercise: (Long) -> Unit,
+    onMoveExercise: (Long, Int) -> Unit,
+    onSave: () -> Unit,
+) {
+    val focus = LocalFocusManager.current
+    val scrollState = rememberScrollState()
+    var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxHeight()) {
-        ScreenColumn(Modifier.weight(1f)) {
+        ScreenColumn(
+            modifier = Modifier.weight(1f).onGloballyPositioned { viewport = it }.testTag("day-editor-scroll"),
+            scrollState = scrollState,
+        ) {
             PageHeader("Тренировочный день", onBack) {
-                if (viewModel.hasChanges) {
+                if (onSettings != null) {
                     EditorSettingsButton {
                         focus.clearFocus()
                         onSettings()
@@ -173,28 +208,23 @@ internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: 
             }
             OutlinedTextField(
                 value = day.name,
-                onValueChange = viewModel::changeDayName,
+                onValueChange = onDayNameChange,
                 label = { Text("Название дня") },
                 singleLine = true,
                 isError = showErrors && day.name.isBlank(),
                 supportingText = if (showErrors && day.name.isBlank()) ({ Text("Введи название дня") }) else null,
                 modifier = Modifier.fillMaxWidth().testTag("day-name"),
             )
-            day.exercises.forEachIndexed { index, exercise ->
-                key(exercise.id) {
-                    ExerciseEditor(
-                        exercise = exercise,
-                        index = index,
-                        showErrors = showErrors,
-                        onChange = viewModel::changeExercise,
-                        onDelete = { viewModel.deleteExercise(exercise.id) },
-                    )
-                }
-            }
-            OutlinedButton(
-                onClick = viewModel::addExercise,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) { Text("Добавить упражнение") }
+            DayExercisesEditor(
+                day = day,
+                showErrors = showErrors,
+                scrollState = scrollState,
+                viewport = { viewport },
+                onPickExercise = onPickExercise,
+                onChange = onChangeExercise,
+                onDelete = onDeleteExercise,
+                onMove = onMoveExercise,
+            )
             if (showErrors && day.exercises.isEmpty()) {
                 Text("Добавь хотя бы одно упражнение", color = MaterialTheme.colorScheme.error)
             }
@@ -202,80 +232,10 @@ internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: 
         Button(
             onClick = {
                 focus.clearFocus()
-                viewModel.finishDay(onBack)
+                onSave()
             },
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)
                 .heightIn(min = 52.dp),
         ) { Text("Сохранить день") }
     }
-}
-
-@Composable
-private fun ExerciseEditor(
-    exercise: ExerciseDraft,
-    index: Int,
-    showErrors: Boolean,
-    onChange: (ExerciseDraft) -> Unit,
-    onDelete: () -> Unit,
-) {
-    val suffix = if (index == 0) "" else "-${index + 1}"
-    val nameError = showErrors && exercise.name.isBlank()
-    val setsError = showErrors && !exercise.sets.validRecommendation()
-    val repsError = showErrors && !exercise.repetitions.validRecommendation()
-    var expanded by rememberSaveable { mutableStateOf(exercise.sets.isNotBlank() || exercise.repetitions.isNotBlank()) }
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = exercise.name,
-                    onValueChange = { onChange(exercise.copy(name = it)) },
-                    label = { Text("Название упражнения") },
-                    singleLine = true,
-                    isError = nameError,
-                    supportingText = if (nameError) ({ Text("Введи название упражнения") }) else null,
-                    modifier = Modifier.weight(1f).testTag("exercise-name$suffix"),
-                )
-                DeleteIconButton("Удалить упражнение ${index + 1}", onClick = onDelete)
-            }
-            TextButton(onClick = { expanded = !expanded }) { Text("Рекомендации") }
-            if (expanded || setsError || repsError) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RecommendationInput(
-                        label = "Подходы",
-                        value = exercise.sets,
-                        onChange = { onChange(exercise.copy(sets = it)) },
-                        isError = setsError,
-                        modifier = Modifier.weight(1f).testTag("recommendation-sets$suffix"),
-                    )
-                    RecommendationInput(
-                        label = "Повторения",
-                        value = exercise.repetitions,
-                        onChange = { onChange(exercise.copy(repetitions = it)) },
-                        isError = repsError,
-                        modifier = Modifier.weight(1f).testTag("recommendation-repetitions$suffix"),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecommendationInput(
-    label: String,
-    value: String,
-    onChange: (String) -> Unit,
-    isError: Boolean,
-    modifier: Modifier,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        isError = isError,
-        supportingText = if (isError) ({ Text("Введи целое число от 1") }) else null,
-        modifier = modifier,
-    )
 }
