@@ -1,0 +1,100 @@
+﻿<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty · Прототип редактора дня</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:18px 8px;background:var(--background,#191c19);color:var(--foreground,#f3f5ef);font:16px system-ui,sans-serif}
+main{color-scheme:dark;max-width:400px;margin:auto;background:#171e17;color:#f2f5ef;padding:20px;border-radius:24px;border:1px solid #485043}h1{font-size:25px;margin:4px 0 16px}small,label{color:#bfcbba}button,input{font:inherit}button{cursor:pointer;color:inherit}article{border-bottom:1px solid #3c473a;padding:8px 0}.line{display:flex;align-items:center;gap:8px;min-height:42px}.summary{flex:1;text-align:left;background:none;border:0;padding:6px}.summary strong,.summary span{display:block}.summary span{font-size:14px;color:#c6ddad;margin-top:3px}.handle{touch-action:none;cursor:grab;color:#cbd9c4;background:#273125;border:0;border-radius:10px;width:42px;height:42px;font-size:22px}.fields{display:flex;gap:12px;margin:10px 6px}.fields label{flex:1;font-size:13px}input{display:block;color:#fff;background:#232e21;border:1px solid #66725f;border-radius:8px;width:100%;padding:8px;margin-top:4px}
+main p{font-size:13px;color:#c7cfc3}
+#list{position:relative}
+.handle{color:#c5fa55;background:#33462a}
+article.slot{background:#273523;outline:2px dashed #89ab70;outline-offset:-3px;border-radius:12px}
+.slot>*{visibility:hidden}
+article.lifted{position:fixed;pointer-events:none;box-sizing:border-box;z-index:5;margin:0;color:#f2f5ef;background:#34472c;outline:2px solid #c5fa55;border-radius:12px;box-shadow:0 9px 20px #0006}
+.lifted .summary{color:#f2f5ef}
+</style>
+<main><small>Тренировочный день</small><h1>День А</h1><div id="list"></div><p>Потяни за ⠿, чтобы изменить порядок.</p></main>
+<script>
+const names=['Жим гантелей','Приседания','Планка','Тяга блока','Отжимания','Бег'];
+const units=['Повторы','Повторы','Секунды','Повторы','Повторы','Метры'];
+const initial=[8,12,40,10,15,800];
+let exercises = names.map((name,id) => ({name,id,sets:id===5?1:3,target:initial[id]}));
+let opened = null;
+function fields(row){
+ const unit=units[row.id];
+ return '<div class="fields">'+[['sets','Подходы'],['target',unit]].map(([key,label])=>'<label>'+label+'<input type="number" min="1" data-id="'+row.id+'" data-field="'+key+'" value="'+row[key]+'"></label>').join('')+'</div>';
+}
+function goal(row){return row.sets+' × '+row.target+' '+['повт.','повт.','с','повт.','повт.','м'][row.id]}
+function draw(){
+ list.innerHTML = exercises.map(row => {
+   const expanded = opened === row.id;
+   return `<article data-row="${row.id}">
+     <div class="line">
+       <button class="summary" data-edit="${row.id}" aria-expanded="${expanded}">
+         <strong>${row.name}</strong><span>${goal(row)}</span>
+       </button>
+       <button class="handle" aria-label="Переместить ${row.name}">⠿</button>
+     </div>
+     ${expanded ? fields(row) : ''}
+   </article>`;
+ }).join('');
+}
+list.onclick = event => {
+ const button = event.target.closest('button.summary');
+ if (!button) return;
+ const id = Number(button.dataset.edit);
+ opened = opened === id ? null : id;
+ draw();
+};
+document.oninput=e=>{
+ if(!e.target.dataset.field)return;
+ const row=exercises.find(r=>r.id===Number(e.target.dataset.id));
+ row[e.target.dataset.field]=e.target.value;
+ const summary=list.querySelector('[data-edit="'+row.id+'"] span');if(summary)summary.textContent=goal(row);
+};
+const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
+list.onpointerdown = event => {
+ const handle = event.target.closest('.handle');
+ if (!handle || !event.isPrimary || event.button !== 0) return;
+ const slot = handle.closest('article');
+ const bounds = slot.getBoundingClientRect();
+ const grip = event.clientY - bounds.top;
+ const lifted = slot.cloneNode(true);
+ lifted.className = 'lifted';
+ lifted.inert = true;
+ Object.assign(lifted.style, {left: bounds.left+'px', top: bounds.top+'px', width: bounds.width+'px'});
+ document.body.append(lifted);
+ slot.classList.add('slot');
+ list.setPointerCapture(event.pointerId);
+ let y = 0;
+ list.onpointermove = move => {
+   if (move.pointerId !== event.pointerId) return;
+   const box = list.getBoundingClientRect();
+   const top = Math.max(box.top, Math.min(box.bottom - bounds.height, move.clientY - grip));
+   y = top - bounds.top;
+   lifted.style.transform = 'translateY('+y+'px)';
+   const others = [...list.children].filter(el => el !== slot);
+   const pointerCenter = move.clientY - grip + bounds.height/2;
+   const next = others.find(el => box.top + el.offsetTop + el.offsetHeight/2 > pointerCenter);
+   if (slot.nextElementSibling === (next || null)) return;
+   const before = others.map(el => el.getBoundingClientRect().top);
+   list.insertBefore(slot, next || null);
+   others.forEach((el,i) => {
+     el.getAnimations().forEach(anim => anim.cancel());
+     const offset = before[i] - el.getBoundingClientRect().top;
+     if (offset && motion) el.animate([{transform:'translateY('+offset+'px)'},{transform:'none'}],{duration:motion,easing:'ease-out'});
+   });
+ };
+ const finish = move => {
+   if (move.pointerId !== event.pointerId) return;
+   list.onpointermove = list.onpointerup = list.onpointercancel = list.onlostpointercapture = null;
+   if (move.type === 'pointercancel' || move.type === 'lostpointercapture') { lifted.remove(); draw(); return; }
+   const old = exercises;
+   exercises = [...list.children].map(el => old.find(row => row.id === Number(el.dataset.row)));
+   const end = slot.getBoundingClientRect().top - bounds.top;
+   const settle = lifted.animate([{transform:'translateY('+y+'px)'},{transform:'translateY('+end+'px)'}], {duration:motion,easing:'ease-out',fill:'forwards'});
+   settle.onfinish = () => { lifted.remove(); slot.classList.remove('slot'); };
+ };
+ list.onpointerup = list.onpointercancel = list.onlostpointercapture = finish;
+};
+draw();
+</script></html>
