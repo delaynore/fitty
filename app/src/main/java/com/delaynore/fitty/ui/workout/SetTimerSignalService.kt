@@ -44,7 +44,9 @@ internal class SetTimerSignals(private val context: Context) {
     val pending = request.asStateFlow()
 
     fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean {
-        request.value = SetTimerSignal(token, workoutId, deadlineMillis)
+        val signal = SetTimerSignal(token, workoutId, deadlineMillis)
+        if (request.value == signal) return true
+        request.value = signal
         return try {
             ContextCompat.startForegroundService(context, Intent(context, SetTimerSignalService::class.java))
             true

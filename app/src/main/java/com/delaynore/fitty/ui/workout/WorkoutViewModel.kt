@@ -1,4 +1,4 @@
-﻿package com.delaynore.fitty.ui.workout
+package com.delaynore.fitty.ui.workout
 
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
@@ -149,9 +149,7 @@ internal class WorkoutViewModel(
             UUID.randomUUID().toString(), workoutId, exerciseId, exercise.catalogExerciseId, position, startedAt, goalAt,
         )
         storeSetTimer(timer)
-        if (goalAt != null && !setTimerSignals.schedule(timer.token, workoutId, goalAt)) {
-            error = "Не удалось запустить сигнал цели"
-        }
+        scheduleFutureCue(timer)
     }
 
     fun elapsedSetMillis(timer: SetTimer): Long = timer.elapsedMillis(timerClock())
@@ -190,6 +188,16 @@ internal class WorkoutViewModel(
             discardSetTimer()
         } else if (exercise.sets.any { it.position == timer.position }) {
             if (timer.stoppedAtMillis == null) discardSetTimer() else clearSetTimer()
+        } else {
+            scheduleFutureCue(timer)
+        }
+    }
+
+    private fun scheduleFutureCue(timer: SetTimer) {
+        val deadline = timer.goalAtMillis ?: return
+        if (timer.stoppedAtMillis != null || deadline <= timerClock()) return
+        if (!setTimerSignals.schedule(timer.token, timer.workoutId, deadline)) {
+            error = "Не удалось запустить сигнал цели"
         }
     }
 

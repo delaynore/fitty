@@ -124,6 +124,40 @@ class WorkoutSetTimerTest {
     }
 
     @Test
+    fun restoringAnActiveTimerSchedulesItsFutureCueAgain() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startPlankWorkout(goal = "40")
+            tap("Старт")
+            awaitText("Стоп")
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.setTimerSignals.pending.value?.let { application.setTimerSignals.cancel(it.token) }
+            application.workoutTimeMillis = 25_000L
+            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.recreate()
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            awaitText("0:15")
+            assertEquals(0, cues.get())
+            application.workoutTimeMillis = 50_000L
+            compose.waitUntil(timeoutMillis = 5_000) { cues.get() == 1 }
+            tap("Стоп")
+            awaitLogged(1, "40")
+        }
+    }
+
+    @Test
+    fun invalidDayGoalCanBeCollapsedAndOpenedAgain() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            enterPlankDay(goal = "0")
+            tap("Сохранить день")
+            compose.onNodeWithTag("recommendation-duration").assertExists()
+            tap("Планка на предплечьях")
+            compose.onNodeWithTag("recommendation-duration").assertDoesNotExist()
+            tap("Планка на предплечьях")
+            compose.onNodeWithTag("recommendation-duration").assertExists()
+        }
+    }
+
+    @Test
     fun stoppingWithoutAGoalLogsElapsedTimeAfterSavedStateRestoration() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             startPlankWorkout(goal = null)
@@ -140,7 +174,7 @@ class WorkoutSetTimerTest {
         }
     }
 
-    private fun startPlankWorkout(goal: String?) {
+    private fun enterPlankDay(goal: String?) {
         awaitText("Создать программу")
         tap("Создать программу")
         compose.onNodeWithTag("program-name").performTextInput("Планка")
@@ -152,6 +186,10 @@ class WorkoutSetTimerTest {
             compose.onNodeWithTag("recommendation-duration").performScrollTo().performTextInput(goal)
             closeSoftKeyboard()
         }
+    }
+
+    private fun startPlankWorkout(goal: String?) {
+        enterPlankDay(goal)
         tap("Сохранить день")
         tap("Сохранить программу")
         awaitText("Начать тренировку")

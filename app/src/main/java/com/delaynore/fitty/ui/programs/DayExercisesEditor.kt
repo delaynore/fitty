@@ -94,7 +94,7 @@ internal fun DayExercisesEditor(
     var expandedId by rememberSaveable(day.id) { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ReorderableExerciseRows(day.exercises, scrollState, viewport, onMove) { exercise, index, lifted, handle, modifier ->
-            val expanded = expandedId == exercise.id || (showErrors && !exercise.valid)
+            val expanded = expandedId == exercise.id
             ExerciseEditor(
                 exercise = exercise,
                 index = index,
@@ -347,6 +347,9 @@ private fun ExerciseEditor(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     if (target != null) Text(target, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    if (!expanded && (setsError || targetError)) {
+                        Text("Проверь цель", color = colors.error, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 DeleteIconButton("Удалить упражнение ${index + 1}", onClick = onDelete)
                 ExerciseDragHandle(handle)
