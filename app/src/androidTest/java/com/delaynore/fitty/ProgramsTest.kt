@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
@@ -118,13 +120,86 @@ class ProgramsTest {
     }
 
     @Test
+    fun editsATargetInlineAndDragsAnExerciseToTheStartOfTheTrainingDay() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitText("Создать программу")
+            tap("Создать программу")
+            replace("program-name", "Силовая")
+            addDay("День А", "Жим лёжа") {
+                tap("Добавить упражнение")
+                replace("exercise-name-2", "Приседания")
+                closeSoftKeyboard()
+                tap("Добавить упражнение")
+                replace("exercise-name-3", "Тяга блока")
+                replace("recommendation-sets-3", "3")
+                replace("recommendation-repetitions-3", "8")
+            }
+            tap("Сохранить программу")
+
+            awaitText("Силовая")
+            tap("Мои программы")
+            tap("Силовая")
+            tap("Редактировать программу")
+            tap("День А")
+            compose.onNodeWithText("3 × 8").assertIsDisplayed()
+            compose.onNodeWithTag("recommendation-repetitions-3").assertDoesNotExist()
+            tap("Тяга блока")
+            replace("recommendation-repetitions-3", "10")
+            tap("3 × 10")
+            compose.onNodeWithTag("recommendation-repetitions-3").assertDoesNotExist()
+            compose.onNodeWithText("3 × 10").assertIsDisplayed()
+
+            val first = compose.onNodeWithContentDescription("Переместить «Жим лёжа»")
+            val firstY = first.fetchSemanticsNode().boundsInRoot.center.y
+            val handle = compose.onNodeWithContentDescription("Переместить «Тяга блока»")
+            val start = handle.fetchSemanticsNode().boundsInRoot.center
+            val root = compose.onRoot()
+            root.performTouchInput {
+                down(start)
+                moveTo(start.copy(y = firstY))
+            }
+            check(handle.fetchSemanticsNode().boundsInRoot.center.y < (start.y + firstY) / 2)
+            check(first.fetchSemanticsNode().boundsInRoot.center.y > firstY)
+            root.performTouchInput { up() }
+            tap("Сохранить день")
+            tap("Сохранить программу")
+
+            awaitText("Силовая")
+            tap("Редактировать программу")
+            tap("День А")
+            val exerciseNames = listOf("Тяга блока", "Жим лёжа", "Приседания")
+            val positions = exerciseNames.map { name ->
+                compose.onNodeWithText(name).fetchSemanticsNode().boundsInRoot.top
+            }
+            check(positions.zipWithNext().all { (before, after) -> before < after }) {
+                "Exercises are out of order: $positions"
+            }
+            compose.onNodeWithText("3 × 10").assertIsDisplayed()
+            tap("Сохранить день")
+            tap("Сохранить программу")
+            awaitText("Силовая")
+            action("Назад")
+            action("Назад")
+            tap("Начать тренировку")
+            awaitText("Тяга блока")
+            awaitText("Упражнение 1 из 3")
+            awaitText("3 × 10")
+            compose.logSet(1, "50", "10")
+            closeSoftKeyboard()
+            tap("Все упражнения")
+            tap("3. Приседания")
+            awaitText("Упражнение 3 из 3")
+            compose.logSet(1, "40", "8")
+        }
+    }
+
+    @Test
     fun editingRecommendationsAndExercisesChangesFutureWorkoutsAndKeepsRecordedHistory() {
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitText("Создать программу")
             tap("Создать программу")
             replace("program-name", "Силовая")
             addDay("День жима", "Жим лёжа") {
-                compose.onNodeWithText("Рекомендации").performScrollTo().performClick()
                 replace("recommendation-sets", "3")
                 replace("recommendation-repetitions", "8")
                 compose.onNodeWithText("Добавить упражнение").performScrollTo().performClick()
@@ -160,6 +235,7 @@ class ProgramsTest {
             awaitText("Редактировать программу")
             tap("Редактировать программу")
             tap("День жима")
+            tap("Жим лёжа")
             replace("exercise-name", "Жим гантелей")
             replace("recommendation-sets", "4")
             replace("recommendation-repetitions", "5")

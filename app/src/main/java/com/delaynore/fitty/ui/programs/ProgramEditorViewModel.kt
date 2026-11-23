@@ -131,12 +131,27 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
 
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
 
-    fun addExercise() = updateDay { it.copy(exercises = it.exercises + ExerciseDraft(nextDraftId--)) }
+    fun addExercise(): Long {
+        val exercise = ExerciseDraft(nextDraftId--)
+        updateDay { it.copy(exercises = it.exercises + exercise) }
+        return exercise.id
+    }
 
     fun deleteExercise(id: Long) = updateDay { day -> day.copy(exercises = day.exercises.filterNot { it.id == id }) }
 
     fun changeExercise(exercise: ExerciseDraft) = updateDay { day ->
         day.copy(exercises = day.exercises.map { if (it.id == exercise.id) exercise else it })
+    }
+
+    fun moveExercise(id: Long, destination: Int) = updateDay { day ->
+        val source = day.exercises.indexOfFirst { it.id == id }
+        if (source == -1 || destination !in day.exercises.indices || source == destination) {
+            day
+        } else {
+            val exercises = day.exercises.toMutableList()
+            exercises.add(destination, exercises.removeAt(source))
+            day.copy(exercises = exercises)
+        }
     }
 
     fun finishDay(onFinished: () -> Unit) {

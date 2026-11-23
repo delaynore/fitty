@@ -7,6 +7,7 @@ import com.delaynore.fitty.data.local.StoredTrainingProgram
 import com.delaynore.fitty.data.local.TrainingDayEntity
 import com.delaynore.fitty.data.local.TrainingExerciseEntity
 import com.delaynore.fitty.data.local.TrainingProgramEntity
+import com.delaynore.fitty.data.local.orderedExercises
 import kotlinx.coroutines.flow.map
 
 internal data class TrainingExercise(
@@ -65,13 +66,14 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                 }
                 val priorExerciseIds = prior?.exercises.orEmpty().map { it.id }.toSet()
                 dao.deleteExercises((priorExerciseIds - day.exercises.map { it.id }.toSet()).toList())
-                for (exercise in day.exercises) {
+                for ((position, exercise) in day.exercises.withIndex()) {
                     val exerciseEntity = TrainingExerciseEntity(
                         dayId = dayId,
                         name = exercise.name.trim(),
                         recommendedSets = exercise.recommendedSets,
                         recommendedRepetitions = exercise.recommendedRepetitions,
                         id = exercise.id.takeIf { it in priorExerciseIds } ?: 0,
+                        position = position,
                     )
                     if (exerciseEntity.id == 0L) dao.insertExercise(exerciseEntity)
                     else dao.updateExercise(exerciseEntity)
@@ -85,9 +87,9 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
         id = program.id,
         name = program.name,
         days = days.sortedBy { it.day.id }.map { stored ->
-            TrainingDay(stored.day.id, stored.day.name, stored.exercises.sortedBy { it.id }.map {
-                TrainingExercise(it.id, it.name, it.recommendedSets, it.recommendedRepetitions)
-            })
+            val exercises = stored.orderedExercises()
+                .map { TrainingExercise(it.id, it.name, it.recommendedSets, it.recommendedRepetitions) }
+            TrainingDay(stored.day.id, stored.day.name, exercises)
         },
     )
 }

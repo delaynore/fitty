@@ -1,5 +1,6 @@
 package com.delaynore.fitty.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
@@ -52,6 +53,7 @@ internal data class TrainingExerciseEntity(
     val recommendedSets: Int? = null,
     val recommendedRepetitions: Int? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "0") val position: Int = 0,
 )
 
 @Entity(
@@ -74,6 +76,10 @@ internal data class StoredTrainingDay(
     @Relation(parentColumn = "id", entityColumn = "dayId")
     val exercises: List<TrainingExerciseEntity>,
 )
+
+// Migrated exercises all have position 0. Their IDs preserve the original order.
+internal fun StoredTrainingDay.orderedExercises() =
+    exercises.sortedWith(compareBy(TrainingExerciseEntity::position, TrainingExerciseEntity::id))
 
 internal data class StoredTrainingProgram(
     @Embedded val program: TrainingProgramEntity,
