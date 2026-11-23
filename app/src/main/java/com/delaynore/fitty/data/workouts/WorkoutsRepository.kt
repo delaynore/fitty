@@ -1,6 +1,7 @@
 package com.delaynore.fitty.data.workouts
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.exercises.restoreGoal
@@ -30,6 +31,7 @@ internal data class WorkoutExercise(
     val removedPositions: Set<Int> = emptySet(),
     val catalogExerciseId: String? = null,
     val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
+    val hasEverLoggedSet: Boolean = false,
 )
 
 internal data class RemovedWorkoutSet(val set: LoggedSet?)
@@ -67,6 +69,7 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         removedPositions = exercise.removedPositions.toSet(),
                         catalogExerciseId = exercise.exercise.catalogExerciseId,
                         type = exercise.exercise.type,
+                        hasEverLoggedSet = exercise.exercise.hasEverLoggedSet,
                     )
                 },
             )
@@ -102,16 +105,43 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         sessionId
     }
 
+    suspend fun replaceExercise(
+        sessionId: Long,
+        exerciseId: Long,
+        sourceCatalogId: String,
+        replacement: CatalogExercise,
+    ): Boolean = database.withTransaction {
+        val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
+        if (exercise.hasEverLoggedSet || exercise.catalogExerciseId != sourceCatalogId ||
+            replacement.id == sourceCatalogId
+        ) return@withTransaction false
+
+        val sameType = exercise.type == replacement.type
+        val updated = exercise.copy(
+            name = replacement.name,
+            catalogExerciseId = replacement.id,
+            type = replacement.type,
+            recommendedRepetitions = exercise.recommendedRepetitions.takeIf { sameType },
+            recommendedDurationSeconds = exercise.recommendedDurationSeconds.takeIf { sameType },
+            recommendedDistanceMeters = exercise.recommendedDistanceMeters.takeIf { sameType },
+        )
+        if (workouts.updateExercise(updated) != 1) return@withTransaction false
+        workouts.clearRemovedSetPositions(exerciseId)
+        true
+    }
+
     suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
-            if (inProgressExercise(sessionId, exerciseId)?.type != set.result.type ||
+            val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
+            if (exercise.type != set.result.type ||
                 workouts.isRemovedSetPosition(exerciseId, set.position) ||
                 workouts.loggedSetAtPosition(exerciseId, set.position) != null
             ) {
                 return@withTransaction false
             }
             workouts.insertSet(set.copy(id = 0).toEntity(exerciseId))
+            if (!exercise.hasEverLoggedSet) workouts.markSetLogged(exerciseId)
             true
         }
     }
@@ -149,7 +179,10 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                 return@withTransaction false
             }
             if (workouts.restoreSetPosition(exerciseId, position) != 1) return@withTransaction false
-            if (set != null) workouts.insertSet(set.toEntity(exerciseId))
+            if (set != null) {
+                workouts.insertSet(set.toEntity(exerciseId))
+                if (!exercise.hasEverLoggedSet) workouts.markSetLogged(exerciseId)
+            }
             true
         }
 

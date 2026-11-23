@@ -11,6 +11,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.delaynore.fitty.data.exercises.CatalogExercise
+import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
+import com.delaynore.fitty.data.exercises.replacementsFor
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -59,6 +63,7 @@ internal class WorkoutViewModel(
     private val savedState: SavedStateHandle,
     private val bootCount: Int,
     private val restTimerClock: () -> Long,
+    private val catalog: ExerciseCatalogRepository,
 ) : ViewModel() {
     private val sessionId = MutableStateFlow<Long?>(null)
     private val rowsByExercise = mutableStateMapOf<Long, WorkoutRows>()
@@ -133,6 +138,29 @@ internal class WorkoutViewModel(
         exerciseIndex = index
         savedPosition = null
         error = null
+    }
+
+    fun replacementOptions(catalogId: String) = catalog.allExercises.map { it.replacementsFor(catalogId) }
+
+    fun clearError() {
+        error = null
+    }
+
+    fun replaceExercise(
+        sessionId: Long,
+        exerciseId: Long,
+        catalogId: String,
+        replacement: CatalogExercise,
+        onReplaced: () -> Unit,
+    ) {
+        save("Не удалось заменить упражнение") {
+            if (!workouts.replaceExercise(sessionId, exerciseId, catalogId, replacement)) return@save false
+            rowsByExercise.remove(exerciseId)
+            removedRows.removeAll { it.exerciseId == exerciseId }
+            savedPosition = null
+            onReplaced()
+            true
+        }
     }
 
     fun rowDrafts(exerciseId: Long): WorkoutRowDrafts = rowsByExercise[exerciseId]?.let { rows ->

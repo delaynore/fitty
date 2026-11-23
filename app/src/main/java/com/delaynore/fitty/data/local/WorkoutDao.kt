@@ -45,6 +45,7 @@ internal data class WorkoutExerciseEntity(
     @ColumnInfo(defaultValue = "'WEIGHT_AND_REPS'") val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
     val recommendedDurationSeconds: Int? = null,
     val recommendedDistanceMeters: Double? = null,
+    @ColumnInfo(defaultValue = "0") val hasEverLoggedSet: Boolean = false,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 
@@ -131,8 +132,17 @@ internal interface WorkoutDao {
     @Query("DELETE FROM removed_set_positions WHERE exerciseId = :exerciseId AND position = :position")
     suspend fun restoreSetPosition(exerciseId: Long, position: Int): Int
 
+    @Query("DELETE FROM removed_set_positions WHERE exerciseId = :exerciseId")
+    suspend fun clearRemovedSetPositions(exerciseId: Long)
+
     @Query("SELECT * FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId")
     suspend fun workoutExercise(exerciseId: Long, sessionId: Long): WorkoutExerciseEntity?
+
+    @Update
+    suspend fun updateExercise(exercise: WorkoutExerciseEntity): Int
+
+    @Query("UPDATE workout_exercises SET hasEverLoggedSet = 1 WHERE id = :exerciseId")
+    suspend fun markSetLogged(exerciseId: Long)
 
     @Query("SELECT * FROM logged_sets WHERE exerciseId = :exerciseId AND position = :position")
     suspend fun loggedSetAtPosition(exerciseId: Long, position: Int): LoggedSetEntity?

@@ -92,6 +92,9 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
             PageHeader("Тренировка", onBack)
             CircularProgressIndicator(Modifier.padding(20.dp))
         } else {
+            val catalogId = exercise.catalogExerciseId
+            val canReplace = catalogId != null && !exercise.hasEverLoggedSet
+            var showReplacement by remember(id, exercise.id, catalogId) { mutableStateOf(false) }
             WorkoutHeader(
                 exercise = exercise,
                 exerciseIndex = viewModel.exerciseIndex,
@@ -102,12 +105,20 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                 onResetRest = viewModel::resetRestTimer,
                 onExpireRest = viewModel::expireRestTimer,
                 onBack = onBack,
+                onReplace = if (canReplace) {
+                    {
+                        focus.clearFocus()
+                        viewModel.clearError()
+                        showReplacement = true
+                    }
+                } else null,
+                saving = viewModel.saving,
             )
             SetHeadings(exercise.type, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
-            key(exercise.id) {
+            key(exercise.id, catalogId) {
                 WorkoutSetList(id, exercise, viewModel, Modifier.weight(1f))
             }
-            viewModel.error?.let {
+            viewModel.error?.takeUnless { showReplacement && canReplace }?.let {
                 Text(it, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.error)
             }
             UndoRemovedRows(viewModel.pendingRemovals, viewModel.saving) { viewModel.restoreRow(id, it) }
@@ -129,6 +140,19 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                     confirmFinish = true
                 },
             )
+            if (showReplacement && canReplace) {
+                val options by remember(catalogId) { viewModel.replacementOptions(catalogId) }
+                    .collectAsStateWithLifecycle(initialValue = null)
+                ExerciseReplacementSheet(
+                    options = options,
+                    saving = viewModel.saving,
+                    error = viewModel.error,
+                    onSelect = { replacement ->
+                        viewModel.replaceExercise(id, exercise.id, catalogId, replacement) { showReplacement = false }
+                    },
+                    onDismiss = { showReplacement = false },
+                )
+            }
             if (showExercises) {
                 AllExercises(workout, onDismiss = { showExercises = false }) { index ->
                     viewModel.selectExercise(index)
@@ -187,6 +211,8 @@ private fun WorkoutHeader(
     onResetRest: () -> Unit,
     onExpireRest: (Long) -> Unit,
     onBack: () -> Unit,
+    onReplace: (() -> Unit)?,
+    saving: Boolean,
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentOnExpireRest by rememberUpdatedState(onExpireRest)
@@ -210,7 +236,14 @@ private fun WorkoutHeader(
                 IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                     FittyGlyph(FittyIcon.Back)
                 }
-                Text("Упражнение ${exerciseIndex + 1} из $exerciseCount", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Упражнение ${exerciseIndex + 1} из $exerciseCount",
+                    Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (onReplace != null) {
+                    TextButton(onClick = onReplace, enabled = !saving) { Text("Заменить упражнение") }
+                }
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,

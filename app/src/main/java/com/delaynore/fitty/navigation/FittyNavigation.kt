@@ -95,7 +95,7 @@ internal fun FittyNavigation(
     val context = LocalContext.current
     val workout = viewModel {
         val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
-        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, restTimerClock)
+        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, restTimerClock, catalog)
     }
 
     val closeEditor = {
