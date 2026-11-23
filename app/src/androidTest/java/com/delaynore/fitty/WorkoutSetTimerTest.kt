@@ -82,6 +82,27 @@ class WorkoutSetTimerTest {
     }
 
     @Test
+    fun stoppingWithinTheFirstSecondLogsZeroAndCanBeSavedAgainInHistory() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            startPlankWorkout(goal = null)
+            tap("Старт")
+            application.workoutTimeMillis = 10_999L
+            awaitText("0:00")
+            tap("Стоп")
+            awaitLogged(1, "0")
+            tap("Завершить")
+            tap("Завершить тренировку")
+            awaitText("0 с")
+            tap("0 с")
+            compose.onNodeWithTag("history-set-duration").performTextReplacement("0")
+            closeSoftKeyboard()
+            tap("Сохранить")
+            compose.onNodeWithTag("history-set-duration").assertDoesNotExist()
+            awaitText("0 с")
+        }
+    }
+
+    @Test
     fun stoppingBeforeTheGoalLogsElapsedTimeAndCancelsTheCue() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             startPlankWorkout(goal = "40")

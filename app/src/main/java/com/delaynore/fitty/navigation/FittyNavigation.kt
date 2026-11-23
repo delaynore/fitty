@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
@@ -36,7 +35,8 @@ import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
-import com.delaynore.fitty.ui.exercises.ExerciseCatalog
+import com.delaynore.fitty.ui.exercises.ExerciseCatalogScreen
+import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
 import com.delaynore.fitty.ui.exercises.ExerciseEditorScreen
 import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryScreen
@@ -90,7 +90,6 @@ internal fun FittyNavigation(
     val home = viewModel { HomeViewModel(programs, workouts, setTimerSignals::cancelWorkout) }
     val programEditor = viewModel { ProgramEditorViewModel(programs) }
     val exerciseEditor = viewModel { ExerciseEditorViewModel(catalog) }
-    val catalogExercises by catalog.allExercises.collectAsStateWithLifecycle(initialValue = null)
     val history = viewModel { HistoryViewModel(workouts) }
     val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts, createSavedStateHandle()) }
     UpdateInstallerEffect(settings) { destination == Destination.Settings }
@@ -239,8 +238,8 @@ internal fun FittyNavigation(
                             }
                         }
                         Destination.DayEditorCatalog -> editorState.SaveableStateProvider("catalog") {
-                            ExerciseCatalog(
-                                exercises = catalogExercises,
+                            ExerciseCatalogScreen(
+                                viewModel = viewModel { ExerciseCatalogViewModel(catalog) },
                                 onBack = back,
                                 replacingLegacyExercise = legacyExerciseId != null,
                                 onSelect = { exercise ->
@@ -280,8 +279,8 @@ internal fun FittyNavigation(
                     val catalogState = rememberSaveableStateHolder()
                     if (destination == Destination.SettingsCatalog) {
                         catalogState.SaveableStateProvider("catalog") {
-                            ExerciseCatalog(
-                                exercises = catalogExercises,
+                            ExerciseCatalogScreen(
+                                viewModel = viewModel { ExerciseCatalogViewModel(catalog) },
                                 onBack = back,
                                 onEdit = { exercise ->
                                     exerciseEditor.open(exercise)

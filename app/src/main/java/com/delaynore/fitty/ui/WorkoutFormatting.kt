@@ -50,11 +50,14 @@ internal val ExerciseType.measureTag: String
     }
 
 private val positiveDecimalPattern = Regex("[0-9]+([.,][0-9]+)?")
-private val positiveIntegerPattern = Regex("[0-9]+")
+private val wholeNumberPattern = Regex("[0-9]+")
+
+internal fun parseWholeNumber(value: String): Int? =
+    value.trim().takeIf(wholeNumberPattern::matches)?.toIntOrNull()
 
 internal fun ExerciseType.parseGoal(value: String): ExerciseGoal? {
     val text = value.trim()
-    val integer = text.takeIf(positiveIntegerPattern::matches)?.toIntOrNull()?.takeIf { it > 0 }
+    val integer = parseWholeNumber(text)?.takeIf { it > 0 }
     return when (this) {
         ExerciseType.WEIGHT_AND_REPS, ExerciseType.REPS -> integer?.let { ExerciseGoal.Repetitions(it) }
         ExerciseType.DURATION -> integer?.let { ExerciseGoal.Duration(it) }

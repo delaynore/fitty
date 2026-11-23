@@ -198,9 +198,6 @@ internal object BuiltInExercises {
         ),
     ).sortedBy { it.name.lowercase().replace('ё', 'е') }
 
-    private val byId = all.associateBy(CatalogExercise::id)
-
-    operator fun get(id: String): CatalogExercise? = byId[id]
 }
 
 private fun exercise(

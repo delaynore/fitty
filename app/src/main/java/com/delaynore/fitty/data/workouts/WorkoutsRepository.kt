@@ -10,6 +10,7 @@ import com.delaynore.fitty.data.local.LoggedSetEntity
 import com.delaynore.fitty.data.local.RemovedSetPositionEntity
 import com.delaynore.fitty.data.local.WorkoutExerciseEntity
 import com.delaynore.fitty.data.local.WorkoutSessionEntity
+import com.delaynore.fitty.data.local.goal
 import com.delaynore.fitty.data.local.orderedExercises
 import kotlinx.coroutines.flow.map
 
@@ -63,9 +64,7 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         sets = exercise.sets.sortedBy { set -> set.position }
                             .map { set -> set.toLoggedSet(exercise.exercise.type) },
                         recommendedSets = exercise.exercise.recommendedSets,
-                        goal = exercise.exercise.run {
-                            type.restoreGoal(recommendedRepetitions, recommendedDurationSeconds, recommendedDistanceMeters)
-                        },
+                        goal = exercise.exercise.goal,
                         removedPositions = exercise.removedPositions.toSet(),
                         catalogExerciseId = exercise.exercise.catalogExerciseId,
                         type = exercise.exercise.type,
@@ -95,12 +94,9 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                 position = position,
                 name = exercise.name,
                 recommendedSets = exercise.recommendedSets,
-                recommendedRepetitions = exercise.recommendedRepetitions,
-                recommendedDurationSeconds = exercise.recommendedDurationSeconds,
-                recommendedDistanceMeters = exercise.recommendedDistanceMeters,
                 catalogExerciseId = exercise.catalogExerciseId,
                 type = exercise.type,
-            )
+            ).withGoal(exercise.goal)
         })
         sessionId
     }
@@ -116,15 +112,12 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
             replacement.id == sourceCatalogId
         ) return@withTransaction false
 
-        val sameType = exercise.type == replacement.type
+        val goal = exercise.goal.takeIf { exercise.type == replacement.type }
         val updated = exercise.copy(
             name = replacement.name,
             catalogExerciseId = replacement.id,
             type = replacement.type,
-            recommendedRepetitions = exercise.recommendedRepetitions.takeIf { sameType },
-            recommendedDurationSeconds = exercise.recommendedDurationSeconds.takeIf { sameType },
-            recommendedDistanceMeters = exercise.recommendedDistanceMeters.takeIf { sameType },
-        )
+        ).withGoal(goal)
         if (workouts.updateExercise(updated) != 1) return@withTransaction false
         workouts.clearRemovedSetPositions(exerciseId)
         true
@@ -235,6 +228,15 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         }
         return LoggedSet(position, result, id)
     }
+
+    private val WorkoutExerciseEntity.goal: ExerciseGoal?
+        get() = type.restoreGoal(recommendedRepetitions, recommendedDurationSeconds, recommendedDistanceMeters)
+
+    private fun WorkoutExerciseEntity.withGoal(goal: ExerciseGoal?) = copy(
+        recommendedRepetitions = (goal as? ExerciseGoal.Repetitions)?.repetitions,
+        recommendedDurationSeconds = (goal as? ExerciseGoal.Duration)?.seconds,
+        recommendedDistanceMeters = (goal as? ExerciseGoal.Distance)?.meters,
+    )
 
     private fun WorkoutSessionEntity.toSummary() = WorkoutSummary(id, programName, dayName, finishedAtMillis)
 }

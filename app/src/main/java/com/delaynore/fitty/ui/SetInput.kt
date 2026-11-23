@@ -19,20 +19,32 @@ internal data class SetInput(
         get() = weight.trim().takeIf { it == originalWeight || weightPattern.matches(it) }
             ?.replace(',', '.')?.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
 
+    private val parsedGoal: ExerciseGoal?
+        get() = type.parseGoal(measure)
+
+    private val parsedDuration: Int?
+        get() = parseWholeNumber(measure)
+
     fun validate(): SetInput = copy(errors = SetInputErrors(
         weight = if (type == ExerciseType.WEIGHT_AND_REPS && parsedWeight == null) "Введи вес, например 62,5" else null,
-        measure = if (type.parseGoal(measure) != null) null
-        else if (type == ExerciseType.DISTANCE) "Введи расстояние больше 0" else "Целое число от 1",
+        measure = when (type) {
+            ExerciseType.DURATION -> if (parsedDuration == null) "Целое число от 0" else null
+            ExerciseType.DISTANCE -> if (parsedGoal == null) "Введи расстояние больше 0" else null
+            else -> if (parsedGoal == null) "Целое число от 1" else null
+        },
     ))
 
     fun toLoggedSet(position: Int): LoggedSet? {
-        val result = when (val value = type.parseGoal(measure)) {
+        if (type == ExerciseType.DURATION) {
+            return parsedDuration?.let { LoggedSet(position, SetResult.Duration(it)) }
+        }
+        val result = when (val value = parsedGoal) {
             is ExerciseGoal.Repetitions -> if (type == ExerciseType.WEIGHT_AND_REPS) {
                 SetResult.WeightAndReps(parsedWeight ?: return null, value.repetitions)
             } else {
                 SetResult.Reps(value.repetitions)
             }
-            is ExerciseGoal.Duration -> SetResult.Duration(value.seconds)
+            is ExerciseGoal.Duration -> return null
             is ExerciseGoal.Distance -> SetResult.Distance(value.meters)
             null -> return null
         }

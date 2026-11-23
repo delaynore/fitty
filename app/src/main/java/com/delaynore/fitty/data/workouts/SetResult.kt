@@ -19,7 +19,7 @@ internal sealed interface SetResult {
     fun isValid(): Boolean = when (this) {
         is WeightAndReps -> weightKg.isFinite() && weightKg >= 0 && repetitions > 0
         is Reps -> repetitions > 0
-        is Duration -> seconds > 0
+        is Duration -> seconds >= 0
         is Distance -> meters.isFinite() && meters > 0
     }
 }

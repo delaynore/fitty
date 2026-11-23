@@ -169,7 +169,7 @@ internal class WorkoutViewModel(
         val stopped = timer.copy(stoppedAtMillis = stoppedAt)
         storeSetTimer(stopped)
         if (timer.goalAtMillis == null || stoppedAt < timer.goalAtMillis) setTimerSignals.cancel(token)
-        val seconds = (stopped.elapsedMillis(stoppedAt) / 1_000L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+        val seconds = (stopped.elapsedMillis(stoppedAt) / 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         val set = LoggedSet(timer.position, SetResult.Duration(seconds))
         save("Не удалось записать подход") {
             if (!persistSet(timer.workoutId, exercise, set)) return@save false

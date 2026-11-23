@@ -20,9 +20,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -159,8 +165,13 @@ internal fun TrainingDayEditorScreen(
     val focus = LocalFocusManager.current
     val day = viewModel.editingDay ?: return
     val showErrors = viewModel.showDayErrors
+    val scrollState = rememberScrollState()
+    var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxHeight()) {
-        ScreenColumn(Modifier.weight(1f)) {
+        ScreenColumn(
+            modifier = Modifier.weight(1f).onGloballyPositioned { viewport = it }.testTag("day-editor-scroll"),
+            scrollState = scrollState,
+        ) {
             PageHeader("Тренировочный день", onBack) {
                 if (viewModel.hasChanges) {
                     EditorSettingsButton {
@@ -181,6 +192,8 @@ internal fun TrainingDayEditorScreen(
             DayExercisesEditor(
                 day = day,
                 showErrors = showErrors,
+                scrollState = scrollState,
+                viewport = { viewport },
                 onPickExercise = onPickExercise,
                 onChange = viewModel::changeExercise,
                 onDelete = viewModel::deleteExercise,

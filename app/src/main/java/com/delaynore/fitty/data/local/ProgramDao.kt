@@ -14,6 +14,7 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.exercises.restoreGoal
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "training_programs")
@@ -60,6 +61,9 @@ internal data class TrainingExerciseEntity(
     val recommendedDurationSeconds: Int? = null,
     val recommendedDistanceMeters: Double? = null,
 )
+
+internal val TrainingExerciseEntity.goal
+    get() = type.restoreGoal(recommendedRepetitions, recommendedDurationSeconds, recommendedDistanceMeters)
 
 @Entity(
     tableName = "home_program",

@@ -37,9 +37,23 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+
+@Composable
+internal fun ExerciseCatalogScreen(
+    viewModel: ExerciseCatalogViewModel,
+    onBack: () -> Unit,
+    onSelect: ((CatalogExercise) -> Unit)? = null,
+    onCreate: ((String) -> Unit)? = null,
+    onEdit: ((CatalogExercise) -> Unit)? = null,
+    replacingLegacyExercise: Boolean = false,
+) {
+    val exercises by viewModel.exercises.collectAsStateWithLifecycle()
+    ExerciseCatalog(exercises, onBack, onSelect, onCreate, onEdit, replacingLegacyExercise)
+}
 
 @Composable
 internal fun ExerciseCatalog(

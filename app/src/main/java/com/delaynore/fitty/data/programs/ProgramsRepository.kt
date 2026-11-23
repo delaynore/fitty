@@ -3,13 +3,13 @@ package com.delaynore.fitty.data.programs
 import androidx.room.withTransaction
 import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.exercises.ExerciseType
-import com.delaynore.fitty.data.exercises.restoreGoal
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.HomeProgramEntity
 import com.delaynore.fitty.data.local.StoredTrainingProgram
 import com.delaynore.fitty.data.local.TrainingDayEntity
 import com.delaynore.fitty.data.local.TrainingExerciseEntity
 import com.delaynore.fitty.data.local.TrainingProgramEntity
+import com.delaynore.fitty.data.local.goal
 import com.delaynore.fitty.data.local.orderedExercises
 import kotlinx.coroutines.flow.map
 
@@ -101,7 +101,7 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                     id = it.id,
                     name = it.name,
                     recommendedSets = it.recommendedSets,
-                    goal = it.type.restoreGoal(it.recommendedRepetitions, it.recommendedDurationSeconds, it.recommendedDistanceMeters),
+                    goal = it.goal,
                     catalogExerciseId = it.catalogExerciseId,
                     type = it.type,
                 )

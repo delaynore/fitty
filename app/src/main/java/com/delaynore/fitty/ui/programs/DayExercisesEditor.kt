@@ -5,9 +5,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -46,6 +49,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -64,16 +69,22 @@ import com.delaynore.fitty.ui.DeleteIconButton
 import com.delaynore.fitty.ui.formatRecommendation
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val RowSpacing = 6.dp
 private val RowShape = RoundedCornerShape(12.dp)
 private const val ReorderDuration = 180
+private const val AutoScrollIntervalMillis = 16L
+private val AutoScrollEdge = 48.dp
+private val AutoScrollStep = 12.dp
 
 @Composable
 internal fun DayExercisesEditor(
     day: TrainingDayDraft,
     showErrors: Boolean,
+    scrollState: ScrollState,
+    viewport: () -> LayoutCoordinates?,
     onPickExercise: (Long?) -> Unit,
     onChange: (ExerciseDraft) -> Unit,
     onDelete: (Long) -> Unit,
@@ -82,7 +93,7 @@ internal fun DayExercisesEditor(
     val focus = LocalFocusManager.current
     var expandedId by rememberSaveable(day.id) { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ReorderableExerciseRows(day.exercises, onMove) { exercise, index, lifted, handle, modifier ->
+        ReorderableExerciseRows(day.exercises, scrollState, viewport, onMove) { exercise, index, lifted, handle, modifier ->
             val expanded = expandedId == exercise.id || (showErrors && !exercise.valid)
             ExerciseEditor(
                 exercise = exercise,
@@ -119,6 +130,7 @@ internal fun DayExercisesEditor(
 
 private class ExerciseDrag(val id: Long, val height: Int, start: Float, index: Int) {
     var top by mutableFloatStateOf(start)
+    var pointerY by mutableFloatStateOf(Float.NaN)
     var destination by mutableIntStateOf(index)
     var moving by mutableStateOf(true)
 }
@@ -126,13 +138,18 @@ private class ExerciseDrag(val id: Long, val height: Int, start: Float, index: I
 @Composable
 private fun ReorderableExerciseRows(
     exercises: List<ExerciseDraft>,
+    scrollState: ScrollState,
+    viewport: () -> LayoutCoordinates?,
     onMove: (Long, Int) -> Unit,
     row: @Composable (ExerciseDraft, Int, Boolean, Modifier, Modifier) -> Unit,
 ) {
     val heights = remember { mutableStateMapOf<Long, Int>() }
     var drag by remember { mutableStateOf<ExerciseDrag?>(null) }
     val scope = rememberCoroutineScope()
-    val spacing = with(LocalDensity.current) { RowSpacing.roundToPx() }
+    val density = LocalDensity.current
+    val spacing = with(density) { RowSpacing.roundToPx() }
+    val edge = with(density) { AutoScrollEdge.toPx() }
+    val step = with(density) { AutoScrollStep.toPx() }
     val ids = exercises.map { it.id }
     val baseTops = rowTops(ids, heights, spacing)
     val moving = drag?.takeIf { it.moving }
@@ -176,6 +193,28 @@ private fun ReorderableExerciseRows(
         }
     }
 
+    LaunchedEffect(moving, scrollState, edge, step) {
+        val current = moving ?: return@LaunchedEffect
+        // The pointer stays in viewport coordinates as the list moves beneath it.
+        while (current.moving) {
+            delay(AutoScrollIntervalMillis)
+            val edgeSize = minOf(edge, scrollState.viewportSize / 2f)
+            val y = current.pointerY
+            if (edgeSize <= 0f || y.isNaN()) continue
+            val direction = when {
+                y < edgeSize && scrollState.canScrollBackward -> (y / edgeSize - 1).coerceAtLeast(-1f)
+                y > scrollState.viewportSize - edgeSize && scrollState.canScrollForward ->
+                    (1 - (scrollState.viewportSize - y) / edgeSize).coerceAtMost(1f)
+                else -> 0f
+            }
+            if (direction != 0f) {
+                val scrolled = scrollState.scrollBy(step * direction)
+                moveDrag(current.id, scrolled)
+            }
+        }
+    }
+
+    val currentViewport by rememberUpdatedState(viewport)
     val outline = MaterialTheme.colorScheme.primary
     val slotColor = MaterialTheme.colorScheme.primaryContainer
     Column(
@@ -208,7 +247,8 @@ private fun ReorderableExerciseRows(
                     animationSpec = tween(ReorderDuration),
                     label = "exercise position",
                 )
-                val handle = Modifier.semantics {
+                var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                val handle = Modifier.onGloballyPositioned { handleCoordinates = it }.semantics {
                     contentDescription = "Переместить «${exercise.name}»"
                     customActions = buildList {
                         if (index > 0) add(CustomAccessibilityAction("Переместить выше") {
@@ -223,7 +263,15 @@ private fun ReorderableExerciseRows(
                 }.pointerInput(id) {
                     detectVerticalDragGestures(
                         onDragStart = { startDrag(id) },
-                        onVerticalDrag = { _, amount -> moveDrag(id, amount) },
+                        onVerticalDrag = { change, amount ->
+                            val handleLayout = handleCoordinates
+                            val viewportLayout = currentViewport()
+                            val current = drag
+                            if (current?.id == id && handleLayout?.isAttached == true && viewportLayout?.isAttached == true) {
+                                current.pointerY = viewportLayout.localPositionOf(handleLayout, change.position).y
+                            }
+                            moveDrag(id, amount)
+                        },
                         onDragEnd = { finishDrag(id, true) },
                         onDragCancel = { finishDrag(id, false) },
                     )

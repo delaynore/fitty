@@ -25,9 +25,6 @@ internal interface CustomExerciseDao {
     @Query("SELECT * FROM custom_exercises ORDER BY name, id")
     fun observeAll(): Flow<List<CustomExerciseEntity>>
 
-    @Query("SELECT * FROM custom_exercises WHERE id = :id")
-    suspend fun findById(id: String): CustomExerciseEntity?
-
     @Insert
     suspend fun insert(exercise: CustomExerciseEntity)
 

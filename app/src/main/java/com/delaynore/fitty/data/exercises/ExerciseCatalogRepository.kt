@@ -13,8 +13,6 @@ internal class ExerciseCatalogRepository(database: FittyDatabase) {
         BuiltInExercises.all + exercises.map { it.toExercise() }
     }
 
-    suspend fun findById(id: String): CatalogExercise? = BuiltInExercises[id] ?: custom.findById(id)?.toExercise()
-
     suspend fun create(name: String, type: ExerciseType): CatalogExercise {
         require(name.isNotBlank())
         val exercise = CatalogExercise("$CUSTOM_EXERCISE_ID_PREFIX${UUID.randomUUID()}", name.trim(), type)
