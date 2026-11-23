@@ -37,31 +37,34 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.delaynore.fitty.data.exercises.BuiltInExercises
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
 internal fun ExerciseCatalog(
+    exercises: List<CatalogExercise>?,
     onBack: () -> Unit,
     onSelect: ((CatalogExercise) -> Unit)? = null,
+    onCreate: ((String) -> Unit)? = null,
+    onEdit: ((CatalogExercise) -> Unit)? = null,
     replacingLegacyExercise: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val selected = selectedId?.let { BuiltInExercises[it] }
+    val selected = exercises?.find { it.id == selectedId }
     val listState = rememberSaveableStateHolder()
 
     if (selected == null) {
         listState.SaveableStateProvider("list") {
             ExerciseCatalogList(
-                exercises = BuiltInExercises.all,
+                exercises = exercises,
                 query = query,
                 onQueryChange = { query = it },
                 onOpenExercise = { selectedId = it.id },
                 onBack = onBack,
                 onSelectExercise = onSelect.takeUnless { replacingLegacyExercise },
+                onCreateExercise = onCreate,
             )
         }
     } else {
@@ -72,18 +75,20 @@ internal fun ExerciseCatalog(
             onBack = closeCard,
             selectionLabel = if (replacingLegacyExercise) "Заменить упражнение" else "Добавить упражнение",
             onSelect = onSelect?.let { { it(selected) } },
+            onEdit = onEdit?.takeIf { selected.isCustom }?.let { { it(selected) } },
         )
     }
 }
 
 @Composable
 private fun ExerciseCatalogList(
-    exercises: List<CatalogExercise>,
+    exercises: List<CatalogExercise>?,
     query: String,
     onQueryChange: (String) -> Unit,
     onOpenExercise: (CatalogExercise) -> Unit,
     onBack: () -> Unit,
     onSelectExercise: ((CatalogExercise) -> Unit)?,
+    onCreateExercise: ((String) -> Unit)?,
 ) {
     var filters by rememberSaveable(stateSaver = CatalogFilters.Saver) { mutableStateOf(CatalogFilters()) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
@@ -91,7 +96,7 @@ private fun ExerciseCatalogList(
     val focusManager = LocalFocusManager.current
     val results = remember(exercises, query, filters) {
         val name = query.trim().lowercase().replace('ё', 'е')
-        exercises.filter { it.name.lowercase().replace('ё', 'е').contains(name) && filters.matches(it) }
+        exercises?.filter { it.name.lowercase().replace('ё', 'е').contains(name) && filters.matches(it) }
     }
 
     ExerciseCatalogContent(
@@ -110,6 +115,12 @@ private fun ExerciseCatalogList(
         onOpenExercise = onOpenExercise,
         onBack = onBack,
         onSelectExercise = onSelectExercise,
+        onCreateExercise = onCreateExercise?.takeIf { query.isNotBlank() }?.let { create ->
+            {
+                focusManager.clearFocus()
+                create(query.trim())
+            }
+        },
     )
 
     if (showFilters) {
@@ -127,7 +138,7 @@ private fun ExerciseCatalogList(
 
 @Composable
 private fun ExerciseCatalogContent(
-    exercises: List<CatalogExercise>,
+    exercises: List<CatalogExercise>?,
     query: String,
     onQueryChange: (String) -> Unit,
     activeFilters: Int,
@@ -135,6 +146,7 @@ private fun ExerciseCatalogContent(
     onOpenExercise: (CatalogExercise) -> Unit,
     onBack: () -> Unit,
     onSelectExercise: ((CatalogExercise) -> Unit)?,
+    onCreateExercise: (() -> Unit)?,
     listState: LazyListState = rememberLazyListState(),
 ) {
     Column(
@@ -158,10 +170,13 @@ private fun ExerciseCatalogContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 14.dp),
         ) {
-            if (exercises.isEmpty()) {
+            if (exercises?.isEmpty() == true) {
                 item { Text("Упражнения не найдены") }
+                if (onCreateExercise != null) {
+                    item { Button(onClick = onCreateExercise) { Text("Создать упражнение") } }
+                }
             }
-            items(exercises, key = { it.id }) { exercise ->
+            items(exercises.orEmpty(), key = { it.id }) { exercise ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -196,11 +211,15 @@ internal fun ExerciseCardContent(
     onBack: () -> Unit,
     selectionLabel: String,
     onSelect: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     ScreenColumn {
         PageHeader(exercise.name, onBack)
         if (onSelect != null) {
             Button(onClick = onSelect) { Text(selectionLabel) }
+        }
+        if (onEdit != null) {
+            OutlinedButton(onClick = onEdit) { Text("Редактировать сведения") }
         }
         ExerciseAttribute("Тип записи", exercise.type.label)
         ExerciseAttribute(
