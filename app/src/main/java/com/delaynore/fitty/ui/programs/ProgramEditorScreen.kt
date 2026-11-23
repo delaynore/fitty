@@ -150,7 +150,12 @@ private fun EditorSettingsButton(onClick: () -> Unit) {
 }
 
 @Composable
-internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: () -> Unit, onSettings: () -> Unit) {
+internal fun TrainingDayEditorScreen(
+    viewModel: ProgramEditorViewModel,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+    onPickExercise: (Long?) -> Unit,
+) {
     val focus = LocalFocusManager.current
     val day = viewModel.editingDay ?: return
     val showErrors = viewModel.showDayErrors
@@ -176,7 +181,7 @@ internal fun TrainingDayEditorScreen(viewModel: ProgramEditorViewModel, onBack: 
             DayExercisesEditor(
                 day = day,
                 showErrors = showErrors,
-                onAdd = viewModel::addExercise,
+                onPickExercise = onPickExercise,
                 onChange = viewModel::changeExercise,
                 onDelete = viewModel::deleteExercise,
                 onMove = viewModel::moveExercise,

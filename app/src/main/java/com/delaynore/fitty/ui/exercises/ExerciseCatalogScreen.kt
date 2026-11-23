@@ -43,9 +43,10 @@ import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
-internal fun BrowseExerciseCatalog(
+internal fun ExerciseCatalog(
     onBack: () -> Unit,
     onSelect: ((CatalogExercise) -> Unit)? = null,
+    replacingLegacyExercise: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -60,13 +61,18 @@ internal fun BrowseExerciseCatalog(
                 onQueryChange = { query = it },
                 onOpenExercise = { selectedId = it.id },
                 onBack = onBack,
-                onSelectExercise = onSelect,
+                onSelectExercise = onSelect.takeUnless { replacingLegacyExercise },
             )
         }
     } else {
         val closeCard = { selectedId = null }
         BackHandler(onBack = closeCard)
-        ExerciseCardContent(selected, onBack = closeCard, onSelect = onSelect?.let { { it(selected) } })
+        ExerciseCardContent(
+            selected,
+            onBack = closeCard,
+            selectionLabel = if (replacingLegacyExercise) "Заменить упражнение" else "Добавить упражнение",
+            onSelect = onSelect?.let { { it(selected) } },
+        )
     }
 }
 
@@ -188,12 +194,13 @@ private fun ExerciseCatalogContent(
 internal fun ExerciseCardContent(
     exercise: CatalogExercise,
     onBack: () -> Unit,
+    selectionLabel: String,
     onSelect: (() -> Unit)? = null,
 ) {
     ScreenColumn {
         PageHeader(exercise.name, onBack)
         if (onSelect != null) {
-            Button(onClick = onSelect) { Text("Добавить упражнение") }
+            Button(onClick = onSelect) { Text(selectionLabel) }
         }
         ExerciseAttribute("Тип записи", exercise.type.label)
         ExerciseAttribute(

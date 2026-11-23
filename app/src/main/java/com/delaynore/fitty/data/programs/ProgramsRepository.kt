@@ -1,6 +1,7 @@
 package com.delaynore.fitty.data.programs
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.HomeProgramEntity
 import com.delaynore.fitty.data.local.StoredTrainingProgram
@@ -15,6 +16,8 @@ internal data class TrainingExercise(
     val name: String,
     val recommendedSets: Int?,
     val recommendedRepetitions: Int?,
+    val catalogExerciseId: String? = null,
+    val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 )
 
 internal data class TrainingDay(val id: Long, val name: String, val exercises: List<TrainingExercise>)
@@ -72,6 +75,8 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                         name = exercise.name.trim(),
                         recommendedSets = exercise.recommendedSets,
                         recommendedRepetitions = exercise.recommendedRepetitions,
+                        catalogExerciseId = exercise.catalogExerciseId,
+                        type = exercise.type,
                         id = exercise.id.takeIf { it in priorExerciseIds } ?: 0,
                         position = position,
                     )
@@ -87,8 +92,16 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
         id = program.id,
         name = program.name,
         days = days.sortedBy { it.day.id }.map { stored ->
-            val exercises = stored.orderedExercises()
-                .map { TrainingExercise(it.id, it.name, it.recommendedSets, it.recommendedRepetitions) }
+            val exercises = stored.orderedExercises().map {
+                TrainingExercise(
+                    id = it.id,
+                    name = it.name,
+                    recommendedSets = it.recommendedSets,
+                    recommendedRepetitions = it.recommendedRepetitions,
+                    catalogExerciseId = it.catalogExerciseId,
+                    type = it.type,
+                )
+            }
             TrainingDay(stored.day.id, stored.day.name, exercises)
         },
     )

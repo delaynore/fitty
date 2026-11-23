@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -45,8 +46,16 @@ class FirstWorkoutTest {
             enter("program-name", "Силовая")
             tap("Добавить день")
             enter("day-name", "День А")
-            enter("exercise-name", "Жим лёжа")
             closeSoftKeyboard()
+            tap("Добавить упражнение")
+            compose.searchExerciseCatalog("Жим штанги лёжа")
+            compose.openExerciseCard("Жим штанги лёжа")
+            compose.onNodeWithText("Техника выполнения").performScrollTo()
+            compose.onNodeWithContentDescription("Назад").performClick()
+            compose.onNodeWithContentDescription("Добавить Жим штанги лёжа").performClick()
+            awaitText("Тренировочный день")
+            awaitText("День А")
+            awaitText("Жим штанги лёжа")
             tap("Сохранить день")
             awaitText("Сохранить программу")
             tap("Сохранить программу")
@@ -61,6 +70,15 @@ class FirstWorkoutTest {
             compose.waitUntil(timeoutMillis = 5_000) {
                 compose.onAllNodes(hasTestTag("workout-logged-weight-1"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
+            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60,5")
+            compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("8")
+        }
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitText("Продолжить тренировку")
+            tap("Продолжить тренировку")
+            awaitText("Упражнение 1 из 1")
+            awaitText("Жим штанги лёжа")
             compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60,5")
             compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("8")
             tap("Завершить")
@@ -80,7 +98,7 @@ class FirstWorkoutTest {
     private fun verifyCompletedWorkout(date: String) {
         awaitText(date)
         tap("День А")
-        awaitText("Жим лёжа")
+        awaitText("Жим штанги лёжа")
         awaitText("60,5 кг × 8")
     }
 

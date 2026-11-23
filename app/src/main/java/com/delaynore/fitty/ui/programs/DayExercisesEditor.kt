@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -70,15 +71,13 @@ private const val ReorderDuration = 180
 internal fun DayExercisesEditor(
     day: TrainingDayDraft,
     showErrors: Boolean,
-    onAdd: () -> Long,
+    onPickExercise: (Long?) -> Unit,
     onChange: (ExerciseDraft) -> Unit,
     onDelete: (Long) -> Unit,
     onMove: (Long, Int) -> Unit,
 ) {
     val focus = LocalFocusManager.current
-    var expandedId by rememberSaveable(day.id) {
-        mutableStateOf(day.exercises.firstOrNull { it.name.isBlank() }?.id)
-    }
+    var expandedId by rememberSaveable(day.id) { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ReorderableExerciseRows(day.exercises, onMove) { exercise, index, lifted, handle, modifier ->
             val expanded = expandedId == exercise.id || (showErrors && !exercise.valid)
@@ -93,6 +92,10 @@ internal fun DayExercisesEditor(
                     expandedId = if (expandedId == exercise.id) null else exercise.id
                 },
                 onChange = onChange,
+                onReplace = {
+                    focus.clearFocus()
+                    onPickExercise(exercise.id)
+                },
                 onDelete = {
                     if (expandedId == exercise.id) expandedId = null
                     onDelete(exercise.id)
@@ -104,7 +107,7 @@ internal fun DayExercisesEditor(
         OutlinedButton(
             onClick = {
                 focus.clearFocus()
-                expandedId = onAdd()
+                onPickExercise(null)
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         ) { Text("Добавить упражнение") }
@@ -203,7 +206,7 @@ private fun ReorderableExerciseRows(
                     label = "exercise position",
                 )
                 val handle = Modifier.semantics {
-                    contentDescription = "Переместить «${exercise.name.ifBlank { "Упражнение ${index + 1}" }}»"
+                    contentDescription = "Переместить «${exercise.name}»"
                     customActions = buildList {
                         if (index > 0) add(CustomAccessibilityAction("Переместить выше") {
                             onMove(id, index - 1)
@@ -260,12 +263,12 @@ private fun ExerciseEditor(
     showErrors: Boolean,
     onToggle: () -> Unit,
     onChange: (ExerciseDraft) -> Unit,
+    onReplace: () -> Unit,
     onDelete: () -> Unit,
     handle: Modifier,
     modifier: Modifier,
 ) {
     val suffix = if (index == 0) "" else "-${index + 1}"
-    val nameError = showErrors && exercise.name.isBlank()
     val setsError = showErrors && !exercise.sets.validRecommendation()
     val repsError = showErrors && !exercise.repetitions.validRecommendation()
     val target = formatRecommendation(exercise.sets.trim().toIntOrNull(), exercise.repetitions.trim().toIntOrNull())
@@ -289,7 +292,7 @@ private fun ExerciseEditor(
                         .padding(start = 12.dp, top = 10.dp, bottom = 10.dp),
                 ) {
                     Text(
-                        exercise.name.ifBlank { "Упражнение ${index + 1}" },
+                        exercise.name,
                         style = MaterialTheme.typography.titleMedium,
                     )
                     if (target != null) Text(target, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -302,15 +305,9 @@ private fun ExerciseEditor(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    OutlinedTextField(
-                        value = exercise.name,
-                        onValueChange = { onChange(exercise.copy(name = it)) },
-                        label = { Text("Название упражнения") },
-                        singleLine = true,
-                        isError = nameError,
-                        supportingText = if (nameError) ({ Text("Введи название упражнения") }) else null,
-                        modifier = Modifier.fillMaxWidth().testTag("exercise-name$suffix"),
-                    )
+                    if (exercise.catalogExerciseId == null) {
+                        TextButton(onClick = onReplace) { Text("Выбрать из каталога") }
+                    }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RecommendationInput(
                             label = "Подходы",

@@ -63,10 +63,11 @@ class WorkoutHistoryTest {
     @Test
     fun deletingTheLastSetRequiresDeletingTheWorkout() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            compose.createAndStartWorkout(secondExercise = "Тяга")
+            compose.createAndStartWorkout(secondExercise = "Тяга верхнего блока")
             compose.logSet(1, "60", "6")
+            closeSoftKeyboard()
             compose.onNodeWithContentDescription("Следующее упражнение").performClick()
-            awaitText("Тяга")
+            awaitText("Тяга верхнего блока")
             compose.logSet(1, "55", "8")
             tap("Завершить")
             tap("Завершить тренировку")

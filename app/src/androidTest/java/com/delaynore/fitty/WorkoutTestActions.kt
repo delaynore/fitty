@@ -1,6 +1,7 @@
 package com.delaynore.fitty
 
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.ComposeTestRule
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 
 internal fun ComposeTestRule.createAndStartWorkout(secondExercise: String? = null) {
@@ -20,13 +22,10 @@ internal fun ComposeTestRule.createAndStartWorkout(secondExercise: String? = nul
     onNodeWithTag("program-name").performTextInput("Силовая")
     onNodeWithText("Добавить день").performClick()
     onNodeWithTag("day-name").performTextInput("День А")
-    onNodeWithTag("exercise-name").performTextInput("Жим лёжа")
+    addCatalogExercise("Жим штанги лёжа")
     if (secondExercise != null) {
-        closeSoftKeyboard()
-        onNodeWithText("Добавить упражнение").performScrollTo().performClick()
-        onNodeWithTag("exercise-name-2").performScrollTo().performTextInput(secondExercise)
+        addCatalogExercise(secondExercise)
     }
-    closeSoftKeyboard()
     onNodeWithText("Сохранить день").performClick()
     onNodeWithText("Сохранить программу").performClick()
     waitUntil(timeoutMillis = 5_000) {
@@ -34,6 +33,22 @@ internal fun ComposeTestRule.createAndStartWorkout(secondExercise: String? = nul
     }
     onNodeWithText("Начать тренировку").performScrollTo().performClick()
     awaitEnabledSetEntry(1)
+}
+
+internal fun ComposeTestRule.addCatalogExercise(name: String) {
+    closeSoftKeyboard()
+    onNodeWithText("Добавить упражнение").performScrollTo().performClick()
+    searchExerciseCatalog(name)
+    onNodeWithContentDescription("Добавить $name").performClick()
+}
+
+internal fun ComposeTestRule.searchExerciseCatalog(name: String) {
+    onNode(hasText("Поиск по названию") and hasSetTextAction()).performTextReplacement(name)
+    closeSoftKeyboard()
+}
+
+internal fun ComposeTestRule.openExerciseCard(name: String) {
+    onNode(hasText(name) and !hasSetTextAction()).performClick()
 }
 
 internal fun ComposeTestRule.logSet(number: Int, weight: String, repetitions: String) {

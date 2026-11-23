@@ -1,5 +1,6 @@
 package com.delaynore.fitty.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
@@ -11,6 +12,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import com.delaynore.fitty.data.exercises.ExerciseType
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "workout_sessions")
@@ -38,6 +40,8 @@ internal data class WorkoutExerciseEntity(
     val name: String,
     val recommendedSets: Int? = null,
     val recommendedRepetitions: Int? = null,
+    val catalogExerciseId: String? = null,
+    @ColumnInfo(defaultValue = "'WEIGHT_AND_REPS'") val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 

@@ -1,6 +1,7 @@
 package com.delaynore.fitty.data.workouts
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.LoggedSetEntity
 import com.delaynore.fitty.data.local.RemovedSetPositionEntity
@@ -25,6 +26,8 @@ internal data class WorkoutExercise(
     val recommendedSets: Int? = null,
     val recommendedRepetitions: Int? = null,
     val removedPositions: Set<Int> = emptySet(),
+    val catalogExerciseId: String? = null,
+    val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 )
 
 internal data class RemovedWorkoutSet(val set: LoggedSet?)
@@ -57,6 +60,8 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                         recommendedSets = exercise.exercise.recommendedSets,
                         recommendedRepetitions = exercise.exercise.recommendedRepetitions,
                         removedPositions = exercise.removedPositions.toSet(),
+                        catalogExerciseId = exercise.exercise.catalogExerciseId,
+                        type = exercise.exercise.type,
                     )
                 },
             )
@@ -83,6 +88,8 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                 name = exercise.name,
                 recommendedSets = exercise.recommendedSets,
                 recommendedRepetitions = exercise.recommendedRepetitions,
+                catalogExerciseId = exercise.catalogExerciseId,
+                type = exercise.type,
             )
         })
         sessionId
