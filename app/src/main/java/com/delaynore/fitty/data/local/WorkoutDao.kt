@@ -12,6 +12,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import androidx.room.Update
 import com.delaynore.fitty.data.exercises.ExerciseType
 import kotlinx.coroutines.flow.Flow
 
@@ -42,6 +43,8 @@ internal data class WorkoutExerciseEntity(
     val recommendedRepetitions: Int? = null,
     val catalogExerciseId: String? = null,
     @ColumnInfo(defaultValue = "'WEIGHT_AND_REPS'") val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
+    val recommendedDurationSeconds: Int? = null,
+    val recommendedDistanceMeters: Double? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 )
 
@@ -58,9 +61,11 @@ internal data class WorkoutExerciseEntity(
 internal data class LoggedSetEntity(
     val exerciseId: Long,
     val position: Int,
-    val weightKg: Double,
-    val repetitions: Int,
+    val weightKg: Double? = null,
+    val repetitions: Int? = null,
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val durationSeconds: Int? = null,
+    val distanceMeters: Double? = null,
 )
 
 @Entity(
@@ -89,6 +94,8 @@ internal data class StoredWorkout(
 )
 
 internal data class StoredInProgressWorkout(val id: Long, val dayName: String, val setCount: Int)
+
+internal data class StoredCompletedSet(@Embedded val set: LoggedSetEntity, val type: ExerciseType)
 
 @Dao
 internal interface WorkoutDao {
@@ -124,14 +131,14 @@ internal interface WorkoutDao {
     @Query("DELETE FROM removed_set_positions WHERE exerciseId = :exerciseId AND position = :position")
     suspend fun restoreSetPosition(exerciseId: Long, position: Int): Int
 
-    @Query("SELECT EXISTS(SELECT 1 FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId)")
-    suspend fun exerciseBelongsToWorkout(exerciseId: Long, sessionId: Long): Boolean
+    @Query("SELECT * FROM workout_exercises WHERE id = :exerciseId AND sessionId = :sessionId")
+    suspend fun workoutExercise(exerciseId: Long, sessionId: Long): WorkoutExerciseEntity?
 
     @Query("SELECT * FROM logged_sets WHERE exerciseId = :exerciseId AND position = :position")
     suspend fun loggedSetAtPosition(exerciseId: Long, position: Int): LoggedSetEntity?
 
-    @Query("UPDATE logged_sets SET weightKg = :weightKg, repetitions = :repetitions WHERE exerciseId = :exerciseId AND position = :position")
-    suspend fun updateInProgressSet(exerciseId: Long, position: Int, weightKg: Double, repetitions: Int): Int
+    @Update
+    suspend fun updateSet(set: LoggedSetEntity): Int
 
     @Query("DELETE FROM logged_sets WHERE id = :id")
     suspend fun deleteInProgressSet(id: Long): Int
@@ -147,15 +154,14 @@ internal interface WorkoutDao {
 
     @Query(
         """
-        UPDATE logged_sets SET weightKg = :weightKg, repetitions = :repetitions
-        WHERE id = :setId AND exerciseId IN (
-            SELECT workout_exercises.id FROM workout_exercises
-            JOIN workout_sessions ON workout_sessions.id = workout_exercises.sessionId
-            WHERE workout_sessions.id = :sessionId AND workout_sessions.finishedAtMillis IS NOT NULL
-        )
+        SELECT logged_sets.*, workout_exercises.type FROM logged_sets
+        JOIN workout_exercises ON workout_exercises.id = logged_sets.exerciseId
+        JOIN workout_sessions ON workout_sessions.id = workout_exercises.sessionId
+        WHERE logged_sets.id = :setId AND workout_sessions.id = :sessionId
+            AND workout_sessions.finishedAtMillis IS NOT NULL
         """,
     )
-    suspend fun updateCompletedSet(sessionId: Long, setId: Long, weightKg: Double, repetitions: Int): Int
+    suspend fun completedSet(sessionId: Long, setId: Long): StoredCompletedSet?
 
     @Query(
         """

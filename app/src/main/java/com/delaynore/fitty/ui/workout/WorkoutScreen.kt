@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,24 +53,28 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.LoggedSet
+import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
+import com.delaynore.fitty.ui.SetFields
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SwipeToRevealDelete
 import com.delaynore.fitty.ui.formatRecommendation
-import com.delaynore.fitty.ui.formatWeight
+import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.ui.measureLabel
+import com.delaynore.fitty.ui.measureTag
+import com.delaynore.fitty.ui.toInput
 import kotlinx.coroutines.delay
 
 @Composable
@@ -101,7 +103,7 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
                 onExpireRest = viewModel::expireRestTimer,
                 onBack = onBack,
             )
-            SetHeadings(Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+            SetHeadings(exercise.type, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
             key(exercise.id) {
                 WorkoutSetList(id, exercise, viewModel, Modifier.weight(1f))
             }
@@ -216,7 +218,7 @@ private fun WorkoutHeader(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(exercise.name, style = MaterialTheme.typography.headlineMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    formatRecommendation(exercise.recommendedSets, exercise.recommendedRepetitions)?.let {
+                    formatRecommendation(exercise.recommendedSets, exercise.goal)?.let {
                         Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
                     }
                 }
@@ -315,11 +317,11 @@ private fun WorkoutSetList(
                     val active = position == activePosition
                     DraftSetRow(
                         number = number,
-                        input = rows.inputs[position] ?: SetInput(),
+                        input = rows.inputs[position] ?: SetInput(exercise.type),
                         enabled = active && !viewModel.saving,
                         onInput = { viewModel.changeDraft(exercise.id, position, it) },
                         onLog = { viewModel.logSet(sessionId, exercise.id, position) },
-                        weightModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
+                        firstFieldModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
                     )
                     if (active && advanceFocus && !viewModel.saving) {
                         LaunchedEffect(position) {
@@ -374,8 +376,8 @@ private fun UndoRemovedRows(rows: List<RemovedWorkoutRow>, saving: Boolean, onRe
                             overflow = TextOverflow.Ellipsis,
                         )
                         val values = when {
-                            removed.set != null -> "${formatWeight(removed.set.weightKg)} кг × ${removed.set.repetitions}"
-                            removed.draft != null -> "Черновик: ${removed.draft.weight.ifBlank { "−" }} кг × ${removed.draft.repetitions.ifBlank { "−" }}"
+                            removed.set != null -> removed.set.result.formatResult()
+                            removed.draft != null -> "Черновик: ${removed.draft.formatDraft()}"
                             else -> "Пустая строка"
                         }
                         Text(values, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
@@ -454,12 +456,14 @@ private fun AllExercises(workout: WorkoutSession, onDismiss: () -> Unit, onSelec
 }
 
 @Composable
-private fun SetHeadings(modifier: Modifier = Modifier) {
+private fun SetHeadings(type: ExerciseType, modifier: Modifier = Modifier) {
     ProvideTextStyle(MaterialTheme.typography.labelMedium) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("№", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Вес, кг", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Повторения", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (type == ExerciseType.WEIGHT_AND_REPS) {
+                Text("Вес, кг", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(type.measureLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("✓", Modifier.width(48.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -472,8 +476,9 @@ private fun DraftSetRow(
     enabled: Boolean,
     onInput: (SetInput) -> Unit,
     onLog: () -> Unit,
-    weightModifier: Modifier,
+    firstFieldModifier: Modifier,
 ) {
+    val hasWeight = input.type == ExerciseType.WEIGHT_AND_REPS
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -484,10 +489,13 @@ private fun DraftSetRow(
             input = input,
             onInput = onInput,
             enabled = enabled,
-            weightModifier = Modifier.weight(1f).then(weightModifier).testTag("workout-weight-$number")
+            weightModifier = Modifier.weight(1f).then(firstFieldModifier).testTag("workout-weight-$number")
                 .semantics { contentDescription = "Вес, подход $number" },
-            repetitionsModifier = Modifier.weight(1f).testTag("workout-repetitions-$number")
-                .semantics { contentDescription = "Повторения, подход $number" },
+            measureModifier = Modifier.weight(1f)
+                .then(if (hasWeight) Modifier else firstFieldModifier)
+                .testTag("workout-${input.type.measureTag}-$number")
+                .semantics { contentDescription = "${input.type.measureLabel}, подход $number" },
+            showLabels = false,
         )
         FilledTonalIconButton(
             onClick = onLog,
@@ -495,39 +503,6 @@ private fun DraftSetRow(
             modifier = Modifier.width(48.dp).semantics { contentDescription = "Записать подход $number" },
         ) { FittyGlyph(FittyIcon.Check) }
     }
-}
-
-@Composable
-private fun SetFields(
-    input: SetInput,
-    onInput: (SetInput) -> Unit,
-    enabled: Boolean,
-    weightModifier: Modifier,
-    repetitionsModifier: Modifier,
-    showLabels: Boolean = false,
-) {
-    OutlinedTextField(
-        value = input.weight,
-        onValueChange = { onInput(input.copy(weight = it)) },
-        enabled = enabled,
-        label = if (showLabels) ({ Text("Вес, кг") }) else null,
-        singleLine = true,
-        isError = input.errors?.weight != null,
-        supportingText = input.errors?.weight?.let { message -> { Text(message) } },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-        modifier = weightModifier,
-    )
-    OutlinedTextField(
-        value = input.repetitions,
-        onValueChange = { onInput(input.copy(repetitions = it)) },
-        enabled = enabled,
-        label = if (showLabels) ({ Text("Повторения") }) else null,
-        singleLine = true,
-        isError = input.errors?.repetitions != null,
-        supportingText = input.errors?.repetitions?.let { message -> { Text(message) } },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-        modifier = repetitionsModifier,
-    )
 }
 
 @Composable
@@ -544,8 +519,11 @@ private fun LoggedSetRow(number: Int, set: LoggedSet, onEdit: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(number.toString(), Modifier.width(30.dp).padding(start = 8.dp))
-            Text(formatWeight(set.weightKg), Modifier.weight(1f).testTag("workout-logged-weight-$number"))
-            Text(set.repetitions.toString(), Modifier.weight(1f).testTag("workout-logged-repetitions-$number"))
+            val input = set.result.toInput()
+            if (set.result is SetResult.WeightAndReps) {
+                Text(input.weight, Modifier.weight(1f).testTag("workout-logged-weight-$number"))
+            }
+            Text(input.measure, Modifier.weight(1f).testTag("workout-logged-${input.type.measureTag}-$number"))
             Row(Modifier.width(48.dp), horizontalArrangement = Arrangement.Center) { FittyGlyph(FittyIcon.Check) }
         }
     }
@@ -571,7 +549,7 @@ private fun EditSetSheet(
                     onInput = onInput,
                     enabled = !saving,
                     weightModifier = Modifier.weight(1f).testTag("workout-edit-weight"),
-                    repetitionsModifier = Modifier.weight(1f).testTag("workout-edit-repetitions"),
+                    measureModifier = Modifier.weight(1f).testTag("workout-edit-${edit.input.type.measureTag}"),
                     showLabels = true,
                 )
             }

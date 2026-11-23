@@ -57,6 +57,8 @@ internal data class TrainingExerciseEntity(
     @ColumnInfo(defaultValue = "0") val position: Int = 0,
     val catalogExerciseId: String? = null,
     @ColumnInfo(defaultValue = "'WEIGHT_AND_REPS'") val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
+    val recommendedDurationSeconds: Int? = null,
+    val recommendedDistanceMeters: Double? = null,
 )
 
 @Entity(

@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -24,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -39,15 +37,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+import com.delaynore.fitty.ui.SetFields
+import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputErrors
-import com.delaynore.fitty.ui.formatWeight
+import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.ui.measureTag
+import com.delaynore.fitty.ui.toInput
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -146,7 +146,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text("Подход ${index + 1}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${formatWeight(set.weightKg)} кг × ${set.repetitions}")
+                                Text(set.result.formatResult())
                             }
                         }
                     }
@@ -174,8 +174,8 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                 error = viewModel.error,
                 onDismiss = closeEditor,
                 setErrors = viewModel.setErrors,
-                onEdit = { weight, repetitions -> viewModel.changeSetInput(set, weight, repetitions) },
-                onSave = { weight, repetitions -> viewModel.saveSet(id, set, weight, repetitions, closeEditor) },
+                onEdit = viewModel::changeSetInput,
+                onSave = { input -> viewModel.saveSet(id, set, input, closeEditor) },
                 onDeleteSet = { viewModel.deleteSet(id, set.id, closeEditor) },
                 onDeleteWorkout = confirmDeletion,
             )
@@ -239,13 +239,15 @@ private fun EditSetSheet(
     error: String?,
     setErrors: SetInputErrors?,
     onDismiss: () -> Unit,
-    onEdit: (String, String) -> Unit,
-    onSave: (String, String) -> Unit,
+    onEdit: (SetInput) -> Unit,
+    onSave: (SetInput) -> Unit,
     onDeleteSet: () -> Unit,
     onDeleteWorkout: () -> Unit,
 ) {
-    var weight by rememberSaveable { mutableStateOf(formatWeight(set.weightKg)) }
-    var repetitions by rememberSaveable { mutableStateOf(set.repetitions.toString()) }
+    val original = set.result.toInput()
+    var weight by rememberSaveable { mutableStateOf(original.weight) }
+    var measure by rememberSaveable { mutableStateOf(original.measure) }
+    val input = original.copy(weight = weight, measure = measure, errors = setErrors)
     ModalBottomSheet(
         onDismissRequest = { if (!saving) onDismiss() },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -256,36 +258,20 @@ private fun EditSetSheet(
         ) {
             Text("Изменить подход", style = MaterialTheme.typography.headlineSmall)
             Text(exerciseName, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(
-                value = weight,
-                onValueChange = {
-                    weight = it
-                    onEdit(weight, repetitions)
+            SetFields(
+                input = input,
+                onInput = {
+                    weight = it.weight
+                    measure = it.measure
+                    onEdit(it)
                 },
-                modifier = Modifier.fillMaxWidth().testTag("history-set-weight"),
-                label = { Text("Вес, кг") },
-                isError = setErrors?.weight != null,
-                supportingText = setErrors?.weight?.let { message -> { Text(message) } },
                 enabled = !saving,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-            )
-            OutlinedTextField(
-                value = repetitions,
-                onValueChange = {
-                    repetitions = it
-                    onEdit(weight, repetitions)
-                },
-                modifier = Modifier.fillMaxWidth().testTag("history-set-repetitions"),
-                label = { Text("Повторения") },
-                isError = setErrors?.repetitions != null,
-                supportingText = setErrors?.repetitions?.let { message -> { Text(message) } },
-                enabled = !saving,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                weightModifier = Modifier.fillMaxWidth().testTag("history-set-weight"),
+                measureModifier = Modifier.fillMaxWidth().testTag("history-set-${input.type.measureTag}"),
+                showLabels = true,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(onClick = { onSave(weight, repetitions) }, modifier = Modifier.fillMaxWidth(), enabled = !saving) {
+            Button(onClick = { onSave(input) }, modifier = Modifier.fillMaxWidth(), enabled = !saving) {
                 Text("Сохранить")
             }
             if (lastSet) {

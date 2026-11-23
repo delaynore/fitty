@@ -150,17 +150,22 @@ internal class WorkoutViewModel(
     private fun rows(exerciseId: Long): WorkoutRows = rowsByExercise.getOrPut(exerciseId, ::WorkoutRows)
 
     fun logSet(sessionId: Long, exerciseId: Long, position: Int) {
+        val exercise = session.value?.exercises?.find { it.id == exerciseId } ?: return
         val rows = rows(exerciseId)
-        val input = rows.drafts[position] ?: SetInput()
+        val input = rows.drafts[position] ?: SetInput(exercise.type)
         val set = input.toLoggedSet(position)
         if (set == null) {
             rows.drafts[position] = input.validate()
             return
         }
+        logSet(sessionId, exerciseId, set)
+    }
+
+    fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet) {
         save("Не удалось записать подход") {
             if (!workouts.logSet(sessionId, exerciseId, set)) return@save false
-            rows.drafts.remove(position)
-            savedPosition = position
+            rows(exerciseId).drafts.remove(set.position)
+            savedPosition = set.position
             true
         }
     }
@@ -202,7 +207,7 @@ internal class WorkoutViewModel(
 
     fun openSetEditor(exercise: WorkoutExercise, number: Int, set: LoggedSet) {
         error = null
-        editingSet = WorkoutSetEdit(exercise.id, exercise.name, number, set.position, set.toInput())
+        editingSet = WorkoutSetEdit(exercise.id, exercise.name, number, set.position, set.result.toInput())
     }
 
     fun changeSetEdit(input: SetInput) {

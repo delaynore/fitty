@@ -1,7 +1,9 @@
 package com.delaynore.fitty.data.programs
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.exercises.restoreGoal
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.HomeProgramEntity
 import com.delaynore.fitty.data.local.StoredTrainingProgram
@@ -15,7 +17,7 @@ internal data class TrainingExercise(
     val id: Long,
     val name: String,
     val recommendedSets: Int?,
-    val recommendedRepetitions: Int?,
+    val goal: ExerciseGoal?,
     val catalogExerciseId: String? = null,
     val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 )
@@ -45,7 +47,7 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
         require(program.days.all { day ->
             day.name.isNotBlank() && day.exercises.isNotEmpty() && day.exercises.all {
                 it.name.isNotBlank() && (it.recommendedSets == null || it.recommendedSets > 0) &&
-                    (it.recommendedRepetitions == null || it.recommendedRepetitions > 0)
+                    (it.goal == null || it.goal.isValidFor(it.type))
             }
         })
 
@@ -74,7 +76,9 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                         dayId = dayId,
                         name = exercise.name.trim(),
                         recommendedSets = exercise.recommendedSets,
-                        recommendedRepetitions = exercise.recommendedRepetitions,
+                        recommendedRepetitions = (exercise.goal as? ExerciseGoal.Repetitions)?.repetitions,
+                        recommendedDurationSeconds = (exercise.goal as? ExerciseGoal.Duration)?.seconds,
+                        recommendedDistanceMeters = (exercise.goal as? ExerciseGoal.Distance)?.meters,
                         catalogExerciseId = exercise.catalogExerciseId,
                         type = exercise.type,
                         id = exercise.id.takeIf { it in priorExerciseIds } ?: 0,
@@ -97,7 +101,7 @@ internal class ProgramsRepository(private val database: FittyDatabase) {
                     id = it.id,
                     name = it.name,
                     recommendedSets = it.recommendedSets,
-                    recommendedRepetitions = it.recommendedRepetitions,
+                    goal = it.type.restoreGoal(it.recommendedRepetitions, it.recommendedDurationSeconds, it.recommendedDistanceMeters),
                     catalogExerciseId = it.catalogExerciseId,
                     type = it.type,
                 )

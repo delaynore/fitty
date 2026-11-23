@@ -9,8 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputErrors
-import com.delaynore.fitty.ui.toInput
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -37,20 +37,19 @@ internal class HistoryViewModel(private val workouts: WorkoutsRepository) : View
         setErrors = null
     }
 
-    fun changeSetInput(set: LoggedSet, weight: String, repetitions: String) {
+    fun changeSetInput(input: SetInput) {
         error = null
-        if (setErrors != null) setErrors = set.toInput().copy(weight = weight, repetitions = repetitions).validate().errors
+        if (setErrors != null) setErrors = input.validate().errors
     }
 
-    fun saveSet(sessionId: Long, set: LoggedSet, weight: String, repetitions: String, onSaved: () -> Unit) {
-        val input = set.toInput().copy(weight = weight, repetitions = repetitions)
+    fun saveSet(sessionId: Long, set: LoggedSet, input: SetInput, onSaved: () -> Unit) {
         val updated = input.toLoggedSet(set.position)
         if (updated == null) {
             setErrors = input.validate().errors
             return
         }
         changeHistory("Не удалось сохранить подход", onSaved) {
-            workouts.updateCompletedSet(sessionId, set.id, updated.weightKg, updated.repetitions)
+            workouts.updateCompletedSet(sessionId, set.id, updated.result)
         }
     }
 

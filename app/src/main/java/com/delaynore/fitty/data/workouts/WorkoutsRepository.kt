@@ -1,7 +1,9 @@
 package com.delaynore.fitty.data.workouts
 
 import androidx.room.withTransaction
+import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.exercises.restoreGoal
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.LoggedSetEntity
 import com.delaynore.fitty.data.local.RemovedSetPositionEntity
@@ -17,14 +19,14 @@ internal data class WorkoutSummary(
     val finishedAtMillis: Long?,
 )
 
-internal data class LoggedSet(val position: Int, val weightKg: Double, val repetitions: Int, val id: Long = 0)
+internal data class LoggedSet(val position: Int, val result: SetResult, val id: Long = 0)
 
 internal data class WorkoutExercise(
     val id: Long,
     val name: String,
     val sets: List<LoggedSet>,
     val recommendedSets: Int? = null,
-    val recommendedRepetitions: Int? = null,
+    val goal: ExerciseGoal? = null,
     val removedPositions: Set<Int> = emptySet(),
     val catalogExerciseId: String? = null,
     val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
@@ -56,9 +58,12 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                     WorkoutExercise(
                         id = exercise.exercise.id,
                         name = exercise.exercise.name,
-                        sets = exercise.sets.sortedBy { set -> set.position }.map { set -> set.toLoggedSet() },
+                        sets = exercise.sets.sortedBy { set -> set.position }
+                            .map { set -> set.toLoggedSet(exercise.exercise.type) },
                         recommendedSets = exercise.exercise.recommendedSets,
-                        recommendedRepetitions = exercise.exercise.recommendedRepetitions,
+                        goal = exercise.exercise.run {
+                            type.restoreGoal(recommendedRepetitions, recommendedDurationSeconds, recommendedDistanceMeters)
+                        },
                         removedPositions = exercise.removedPositions.toSet(),
                         catalogExerciseId = exercise.exercise.catalogExerciseId,
                         type = exercise.exercise.type,
@@ -88,6 +93,8 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                 name = exercise.name,
                 recommendedSets = exercise.recommendedSets,
                 recommendedRepetitions = exercise.recommendedRepetitions,
+                recommendedDurationSeconds = exercise.recommendedDurationSeconds,
+                recommendedDistanceMeters = exercise.recommendedDistanceMeters,
                 catalogExerciseId = exercise.catalogExerciseId,
                 type = exercise.type,
             )
@@ -98,13 +105,13 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
     suspend fun logSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
-            if (!isInProgressExercise(sessionId, exerciseId) ||
+            if (inProgressExercise(sessionId, exerciseId)?.type != set.result.type ||
                 workouts.isRemovedSetPosition(exerciseId, set.position) ||
                 workouts.loggedSetAtPosition(exerciseId, set.position) != null
             ) {
                 return@withTransaction false
             }
-            workouts.insertSet(LoggedSetEntity(exerciseId, set.position, set.weightKg, set.repetitions, id = set.id))
+            workouts.insertSet(set.copy(id = 0).toEntity(exerciseId))
             true
         }
     }
@@ -112,8 +119,9 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
     suspend fun updateInProgressSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
         return database.withTransaction {
-            isInProgressExercise(sessionId, exerciseId) &&
-                workouts.updateInProgressSet(exerciseId, set.position, set.weightKg, set.repetitions) == 1
+            if (inProgressExercise(sessionId, exerciseId)?.type != set.result.type) return@withTransaction false
+            val stored = workouts.loggedSetAtPosition(exerciseId, set.position) ?: return@withTransaction false
+            workouts.updateSet(set.copy(id = stored.id).toEntity(exerciseId)) == 1
         }
     }
 
@@ -123,23 +131,25 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
         position: Int,
         isRecorded: Boolean,
     ): RemovedWorkoutSet? = database.withTransaction {
-        if (position <= 0 || !isInProgressExercise(sessionId, exerciseId)) return@withTransaction null
+        if (position <= 0) return@withTransaction null
+        val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction null
         val set = workouts.loggedSetAtPosition(exerciseId, position)
         if ((set != null) != isRecorded) return@withTransaction null
         if (workouts.insertRemovedSetPosition(RemovedSetPositionEntity(exerciseId, position)) == -1L) {
             return@withTransaction null
         }
         if (set != null) workouts.deleteInProgressSet(set.id)
-        RemovedWorkoutSet(set?.toLoggedSet())
+        RemovedWorkoutSet(set?.toLoggedSet(exercise.type))
     }
 
     suspend fun restoreSetPosition(sessionId: Long, exerciseId: Long, position: Int, set: LoggedSet?): Boolean =
         database.withTransaction {
-            if (set != null && (set.position != position || !set.isValid())) return@withTransaction false
-            if (!isInProgressExercise(sessionId, exerciseId) || workouts.restoreSetPosition(exerciseId, position) != 1) {
+            val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
+            if (set != null && (set.position != position || !set.isValid() || set.result.type != exercise.type)) {
                 return@withTransaction false
             }
-            if (set != null) workouts.insertSet(LoggedSetEntity(exerciseId, position, set.weightKg, set.repetitions, id = set.id))
+            if (workouts.restoreSetPosition(exerciseId, position) != 1) return@withTransaction false
+            if (set != null) workouts.insertSet(set.toEntity(exerciseId))
             true
         }
 
@@ -149,9 +159,14 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
 
     suspend fun cancelWorkout(sessionId: Long): Boolean = workouts.cancelWorkout(sessionId) == 1
 
-    suspend fun updateCompletedSet(sessionId: Long, setId: Long, weightKg: Double, repetitions: Int): Boolean {
-        if (!weightKg.isFinite() || weightKg < 0 || repetitions <= 0) return false
-        return workouts.updateCompletedSet(sessionId, setId, weightKg, repetitions) == 1
+    suspend fun updateCompletedSet(sessionId: Long, setId: Long, result: SetResult): Boolean {
+        if (!result.isValid()) return false
+        return database.withTransaction {
+            val stored = workouts.completedSet(sessionId, setId) ?: return@withTransaction false
+            if (stored.type != result.type) return@withTransaction false
+            val updated = LoggedSet(stored.set.position, result, stored.set.id)
+            workouts.updateSet(updated.toEntity(stored.set.exerciseId)) == 1
+        }
     }
 
     suspend fun deleteCompletedSet(sessionId: Long, setId: Long): Boolean =
@@ -160,12 +175,27 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
     suspend fun deleteCompletedWorkout(sessionId: Long): Boolean =
         workouts.deleteCompletedWorkout(sessionId) == 1
 
-    private suspend fun isInProgressExercise(sessionId: Long, exerciseId: Long) =
-        workouts.inProgressWorkoutId() == sessionId && workouts.exerciseBelongsToWorkout(exerciseId, sessionId)
+    private suspend fun inProgressExercise(sessionId: Long, exerciseId: Long): WorkoutExerciseEntity? =
+        if (workouts.inProgressWorkoutId() == sessionId) workouts.workoutExercise(exerciseId, sessionId) else null
 
-    private fun LoggedSet.isValid() = position > 0 && weightKg.isFinite() && weightKg >= 0 && repetitions > 0
+    private fun LoggedSet.isValid() = position > 0 && result.isValid()
 
-    private fun LoggedSetEntity.toLoggedSet() = LoggedSet(position, weightKg, repetitions, id)
+    private fun LoggedSet.toEntity(exerciseId: Long): LoggedSetEntity = when (val value = result) {
+        is SetResult.WeightAndReps -> LoggedSetEntity(exerciseId, position, value.weightKg, value.repetitions, id)
+        is SetResult.Reps -> LoggedSetEntity(exerciseId, position, repetitions = value.repetitions, id = id)
+        is SetResult.Duration -> LoggedSetEntity(exerciseId, position, id = id, durationSeconds = value.seconds)
+        is SetResult.Distance -> LoggedSetEntity(exerciseId, position, id = id, distanceMeters = value.meters)
+    }
+
+    private fun LoggedSetEntity.toLoggedSet(type: ExerciseType): LoggedSet {
+        val result = when (type) {
+            ExerciseType.WEIGHT_AND_REPS -> SetResult.WeightAndReps(checkNotNull(weightKg), checkNotNull(repetitions))
+            ExerciseType.REPS -> SetResult.Reps(checkNotNull(repetitions))
+            ExerciseType.DURATION -> SetResult.Duration(checkNotNull(durationSeconds))
+            ExerciseType.DISTANCE -> SetResult.Distance(checkNotNull(distanceMeters))
+        }
+        return LoggedSet(position, result, id)
+    }
 
     private fun WorkoutSessionEntity.toSummary() = WorkoutSummary(id, programName, dayName, finishedAtMillis)
 }

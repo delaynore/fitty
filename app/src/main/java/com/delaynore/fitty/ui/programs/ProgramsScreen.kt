@@ -103,7 +103,7 @@ internal fun ProgramDetailsScreen(
                             HorizontalDivider()
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(exercise.name, Modifier.weight(1f))
-                                formatRecommendation(exercise.recommendedSets, exercise.recommendedRepetitions)?.let {
+                                formatRecommendation(exercise.recommendedSets, exercise.goal)?.let {
                                     Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }

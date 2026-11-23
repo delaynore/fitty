@@ -59,8 +59,11 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.ui.DeleteIconButton
 import com.delaynore.fitty.ui.formatRecommendation
+import com.delaynore.fitty.ui.measureLabel
+import com.delaynore.fitty.ui.measureTag
 import kotlinx.coroutines.launch
 
 private val RowSpacing = 6.dp
@@ -270,8 +273,8 @@ private fun ExerciseEditor(
 ) {
     val suffix = if (index == 0) "" else "-${index + 1}"
     val setsError = showErrors && !exercise.sets.validRecommendation()
-    val repsError = showErrors && !exercise.repetitions.validRecommendation()
-    val target = formatRecommendation(exercise.sets.trim().toIntOrNull(), exercise.repetitions.trim().toIntOrNull())
+    val targetError = showErrors && !exercise.validTarget
+    val target = formatRecommendation(exercise.sets.trim().toIntOrNull(), exercise.goal)
     val colors = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -317,11 +320,12 @@ private fun ExerciseEditor(
                             modifier = Modifier.weight(1f).testTag("recommendation-sets$suffix"),
                         )
                         RecommendationInput(
-                            label = "Повторения",
-                            value = exercise.repetitions,
-                            onChange = { onChange(exercise.copy(repetitions = it)) },
-                            isError = repsError,
-                            modifier = Modifier.weight(1f).testTag("recommendation-repetitions$suffix"),
+                            label = exercise.type.measureLabel,
+                            value = exercise.target,
+                            onChange = { onChange(exercise.copy(target = it)) },
+                            isError = targetError,
+                            modifier = Modifier.weight(1f).testTag("recommendation-${exercise.type.measureTag}$suffix"),
+                            decimal = exercise.type == ExerciseType.DISTANCE,
                         )
                     }
                 }
@@ -353,15 +357,18 @@ private fun RecommendationInput(
     onChange: (String) -> Unit,
     isError: Boolean,
     modifier: Modifier,
+    decimal: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number),
         isError = isError,
-        supportingText = if (isError) ({ Text("Введи целое число от 1") }) else null,
+        supportingText = if (isError) ({
+            Text(if (decimal) "Введи расстояние больше 0" else "Введи целое число от 1")
+        }) else null,
         modifier = modifier,
     )
 }

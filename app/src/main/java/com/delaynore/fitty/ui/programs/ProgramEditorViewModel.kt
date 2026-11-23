@@ -13,6 +13,8 @@ import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
+import com.delaynore.fitty.ui.inputText
+import com.delaynore.fitty.ui.parseGoal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -20,18 +22,21 @@ internal data class ExerciseDraft(
     val id: Long,
     val name: String,
     val sets: String = "",
-    val repetitions: String = "",
+    val target: String = "",
     val catalogExerciseId: String? = null,
     val type: ExerciseType = ExerciseType.WEIGHT_AND_REPS,
 ) {
     val valid: Boolean
-        get() = name.isNotBlank() && sets.validRecommendation() && repetitions.validRecommendation()
+        get() = name.isNotBlank() && sets.validRecommendation() && validTarget
+
+    val goal get() = type.parseGoal(target)
+    val validTarget get() = target.isBlank() || goal != null
 
     fun toExercise() = TrainingExercise(
         id = id,
         name = name,
         recommendedSets = sets.trim().toIntOrNull(),
-        recommendedRepetitions = repetitions.trim().toIntOrNull(),
+        goal = goal,
         catalogExerciseId = catalogExerciseId,
         type = type,
     )
@@ -88,7 +93,7 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
                     exercise.id,
                     exercise.name,
                     exercise.recommendedSets?.toString().orEmpty(),
-                    exercise.recommendedRepetitions?.toString().orEmpty(),
+                    exercise.goal?.inputText().orEmpty(),
                     exercise.catalogExerciseId,
                     exercise.type,
                 )
@@ -156,7 +161,7 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
             day.copy(exercises = day.exercises.map { draft ->
                 if (draft.id != legacyId || draft.catalogExerciseId != null) draft else draft.copy(
                     name = exercise.name,
-                    repetitions = if (draft.type == exercise.type) draft.repetitions else "",
+                    target = if (draft.type == exercise.type) draft.target else "",
                     catalogExerciseId = exercise.id,
                     type = exercise.type,
                 )

@@ -22,6 +22,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
@@ -202,7 +203,7 @@ class ProgramsTest {
         runBlocking {
             ProgramsRepository(app.database).saveProgram(TrainingProgram(0, "Силовая", listOf(
                 TrainingDay(0, "День жима", listOf(
-                    TrainingExercise(0, "Жим", 3, 8),
+                    TrainingExercise(0, "Жим", 3, ExerciseGoal.Repetitions(8)),
                     TrainingExercise(0, "Разведения", null, null),
                 )),
             )))
