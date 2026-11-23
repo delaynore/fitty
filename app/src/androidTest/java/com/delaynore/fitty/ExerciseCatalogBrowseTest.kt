@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
@@ -61,6 +62,80 @@ class ExerciseCatalogBrowseTest {
         } finally {
             if (!wasInAirplaneMode) shell("cmd connectivity airplane-mode disable")
         }
+    }
+
+    @Test
+    fun catalogFiltersByMainOrAssistingMuscle() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            openCatalog()
+            compose.onNodeWithText("Фильтры").performClick()
+            compose.onNodeWithText("Любая группа").performClick()
+            compose.onNodeWithText("Бицепс").performClick()
+            compose.onNodeWithText("Применить").performClick()
+
+            compose.onNodeWithText("Сгибания рук с гантелями").assertIsDisplayed()
+            compose.onNodeWithText("Тяга верхнего блока").assertDoesNotExist()
+
+            compose.onNodeWithText("Фильтры", substring = true).performClick()
+            compose.onNodeWithText("Вспомогательная").performClick()
+            compose.onNodeWithText("Применить").performClick()
+
+            compose.onNodeWithText("Тяга верхнего блока").assertIsDisplayed()
+            compose.onNodeWithText("Сгибания рук с гантелями").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun catalogSearchRequiresAllAvailableEquipmentAndCanBeClearedOffline() {
+        val wasInAirplaneMode = shell("settings get global airplane_mode_on") == "1"
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use {
+                openCatalog()
+                search("жим гантелей")
+                selectDumbbells()
+
+                compose.onNodeWithText("Жим гантелей над головой").assertIsDisplayed()
+                compose.onNodeWithText("Жим гантелей лёжа").assertDoesNotExist()
+                compose.onNodeWithText("Тяга гантели в наклоне").assertDoesNotExist()
+
+                compose.onNodeWithText("Фильтры (1)").performClick()
+                compose.onNodeWithText("Скамья").performClick()
+                compose.onNodeWithText("Применить").performClick()
+                compose.onNodeWithText("Жим гантелей лёжа").assertIsDisplayed()
+
+                compose.onNodeWithText("Фильтры (1)").performClick()
+                compose.onNodeWithText("Сбросить").performClick()
+                compose.onNodeWithText("Жим гантелей лёжа").assertIsDisplayed()
+
+                if (!wasInAirplaneMode) shell("cmd connectivity airplane-mode enable")
+                check(shell("settings get global airplane_mode_on") == "1")
+
+                search("жим гантелей лежа")
+                selectDumbbells()
+                compose.onNodeWithText("Упражнения не найдены").assertIsDisplayed()
+                compose.onNodeWithText("Фильтры (1)").performClick()
+                compose.onNodeWithText("Сбросить").performClick()
+                compose.onNodeWithText("Жим гантелей лёжа").assertIsDisplayed()
+            }
+        } finally {
+            if (!wasInAirplaneMode) shell("cmd connectivity airplane-mode disable")
+        }
+    }
+
+    private fun search(query: String) {
+        compose.onNodeWithText("Поиск по названию").performTextReplacement(query)
+        closeSoftKeyboard()
+    }
+
+    private fun selectDumbbells() {
+        compose.onNodeWithText("Фильтры").performClick()
+        compose.onNodeWithText("Гантели").performClick()
+        compose.onNodeWithText("Применить").performClick()
+    }
+
+    private fun openCatalog() {
+        compose.onNodeWithText("Настройки").performClick()
+        compose.onNodeWithText("Каталог упражнений").performClick()
     }
 
     private fun back() = compose.onNodeWithContentDescription("Назад").performClick()
