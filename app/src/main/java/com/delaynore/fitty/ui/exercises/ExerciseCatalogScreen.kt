@@ -109,8 +109,7 @@ private fun ExerciseCatalogList(
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
     val results = remember(exercises, query, filters) {
-        val name = query.trim().lowercase().replace('ё', 'е')
-        exercises?.filter { it.name.lowercase().replace('ё', 'е').contains(name) && filters.matches(it) }
+        exercises?.let { filters.applyTo(it, query) }
     }
 
     ExerciseCatalogContent(
