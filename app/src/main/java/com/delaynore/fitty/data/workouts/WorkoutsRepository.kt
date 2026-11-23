@@ -6,6 +6,7 @@ import com.delaynore.fitty.data.local.LoggedSetEntity
 import com.delaynore.fitty.data.local.RemovedSetPositionEntity
 import com.delaynore.fitty.data.local.WorkoutExerciseEntity
 import com.delaynore.fitty.data.local.WorkoutSessionEntity
+import com.delaynore.fitty.data.local.orderedExercises
 import kotlinx.coroutines.flow.map
 
 internal data class WorkoutSummary(
@@ -75,7 +76,7 @@ internal class WorkoutsRepository(private val database: FittyDatabase) {
                 startedAtMillis = System.currentTimeMillis(),
             ),
         )
-        workouts.insertExercises(day.exercises.sortedBy { it.id }.mapIndexed { position, exercise ->
+        workouts.insertExercises(day.orderedExercises().mapIndexed { position, exercise ->
             WorkoutExerciseEntity(
                 sessionId = sessionId,
                 position = position,
