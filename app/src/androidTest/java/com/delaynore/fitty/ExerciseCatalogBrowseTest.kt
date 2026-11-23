@@ -2,6 +2,7 @@ package com.delaynore.fitty
 
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -36,6 +37,9 @@ class ExerciseCatalogBrowseTest {
         try {
             check(shell("settings get global airplane_mode_on") == "1")
             ActivityScenario.launch(MainActivity::class.java).use {
+                compose.waitUntil(timeoutMillis = 5_000) {
+                    compose.onAllNodes(hasText("Создать программу")).fetchSemanticsNodes().isNotEmpty()
+                }
                 compose.onNodeWithText("Создать программу").performClick()
                 compose.onNodeWithText("Добавить день").performClick()
                 compose.onNodeWithContentDescription("Настройки").performClick()
