@@ -74,7 +74,11 @@ class TypedWorkoutTest {
             logSingleValue("repetitions", "5")
             nextExercise("Планка на предплечьях")
             logSingleValue("duration", "47")
-            compose.onNodeWithContentDescription("Изменить подход 1").performClick()
+            closeSoftKeyboard()
+            compose.onNodeWithContentDescription("Изменить подход 1").performScrollTo().performClick()
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasTestTag("workout-edit-duration")).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithTag("workout-edit-duration").performTextReplacement("49")
             closeSoftKeyboard()
             tap("Сохранить")
