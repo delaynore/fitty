@@ -1,77 +1,77 @@
 package com.delaynore.fitty.ui.home
 
 import android.database.sqlite.SQLiteException
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-internal data class HomeState(val program: TrainingProgram?, val inProgressWorkout: InProgressWorkout?)
+internal data class HomeUiState(
+    val loading: Boolean = true,
+    val program: TrainingProgram? = null,
+    val inProgressWorkout: InProgressWorkout? = null,
+    val selectedDayId: Long? = null,
+    val starting: Boolean = false,
+    val error: String? = null,
+)
 
 internal class HomeViewModel(
     programs: ProgramsRepository,
     private val workouts: WorkoutsRepository,
     private val onWorkoutCancelled: (Long) -> Unit,
 ) : ViewModel() {
-    val home = combine(programs.homeProgram, workouts.inProgressWorkout, ::HomeState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    private val state = MutableStateFlow(HomeUiState())
+    val uiState = state.asStateFlow()
 
-    var selectedDayId by mutableStateOf<Long?>(null)
-        private set
-    var starting by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-
-    fun selectDay(dayId: Long?) {
-        selectedDayId = dayId
-        error = null
-    }
-
-    fun startWorkout(onStarted: (Long) -> Unit) {
-        val program = home.value?.program ?: return
-        val dayId = program.days.firstOrNull { it.id == selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
-        if (starting) return
-        starting = true
-        error = null
+    init {
         viewModelScope.launch {
-            try {
-                val sessionId = workouts.startWorkout(dayId)
-                if (sessionId == null) error = "Не удалось начать тренировку"
-                else onStarted(sessionId)
-            } catch (_: SQLiteException) {
-                error = "Не удалось начать тренировку"
-            } finally {
-                starting = false
+            combine(programs.homeProgram, workouts.inProgressWorkout, ::Pair).collect { (program, workout) ->
+                state.update { it.copy(loading = false, program = program, inProgressWorkout = workout) }
             }
         }
     }
 
+    fun selectDay(dayId: Long?) {
+        state.update { it.copy(selectedDayId = dayId, error = null) }
+    }
+
+    fun startWorkout(onStarted: (Long) -> Unit) {
+        val current = state.value
+        val program = current.program ?: return
+        val dayId = program.days.firstOrNull { it.id == current.selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
+        changeWorkout("Не удалось начать тренировку") {
+            val sessionId = workouts.startWorkout(dayId) ?: return@changeWorkout false
+            onStarted(sessionId)
+            true
+        }
+    }
+
     fun cancelWorkout(id: Long, onCancelled: () -> Unit) {
-        if (starting) return
-        starting = true
-        error = null
+        changeWorkout("Не удалось отменить тренировку") {
+            if (!workouts.cancelWorkout(id)) return@changeWorkout false
+            onWorkoutCancelled(id)
+            onCancelled()
+            true
+        }
+    }
+
+    private fun changeWorkout(failureMessage: String, change: suspend () -> Boolean) {
+        if (state.value.starting) return
+        state.update { it.copy(starting = true, error = null) }
         viewModelScope.launch {
             try {
-                if (workouts.cancelWorkout(id)) {
-                    onWorkoutCancelled(id)
-                    onCancelled()
-                } else {
-                    error = "Не удалось отменить тренировку"
-                }
+                if (!change()) state.update { it.copy(error = failureMessage) }
             } catch (_: SQLiteException) {
-                error = "Не удалось отменить тренировку"
+                state.update { it.copy(error = failureMessage) }
             } finally {
-                starting = false
+                state.update { it.copy(starting = false) }
             }
         }
     }

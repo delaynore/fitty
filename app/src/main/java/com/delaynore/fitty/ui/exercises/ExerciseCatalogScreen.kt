@@ -51,7 +51,8 @@ internal fun ExerciseCatalogScreen(
     onEdit: ((CatalogExercise) -> Unit)? = null,
     replacingLegacyExercise: Boolean = false,
 ) {
-    val exercises by viewModel.exercises.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val exercises = state.exercises
     ExerciseCatalog(exercises, onBack, onSelect, onCreate, onEdit, replacingLegacyExercise)
 }
 

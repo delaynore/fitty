@@ -39,18 +39,34 @@ internal fun HomeScreen(
     onPrograms: () -> Unit,
     onWorkout: (Long) -> Unit,
 ) {
-    val state by viewModel.home.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    HomeContent(
+        state, onCreateProgram, onPrograms, onWorkout,
+        onSelectDay = viewModel::selectDay,
+        onStartWorkout = { viewModel.startWorkout(onWorkout) },
+        onCancelWorkout = viewModel::cancelWorkout,
+    )
+}
 
+@Composable
+private fun HomeContent(
+    state: HomeUiState,
+    onCreateProgram: () -> Unit,
+    onPrograms: () -> Unit,
+    onWorkout: (Long) -> Unit,
+    onSelectDay: (Long) -> Unit,
+    onStartWorkout: () -> Unit,
+    onCancelWorkout: (Long, () -> Unit) -> Unit,
+) {
     ScreenColumn {
         PageHeader("Fitty")
-        val home = state
-        val program = home?.program
-        val inProgress = home?.inProgressWorkout
+        val program = state.program
+        val inProgress = state.inProgressWorkout
         if (inProgress != null) {
-            InProgressWorkoutCard(inProgress, viewModel, onWorkout)
+            InProgressWorkoutCard(inProgress, state.starting, state.error, onWorkout, onCancelWorkout)
         }
         when {
-            home == null -> CircularProgressIndicator()
+            state.loading -> CircularProgressIndicator()
             program == null -> Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(24.dp),
@@ -64,7 +80,7 @@ internal fun HomeScreen(
                 }
             }
             else -> {
-                val selectedDay = program.days.firstOrNull { it.id == viewModel.selectedDayId } ?: program.days.firstOrNull()
+                val selectedDay = program.days.firstOrNull { it.id == state.selectedDayId } ?: program.days.firstOrNull()
                 Surface(
                     onClick = onPrograms,
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -87,7 +103,7 @@ internal fun HomeScreen(
                     items(program.days, key = { it.id }) { day ->
                         FilterChip(
                             selected = day.id == selectedDay?.id,
-                            onClick = { viewModel.selectDay(day.id) },
+                            onClick = { onSelectDay(day.id) },
                             label = { Text(day.name) },
                         )
                     }
@@ -109,20 +125,26 @@ internal fun HomeScreen(
                     }
                     if (inProgress == null) {
                         Button(
-                            onClick = { viewModel.startWorkout(onWorkout) },
+                            onClick = onStartWorkout,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            enabled = !viewModel.starting && selectedDay.exercises.isNotEmpty(),
+                            enabled = !state.starting && selectedDay.exercises.isNotEmpty(),
                         ) { Text("Начать тренировку") }
                     }
                 }
             }
         }
-        viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 }
 
 @Composable
-private fun InProgressWorkoutCard(workout: InProgressWorkout, viewModel: HomeViewModel, onWorkout: (Long) -> Unit) {
+private fun InProgressWorkoutCard(
+    workout: InProgressWorkout,
+    starting: Boolean,
+    error: String?,
+    onWorkout: (Long) -> Unit,
+    onCancelWorkout: (Long, () -> Unit) -> Unit,
+) {
     var confirmCancel by remember(workout.id) { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -131,12 +153,12 @@ private fun InProgressWorkoutCard(workout: InProgressWorkout, viewModel: HomeVie
             Text("Записано подходов: ${workout.setCount}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(
                 onClick = { onWorkout(workout.id) },
-                enabled = !viewModel.starting,
+                enabled = !starting,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Продолжить тренировку") }
             TextButton(
                 onClick = { confirmCancel = true },
-                enabled = !viewModel.starting,
+                enabled = !starting,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Отменить тренировку", color = MaterialTheme.colorScheme.error) }
         }
@@ -149,13 +171,13 @@ private fun InProgressWorkoutCard(workout: InProgressWorkout, viewModel: HomeVie
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${workout.dayName}. Записано подходов: ${workout.setCount}")
                     Text("Записанные подходы удалятся.")
-                    viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
                 TextButton(
-                    onClick = { viewModel.cancelWorkout(workout.id) { confirmCancel = false } },
-                    enabled = !viewModel.starting,
+                    onClick = { onCancelWorkout(workout.id) { confirmCancel = false } },
+                    enabled = !starting,
                 ) { Text("Отменить", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("Оставить тренировку") } },

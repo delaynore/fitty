@@ -27,11 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -58,7 +58,8 @@ private val HistoryTimeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.forL
 
 @Composable
 internal fun HistoryScreen(viewModel: HistoryViewModel, onOpen: (Long) -> Unit) {
-    val state by viewModel.history.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state = uiState.history
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -93,7 +94,12 @@ internal fun HistoryScreen(viewModel: HistoryViewModel, onOpen: (Long) -> Unit) 
 
 @Composable
 internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack: () -> Unit) {
-    val details by remember(viewModel, id) { viewModel.workout(id) }.collectAsStateWithLifecycle(null)
+    DisposableEffect(viewModel, id) {
+        viewModel.showWorkout(id)
+        onDispose { viewModel.showWorkout(null) }
+    }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val details = state.details.takeIf { state.workoutId == id }
     var editingSetId by rememberSaveable(id) { mutableStateOf<Long?>(null) }
     var confirmingDeletion by rememberSaveable(id) { mutableStateOf(false) }
     val workout = details?.workout?.takeIf { it.summary.id == id }
@@ -136,7 +142,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                             HorizontalDivider()
                             Row(
                                 Modifier.fillMaxWidth()
-                                    .clickable(enabled = !viewModel.saving) {
+                                    .clickable(enabled = !state.saving) {
                                         viewModel.clearError()
                                         editingSetId = set.id
                                     }
@@ -154,7 +160,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
             }
             TextButton(
                 onClick = confirmDeletion,
-                enabled = !viewModel.saving,
+                enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Удалить тренировку", color = MaterialTheme.colorScheme.error)
@@ -170,10 +176,10 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                 exerciseName = exercise.name,
                 set = set,
                 lastSet = workout.exercises.sumOf { it.sets.size } == 1,
-                saving = viewModel.saving,
-                error = viewModel.error,
+                saving = state.saving,
+                error = state.error,
                 onDismiss = closeEditor,
-                setErrors = viewModel.setErrors,
+                setErrors = state.setErrors,
                 onEdit = viewModel::changeSetInput,
                 onSave = { input -> viewModel.saveSet(id, set, input, closeEditor) },
                 onDeleteSet = { viewModel.deleteSet(id, set.id, closeEditor) },
@@ -184,7 +190,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
 
     if (confirmingDeletion && workout != null) {
         val closeConfirmation = {
-            if (!viewModel.saving) {
+            if (!viewModel.uiState.value.saving) {
                 viewModel.clearError()
                 confirmingDeletion = false
             }
@@ -197,16 +203,16 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack:
                     Text(workout.summary.dayName, style = MaterialTheme.typography.titleMedium)
                     workout.summary.finishedAtMillis?.let { WorkoutDate(it) }
                     Text("Все записанные подходы будут удалены из истории.")
-                    viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.deleteWorkout(id) }, enabled = !viewModel.saving) {
+                TextButton(onClick = { viewModel.deleteWorkout(id) }, enabled = !state.saving) {
                     Text("Удалить тренировку", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = closeConfirmation, enabled = !viewModel.saving) { Text("Отмена") }
+                TextButton(onClick = closeConfirmation, enabled = !state.saving) { Text("Отмена") }
             },
         )
     }

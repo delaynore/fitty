@@ -1,51 +1,68 @@
 package com.delaynore.fitty.ui.history
 
 import android.database.sqlite.SQLiteException
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.WorkoutSession
+import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputErrors
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+internal data class HistoryUiState(
+    val history: List<WorkoutSummary>? = null,
+    val workoutId: Long? = null,
+    val details: WorkoutDetails? = null,
+    val saving: Boolean = false,
+    val error: String? = null,
+    val setErrors: SetInputErrors? = null,
+)
+
+internal data class WorkoutDetails(val workout: WorkoutSession?)
+
 internal class HistoryViewModel(private val workouts: WorkoutsRepository) : ViewModel() {
-    val history = workouts.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    private val state = MutableStateFlow(HistoryUiState())
+    val uiState = state.asStateFlow()
+    private var detailsJob: Job? = null
 
-    data class Details(val workout: WorkoutSession?)
-
-    fun workout(id: Long) = workouts.observeWorkout(id).map { session ->
-        Details(session?.takeIf { it.summary.finishedAtMillis != null })
+    init {
+        viewModelScope.launch {
+            workouts.history.collect { history -> state.update { it.copy(history = history) } }
+        }
     }
 
-    var saving by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-    var setErrors by mutableStateOf<SetInputErrors?>(null)
-        private set
+    fun showWorkout(id: Long?) {
+        if (state.value.workoutId == id) return
+        detailsJob?.cancel()
+        state.update { it.copy(workoutId = id, details = null, error = null, setErrors = null) }
+        detailsJob = id?.let {
+            viewModelScope.launch {
+                workouts.observeWorkout(id).collect { session ->
+                    val details = WorkoutDetails(session?.takeIf { it.summary.finishedAtMillis != null })
+                    state.update { it.copy(details = details) }
+                }
+            }
+        }
+    }
 
     fun clearError() {
-        error = null
-        setErrors = null
+        state.update { it.copy(error = null, setErrors = null) }
     }
 
     fun changeSetInput(input: SetInput) {
-        error = null
-        if (setErrors != null) setErrors = input.validate().errors
+        state.update { it.copy(error = null, setErrors = it.setErrors?.let { input.validate().errors }) }
     }
 
     fun saveSet(sessionId: Long, set: LoggedSet, input: SetInput, onSaved: () -> Unit) {
         val updated = input.toLoggedSet(set.position)
         if (updated == null) {
-            setErrors = input.validate().errors
+            state.update { it.copy(setErrors = input.validate().errors) }
             return
         }
         changeHistory("Не удалось сохранить подход", onSaved) {
@@ -62,17 +79,17 @@ internal class HistoryViewModel(private val workouts: WorkoutsRepository) : View
     }
 
     private fun changeHistory(failureMessage: String, onSuccess: () -> Unit = {}, change: suspend () -> Boolean) {
-        if (saving) return
-        saving = true
-        clearError()
+        if (state.value.saving) return
+        val workoutId = state.value.workoutId
+        state.update { it.copy(saving = true, error = null, setErrors = null) }
         viewModelScope.launch {
             try {
                 if (change()) onSuccess()
-                else error = failureMessage
+                else state.update { if (it.workoutId == workoutId) it.copy(error = failureMessage) else it }
             } catch (_: SQLiteException) {
-                error = failureMessage
+                state.update { if (it.workoutId == workoutId) it.copy(error = failureMessage) else it }
             } finally {
-                saving = false
+                state.update { it.copy(saving = false) }
             }
         }
     }

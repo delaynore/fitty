@@ -17,9 +17,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -27,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
@@ -110,7 +113,9 @@ internal fun FittyNavigation(
         settingsOrigin = destination
         destination = Destination.Settings
     }
-    val settingsFromEditor = settingsOrigin != null && programEditor.editing
+    val programState by programEditor.uiState.collectAsStateWithLifecycle()
+    val exerciseState by exerciseEditor.uiState.collectAsStateWithLifecycle()
+    val settingsFromEditor = settingsOrigin != null && programState.editing
     val back = {
         when (destination) {
             Destination.DayEditor -> destination = Destination.ProgramEditor
@@ -118,22 +123,22 @@ internal fun FittyNavigation(
                 legacyExerciseId = null
                 destination = Destination.DayEditor
             }
-            Destination.CreateExercise -> if (exerciseEditor.state?.saving != true) {
+            Destination.CreateExercise -> if (exerciseEditor.uiState.value.draft?.saving != true) {
                 exerciseEditor.close()
                 destination = Destination.DayEditorCatalog
             }
-            Destination.ProgramEditor -> if (!programEditor.saving) {
-                if (programEditor.hasChanges) confirmDiscard = true else closeEditor()
+            Destination.ProgramEditor -> if (!programEditor.uiState.value.saving) {
+                if (programEditor.uiState.value.hasChanges) confirmDiscard = true else closeEditor()
             }
             Destination.ProgramDetails -> destination = Destination.Programs
             Destination.WorkoutDetails -> destination = Destination.History
             Destination.SettingsCatalog -> destination = Destination.Settings
-            Destination.EditExerciseDetails -> if (exerciseEditor.state?.saving != true) {
+            Destination.EditExerciseDetails -> if (exerciseEditor.uiState.value.draft?.saving != true) {
                 exerciseEditor.close()
                 destination = Destination.SettingsCatalog
             }
             Destination.Settings -> {
-                destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
+                destination = settingsOrigin?.takeIf { programEditor.uiState.value.editing } ?: Destination.Home
                 settingsOrigin = null
             }
             else -> destination = Destination.Home
@@ -148,17 +153,17 @@ internal fun FittyNavigation(
         val inEditor = destination == Destination.ProgramEditor ||
             destination == Destination.DayEditor || destination == Destination.DayEditorCatalog ||
             destination == Destination.CreateExercise
-        if (inEditor && !programEditor.editing) {
+        if (inEditor && !programEditor.uiState.value.editing) {
             closeEditor()
-        } else if (destination == Destination.EditExerciseDetails && exerciseEditor.state == null) {
+        } else if (destination == Destination.EditExerciseDetails && exerciseEditor.uiState.value.draft == null) {
             destination = Destination.SettingsCatalog
         }
     }
-    val savedExercise = exerciseEditor.savedExercise
+    val savedExercise = remember(exerciseEditor) { derivedStateOf { exerciseState.savedExercise } }.value
     LaunchedEffect(savedExercise, destination) {
         if (savedExercise != null) {
             when (destination) {
-                Destination.CreateExercise -> if (programEditor.editing) {
+                Destination.CreateExercise -> if (programEditor.uiState.value.editing) {
                     exerciseEditor.close()
                     programEditor.selectExercise(savedExercise, legacyExerciseId)
                     legacyExerciseId = null
@@ -273,7 +278,7 @@ internal fun FittyNavigation(
                     viewModel = settings,
                     onBack = back.takeIf { settingsFromEditor },
                     onBrowseExercises = { destination = Destination.SettingsCatalog },
-                    onUpdate = { settings.startUpdate(programEditor.editing && programEditor.hasChanges) },
+                    onUpdate = { settings.startUpdate(programEditor.uiState.value.editing && programEditor.uiState.value.hasChanges) },
                 )
                 Destination.SettingsCatalog, Destination.EditExerciseDetails -> {
                     val catalogState = rememberSaveableStateHolder()

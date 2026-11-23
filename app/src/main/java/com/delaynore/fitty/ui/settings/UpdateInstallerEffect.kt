@@ -11,7 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 internal fun UpdateInstallerEffect(viewModel: SettingsViewModel, settingsVisible: () -> Boolean) {
-    val state by viewModel.updateInstall.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -20,7 +20,7 @@ internal fun UpdateInstallerEffect(viewModel: SettingsViewModel, settingsVisible
     val installer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onInstallationReturned(it.resultCode)
     }
-    val ready = state as? UpdateInstallState.Ready
+    val ready = state.updateInstall as? UpdateInstallState.Ready
     val visible = settingsVisible()
     LaunchedEffect(lifecycle, ready, lifecycleState, visible) {
         if (ready != null && visible && settingsVisible() && lifecycle.currentState == Lifecycle.State.RESUMED) {

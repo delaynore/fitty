@@ -34,12 +34,11 @@ internal fun SettingsScreen(
     onBrowseExercises: () -> Unit,
     onUpdate: () -> Unit,
 ) {
-    val check by viewModel.updateCheck.collectAsStateWithLifecycle()
-    val install by viewModel.updateInstall.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsContent(
-        installedApp = viewModel.installedApp,
-        check = check,
-        install = install,
+        installedApp = state.installedApp,
+        check = state.updateCheck,
+        install = state.updateInstall,
         onBack = onBack,
         onBrowseExercises = onBrowseExercises,
         onCheck = viewModel::checkForUpdate,

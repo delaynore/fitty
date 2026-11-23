@@ -2,19 +2,13 @@ package com.delaynore.fitty.ui.workout
 
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
-import android.os.SystemClock
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseGoal
+import com.delaynore.fitty.data.exercises.ExerciseReplacements
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.exercises.replacementsFor
 import com.delaynore.fitty.data.workouts.LoggedSet
@@ -23,17 +17,14 @@ import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.SetInput
+import com.delaynore.fitty.ui.SetInputField
 import com.delaynore.fitty.ui.toInput
 import java.util.UUID
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val UNDO_MILLIS = 5_000L
@@ -41,12 +32,11 @@ internal const val REST_DURATION_MILLIS = 120_000L
 private const val REST_TIMER_KEY = "workoutRestTimer"
 private const val SET_TIMER_KEY = "workoutSetTimer"
 
-private class WorkoutRows {
-    var addedThrough by mutableIntStateOf(0)
-    val drafts = mutableStateMapOf<Int, SetInput>()
-}
-
-internal data class WorkoutRowDrafts(val addedThrough: Int = 0, val inputs: Map<Int, SetInput> = emptyMap())
+internal data class WorkoutRowDrafts(
+    val addedThrough: Int = 0,
+    val inputs: Map<Int, SetInput> = emptyMap(),
+    val resetVersions: Map<Int, Long> = emptyMap(),
+)
 
 internal data class WorkoutSetEdit(
     val exerciseId: Long,
@@ -54,6 +44,7 @@ internal data class WorkoutSetEdit(
     val number: Int,
     val position: Int,
     val input: SetInput,
+    val version: Long,
 )
 
 internal data class RemovedWorkoutRow(
@@ -66,83 +57,114 @@ internal data class RemovedWorkoutRow(
     val deadlineMillis: Long,
 )
 
+internal data class WorkoutReplacement(
+    val exerciseId: Long,
+    val catalogId: String,
+    val options: ExerciseReplacements? = null,
+)
+
+internal data class WorkoutUiState(
+    val sessionId: Long? = null,
+    val session: WorkoutSession? = null,
+    val exerciseIndex: Int = 0,
+    val rowsByExercise: Map<Long, WorkoutRowDrafts> = emptyMap(),
+    val pendingRemovals: List<RemovedWorkoutRow> = emptyList(),
+    val savedPosition: Int? = null,
+    val saving: Boolean = false,
+    val error: String? = null,
+    val editingSet: WorkoutSetEdit? = null,
+    val restDeadlineMillis: Long? = null,
+    val setTimer: SetTimer? = null,
+    val replacement: WorkoutReplacement? = null,
+) {
+    fun rows(exerciseId: Long) = rowsByExercise[exerciseId] ?: WorkoutRowDrafts()
+}
+
 internal class WorkoutViewModel(
     private val workouts: WorkoutsRepository,
     private val savedState: SavedStateHandle,
     private val bootCount: Int,
     private val timerClock: () -> Long,
-    private val setTimerSignals: SetTimerSignals,
+    private val setTimerSignals: SetTimerSignalScheduler,
     private val catalog: ExerciseCatalogRepository,
 ) : ViewModel() {
-    private val sessionId = MutableStateFlow<Long?>(null)
-    private val rowsByExercise = mutableStateMapOf<Long, WorkoutRows>()
-    private val removedRows = mutableStateListOf<RemovedWorkoutRow>()
-    val pendingRemovals: List<RemovedWorkoutRow> get() = removedRows.toList()
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val session = sessionId.flatMapLatest { id ->
-        if (id == null) flowOf(null) else workouts.observeWorkout(id).onEach { validateSetTimer(id, it) }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    var exerciseIndex by mutableIntStateOf(0)
-        private set
-    var savedPosition by mutableStateOf<Int?>(null)
-        private set
-    var saving by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-    var editingSet by mutableStateOf<WorkoutSetEdit?>(null)
-        private set
-    var restDeadlineMillis by mutableStateOf<Long?>(null)
-        private set
-    var setTimer by mutableStateOf<SetTimer?>(null)
-        private set
+    private val state = MutableStateFlow(WorkoutUiState())
+    val uiState = state.asStateFlow()
+    private var sessionJob: Job? = null
+    private var replacementJob: Job? = null
+    private var nextEditVersion = 0L
 
     fun open(id: Long) {
-        if (id == sessionId.value) {
-            restDeadlineMillis?.let(::expireRestTimer)
+        if (id == state.value.sessionId) {
+            state.value.restDeadlineMillis?.let(::expireRestTimer)
             return
         }
-        rowsByExercise.clear()
-        removedRows.clear()
-        exerciseIndex = 0
-        savedPosition = null
-        error = null
-        editingSet = null
+        sessionJob?.cancel()
+        replacementJob?.cancel()
         discardSetTimer()
-        setTimer = SetTimer.restore(savedState.get<Bundle>(SET_TIMER_KEY), id, bootCount, timerClock())
-        if (setTimer == null) savedState.remove<Bundle>(SET_TIMER_KEY)
-        restoreRestTimer(id)
-        sessionId.value = id
+        val timer = SetTimer.restore(savedState.get<Bundle>(SET_TIMER_KEY), id, bootCount, timerClock())
+        if (timer == null) savedState.remove<Bundle>(SET_TIMER_KEY)
+        val restDeadline = restoreRestTimer(id)
+        state.value = WorkoutUiState(sessionId = id, restDeadlineMillis = restDeadline, setTimer = timer)
+        sessionJob = viewModelScope.launch {
+            workouts.observeWorkout(id).collect { workout ->
+                validateSetTimer(id, workout)
+                showSession(workout)
+            }
+        }
+    }
+
+    private fun showSession(workout: WorkoutSession?) {
+        val current = state.value
+        val selected = workout?.exercises?.getOrNull(current.exerciseIndex)
+        val replacement = current.replacement
+        if (replacement != null && (
+                selected?.id != replacement.exerciseId || selected.catalogExerciseId != replacement.catalogId ||
+                    selected.hasEverLoggedSet || workout.summary.finishedAtMillis != null
+            )
+        ) closeReplacement()
+
+        // A new exercise can reach the collector before replaceExercise returns.
+        val previousExercises = current.session?.exercises.orEmpty().associateBy(WorkoutExercise::id)
+        val replaced = workout?.exercises.orEmpty().mapNotNull { exercise ->
+            val previous = previousExercises[exercise.id] ?: return@mapNotNull null
+            exercise.id.takeIf { previous.catalogExerciseId != exercise.catalogExerciseId || previous.type != exercise.type }
+        }.toSet()
+        state.update {
+            it.copy(
+                session = workout,
+                rowsByExercise = it.rowsByExercise - replaced,
+                pendingRemovals = it.pendingRemovals.filterNot { row -> row.exerciseId in replaced },
+            )
+        }
     }
 
     fun startRestTimer() {
-        val id = sessionId.value ?: return
+        val id = state.value.sessionId ?: return
         val deadline = timerClock() + REST_DURATION_MILLIS
-        restDeadlineMillis = deadline
+        state.update { it.copy(restDeadlineMillis = deadline) }
         if (bootCount >= 0) savedState[REST_TIMER_KEY] = longArrayOf(id, deadline, bootCount.toLong())
     }
 
     fun resetRestTimer() {
-        restDeadlineMillis = null
+        state.update { it.copy(restDeadlineMillis = null) }
         savedState.remove<LongArray>(REST_TIMER_KEY)
     }
 
     fun expireRestTimer(deadline: Long) {
-        if (restDeadlineMillis == deadline && remainingRestMillis(deadline) == 0L) resetRestTimer()
+        if (state.value.restDeadlineMillis == deadline && remainingRestMillis(deadline) == 0L) resetRestTimer()
     }
 
     fun remainingRestMillis(deadline: Long): Long = (deadline - timerClock()).coerceAtLeast(0L)
 
     fun startSetTimer(workoutId: Long, exerciseId: Long, position: Int) {
-        if (saving || setTimer != null) return
-        val workout = session.value?.takeIf { it.summary.id == workoutId && it.summary.finishedAtMillis == null } ?: return
-        val exercise = workout.exercises.getOrNull(exerciseIndex) ?: return
+        if (state.value.saving || state.value.setTimer != null) return
+        val workout = state.value.session?.takeIf { it.summary.id == workoutId && it.summary.finishedAtMillis == null } ?: return
+        val exercise = workout.exercises.getOrNull(state.value.exerciseIndex) ?: return
         if (exercise.id != exerciseId || exercise.type != ExerciseType.DURATION ||
             position in exercise.removedPositions || exercise.sets.any { it.position == position }
         ) return
-        error = null
+        state.update { it.copy(error = null) }
         val startedAt = timerClock()
         val goalAt = (exercise.goal as? ExerciseGoal.Duration)?.let { startedAt + it.seconds * 1_000L }
         val timer = SetTimer(
@@ -155,9 +177,9 @@ internal class WorkoutViewModel(
     fun elapsedSetMillis(timer: SetTimer): Long = timer.elapsedMillis(timerClock())
 
     fun stopSetTimer(token: String) {
-        val timer = setTimer?.takeIf { it.token == token } ?: return
-        if (saving) return
-        val workout = session.value?.takeIf { it.summary.id == timer.workoutId && it.summary.finishedAtMillis == null }
+        val timer = state.value.setTimer?.takeIf { it.token == token } ?: return
+        if (state.value.saving) return
+        val workout = state.value.session?.takeIf { it.summary.id == timer.workoutId && it.summary.finishedAtMillis == null }
         val exercise = workout?.exercises?.firstOrNull(timer::matches)
         if (exercise == null) {
             discardSetTimer()
@@ -171,18 +193,18 @@ internal class WorkoutViewModel(
         val set = LoggedSet(timer.position, SetResult.Duration(seconds))
         save("Не удалось записать подход") {
             if (!persistSet(timer.workoutId, exercise, set)) return@save false
-            if (setTimer?.token == token) clearSetTimer()
+            if (state.value.setTimer?.token == token) clearSetTimer()
             true
         }
     }
 
     private fun storeSetTimer(timer: SetTimer) {
-        setTimer = timer
+        state.update { it.copy(setTimer = timer) }
         if (bootCount >= 0) savedState[SET_TIMER_KEY] = timer.saved(bootCount)
     }
 
     private fun validateSetTimer(id: Long, workout: WorkoutSession?) {
-        val timer = setTimer?.takeIf { it.workoutId == id } ?: return
+        val timer = state.value.setTimer?.takeIf { it.workoutId == id } ?: return
         val exercise = workout?.takeIf { it.summary.finishedAtMillis == null }?.exercises?.firstOrNull(timer::matches)
         if (exercise == null || timer.position in exercise.removedPositions) {
             discardSetTimer()
@@ -197,162 +219,213 @@ internal class WorkoutViewModel(
         val deadline = timer.goalAtMillis ?: return
         if (timer.stoppedAtMillis != null || deadline <= timerClock()) return
         if (!setTimerSignals.schedule(timer.token, timer.workoutId, deadline)) {
-            error = "Не удалось запустить сигнал цели"
+            state.update { it.copy(error = "Не удалось запустить сигнал цели") }
         }
     }
 
     private fun discardSetTimer() {
-        val timer = setTimer ?: return
+        val timer = state.value.setTimer ?: return
         setTimerSignals.cancel(timer.token)
         clearSetTimer()
     }
 
     private fun clearSetTimer() {
-        setTimer = null
+        state.update { it.copy(setTimer = null) }
         savedState.remove<Bundle>(SET_TIMER_KEY)
     }
 
-    private fun restoreRestTimer(id: Long) {
+    private fun restoreRestTimer(id: Long): Long? {
         val timer = savedState.get<LongArray>(REST_TIMER_KEY)
         if (timer != null) {
             val (workoutId, deadline, savedBootCount) = timer
             if (workoutId == id && bootCount >= 0 && savedBootCount == bootCount.toLong() &&
                 remainingRestMillis(deadline) > 0L
-            ) {
-                restDeadlineMillis = deadline
-                return
-            }
+            ) return deadline
         }
-        resetRestTimer()
+        savedState.remove<LongArray>(REST_TIMER_KEY)
+        return null
     }
 
     fun selectExercise(index: Int) {
-        exerciseIndex = index
-        savedPosition = null
-        error = null
+        closeReplacement()
+        state.update { it.copy(exerciseIndex = index, savedPosition = null, error = null) }
     }
 
-    fun replacementOptions(catalogId: String) = catalog.allExercises.map { it.replacementsFor(catalogId) }
-
-    fun clearError() {
-        error = null
+    fun openReplacement() {
+        val current = state.value
+        val workout = current.session?.takeIf { it.summary.finishedAtMillis == null } ?: return
+        val exercise = workout.exercises.getOrNull(current.exerciseIndex) ?: return
+        val catalogId = exercise.catalogExerciseId ?: return
+        if (current.saving || exercise.hasEverLoggedSet || current.replacement != null) return
+        state.update { it.copy(replacement = WorkoutReplacement(exercise.id, catalogId), error = null) }
+        replacementJob = viewModelScope.launch {
+            catalog.allExercises.collect { exercises ->
+                val options = exercises.replacementsFor(catalogId)
+                state.update { it.copy(replacement = it.replacement?.copy(options = options)) }
+            }
+        }
     }
 
-    fun replaceExercise(
-        sessionId: Long,
-        exerciseId: Long,
-        catalogId: String,
-        replacement: CatalogExercise,
-        onReplaced: () -> Unit,
-    ) {
+    fun closeReplacement() {
+        replacementJob?.cancel()
+        replacementJob = null
+        state.update { it.copy(replacement = null) }
+    }
+
+    fun replaceExercise(replacement: CatalogExercise) {
+        val sessionId = state.value.sessionId ?: return
+        val choice = state.value.replacement ?: return
         save("Не удалось заменить упражнение") {
-            if (!workouts.replaceExercise(sessionId, exerciseId, catalogId, replacement)) return@save false
-            if (setTimer?.exerciseId == exerciseId) discardSetTimer()
-            rowsByExercise.remove(exerciseId)
-            removedRows.removeAll { it.exerciseId == exerciseId }
-            savedPosition = null
-            onReplaced()
+            if (!workouts.replaceExercise(sessionId, choice.exerciseId, choice.catalogId, replacement)) return@save false
+            if (state.value.sessionId != sessionId) return@save true
+            if (state.value.setTimer?.exerciseId == choice.exerciseId) discardSetTimer()
+            closeReplacement()
+            state.update {
+                it.copy(
+                    rowsByExercise = it.rowsByExercise - choice.exerciseId,
+                    pendingRemovals = it.pendingRemovals.filterNot { row -> row.exerciseId == choice.exerciseId },
+                    savedPosition = null,
+                )
+            }
             true
         }
     }
 
-    fun rowDrafts(exerciseId: Long): WorkoutRowDrafts = rowsByExercise[exerciseId]?.let { rows ->
-        WorkoutRowDrafts(rows.addedThrough, rows.drafts.toMap())
-    } ?: WorkoutRowDrafts()
-
-    fun changeDraft(exerciseId: Long, position: Int, input: SetInput) {
-        rows(exerciseId).drafts[position] = if (input.errors == null) input else input.validate()
+    fun changeDraft(exercise: WorkoutExercise, position: Int, field: SetInputField, text: String) {
+        val current = state.value
+        val active = current.session?.exercises?.getOrNull(current.exerciseIndex)
+        if (current.saving || active?.id != exercise.id || active.catalogExerciseId != exercise.catalogExerciseId) return
+        updateRows(exercise.id) { rows ->
+            val input = rows.inputs[position] ?: SetInput(exercise.type)
+            rows.copy(inputs = rows.inputs + (position to input.change(field, text)))
+        }
     }
 
     fun addSetRow(exerciseId: Long, lastPosition: Int) {
-        if (!saving && lastPosition < Int.MAX_VALUE) rows(exerciseId).addedThrough = lastPosition + 1
+        if (!state.value.saving && lastPosition < Int.MAX_VALUE) {
+            updateRows(exerciseId) { it.copy(addedThrough = lastPosition + 1) }
+        }
     }
 
-    private fun rows(exerciseId: Long): WorkoutRows = rowsByExercise.getOrPut(exerciseId, ::WorkoutRows)
+    private fun updateRows(exerciseId: Long, change: (WorkoutRowDrafts) -> WorkoutRowDrafts) {
+        state.update {
+            it.copy(rowsByExercise = it.rowsByExercise + (exerciseId to change(it.rows(exerciseId))))
+        }
+    }
 
     fun logSet(sessionId: Long, exercise: WorkoutExercise, position: Int) {
-        if (setTimer?.let { it.matches(exercise) && it.position == position } == true) return
-        val rows = rows(exercise.id)
-        val input = rows.drafts[position] ?: SetInput(exercise.type)
+        val current = state.value
+        if (sessionId != current.sessionId || current.saving) return
+        if (current.setTimer?.let { it.matches(exercise) && it.position == position } == true) return
+        val input = current.rows(exercise.id).inputs[position] ?: SetInput(exercise.type)
         val set = input.toLoggedSet(position)
         if (set == null) {
-            rows.drafts[position] = input.validate()
+            updateRows(exercise.id) { it.copy(inputs = it.inputs + (position to input.validate())) }
             return
         }
         save("Не удалось записать подход") {
             if (!persistSet(sessionId, exercise, set)) return@save false
-            savedPosition = set.position
+            if (state.value.sessionId == sessionId) state.update { it.copy(savedPosition = set.position) }
             true
         }
     }
 
     private suspend fun persistSet(sessionId: Long, exercise: WorkoutExercise, set: LoggedSet): Boolean {
         if (!workouts.logSet(sessionId, exercise, set)) return false
-        rows(exercise.id).drafts.remove(set.position)
+        if (state.value.sessionId == sessionId) {
+            updateRows(exercise.id) { it.copy(inputs = it.inputs - set.position) }
+        }
         return true
     }
 
     fun clearFocusRequest() {
-        savedPosition = null
+        state.update { it.copy(savedPosition = null) }
     }
 
     fun deleteRow(sessionId: Long, exercise: WorkoutExercise, position: Int, number: Int, isRecorded: Boolean) {
-        val rows = rows(exercise.id)
         save("Не удалось удалить подход") {
             val result = workouts.removeSetPosition(sessionId, exercise, position, isRecorded) ?: return@save false
+            val current = state.value
+            if (current.sessionId != sessionId) return@save true
+            val rows = current.rows(exercise.id)
             val removed = RemovedWorkoutRow(
-                exercise.id, exercise.name, position, number, result.set, rows.drafts.remove(position),
-                SystemClock.elapsedRealtime() + UNDO_MILLIS,
+                exercise.id, exercise.name, position, number, result.set, rows.inputs[position],
+                timerClock() + UNDO_MILLIS,
             )
-            removedRows.add(removed)
+            state.update {
+                it.copy(
+                    rowsByExercise = it.rowsByExercise + (exercise.id to rows.copy(inputs = rows.inputs - position)),
+                    pendingRemovals = it.pendingRemovals + removed,
+                )
+            }
             viewModelScope.launch {
                 delay(UNDO_MILLIS)
-                removedRows.remove(removed)
+                state.update { it.copy(pendingRemovals = it.pendingRemovals - removed) }
             }
             true
         }
     }
 
     fun restoreRow(sessionId: Long, removed: RemovedWorkoutRow) {
-        if (removed !in removedRows || SystemClock.elapsedRealtime() >= removed.deadlineMillis) {
-            removedRows.remove(removed)
+        if (removed !in state.value.pendingRemovals || timerClock() >= removed.deadlineMillis) {
+            state.update { it.copy(pendingRemovals = it.pendingRemovals - removed) }
             return
         }
         save("Не удалось вернуть подход") {
             if (!workouts.restoreSetPosition(sessionId, removed.exerciseId, removed.position, removed.set)) return@save false
-            val rows = rows(removed.exerciseId)
-            removed.draft?.let { rows.drafts[removed.position] = it }
-            removedRows.remove(removed)
+            if (state.value.sessionId != sessionId) return@save true
+            state.update {
+                val draft = removed.draft
+                val rows = it.rows(removed.exerciseId)
+                it.copy(
+                    rowsByExercise = if (draft == null) it.rowsByExercise else it.rowsByExercise + (
+                        removed.exerciseId to rows.copy(
+                            inputs = rows.inputs + (removed.position to draft),
+                            resetVersions = rows.resetVersions + (
+                                removed.position to ((rows.resetVersions[removed.position] ?: 0L) + 1)
+                            ),
+                        )
+                    ),
+                    pendingRemovals = it.pendingRemovals - removed,
+                )
+            }
             true
         }
     }
 
     fun openSetEditor(exercise: WorkoutExercise, number: Int, set: LoggedSet) {
-        error = null
-        editingSet = WorkoutSetEdit(exercise.id, exercise.name, number, set.position, set.result.toInput())
+        if (state.value.saving) return
+        val edit = WorkoutSetEdit(exercise.id, exercise.name, number, set.position, set.result.toInput(), nextEditVersion++)
+        state.update {
+            it.copy(error = null, editingSet = edit)
+        }
     }
 
-    fun changeSetEdit(input: SetInput) {
-        editingSet = editingSet?.copy(input = if (input.errors == null) input else input.validate())
-        error = null
+    fun changeSetEdit(field: SetInputField, text: String) {
+        if (state.value.saving) return
+        state.update { current ->
+            val edit = current.editingSet ?: return@update current
+            current.copy(editingSet = edit.copy(input = edit.input.change(field, text)), error = null)
+        }
     }
 
     fun closeSetEditor() {
-        if (saving) return
-        editingSet = null
-        error = null
+        if (state.value.saving) return
+        state.update { it.copy(editingSet = null, error = null) }
     }
 
     fun saveSetEdit(sessionId: Long) {
-        val edit = editingSet ?: return
+        val current = state.value
+        if (current.sessionId != sessionId || current.saving) return
+        val edit = current.editingSet ?: return
         val set = edit.input.toLoggedSet(edit.position)
         if (set == null) {
-            editingSet = edit.copy(input = edit.input.validate())
+            state.update { it.copy(editingSet = edit.copy(input = edit.input.validate())) }
             return
         }
         save("Не удалось сохранить подход") {
             if (!workouts.updateInProgressSet(sessionId, edit.exerciseId, set)) return@save false
-            editingSet = null
+            if (state.value.sessionId == sessionId) state.update { it.copy(editingSet = null) }
             true
         }
     }
@@ -360,25 +433,30 @@ internal class WorkoutViewModel(
     fun finish(sessionId: Long, onFinished: () -> Unit) {
         save("Не удалось завершить тренировку") {
             if (!workouts.finishWorkout(sessionId)) return@save false
-            discardSetTimer()
             setTimerSignals.cancelWorkout(sessionId)
-            resetRestTimer()
-            onFinished()
+            if (state.value.sessionId == sessionId) {
+                discardSetTimer()
+                resetRestTimer()
+                onFinished()
+            }
             true
         }
     }
 
     private fun save(errorMessage: String, operation: suspend () -> Boolean) {
-        if (saving) return
-        saving = true
-        error = null
+        val current = state.value
+        if (current.saving) return
+        state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
+            var error: String? = null
             try {
                 if (!operation()) error = errorMessage
             } catch (_: SQLiteException) {
                 error = errorMessage
             } finally {
-                saving = false
+                state.update {
+                    if (it.sessionId == current.sessionId) it.copy(saving = false, error = error ?: it.error) else it
+                }
             }
         }
     }

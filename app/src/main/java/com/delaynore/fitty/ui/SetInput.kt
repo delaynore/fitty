@@ -8,6 +8,8 @@ import com.delaynore.fitty.data.workouts.SetResult
 private val weightPattern = Regex("[0-9]+([.,][0-9]{1,4})?")
 internal data class SetInputErrors(val weight: String? = null, val measure: String? = null)
 
+internal enum class SetInputField { Weight, Measure }
+
 internal data class SetInput(
     val type: ExerciseType,
     val weight: String = "",
@@ -15,6 +17,14 @@ internal data class SetInput(
     val errors: SetInputErrors? = null,
     private val originalWeight: String? = null,
 ) {
+    fun change(field: SetInputField, text: String): SetInput {
+        val updated = when (field) {
+            SetInputField.Weight -> copy(weight = text)
+            SetInputField.Measure -> copy(measure = text)
+        }
+        return if (errors == null) updated else updated.validate()
+    }
+
     private val parsedWeight: Double?
         get() = weight.trim().takeIf { it == originalWeight || weightPattern.matches(it) }
             ?.replace(',', '.')?.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }

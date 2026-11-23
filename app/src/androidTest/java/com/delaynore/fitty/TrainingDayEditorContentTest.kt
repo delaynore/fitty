@@ -32,7 +32,7 @@ class TrainingDayEditorContentTest {
                     onSettings = null,
                     onPickExercise = {},
                     onDayNameChange = {},
-                    onChangeExercise = {},
+                    onChangeExercise = { _, _ -> },
                     onDeleteExercise = {},
                     onMoveExercise = { id, index -> moves.add(id to index) },
                     onSave = {},

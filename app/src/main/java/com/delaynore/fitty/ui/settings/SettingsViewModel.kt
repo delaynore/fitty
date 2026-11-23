@@ -18,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
@@ -56,71 +57,76 @@ internal sealed interface UpdateInstallState {
         get() = canStartAnotherUpdate || this is PermissionDenied
 }
 
-internal class SettingsViewModel(
+internal data class SettingsUiState(
     val installedApp: InstalledApp,
+    val updateCheck: UpdateCheckState = UpdateCheckState.Idle,
+    val updateInstall: UpdateInstallState = UpdateInstallState.Idle,
+)
+
+internal class SettingsViewModel(
+    installedApp: InstalledApp,
     private val updateService: UpdateService,
     private val workouts: WorkoutsRepository,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val check = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
-    val updateCheck = check.asStateFlow()
     private val pendingPermissionApk = savedState.get<String>(PERMISSION_APK_PATH)?.let(::File)
-    private val install = MutableStateFlow<UpdateInstallState>(
-        pendingPermissionApk?.let { UpdateInstallState.RequestingPermission(it) }
-            ?: UpdateInstallState.Idle,
-    )
-    val updateInstall = install.asStateFlow()
+    private val state = MutableStateFlow(SettingsUiState(
+        installedApp = installedApp,
+        updateInstall = pendingPermissionApk?.let { UpdateInstallState.RequestingPermission(it) } ?: UpdateInstallState.Idle,
+    ))
+    val uiState = state.asStateFlow()
+
     private val pruneDownloads = viewModelScope.launch { updateService.pruneAbandonedDownloads(pendingPermissionApk) }
     private var downloadJob: Job? = null
 
     fun checkForUpdate() {
-        if (check.value == UpdateCheckState.Checking || !install.value.canCheckForUpdates) return
-        (install.value as? UpdateInstallState.PermissionDenied)?.apk?.delete()
-        install.value = UpdateInstallState.Idle
-        check.value = UpdateCheckState.Checking
+        if (state.value.updateCheck == UpdateCheckState.Checking || !state.value.updateInstall.canCheckForUpdates) return
+        (state.value.updateInstall as? UpdateInstallState.PermissionDenied)?.apk?.delete()
+        state.update { it.copy(updateInstall = UpdateInstallState.Idle, updateCheck = UpdateCheckState.Checking) }
         viewModelScope.launch {
-            check.value = UpdateCheckState.Checked(updateService.checkForUpdate(installedApp.versionCode))
+            val result = updateService.checkForUpdate(state.value.installedApp.versionCode)
+            state.update { it.copy(updateCheck = UpdateCheckState.Checked(result)) }
         }
     }
 
     fun startUpdate(hasUnsavedInput: Boolean) {
         val update = availableUpdate() ?: return
-        if (!install.value.canStartAnotherUpdate) return
-        install.value = UpdateInstallState.CheckingWorkout
+        if (!state.value.updateInstall.canStartAnotherUpdate) return
+        setInstall(UpdateInstallState.CheckingWorkout)
         viewModelScope.launch {
             try {
                 if (hasUnsavedInput || workouts.hasInProgressWorkout()) {
-                    install.value = UpdateInstallState.Warning
+                    setInstall(UpdateInstallState.Warning)
                 } else {
                     download(update)
                 }
             } catch (_: SQLiteException) {
-                install.value = UpdateInstallState.WorkoutCheckFailed
+                setInstall(UpdateInstallState.WorkoutCheckFailed)
             }
         }
     }
 
     fun dismissWarning() {
-        if (install.value == UpdateInstallState.Warning) install.value = UpdateInstallState.Idle
+        if (state.value.updateInstall == UpdateInstallState.Warning) setInstall(UpdateInstallState.Idle)
     }
 
     fun confirmDownload() {
         val update = availableUpdate() ?: return
-        if (install.value != UpdateInstallState.Warning) return
+        if (state.value.updateInstall != UpdateInstallState.Warning) return
         download(update)
     }
 
     fun cancelDownload() {
-        if (install.value !is UpdateInstallState.Downloading) return
+        if (state.value.updateInstall !is UpdateInstallState.Downloading) return
         val attempt = downloadJob
         downloadJob = null
-        install.value = UpdateInstallState.Idle
+        setInstall(UpdateInstallState.Idle)
         attempt?.cancel()
     }
 
     fun continueInstallation() {
-        val waiting = install.value as? UpdateInstallState.PermissionDenied ?: return
-        install.value = UpdateInstallState.Ready(waiting.apk)
+        val waiting = state.value.updateInstall as? UpdateInstallState.PermissionDenied ?: return
+        setInstall(UpdateInstallState.Ready(waiting.apk))
     }
 
     fun openInstaller(
@@ -128,39 +134,39 @@ internal class SettingsViewModel(
         launchPermission: (Intent) -> Unit,
         launchInstaller: (Intent) -> Unit,
     ) {
-        if (install.value != ready) return
+        if (state.value.updateInstall != ready) return
         if (updateService.canRequestInstall()) {
-            install.value = UpdateInstallState.Installing(ready.apk)
+            setInstall(UpdateInstallState.Installing(ready.apk))
             if (!updateService.openInstaller(ready.apk, launchInstaller)) failToOpenInstaller(ready.apk)
         } else {
             savedState[PERMISSION_APK_PATH] = ready.apk.path
-            install.value = UpdateInstallState.RequestingPermission(ready.apk)
+            setInstall(UpdateInstallState.RequestingPermission(ready.apk))
             if (!updateService.requestInstallPermission(launchPermission)) failToOpenInstaller(ready.apk)
         }
     }
 
     fun onInstallPermissionReturned() {
-        val requesting = install.value as? UpdateInstallState.RequestingPermission ?: return
+        val requesting = state.value.updateInstall as? UpdateInstallState.RequestingPermission ?: return
         savedState.remove<String>(PERMISSION_APK_PATH)
-        install.value = if (updateService.canRequestInstall()) {
+        setInstall(if (updateService.canRequestInstall()) {
             UpdateInstallState.Ready(requesting.apk)
         } else {
             UpdateInstallState.PermissionDenied(requesting.apk)
-        }
+        })
     }
 
     fun onInstallationReturned(resultCode: Int) {
-        val installing = install.value as? UpdateInstallState.Installing ?: return
+        val installing = state.value.updateInstall as? UpdateInstallState.Installing ?: return
         installing.apk.delete()
-        install.value = when (resultCode) {
+        setInstall(when (resultCode) {
             Activity.RESULT_OK -> UpdateInstallState.Idle
             Activity.RESULT_CANCELED -> UpdateInstallState.InstallCancelled
             else -> UpdateInstallState.InstallFailed
-        }
+        })
     }
 
     override fun onCleared() {
-        when (val state = install.value) {
+        when (val state = state.value.updateInstall) {
             is UpdateInstallState.Ready -> state.apk.delete()
             is UpdateInstallState.PermissionDenied -> state.apk.delete()
             else -> Unit
@@ -168,19 +174,19 @@ internal class SettingsViewModel(
     }
 
     private fun availableUpdate(): FittyUpdate? {
-        val result = (check.value as? UpdateCheckState.Checked)?.result
+        val result = (state.value.updateCheck as? UpdateCheckState.Checked)?.result
         return (result as? UpdateCheckResult.Available)?.update
     }
 
     private fun download(update: FittyUpdate) {
-        install.value = UpdateInstallState.Downloading()
+        setInstall(UpdateInstallState.Downloading())
         val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             val attempt = currentCoroutineContext().job
             pruneDownloads.join()
-            val result = updateService.download(update, installedApp.versionCode) { percent ->
+            val result = updateService.download(update, state.value.installedApp.versionCode) { percent ->
                 viewModelScope.launch {
-                    if (attempt.isActive && install.value is UpdateInstallState.Downloading) {
-                        install.value = UpdateInstallState.Downloading(percent)
+                    if (attempt.isActive && state.value.updateInstall is UpdateInstallState.Downloading) {
+                        setInstall(UpdateInstallState.Downloading(percent))
                     }
                 }
             }
@@ -189,18 +195,22 @@ internal class SettingsViewModel(
                 return@launch
             }
             downloadJob = null
-            install.value = when (result) {
+            setInstall(when (result) {
                 is UpdateDownloadResult.Downloaded -> UpdateInstallState.Ready(result.apk)
                 is UpdateDownloadResult.Failed -> UpdateInstallState.DownloadFailed(result.reason)
-            }
+            })
         }
         downloadJob = job
         job.start()
     }
 
+    private fun setInstall(install: UpdateInstallState) {
+        state.update { it.copy(updateInstall = install) }
+    }
+
     private fun failToOpenInstaller(apk: File) {
         savedState.remove<String>(PERMISSION_APK_PATH)
         apk.delete()
-        install.value = UpdateInstallState.InstallerUnavailable
+        setInstall(UpdateInstallState.InstallerUnavailable)
     }
 }

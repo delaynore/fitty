@@ -39,11 +39,17 @@ private const val SIGNAL_MILLIS = 750L
 
 internal data class SetTimerSignal(val token: String, val workoutId: Long, val deadlineMillis: Long)
 
-internal class SetTimerSignals(private val context: Context) {
+internal interface SetTimerSignalScheduler {
+    fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean
+    fun cancel(token: String)
+    fun cancelWorkout(workoutId: Long)
+}
+
+internal class SetTimerSignals(private val context: Context) : SetTimerSignalScheduler {
     private val request = MutableStateFlow<SetTimerSignal?>(null)
     val pending = request.asStateFlow()
 
-    fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean {
+    override fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean {
         val signal = SetTimerSignal(token, workoutId, deadlineMillis)
         if (request.value == signal) return true
         request.value = signal
@@ -57,12 +63,12 @@ internal class SetTimerSignals(private val context: Context) {
         }
     }
 
-    fun cancel(token: String) {
+    override fun cancel(token: String) {
         val signal = request.value ?: return
         if (signal.token == token) request.compareAndSet(signal, null)
     }
 
-    fun cancelWorkout(workoutId: Long) {
+    override fun cancelWorkout(workoutId: Long) {
         val signal = request.value ?: return
         if (signal.workoutId == workoutId) request.compareAndSet(signal, null)
     }
