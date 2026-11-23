@@ -33,6 +33,7 @@ import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
+import com.delaynore.fitty.ui.exercises.BrowseExerciseCatalog
 import com.delaynore.fitty.ui.history.HistoryScreen
 import com.delaynore.fitty.ui.history.HistoryViewModel
 import com.delaynore.fitty.ui.history.WorkoutDetailsScreen
@@ -50,7 +51,9 @@ import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 
-private enum class Destination { Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails, Settings }
+private enum class Destination {
+    Home, Programs, ProgramDetails, ProgramEditor, DayEditor, Workout, History, WorkoutDetails, Settings, SettingsCatalog,
+}
 
 private data class BottomTab(val destination: Destination, val label: String, val icon: FittyIcon)
 
@@ -103,6 +106,7 @@ internal fun FittyNavigation(
             }
             Destination.ProgramDetails -> destination = Destination.Programs
             Destination.WorkoutDetails -> destination = Destination.History
+            Destination.SettingsCatalog -> destination = Destination.Settings
             Destination.Settings -> {
                 destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
                 settingsOrigin = null
@@ -187,9 +191,13 @@ internal fun FittyNavigation(
                     destination = Destination.WorkoutDetails
                 }
                 Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
-                Destination.Settings -> SettingsScreen(settings, onBack = back.takeIf { settingsFromEditor }) {
-                    settings.startUpdate(programEditor.editing && programEditor.hasChanges)
-                }
+                Destination.Settings -> SettingsScreen(
+                    viewModel = settings,
+                    onBack = back.takeIf { settingsFromEditor },
+                    onBrowseExercises = { destination = Destination.SettingsCatalog },
+                    onUpdate = { settings.startUpdate(programEditor.editing && programEditor.hasChanges) },
+                )
+                Destination.SettingsCatalog -> BrowseExerciseCatalog(onBack = back)
             }
         }
     }
