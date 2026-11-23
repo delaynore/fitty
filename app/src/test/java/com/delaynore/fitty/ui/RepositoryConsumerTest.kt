@@ -1,7 +1,6 @@
 package com.delaynore.fitty.ui
 
 import android.content.Intent
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
@@ -31,9 +30,11 @@ import com.delaynore.fitty.ui.home.HomeViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.SettingsViewModel
+import com.delaynore.fitty.ui.settings.UpdateCoordinator
 import com.delaynore.fitty.ui.settings.UpdateCheckState
 import com.delaynore.fitty.ui.settings.UpdateInstallState
 import com.delaynore.fitty.ui.workout.SetTimerSignalScheduler
+import com.delaynore.fitty.ui.workout.ActiveWorkoutState
 import com.delaynore.fitty.ui.workout.WorkoutViewModel
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
@@ -170,8 +171,9 @@ class RepositoryConsumerTest {
         catalog.allExercises.value = listOf(CatalogExercise("barbell-bench-press", "Жим", exercise.type), replacement)
         val workoutId = requireNotNull(workouts.startWorkout(4))
         withViewModel({
-            WorkoutViewModel(workouts, SavedStateHandle(), -1, { testScheduler.currentTime }, NoTimerSignals, catalog)
-        }) { viewModel ->
+            WorkoutViewModel(ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope))
+        }) { route ->
+            val viewModel = route.activeWorkout
             viewModel.open(workoutId)
             runCurrent()
             assertEquals(0, catalog.allExercises.subscriptionCount.value)
@@ -256,8 +258,9 @@ class RepositoryConsumerTest {
         }
         val workoutId = requireNotNull(workouts.startWorkout(4))
         withViewModel({
-            WorkoutViewModel(repository, SavedStateHandle(), -1, { testScheduler.currentTime }, NoTimerSignals, catalog)
-        }) { viewModel ->
+            WorkoutViewModel(ActiveWorkoutState(repository, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope))
+        }) { route ->
+            val viewModel = route.activeWorkout
             viewModel.open(workoutId)
             runCurrent()
             viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")
@@ -291,7 +294,10 @@ class RepositoryConsumerTest {
             override fun requestInstallPermission(launch: (Intent) -> Unit) = error("No installer in this test")
             override fun openInstaller(apk: File, launch: (Intent) -> Unit) = error("No installer in this test")
         }
-        withViewModel({ SettingsViewModel(installed, service, FakeWorkoutsRepository(), SavedStateHandle()) }) { settings ->
+        withViewModel({
+            SettingsViewModel(UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope))
+        }) { route ->
+            val settings = route.updates
             settings.checkForUpdate()
             assertEquals(UpdateCheckState.Checking, settings.uiState.value.updateCheck)
             runCurrent()

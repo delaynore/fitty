@@ -1,6 +1,7 @@
 package com.delaynore.fitty
 
 import android.app.Application
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.room.Room
 import com.delaynore.fitty.data.local.FittyDatabase
@@ -12,6 +13,11 @@ import kotlinx.coroutines.delay
 
 open class FittyApplication : Application() {
     protected open val databaseName = "fitty.db"
+
+    private var container: AppContainer? = null
+
+    internal fun appContainer(restoredState: Bundle?): AppContainer =
+        container ?: AppContainer(this, restoredState).also { container = it }
 
     private var room: FittyDatabase? = null
 
@@ -34,7 +40,13 @@ open class FittyApplication : Application() {
 
     internal open val updateService: UpdateService by lazy { GitHubUpdateService(this) }
 
+    internal fun clearAppContainer() {
+        container?.close()
+        container = null
+    }
+
     internal fun deleteDatabase() {
+        clearAppContainer()
         room?.close()
         room = null
         deleteDatabase(databaseName)

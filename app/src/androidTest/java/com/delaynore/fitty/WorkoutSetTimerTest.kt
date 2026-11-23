@@ -132,7 +132,10 @@ class WorkoutSetTimerTest {
             scenario.moveToState(Lifecycle.State.CREATED)
             application.setTimerSignals.pending.value?.let { application.setTimerSignals.cancel(it.token) }
             application.workoutTimeMillis = 25_000L
-            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
             awaitText("0:15")
@@ -164,7 +167,10 @@ class WorkoutSetTimerTest {
             tap("Старт")
             scenario.moveToState(Lifecycle.State.CREATED)
             application.workoutTimeMillis = 25_000L
-            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
             awaitText("0:15")

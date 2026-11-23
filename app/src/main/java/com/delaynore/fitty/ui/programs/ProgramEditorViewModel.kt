@@ -58,6 +58,7 @@ internal data class ProgramEditorUiState(
     val programs: List<ProgramSelection>? = null,
     val detailsId: Long? = null,
     val details: TrainingProgram? = null,
+    val detailsLoaded: Boolean = false,
     val selecting: Boolean = false,
     val selectionError: String? = null,
     val draftVersion: Long = 0,
@@ -98,11 +99,11 @@ internal class ProgramEditorViewModel(
     fun showProgram(id: Long?) {
         if (state.value.detailsId == id) return
         detailsJob?.cancel()
-        state.update { it.copy(detailsId = id, details = null) }
+        state.update { it.copy(detailsId = id, details = null, detailsLoaded = false) }
         detailsJob = id?.let {
             viewModelScope.launch {
                 programs.observeProgram(id).collect { program ->
-                    state.update { it.copy(details = program) }
+                    state.update { it.copy(details = program, detailsLoaded = true) }
                 }
             }
         }

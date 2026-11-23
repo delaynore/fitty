@@ -35,18 +35,19 @@ internal fun SettingsScreen(
     onUpdate: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val updates = viewModel.updates
     SettingsContent(
         installedApp = state.installedApp,
         check = state.updateCheck,
         install = state.updateInstall,
         onBack = onBack,
         onBrowseExercises = onBrowseExercises,
-        onCheck = viewModel::checkForUpdate,
+        onCheck = updates::checkForUpdate,
         onUpdate = onUpdate,
-        onConfirmDownload = viewModel::confirmDownload,
-        onDismissWarning = viewModel::dismissWarning,
-        onCancelDownload = viewModel::cancelDownload,
-        onContinueInstallation = viewModel::continueInstallation,
+        onConfirmDownload = updates::confirmDownload,
+        onDismissWarning = updates::dismissWarning,
+        onCancelDownload = updates::cancelDownload,
+        onContinueInstallation = updates::continueInstallation,
     )
 }
 

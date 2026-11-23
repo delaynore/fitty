@@ -1,6 +1,5 @@
 package com.delaynore.fitty.ui.exercises
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,53 +44,21 @@ import com.delaynore.fitty.ui.ScreenColumn
 internal fun ExerciseCatalogScreen(
     viewModel: ExerciseCatalogViewModel,
     onBack: () -> Unit,
+    onOpenExercise: (String) -> Unit,
     onSelect: ((CatalogExercise) -> Unit)? = null,
     onCreate: ((String) -> Unit)? = null,
-    onEdit: ((CatalogExercise) -> Unit)? = null,
-    replacingLegacyExercise: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val exercises = state.exercises
-    ExerciseCatalog(exercises, onBack, onSelect, onCreate, onEdit, replacingLegacyExercise)
-}
-
-@Composable
-internal fun ExerciseCatalog(
-    exercises: List<CatalogExercise>?,
-    onBack: () -> Unit,
-    onSelect: ((CatalogExercise) -> Unit)? = null,
-    onCreate: ((String) -> Unit)? = null,
-    onEdit: ((CatalogExercise) -> Unit)? = null,
-    replacingLegacyExercise: Boolean = false,
-) {
     var query by rememberSaveable { mutableStateOf("") }
-    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val selected = exercises?.find { it.id == selectedId }
-    val listState = rememberSaveableStateHolder()
-
-    if (selected == null) {
-        listState.SaveableStateProvider("list") {
-            ExerciseCatalogList(
-                exercises = exercises,
-                query = query,
-                onQueryChange = { query = it },
-                onOpenExercise = { selectedId = it.id },
-                onBack = onBack,
-                onSelectExercise = onSelect.takeUnless { replacingLegacyExercise },
-                onCreateExercise = onCreate,
-            )
-        }
-    } else {
-        val closeCard = { selectedId = null }
-        BackHandler(onBack = closeCard)
-        ExerciseCardContent(
-            selected,
-            onBack = closeCard,
-            selectionLabel = if (replacingLegacyExercise) "Заменить упражнение" else "Добавить упражнение",
-            onSelect = onSelect?.let { { it(selected) } },
-            onEdit = onEdit?.takeIf { selected.isCustom }?.let { { it(selected) } },
-        )
-    }
+    ExerciseCatalogList(
+        exercises = state.exercises,
+        query = query,
+        onQueryChange = { query = it },
+        onOpenExercise = { onOpenExercise(it.id) },
+        onBack = onBack,
+        onSelectExercise = onSelect,
+        onCreateExercise = onCreate,
+    )
 }
 
 @Composable

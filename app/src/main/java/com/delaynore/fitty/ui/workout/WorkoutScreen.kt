@@ -82,13 +82,17 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> Unit, onFinished: () -> Unit) {
-    LaunchedEffect(viewModel, id) { viewModel.open(id) }
+    val actions = viewModel.activeWorkout
+    LaunchedEffect(viewModel, id) { actions.open(id) }
     DisposableEffect(viewModel, id) {
-        onDispose { viewModel.closeReplacement() }
+        onDispose { actions.closeReplacement() }
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
     val workout = current.session
+    val unavailable = current.sessionLoaded && !current.saving &&
+        (workout == null || workout.summary.finishedAtMillis != null)
+    LaunchedEffect(id, unavailable) { if (unavailable) onBack() }
     val exercise = workout?.exercises?.getOrNull(current.exerciseIndex)
     WorkoutContent(
         workout = workout,
@@ -102,31 +106,31 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
         pendingRemovals = current.pendingRemovals,
         editingSet = current.editingSet,
         restDeadlineMillis = current.restDeadlineMillis,
-        remainingRestMillis = viewModel::remainingRestMillis,
-        elapsedSetMillis = viewModel::elapsedSetMillis,
-        onStartRest = viewModel::startRestTimer,
-        onResetRest = viewModel::resetRestTimer,
-        onExpireRest = viewModel::expireRestTimer,
-        onClearFocusRequest = viewModel::clearFocusRequest,
-        onStartSetTimer = { exerciseId, position -> viewModel.startSetTimer(id, exerciseId, position) },
-        onStopSetTimer = viewModel::stopSetTimer,
-        onDeleteRow = { current, position, number, logged -> viewModel.deleteRow(id, current, position, number, logged) },
-        onChangeDraft = viewModel::changeDraft,
-        onLogSet = { current, position -> viewModel.logSet(id, current, position) },
-        onOpenSetEditor = viewModel::openSetEditor,
-        onAddSetRow = viewModel::addSetRow,
-        onRestoreRow = { viewModel.restoreRow(id, it) },
-        onSelectExercise = viewModel::selectExercise,
-        onFinish = { onSaved -> viewModel.finish(id, onSaved) },
-        onChangeSetEdit = viewModel::changeSetEdit,
-        onCloseSetEditor = viewModel::closeSetEditor,
-        onSaveSetEdit = { viewModel.saveSetEdit(id) },
+        remainingRestMillis = actions::remainingRestMillis,
+        elapsedSetMillis = actions::elapsedSetMillis,
+        onStartRest = actions::startRestTimer,
+        onResetRest = actions::resetRestTimer,
+        onExpireRest = actions::expireRestTimer,
+        onClearFocusRequest = actions::clearFocusRequest,
+        onStartSetTimer = { exerciseId, position -> actions.startSetTimer(id, exerciseId, position) },
+        onStopSetTimer = actions::stopSetTimer,
+        onDeleteRow = { current, position, number, logged -> actions.deleteRow(id, current, position, number, logged) },
+        onChangeDraft = actions::changeDraft,
+        onLogSet = { current, position -> actions.logSet(id, current, position) },
+        onOpenSetEditor = actions::openSetEditor,
+        onAddSetRow = actions::addSetRow,
+        onRestoreRow = { actions.restoreRow(id, it) },
+        onSelectExercise = actions::selectExercise,
+        onFinish = { onSaved -> actions.finish(id, onSaved) },
+        onChangeSetEdit = actions::changeSetEdit,
+        onCloseSetEditor = actions::closeSetEditor,
+        onSaveSetEdit = { actions.saveSetEdit(id) },
         onBack = onBack,
         onFinished = onFinished,
         replacement = current.replacement,
-        onOpenReplacement = viewModel::openReplacement,
-        onCloseReplacement = viewModel::closeReplacement,
-        onReplace = viewModel::replaceExercise,
+        onOpenReplacement = actions::openReplacement,
+        onCloseReplacement = actions::closeReplacement,
+        onReplace = actions::replaceExercise,
     )
 }
 

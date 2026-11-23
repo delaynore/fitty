@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,6 +105,8 @@ internal fun ProgramDetailsScreen(
         onDispose { viewModel.showProgram(null) }
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val missingProgram = state.detailsId == id && state.detailsLoaded && state.details == null
+    LaunchedEffect(id, missingProgram) { if (missingProgram) onBack() }
     ProgramDetailsContent(state.details.takeIf { state.detailsId == id }, onBack, onEdit)
 }
 

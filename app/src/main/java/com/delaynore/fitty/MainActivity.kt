@@ -6,40 +6,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.content.pm.PackageInfoCompat
-import com.delaynore.fitty.data.exercises.RoomExerciseCatalogRepository
-import com.delaynore.fitty.data.programs.RoomProgramsRepository
-import com.delaynore.fitty.data.workouts.RoomWorkoutsRepository
 import com.delaynore.fitty.navigation.FittyNavigation
 import com.delaynore.fitty.ui.FittyTheme
-import com.delaynore.fitty.ui.settings.InstalledApp
 
 class MainActivity : ComponentActivity() {
+    private lateinit var container: AppContainer
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val systemBar = SystemBarStyle.dark(Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = systemBar, navigationBarStyle = systemBar)
 
         val fitty = application as FittyApplication
-        val database = fitty.database
-        val catalog = RoomExerciseCatalogRepository(database)
-        val programs = RoomProgramsRepository(database)
-        val workouts = RoomWorkoutsRepository(database)
-        @Suppress("DEPRECATION")
-        val packageInfo = packageManager.getPackageInfo(packageName, 0)
-        val installedApp = InstalledApp(packageInfo.versionName.orEmpty(), PackageInfoCompat.getLongVersionCode(packageInfo))
+        container = fitty.appContainer(savedStateRegistry.consumeRestoredStateForKey(FITTY_SESSION_STATE))
+        savedStateRegistry.registerSavedStateProvider(FITTY_SESSION_STATE, container::saveState)
         setContent {
             FittyTheme {
-                FittyNavigation(
-                    programs,
-                    workouts,
-                    catalog,
-                    fitty::workoutTimerElapsedRealtime,
-                    installedApp,
-                    fitty.updateService,
-                    fitty.setTimerSignals,
-                )
+                FittyNavigation(container)
             }
         }
     }
+
+    override fun onDestroy() {
+        if (isFinishing) container.activeWorkout.resetScreenState()
+        super.onDestroy()
+    }
 }
+
+private const val FITTY_SESSION_STATE = "fittySessionState"

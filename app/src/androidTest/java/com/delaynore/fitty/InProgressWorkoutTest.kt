@@ -107,7 +107,10 @@ class InProgressWorkoutTest {
             scenario.moveToState(Lifecycle.State.CREATED)
             application.workoutTimeMillis = 55_000L
             // Keep the activity's saved state while discarding the in-memory ViewModels.
-            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
 
