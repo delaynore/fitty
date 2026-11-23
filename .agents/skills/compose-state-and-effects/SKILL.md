@@ -42,7 +42,9 @@ from app wiring and composition-owned runtime objects.
    Preview tooling is needed but unavailable within scope, omit the wrapper
    and report the setup gap.
 5. Choose an effect API whose lifecycle matches the work, and key it by the
-   semantic input that should restart or dispose it.
+   semantic input that should restart or dispose it. When an operation survives
+   process loss, check its pending effects too. For a timer, restore it before
+   the deadline, advance time across the deadline, and verify one signal.
 6. Load the focused reference for every material concern below. Do not use a
    reference merely because its topic is adjacent.
 7. Route frame-rate reads, cross-phase back-writing, and

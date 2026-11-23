@@ -31,12 +31,12 @@ Communication to and from subagents should be sparse. Communicate primarily thro
    - calls the Skill tool with `tdd` to build the ticket;
    - merges the integration branch tip into its own branch before reporting done
 
-5. Once an **implementer subagent** completes, merge its work to the integration branch with a **merger subagent**.
+5. When an implementer finishes, run `git merge --ff-only <ticket-branch>` in the integration worktree and verify the reported ticket commit is an ancestor of HEAD. Delegate reconciliation to a merger subagent if the branches have diverged.
 
 6. If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency.
 
 7. Once all tickets are complete, call the Skill tool with `code-review` on the integration branch. Fix all issues raised by the code review in a single fresh **implementer subagent**.
 
-8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
+8. For each manual acceptance criterion, record what the tester observed on the required device. Keep a ticket open while a required observation is missing. When the criteria are met, mark the draft PR ready for review or resolve the tickets through the issue tracker and report the integration branch.
 
 9. Clean up all **implementer subagent** worktrees.
