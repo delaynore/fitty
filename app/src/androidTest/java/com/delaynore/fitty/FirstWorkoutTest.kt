@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -84,7 +85,7 @@ class FirstWorkoutTest {
             tap("Завершить")
             tap("Завершить тренировку")
             awaitText("60,5 кг × 8")
-            compose.onNodeWithContentDescription("Назад").performClick()
+            pressBack()
             verifyCompletedWorkout(date)
         }
 

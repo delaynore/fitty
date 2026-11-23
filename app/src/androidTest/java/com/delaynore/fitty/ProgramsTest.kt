@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.programs.RoomProgramsRepository
@@ -41,6 +42,41 @@ class ProgramsTest {
     @Before
     fun resetDatabase() {
         ApplicationProvider.getApplicationContext<FittyTestApplication>().resetDatabase()
+    }
+
+    @Test
+    fun systemBackKeepsDayDraftAndConfirmsLeavingTheProgram() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitText("Создать программу")
+            tap("Создать программу")
+            replace("program-name", "Силовая")
+            tap("Добавить день")
+            replace("day-name", "Мой день")
+            closeSoftKeyboard()
+            pressBack()
+            awaitText("Мой день")
+            pressBack()
+            awaitText("Выйти без сохранения?")
+            tap("Продолжить редактирование")
+            awaitText("Мой день")
+            pressBack()
+            tap("Выйти")
+            awaitText("Создать программу")
+        }
+    }
+
+    @Test
+    fun restoredDayRouteReturnsHomeWhenTheProgramDraftIsGone() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            awaitText("Создать программу")
+            tap("Создать программу")
+            awaitText("Добавить день")
+            tap("Добавить день")
+            awaitText("Тренировочный день")
+            scenario.onActivity { it.viewModelStore.clear() }
+            scenario.recreate()
+            awaitText("Создать программу")
+        }
     }
 
     @Test
