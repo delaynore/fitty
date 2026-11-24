@@ -35,6 +35,9 @@ internal fun ExerciseGoal.inputText(): String = when (this) {
     is ExerciseGoal.Distance -> formatDecimal(meters)
 }
 
+internal val ExerciseType.weightLabel: String?
+    get() = if (this == ExerciseType.WEIGHT_AND_REPS) "Вес, кг" else null
+
 internal val ExerciseType.measureLabel: String
     get() = when (this) {
         ExerciseType.WEIGHT_AND_REPS, ExerciseType.REPS -> "Повторения"

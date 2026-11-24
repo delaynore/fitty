@@ -78,6 +78,7 @@ import com.delaynore.fitty.ui.formatResult
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
 import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.ui.weightLabel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -624,8 +625,8 @@ private fun SetHeadings(type: ExerciseType, modifier: Modifier = Modifier) {
     ProvideTextStyle(MaterialTheme.typography.labelMedium) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("№", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (type == ExerciseType.WEIGHT_AND_REPS) {
-                Text("Вес, кг", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            type.weightLabel?.let { weightLabel ->
+                Text(weightLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(type.measureLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("✓", Modifier.width(48.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -642,7 +643,7 @@ private fun DraftSetRow(
     onLog: () -> Unit,
     firstFieldModifier: Modifier,
 ) {
-    val hasWeight = input.type == ExerciseType.WEIGHT_AND_REPS
+    val hasWeight = input.type.weightLabel != null
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

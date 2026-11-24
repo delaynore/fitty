@@ -9,6 +9,19 @@ import org.junit.Test
 
 class WorkoutFormattingTest {
     @Test
+    fun setFieldsMatchEachExerciseTypeAndItsUnits() {
+        val expectedLabels = mapOf(
+            ExerciseType.WEIGHT_AND_REPS to listOf("Вес, кг", "Повторения"),
+            ExerciseType.REPS to listOf("Повторения"),
+            ExerciseType.DURATION to listOf("Время, с"),
+            ExerciseType.DISTANCE to listOf("Дистанция, м"),
+        )
+        for ((type, labels) in expectedLabels) {
+            assertEquals(labels, listOfNotNull(type.weightLabel, type.measureLabel))
+        }
+    }
+
+    @Test
     fun resultsShowTheirUnitAndTrimTrailingZeroes() {
         assertEquals("22,5 кг × 8", SetResult.WeightAndReps(22.50, 8).formatResult())
         assertEquals("8 повт.", SetResult.Reps(8).formatResult())
