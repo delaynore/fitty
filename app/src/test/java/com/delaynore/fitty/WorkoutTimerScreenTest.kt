@@ -23,7 +23,7 @@ import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
-import com.delaynore.fitty.ui.workout.SetTimerSignalService
+import com.delaynore.fitty.platform.workout.SetTimerSignalService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

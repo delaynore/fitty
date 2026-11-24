@@ -1,34 +1,27 @@
 package com.delaynore.fitty.ui.workout
 
-import android.os.Bundle
-import androidx.core.os.bundleOf
+import com.delaynore.fitty.domain.SavedSetTimer
 
 internal typealias SetTimer = com.delaynore.fitty.domain.SetTimer
+internal typealias SetTimerSignal = com.delaynore.fitty.domain.SetTimerSignal
+internal typealias SetTimerSignalScheduler = com.delaynore.fitty.domain.SetTimerSignalScheduler
 
-internal fun SetTimer.saved(bootCount: Int): Bundle = bundleOf(
-    "boot" to bootCount,
-    "token" to token,
-    "workoutId" to workoutId,
-    "exerciseId" to exerciseId,
-    "catalogExerciseId" to catalogExerciseId,
-    "position" to position,
-    "startedAt" to startedAtMillis,
-    "goalAt" to (goalAtMillis ?: -1L),
-    "stoppedAt" to (stoppedAtMillis ?: -1L),
+internal fun SetTimer.saved(bootCount: Int) = SavedSetTimer(
+    token, workoutId, exerciseId, catalogExerciseId, position, startedAtMillis, goalAtMillis, stoppedAtMillis, bootCount,
 )
 
-internal fun restoreSetTimer(state: Bundle?, workoutId: Long, bootCount: Int, now: Long): SetTimer? {
-    if (state == null || bootCount < 0 || state.getInt("boot", -1) != bootCount ||
-        state.getLong("workoutId") != workoutId || state.getLong("startedAt") > now
+internal fun restoreSetTimer(state: SavedSetTimer?, workoutId: Long, bootCount: Int, now: Long): SetTimer? {
+    if (state == null || bootCount < 0 || state.bootCount != bootCount ||
+        state.workoutId != workoutId || state.startedAtMillis > now
     ) return null
     return SetTimer(
-        token = state.getString("token") ?: return null,
+        token = state.token,
         workoutId = workoutId,
-        exerciseId = state.getLong("exerciseId"),
-        catalogExerciseId = state.getString("catalogExerciseId"),
-        position = state.getInt("position"),
-        startedAtMillis = state.getLong("startedAt"),
-        goalAtMillis = state.getLong("goalAt", -1L).takeIf { it >= 0 },
-        stoppedAtMillis = state.getLong("stoppedAt", -1L).takeIf { it >= 0 },
+        exerciseId = state.exerciseId,
+        catalogExerciseId = state.catalogExerciseId,
+        position = state.position,
+        startedAtMillis = state.startedAtMillis,
+        goalAtMillis = state.goalAtMillis,
+        stoppedAtMillis = state.stoppedAtMillis,
     )
 }

@@ -10,6 +10,10 @@ import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.domain.SavedRestTimer
+import com.delaynore.fitty.domain.SavedSetTimer
+import com.delaynore.fitty.domain.WorkoutTimerStore
+import com.delaynore.fitty.domain.WorkoutTimersSnapshot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -24,6 +28,51 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WorkoutTimingTest {
+    @Test
+    fun timersRestoreFromTheStoreAndFutureGoalIsScheduledAgain() = runTest {
+        val store = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(1, 120_000, 7),
+                SavedSetTimer("fixed", 1, 1, null, 1, 0, 40_000, null, 7),
+            ),
+        )
+        val signals = RecordingSignals()
+        val (workout, id) = openWorkout(
+            goal = ExerciseGoal.Duration(40), signals = signals, bootCount = 7, timerStore = store,
+        )
+
+        assertEquals(1L, id)
+        assertEquals(120_000L, workout.uiState.value.restDeadlineMillis)
+        assertEquals("fixed", workout.uiState.value.setTimer?.token)
+        assertEquals(SetTimerSignal("fixed", id, 40_000), signals.pending)
+    }
+
+    @Test
+    fun invalidBootCountClearsStoredTimersImmediately() = runTest {
+        val store = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(1, 120_000, 6),
+                SavedSetTimer("fixed", 1, 1, null, 1, 0, null, null, 6),
+            ),
+        )
+        val (workout, _) = openWorkout(bootCount = 7, timerStore = store)
+
+        assertNull(workout.uiState.value.restDeadlineMillis)
+        assertNull(workout.uiState.value.setTimer)
+        assertEquals(WorkoutTimersSnapshot(), store.snapshot)
+    }
+
+    @Test
+    fun rejectedGoalSignalKeepsTheTimerAndShowsAnError() = runTest {
+        val signals = RecordingSignals(scheduleResult = false)
+        val (workout, id) = openWorkout(goal = ExerciseGoal.Duration(40), signals = signals, bootCount = 7)
+
+        workout.startSetTimer(id, 1, 1)
+
+        assertEquals("Не удалось запустить сигнал цели", workout.uiState.value.error)
+        assertEquals("fixed-token", workout.uiState.value.setTimer?.token)
+    }
+
     @Test
     fun restTimerStartsManuallyAndUsesElapsedTimeWhenTheWorkoutReopens() = runTest {
         val (workout, id) = openWorkout()
@@ -154,6 +203,8 @@ class WorkoutTimingTest {
         sets: List<LoggedSet> = emptyList(),
         signals: RecordingSignals = RecordingSignals(),
         secondExercise: Boolean = false,
+        bootCount: Int = -1,
+        timerStore: FakeTimerStore = FakeTimerStore(),
     ): Pair<ActiveWorkoutState, Long> {
         val exercises = buildList {
             add(WorkoutExercise(1, "Plank", sets, type = ExerciseType.DURATION, goal = goal))
@@ -163,7 +214,8 @@ class WorkoutTimingTest {
         val repository = FakeWorkoutsRepository(mapOf(1L to session))
         val id = requireNotNull(repository.startWorkout(1))
         val workout = ActiveWorkoutState(
-            repository, -1, { testScheduler.currentTime }, signals, FakeExerciseCatalogRepository(), backgroundScope,
+            repository, bootCount, { testScheduler.currentTime }, signals, FakeExerciseCatalogRepository(), backgroundScope,
+            timerStore, { "fixed-token" },
         )
         workout.open(id)
         runCurrent()
@@ -176,13 +228,13 @@ class WorkoutTimingTest {
     private fun ActiveWorkoutState.canFinish() =
         requireNotNull(uiState.value.session).exercises.any { it.sets.isNotEmpty() }
 
-    private class RecordingSignals : SetTimerSignalScheduler {
+    private class RecordingSignals(private val scheduleResult: Boolean = true) : SetTimerSignalScheduler {
         var pending: SetTimerSignal? = null
             private set
 
         override fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean {
             pending = SetTimerSignal(token, workoutId, deadlineMillis)
-            return true
+            return scheduleResult
         }
 
         override fun cancel(token: String) {
@@ -192,5 +244,12 @@ class WorkoutTimingTest {
         override fun cancelWorkout(workoutId: Long) {
             if (pending?.workoutId == workoutId) pending = null
         }
+    }
+
+    private class FakeTimerStore(initial: WorkoutTimersSnapshot = WorkoutTimersSnapshot()) : WorkoutTimerStore {
+        var snapshot = initial
+            private set
+        override fun read() = snapshot
+        override fun save(snapshot: WorkoutTimersSnapshot) { this.snapshot = snapshot }
     }
 }

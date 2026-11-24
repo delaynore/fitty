@@ -10,6 +10,7 @@ import com.delaynore.fitty.data.workouts.RoomWorkoutsRepository
 import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.UpdateCoordinator
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
+import com.delaynore.fitty.platform.workout.SharedPreferencesWorkoutTimerStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,11 +44,10 @@ internal class AppContainer(application: FittyApplication, restoredState: Bundle
         application.setTimerSignals,
         catalog,
         scope,
-        restoredState?.getBundle("workoutTimers"),
+        SharedPreferencesWorkoutTimerStore(application, application.databaseName),
     )
 
     fun saveState() = Bundle().apply {
-        putBundle("workoutTimers", activeWorkout.saveTimers())
         putString("pendingUpdatePermission", updates.pendingPermissionPath)
         updates.pendingPermissionVersionCode?.let { putLong("pendingUpdatePermissionVersion", it) }
     }

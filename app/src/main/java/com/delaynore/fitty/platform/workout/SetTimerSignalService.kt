@@ -1,4 +1,4 @@
-package com.delaynore.fitty.ui.workout
+package com.delaynore.fitty.platform.workout
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -24,8 +24,12 @@ import androidx.core.content.ContextCompat
 import com.delaynore.fitty.FittyApplication
 import com.delaynore.fitty.MainActivity
 import com.delaynore.fitty.R
+import com.delaynore.fitty.domain.SetTimerSignal
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,9 +40,6 @@ import kotlinx.coroutines.launch
 private const val NOTIFICATION_CHANNEL_ID = "set_timer"
 private const val NOTIFICATION_ID = 1
 private const val SIGNAL_MILLIS = 750L
-
-internal typealias SetTimerSignal = com.delaynore.fitty.domain.SetTimerSignal
-internal typealias SetTimerSignalScheduler = com.delaynore.fitty.domain.SetTimerSignalScheduler
 
 internal class SetTimerSignals(private val context: Context) : SetTimerSignalScheduler {
     private val request = MutableStateFlow<SetTimerSignal?>(null)
@@ -51,7 +52,8 @@ internal class SetTimerSignals(private val context: Context) : SetTimerSignalSch
         return try {
             ContextCompat.startForegroundService(context, Intent(context, SetTimerSignalService::class.java))
             true
-        } catch (failure: IllegalStateException) {
+        } catch (failure: RuntimeException) {
+            if (failure !is IllegalStateException && failure !is SecurityException) throw failure
             cancel(token)
             Log.w("SetTimerSignal", "Unable to start set timer signal service", failure)
             false
@@ -70,7 +72,7 @@ internal class SetTimerSignals(private val context: Context) : SetTimerSignalSch
 }
 
 internal class SetTimerSignalService : Service() {
-    private val scope = CoroutineScope(Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val fitty get() = application as FittyApplication
     private var latestStartId = 0
     private var observing = false
@@ -79,7 +81,15 @@ internal class SetTimerSignalService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         latestStartId = startId
-        showNotification()
+        try {
+            showNotification()
+        } catch (failure: RuntimeException) {
+            if (failure !is IllegalStateException && failure !is SecurityException) throw failure
+            Log.w("SetTimerSignal", "Unable to start foreground set timer service", failure)
+            fitty.setTimerSignals.pending.value?.let { fitty.setTimerSignals.cancel(it.token) }
+            stopSelfResult(startId)
+            return START_NOT_STICKY
+        }
         if (!observing) {
             observing = true
             scope.launch {
@@ -87,8 +97,16 @@ internal class SetTimerSignalService : Service() {
                     if (signal == null) {
                         stopSelfResult(latestStartId)
                     } else {
-                        signalAtDeadline(signal)
-                        fitty.setTimerSignals.cancel(signal.token)
+                        try {
+                            signalAtDeadline(signal)
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (failure: Throwable) {
+                            Log.w("SetTimerSignal", "Unable to signal set timer deadline", failure)
+                        } finally {
+                            fitty.setTimerSignals.cancel(signal.token)
+                            stopSelfResult(latestStartId)
+                        }
                     }
                 }
             }
@@ -104,15 +122,30 @@ internal class SetTimerSignalService : Service() {
     }
 
     private suspend fun signalAtDeadline(signal: SetTimerSignal) {
-        val power = getSystemService(PowerManager::class.java)
-        val wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:SetTimerSignal")
+        val wakeLock = try {
+            getSystemService(PowerManager::class.java)?.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "$packageName:SetTimerSignal",
+            )
+        } catch (failure: RuntimeException) {
+            Log.w("SetTimerSignal", "Unable to acquire wake lock", failure)
+            null
+        }
         val remainingMillis = (signal.deadlineMillis - fitty.workoutTimerElapsedRealtime()).coerceAtLeast(0L)
-        wakeLock.acquire(remainingMillis + SIGNAL_MILLIS + 1_000L)
+        try {
+            wakeLock?.acquire(remainingMillis + SIGNAL_MILLIS + 1_000L)
+        } catch (failure: RuntimeException) {
+            Log.w("SetTimerSignal", "Unable to acquire wake lock", failure)
+        }
         try {
             fitty.awaitSetTimerDeadline(signal.deadlineMillis)
             if (fitty.setTimerSignals.pending.value == signal) fitty.playSetTimerSignal()
         } finally {
-            if (wakeLock.isHeld) wakeLock.release()
+            try {
+                if (wakeLock?.isHeld == true) wakeLock.release()
+            } catch (failure: RuntimeException) {
+                Log.w("SetTimerSignal", "Unable to release wake lock", failure)
+            }
         }
     }
 
@@ -139,7 +172,11 @@ internal class SetTimerSignalService : Service() {
 }
 
 internal suspend fun playSetTimerCue(context: Context) {
-    vibrateSetTimerCue(context)
+    try {
+        vibrateSetTimerCue(context)
+    } catch (failure: RuntimeException) {
+        Log.w("SetTimerSignal", "Unable to vibrate for set timer", failure)
+    }
     val tone = try {
         ToneGenerator(AudioManager.STREAM_ALARM, ToneGenerator.MAX_VOLUME)
     } catch (failure: RuntimeException) {
@@ -147,24 +184,33 @@ internal suspend fun playSetTimerCue(context: Context) {
         null
     }
     try {
-        tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, SIGNAL_MILLIS.toInt())
-        delay(SIGNAL_MILLIS)
+        if (tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, SIGNAL_MILLIS.toInt()) == true) {
+            delay(SIGNAL_MILLIS)
+        } else if (tone != null) {
+            Log.w("SetTimerSignal", "ToneGenerator rejected the set timer tone")
+        }
+    } catch (failure: RuntimeException) {
+        Log.w("SetTimerSignal", "Unable to play the set timer tone", failure)
     } finally {
-        tone?.release()
+        try {
+            tone?.release()
+        } catch (failure: RuntimeException) {
+            Log.w("SetTimerSignal", "Unable to release set timer tone", failure)
+        }
     }
 }
 
 @Suppress("DEPRECATION")
 private fun vibrateSetTimerCue(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= 31) {
-        context.getSystemService(VibratorManager::class.java).defaultVibrator
+        context.getSystemService(VibratorManager::class.java)?.defaultVibrator
     } else {
         context.getSystemService(Vibrator::class.java)
     }
     val effect = VibrationEffect.createOneShot(450L, VibrationEffect.DEFAULT_AMPLITUDE)
     if (Build.VERSION.SDK_INT >= 33) {
-        vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+        vibrator?.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
     } else {
-        vibrator.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
+        vibrator?.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
     }
 }
