@@ -16,7 +16,7 @@
             android:name=".platform.updates.UpdateInstallReceiver"
             android:exported="false" />
         <service
-            android:name=".ui.workout.SetTimerSignalService"
+            android:name=".platform.workout.SetTimerSignalService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
