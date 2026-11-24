@@ -148,7 +148,7 @@ internal fun FittyNavigation(container: AppContainer) {
             }
             composable<ProgramDetailsRoute> { entry ->
                 val id = entry.toRoute<ProgramDetailsRoute>().programId
-                val details = viewModel { ProgramDetailsViewModel(container.programs) }
+                val details = viewModel { ProgramDetailsViewModel(id, container.programs) }
                 ProgramDetailsScreen(id, details, back) { nav.navigate(ProgramEditorGraph(it.id)) }
             }
             navigation<ProgramEditorGraph>(startDestination = ProgramEditorRoute) {
@@ -233,8 +233,9 @@ internal fun FittyNavigation(container: AppContainer) {
                 HistoryScreen(history) { nav.navigate(WorkoutDetailsRoute(it)) }
             }
             composable<WorkoutDetailsRoute> { entry ->
-                val details = viewModel { WorkoutDetailsViewModel(container.workouts) }
-                WorkoutDetailsScreen(entry.toRoute<WorkoutDetailsRoute>().workoutId, details, back)
+                val id = entry.toRoute<WorkoutDetailsRoute>().workoutId
+                val details = viewModel { WorkoutDetailsViewModel(id, container.workouts) }
+                WorkoutDetailsScreen(id, details, back)
             }
             composable<SettingsRoute> {
                 SettingsScreen(container.updates, null, { nav.navigate(BrowseCatalogRoute) }) {

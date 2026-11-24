@@ -27,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -94,10 +93,6 @@ internal fun HistoryScreen(viewModel: HistoryViewModel, onOpen: (Long) -> Unit) 
 
 @Composable
 internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, onBack: () -> Unit) {
-    DisposableEffect(viewModel, id) {
-        viewModel.showWorkout(id)
-        onDispose { viewModel.showWorkout(null) }
-    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val details = state.details.takeIf { state.workoutId == id }
     var confirmingDeletion by rememberSaveable(id) { mutableStateOf(false) }
@@ -178,8 +173,8 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
                 onDismiss = closeEditor,
                 setErrors = state.setErrors,
                 onEdit = viewModel::changeSetInput,
-                onSave = { input -> viewModel.saveSet(id, set, input) },
-                onDeleteSet = { viewModel.deleteSet(id, set.id) },
+                onSave = { input -> viewModel.saveSet(set, input) },
+                onDeleteSet = { viewModel.deleteSet(set.id) },
                 onDeleteWorkout = confirmDeletion,
             )
         }
@@ -204,7 +199,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.deleteWorkout(id) }, enabled = !state.saving) {
+                TextButton(onClick = viewModel::deleteWorkout, enabled = !state.saving) {
                     Text("Удалить тренировку", color = MaterialTheme.colorScheme.error)
                 }
             },

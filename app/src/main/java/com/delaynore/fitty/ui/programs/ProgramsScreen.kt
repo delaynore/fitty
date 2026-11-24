@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -102,10 +101,6 @@ internal fun ProgramDetailsScreen(
     onBack: () -> Unit,
     onEdit: (TrainingProgram) -> Unit,
 ) {
-    DisposableEffect(viewModel, id) {
-        viewModel.showProgram(id)
-        onDispose { viewModel.showProgram(null) }
-    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val missingProgram = state.detailsId == id && state.detailsLoaded && state.details == null
     LaunchedEffect(id, missingProgram) { if (missingProgram) onBack() }

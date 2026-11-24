@@ -28,7 +28,7 @@ class HistoryDeletionTest {
     fun theLastSetCanOnlyBeDeletedByConfirmingDeletionOfTheWorkout() {
         val (workouts, id) = runBlocking { completedWorkout() }
         val store = ViewModelStore()
-        val viewModel = WorkoutDetailsViewModel(workouts)
+        val viewModel = WorkoutDetailsViewModel(id, workouts)
         store.put("history", viewModel)
         try {
             var backCount = 0

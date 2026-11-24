@@ -5,11 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseType
-import com.delaynore.fitty.domain.StorageException
+import com.delaynore.fitty.ui.launchPersistenceSave
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 internal data class ExerciseEditorState(
     val name: String,
@@ -69,21 +68,27 @@ internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepos
         val current = state.value.draft ?: return
         val type = current.type ?: return
         if (!current.canSave) return
-        state.update { it.copy(draft = current.copy(saving = true, error = null)) }
-        viewModelScope.launch {
-            try {
-                val saved = current.details?.also { catalog.saveDetails(it) }
-                    ?: catalog.create(current.name, type)
-                state.update { if (it.draftVersion == version) it.copy(pendingEvent = ExerciseEditorEvent.Saved(saved)) else it }
-            } catch (_: StorageException) {
-                state.update {
-                    if (it.draftVersion == version) {
-                        it.copy(draft = it.draft?.copy(saving = false, error = "Не удалось сохранить упражнение"))
-                    } else {
-                        it
-                    }
+        viewModelScope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.draft?.saving == true || it.pendingEvent != null },
+            onStart = { it.copy(draft = current.copy(saving = true, error = null)) },
+            onFailure = {
+                if (it.draftVersion == version) {
+                    it.copy(draft = it.draft?.copy(error = "Не удалось сохранить упражнение"))
+                } else {
+                    it
                 }
+            },
+            onFinish = {
+                if (it.draftVersion == version) it.copy(draft = it.draft?.copy(saving = false)) else it
+            },
+        ) {
+            val saved = current.details?.also { catalog.saveDetails(it) }
+                ?: catalog.create(current.name, type)
+            state.update {
+                if (it.draftVersion == version) it.copy(pendingEvent = ExerciseEditorEvent.Saved(saved)) else it
             }
+            true
         }
     }
 

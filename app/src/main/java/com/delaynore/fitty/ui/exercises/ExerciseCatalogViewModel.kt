@@ -13,7 +13,7 @@ internal data class ExerciseCatalogUiState(val exercises: List<CatalogExercise>?
 internal class ExerciseCatalogViewModel(catalog: ExerciseCatalogRepository) : ViewModel() {
     val uiState = catalog.allExercises.map(::ExerciseCatalogUiState).stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(replayExpirationMillis = 0),
+        SharingStarted.WhileSubscribed(5_000),
         initialValue = ExerciseCatalogUiState(),
     )
 }

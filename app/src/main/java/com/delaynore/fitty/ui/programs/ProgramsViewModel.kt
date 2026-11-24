@@ -6,9 +6,10 @@ import com.delaynore.fitty.data.programs.ProgramSelection
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.ui.launchPersistenceSave
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 internal data class ProgramsUiState(
     val programs: List<ProgramSelection>? = null,
@@ -19,30 +20,26 @@ internal data class ProgramsUiState(
 internal sealed interface ProgramsEvent { data object ProgramSelected : ProgramsEvent }
 
 internal class ProgramsViewModel(private val programs: ProgramsRepository) : ViewModel() {
-    private val state = MutableStateFlow(ProgramsUiState())
-    val uiState = state.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            programs.allPrograms.collect { list -> state.update { it.copy(programs = list) } }
-        }
-    }
+    private val localState = MutableStateFlow(ProgramsUiState())
+    val uiState = combine(programs.allPrograms, localState) { list, local ->
+        local.copy(programs = list)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgramsUiState())
 
     fun selectProgram(id: Long) {
         viewModelScope.launchPersistenceSave(
-            state = state,
+            state = localState,
             isBusy = { it.selecting },
             onStart = { it.copy(selecting = true, selectionError = null) },
             onFailure = { it.copy(selectionError = "Не удалось выбрать программу") },
             onFinish = { it.copy(selecting = false) },
         ) {
             programs.selectProgram(id)
-            state.update { it.copy(pendingEvent = ProgramsEvent.ProgramSelected) }
+            localState.update { it.copy(pendingEvent = ProgramsEvent.ProgramSelected) }
             true
         }
     }
 
     fun consumeEvent(event: ProgramsEvent) {
-        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
+        localState.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 }

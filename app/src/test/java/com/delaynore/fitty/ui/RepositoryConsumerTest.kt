@@ -48,9 +48,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -77,14 +79,18 @@ class RepositoryConsumerTest {
         var cancelledId: Long? = null
         withViewModel({ HomeViewModel(programs, workouts) { cancelledId = it } }) { home ->
             assertTrue(home.uiState.value.loading)
+            backgroundScope.launch { home.uiState.collect() }
             runCurrent()
             assertEquals("Warmup", home.uiState.value.program?.name)
             val programsList = ProgramsViewModel(programs)
             try {
+                backgroundScope.launch { programsList.uiState.collect() }
+                runCurrent()
                 programsList.selectProgram(program.id)
                 runCurrent()
                 assertEquals(ProgramsEvent.ProgramSelected, programsList.uiState.value.pendingEvent)
                 programsList.consumeEvent(ProgramsEvent.ProgramSelected)
+                runCurrent()
                 assertNull(programsList.uiState.value.pendingEvent)
                 assertTrue(programsList.uiState.value.programs.orEmpty().single { it.id == program.id }.selected)
                 assertEquals(program, home.uiState.value.program)
@@ -92,6 +98,7 @@ class RepositoryConsumerTest {
                 programsList.viewModelScope.cancel()
             }
             home.selectDay(5)
+            runCurrent()
             assertEquals(5L, home.uiState.value.selectedDayId)
             programs.selectProgram(2)
             runCurrent()
@@ -99,18 +106,21 @@ class RepositoryConsumerTest {
             programs.selectProgram(program.id)
             runCurrent()
             home.selectDay(5)
+            runCurrent()
             assertEquals(5L, home.uiState.value.selectedDayId)
             home.startWorkout()
-            assertTrue(home.uiState.value.starting)
             runCurrent()
             val active = requireNotNull(home.uiState.value.inProgressWorkout)
             assertEquals("B", active.dayName)
             assertEquals(HomeEvent.OpenWorkout(active.id), home.uiState.value.pendingEvent)
             home.consumeEvent(HomeEvent.OpenWorkout(active.id + 1))
+            runCurrent()
             assertEquals(HomeEvent.OpenWorkout(active.id), home.uiState.value.pendingEvent)
             home.consumeEvent(HomeEvent.OpenWorkout(active.id))
+            runCurrent()
             assertNull(home.uiState.value.pendingEvent)
             home.confirmCancelWorkout(active.id)
+            runCurrent()
             assertEquals(active.id, home.uiState.value.confirmingCancelWorkoutId)
             home.cancelWorkout(active.id)
             runCurrent()
@@ -184,21 +194,14 @@ class RepositoryConsumerTest {
                 .onStart { observed.add(id) }
                 .onCompletion { observed.remove(id) }
         }
-        withViewModel({ ProgramDetailsViewModel(repository) }) { details ->
-            runCurrent()
+        withViewModel({ ProgramDetailsViewModel(second.id, repository) }) { details ->
             assertFalse(allProgramsObserved)
             assertTrue(observed.isEmpty())
-            details.showProgram(first.id)
-            runCurrent()
-            assertEquals(first, details.uiState.value.details)
-            details.showProgram(second.id)
-            assertNull(details.uiState.value.details)
-            runCurrent()
-            assertEquals(setOf(second.id), observed)
-            assertEquals(second, details.uiState.value.details)
-            details.showProgram(null)
-            runCurrent()
-            assertTrue(observed.isEmpty())
+            details.uiState.test {
+                assertNull(awaitItem().details)
+                assertEquals(second, awaitItem().details)
+                assertEquals(setOf(second.id), observed)
+            }
         }
         withViewModel({ ProgramEditorViewModel(repository) { testScheduler.currentTime } }) { editor ->
             runCurrent()
@@ -240,6 +243,34 @@ class RepositoryConsumerTest {
     }
 
     @Test
+    fun catalogKeepsItsRoomSubscriptionForFiveSeconds() = runTest {
+        val catalog = FakeExerciseCatalogRepository()
+        val exercise = catalog.create("Plank", ExerciseType.DURATION)
+        withViewModel({ ExerciseCatalogViewModel(catalog) }) { viewModel ->
+            val firstCollection = backgroundScope.launch { viewModel.uiState.collect() }
+            runCurrent()
+            assertEquals(1, catalog.allExercises.subscriptionCount.value)
+            assertEquals(listOf(exercise), viewModel.uiState.value.exercises)
+
+            firstCollection.cancel()
+            advanceTimeBy(4_000)
+            runCurrent()
+            assertEquals(1, catalog.allExercises.subscriptionCount.value)
+            assertEquals(listOf(exercise), viewModel.uiState.value.exercises)
+
+            val secondCollection = backgroundScope.launch { viewModel.uiState.collect() }
+            runCurrent()
+            assertEquals(1, catalog.allExercises.subscriptionCount.value)
+            assertEquals(listOf(exercise), viewModel.uiState.value.exercises)
+
+            secondCollection.cancel()
+            advanceTimeBy(5_000)
+            runCurrent()
+            assertEquals(0, catalog.allExercises.subscriptionCount.value)
+        }
+    }
+
+    @Test
     fun exerciseEditorSavesTheLatestNameAndSelectedType() = runTest {
         val catalog = FakeExerciseCatalogRepository()
         withViewModel({ ExerciseEditorViewModel(catalog) }) { editor ->
@@ -277,6 +308,65 @@ class RepositoryConsumerTest {
             assertEquals("Планка", draft.name)
             assertEquals("Не удалось сохранить упражнение", draft.error)
             assertNull(editor.uiState.value.pendingEvent)
+        }
+    }
+
+    @Test
+    fun exerciseEditorDoesNotLetAnOldSaveChangeANewDraft() = runTest {
+        val stored = FakeExerciseCatalogRepository()
+        val saveStarted = CompletableDeferred<Unit>()
+        val finishSave = CompletableDeferred<Unit>()
+        val delayed = object : ExerciseCatalogRepository by stored {
+            override suspend fun create(name: String, type: ExerciseType): CatalogExercise {
+                saveStarted.complete(Unit)
+                finishSave.await()
+                return stored.create(name, type)
+            }
+        }
+        withViewModel({ ExerciseEditorViewModel(delayed) }) { editor ->
+            editor.open("Plank")
+            editor.selectType(ExerciseType.DURATION)
+            editor.save()
+            saveStarted.await()
+
+            editor.open("Squat")
+            editor.selectType(ExerciseType.REPS)
+            finishSave.complete(Unit)
+            runCurrent()
+
+            val draft = requireNotNull(editor.uiState.value.draft)
+            assertEquals("Squat", draft.name)
+            assertFalse(draft.saving)
+            assertNull(draft.error)
+            assertNull(editor.uiState.value.pendingEvent)
+        }
+    }
+
+    @Test
+    fun exerciseEditorWaitsForTheSavedEventToBeConsumedBeforeSavingAgain() = runTest {
+        val stored = FakeExerciseCatalogRepository()
+        var createCount = 0
+        val counting = object : ExerciseCatalogRepository by stored {
+            override suspend fun create(name: String, type: ExerciseType): CatalogExercise {
+                createCount += 1
+                return stored.create(name, type)
+            }
+        }
+        withViewModel({ ExerciseEditorViewModel(counting) }) { editor ->
+            editor.open("Plank")
+            editor.selectType(ExerciseType.DURATION)
+            editor.save()
+            runCurrent()
+            val event = requireNotNull(editor.uiState.value.pendingEvent)
+
+            editor.save()
+            runCurrent()
+            assertEquals(1, createCount)
+
+            editor.consumeEvent(event)
+            editor.save()
+            runCurrent()
+            assertEquals(2, createCount)
         }
     }
 
@@ -353,6 +443,7 @@ class RepositoryConsumerTest {
         val secondId = requireNotNull(workouts.startWorkout(4))
         workouts.finishWorkout(secondId)
         withViewModel({ HistoryViewModel(workouts) }) { history ->
+            backgroundScope.launch { history.uiState.collect() }
             runCurrent()
             assertEquals(listOf(firstId, secondId), history.uiState.value.history?.map { it.id })
         }
@@ -360,27 +451,22 @@ class RepositoryConsumerTest {
         val detailsRepository = object : WorkoutsRepository by workouts {
             override val history = workouts.history.onStart { historyObserved = true }
         }
-        withViewModel({ WorkoutDetailsViewModel(detailsRepository) }) { details ->
-            runCurrent()
+        withViewModel({ WorkoutDetailsViewModel(secondId, detailsRepository) }) { details ->
             assertFalse(historyObserved)
-            assertNull(details.uiState.value.details)
-            details.showWorkout(firstId)
-            runCurrent()
-            assertEquals(firstId, details.uiState.value.details?.workout?.summary?.id)
-            details.showWorkout(secondId)
-            assertNull(details.uiState.value.details)
-            runCurrent()
-            assertEquals(secondId, details.uiState.value.details?.workout?.summary?.id)
+            details.uiState.test {
+                assertNull(awaitItem().details)
+                assertEquals(secondId, awaitItem().details?.workout?.summary?.id)
 
-            details.saveSet(secondId, set, SetInput(ExerciseType.REPS))
-            assertEquals("Целое число от 1", details.uiState.value.setErrors?.measure)
-            details.saveSet(secondId, set, SetInput(ExerciseType.REPS, measure = "10"))
-            runCurrent()
-            val updated = details.uiState.value.details?.workout?.exercises?.single()?.sets?.single()
-            assertEquals(SetResult.Reps(10), updated?.result)
-            assertNull(details.uiState.value.setErrors)
-            details.showWorkout(null)
-            assertNull(details.uiState.value.details)
+                details.saveSet(set, SetInput(ExerciseType.REPS))
+                runCurrent()
+                assertEquals("Целое число от 1", details.uiState.value.setErrors?.measure)
+                details.saveSet(set, SetInput(ExerciseType.REPS, measure = "10"))
+                runCurrent()
+                val updated = details.uiState.value.details?.workout?.exercises?.single()?.sets?.single()
+                assertEquals(SetResult.Reps(10), updated?.result)
+                assertNull(details.uiState.value.setErrors)
+                cancelAndIgnoreRemainingEvents()
+            }
         }
     }
 
