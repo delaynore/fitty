@@ -45,10 +45,14 @@ open class FittyApplication : Application() {
         container = null
     }
 
-    internal fun deleteDatabase() {
+    internal fun closeDatabase() {
         clearAppContainer()
         room?.close()
         room = null
+    }
+
+    internal fun deleteDatabase() {
+        closeDatabase()
         deleteDatabase(databaseName)
     }
 }
