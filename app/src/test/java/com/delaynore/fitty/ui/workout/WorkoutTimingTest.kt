@@ -15,6 +15,7 @@ import com.delaynore.fitty.domain.SavedSetTimer
 import com.delaynore.fitty.domain.WorkoutTimerStore
 import com.delaynore.fitty.domain.WorkoutTimersSnapshot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -71,6 +72,20 @@ class WorkoutTimingTest {
 
         assertEquals("Не удалось запустить сигнал цели", workout.uiState.value.error)
         assertEquals("fixed-token", workout.uiState.value.setTimer?.token)
+    }
+
+    @Test
+    fun foregroundFailureIsShownWhileTheTimerKeepsRunning() = runTest {
+        val signals = RecordingSignals()
+        val (workout, id) = openWorkout(goal = ExerciseGoal.Duration(40), signals = signals, bootCount = 7)
+
+        workout.startSetTimer(id, 1, 1)
+        val timer = requireNotNull(workout.uiState.value.setTimer)
+        signals.reportFailure(timer.token, id, requireNotNull(timer.goalAtMillis))
+        runCurrent()
+
+        assertEquals(timer, workout.uiState.value.setTimer)
+        assertEquals("Не удалось запустить сигнал цели", workout.uiState.value.error)
     }
 
     @Test
@@ -229,6 +244,7 @@ class WorkoutTimingTest {
         requireNotNull(uiState.value.session).exercises.any { it.sets.isNotEmpty() }
 
     private class RecordingSignals(private val scheduleResult: Boolean = true) : SetTimerSignalScheduler {
+        override val failures = MutableSharedFlow<SetTimerSignal>(extraBufferCapacity = 1)
         var pending: SetTimerSignal? = null
             private set
 
@@ -243,6 +259,10 @@ class WorkoutTimingTest {
 
         override fun cancelWorkout(workoutId: Long) {
             if (pending?.workoutId == workoutId) pending = null
+        }
+
+        fun reportFailure(token: String, workoutId: Long, deadlineMillis: Long) {
+            failures.tryEmit(SetTimerSignal(token, workoutId, deadlineMillis))
         }
     }
 

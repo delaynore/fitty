@@ -11,6 +11,7 @@ import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.ui.inputText
 import com.delaynore.fitty.ui.launchPersistenceSave
 import com.delaynore.fitty.ui.parseGoal
+import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -244,6 +245,6 @@ internal class ProgramEditorViewModel(
     }
 
     fun consumeEvent(event: ProgramEditorEvent) {
-        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
+        state.consumePendingEvent(event, ProgramEditorUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 }

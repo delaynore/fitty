@@ -18,7 +18,7 @@ class SharedPreferencesUpdateAttemptStoreTest {
     fun roundTripClearAndDatabaseIsolation() {
         val first = SharedPreferencesUpdateAttemptStore(context, "first.db")
         val second = SharedPreferencesUpdateAttemptStore(context, "second.db")
-        val attempt = UpdateAttempt(42, 9, InstallOutcome.Failure)
+        val attempt = UpdateAttempt(42, 9, InstallOutcome.Failure, requestId = 73)
 
         first.write(attempt)
 

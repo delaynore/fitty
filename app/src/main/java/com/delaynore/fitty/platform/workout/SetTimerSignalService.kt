@@ -33,7 +33,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -43,7 +45,9 @@ private const val SIGNAL_MILLIS = 750L
 
 internal class SetTimerSignals(private val context: Context) : SetTimerSignalScheduler {
     private val request = MutableStateFlow<SetTimerSignal?>(null)
+    private val failureEvents = MutableSharedFlow<SetTimerSignal>(extraBufferCapacity = 1)
     val pending = request.asStateFlow()
+    override val failures = failureEvents.asSharedFlow()
 
     override fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean {
         val signal = SetTimerSignal(token, workoutId, deadlineMillis)
@@ -69,6 +73,10 @@ internal class SetTimerSignals(private val context: Context) : SetTimerSignalSch
         val signal = request.value ?: return
         if (signal.workoutId == workoutId) request.compareAndSet(signal, null)
     }
+
+    fun reportFailure(signal: SetTimerSignal) {
+        failureEvents.tryEmit(signal)
+    }
 }
 
 internal class SetTimerSignalService : Service() {
@@ -86,7 +94,10 @@ internal class SetTimerSignalService : Service() {
         } catch (failure: RuntimeException) {
             if (failure !is IllegalStateException && failure !is SecurityException) throw failure
             Log.w("SetTimerSignal", "Unable to start foreground set timer service", failure)
-            fitty.setTimerSignals.pending.value?.let { fitty.setTimerSignals.cancel(it.token) }
+            fitty.setTimerSignals.pending.value?.let { signal ->
+                fitty.setTimerSignals.reportFailure(signal)
+                fitty.setTimerSignals.cancel(signal.token)
+            }
             stopSelfResult(startId)
             return START_NOT_STICKY
         }

@@ -46,3 +46,31 @@ jobs:
           key: robolectric-4.18.1-api36-${{ runner.os }}-${{ runner.arch }}
       - name: Run ${{ matrix.check.name }}
         run: bash ./gradlew --build-cache ${{ matrix.check.task }}
+
+  migration-tests:
+    name: Room migrations on AOSP ATD
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run migration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: aosp_atd
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash ./gradlew :app:connectedDebugAndroidTest --build-cache --configuration-cache '-Pandroid.testInstrumentationRunnerArguments.annotation=com.delaynore.fitty.MigrationTest'

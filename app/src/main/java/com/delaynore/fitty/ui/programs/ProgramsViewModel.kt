@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.programs.ProgramSelection
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.ui.launchPersistenceSave
+import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -40,6 +41,6 @@ internal class ProgramsViewModel(private val programs: ProgramsRepository) : Vie
     }
 
     fun consumeEvent(event: ProgramsEvent) {
-        localState.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
+        localState.consumePendingEvent(event, ProgramsUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 }

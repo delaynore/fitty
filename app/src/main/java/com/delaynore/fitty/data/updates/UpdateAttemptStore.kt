@@ -8,6 +8,7 @@ internal data class UpdateAttempt(
     val sessionId: Int,
     val expectedVersionCode: Long,
     val outcome: InstallOutcome? = null,
+    val requestId: Long = 0,
 )
 
 internal interface UpdateAttemptStore {
@@ -27,13 +28,14 @@ internal class SharedPreferencesUpdateAttemptStore(context: Context, databaseNam
         val outcomeName = preferences.getString(OUTCOME, null)
         val outcome = outcomeName?.let { runCatching { InstallOutcome.valueOf(it) }.getOrNull() }
         if (outcomeName != null && outcome == null) return null
-        return UpdateAttempt(sessionId, expectedVersion, outcome)
+        return UpdateAttempt(sessionId, expectedVersion, outcome, preferences.getLong(REQUEST_ID, 0))
     }
 
     override fun write(attempt: UpdateAttempt) {
         preferences.edit()
             .putInt(SESSION_ID, attempt.sessionId)
             .putLong(EXPECTED_VERSION, attempt.expectedVersionCode)
+            .putLong(REQUEST_ID, attempt.requestId)
             .apply { if (attempt.outcome == null) remove(OUTCOME) else putString(OUTCOME, attempt.outcome.name) }
             .commit()
     }
@@ -44,6 +46,7 @@ internal class SharedPreferencesUpdateAttemptStore(context: Context, databaseNam
         private const val SESSION_ID = "sessionId"
         private const val EXPECTED_VERSION = "expectedVersionCode"
         private const val OUTCOME = "outcome"
+        private const val REQUEST_ID = "requestId"
 
         fun clear(context: Context, databaseName: String) {
             context.getSharedPreferences("$databaseName.update-attempt", Context.MODE_PRIVATE).edit().clear().commit()

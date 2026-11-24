@@ -7,7 +7,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.delaynore.fitty.SmokeTest
+import com.delaynore.fitty.MigrationTest
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.exercises.RoomExerciseCatalogRepository
@@ -40,7 +40,7 @@ class FittyDatabaseMigrationTest {
     }
 
     @Test
-    @SmokeTest
+    @MigrationTest
     fun migratesEveryVersionFromOneToEightAndPreservesWorkoutData() = runBlocking {
         helper.createDatabase(databaseName, 1).let { database ->
             try { insertVersionOneRecords(database) } finally { database.close() }
@@ -89,7 +89,7 @@ class FittyDatabaseMigrationTest {
     }
 
     @Test
-    @SmokeTest
+    @MigrationTest
     fun migrationFiveToSixPreservesLegacySetTypes() = runBlocking {
         helper.createDatabase(databaseName, 5).let { database ->
             try {
@@ -112,7 +112,7 @@ class FittyDatabaseMigrationTest {
     }
 
     @Test
-    @SmokeTest
+    @MigrationTest
     fun migrationSevenToEightPreservesWorkoutReplacementLocks() = runBlocking {
         helper.createDatabase(databaseName, 7).let { database ->
             try {

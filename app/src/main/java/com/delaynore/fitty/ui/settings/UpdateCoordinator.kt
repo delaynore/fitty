@@ -147,18 +147,21 @@ internal class UpdateCoordinator(
     fun reconcileInstall() {
         scope.launch {
             val attempt = attempts.read() ?: return@launch
-            val terminal = when {
-                state.value.installedApp.versionCode >= attempt.expectedVersionCode -> UpdateInstallState.Idle
-                attempt.outcome == InstallOutcome.Success -> UpdateInstallState.Idle
-                attempt.outcome == InstallOutcome.Aborted -> UpdateInstallState.InstallCancelled
-                attempt.outcome == InstallOutcome.Failure -> UpdateInstallState.InstallFailed
+            val reconciled = when {
+                state.value.installedApp.versionCode >= attempt.expectedVersionCode -> UpdateInstallState.Idle to true
+                attempt.outcome == InstallOutcome.Success -> UpdateInstallState.Idle to true
+                attempt.outcome == InstallOutcome.Aborted -> UpdateInstallState.InstallCancelled to true
+                attempt.outcome == InstallOutcome.Failure -> UpdateInstallState.InstallFailed to true
+                installer.hasConfirmation(attempt.sessionId, attempt.requestId) ->
+                    UpdateInstallState.PendingConfirmation(attempt.sessionId, attempt.requestId) to false
+                installer.hasSession(attempt.sessionId) -> UpdateInstallState.Installing(attempt.sessionId) to false
                 else -> {
-                    if (installer.hasSession(attempt.sessionId)) installer.abandonSession(attempt.sessionId)
-                    UpdateInstallState.InstallFailed
+                    installer.abandonSession(attempt.sessionId)
+                    UpdateInstallState.InstallFailed to true
                 }
             }
-            attempts.clear()
-            setInstall(terminal)
+            if (reconciled.second) attempts.clear()
+            setInstall(reconciled.first)
         }
     }
 

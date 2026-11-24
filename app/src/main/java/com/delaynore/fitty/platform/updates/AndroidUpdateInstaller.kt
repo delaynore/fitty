@@ -49,7 +49,7 @@ internal open class AndroidUpdateInstaller(
                         }
                     }
                     val requestId = nextRequestId.incrementAndGet()
-                    attempts.write(UpdateAttempt(id, expectedVersionCode))
+                    attempts.write(UpdateAttempt(id, expectedVersionCode, requestId = requestId))
                     val callback = Intent(context, UpdateInstallReceiver::class.java)
                         .putExtra(UpdateInstallReceiver.EXTRA_REQUEST_ID, requestId)
                     val flags = PendingIntent.FLAG_UPDATE_CURRENT or

@@ -2,6 +2,8 @@ package com.delaynore.fitty.domain
 
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.WorkoutExercise
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 internal data class SetTimer(
     val token: String,
@@ -21,6 +23,7 @@ internal data class SetTimer(
 internal data class SetTimerSignal(val token: String, val workoutId: Long, val deadlineMillis: Long)
 
 internal interface SetTimerSignalScheduler {
+    val failures: Flow<SetTimerSignal> get() = emptyFlow()
     fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean
     fun cancel(token: String)
     fun cancelWorkout(workoutId: Long)

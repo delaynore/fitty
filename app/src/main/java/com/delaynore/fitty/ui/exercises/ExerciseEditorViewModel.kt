@@ -6,6 +6,7 @@ import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.ui.launchPersistenceSave
+import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -93,6 +94,6 @@ internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepos
     }
 
     fun consumeEvent(event: ExerciseEditorEvent) {
-        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
+        state.consumePendingEvent(event, ExerciseEditorUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 }

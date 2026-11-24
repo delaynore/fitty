@@ -7,6 +7,7 @@ import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.launchPersistenceSave
+import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -71,7 +72,7 @@ internal class HomeViewModel(
     }
 
     fun consumeEvent(event: HomeEvent) {
-        localState.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
+        localState.consumePendingEvent(event, HomeUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 
     private fun changeWorkout(failureMessage: String, change: suspend () -> Boolean) {
