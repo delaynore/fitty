@@ -29,7 +29,7 @@ internal fun DraftTextField(
     OutlinedTextField(
         value = field,
         onValueChange = { next ->
-            val textChanged = !next.text.contentEquals(field.text)
+            val textChanged = !field.text.equals(next.text)
             field = next
             if (textChanged) onValueChange(next.text)
         },

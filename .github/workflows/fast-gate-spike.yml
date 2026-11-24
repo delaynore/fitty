@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [jvm, build-lint]
+        check: [jvm, assemble, lint]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -32,6 +32,9 @@ jobs:
         run: |
           bash ./gradlew --build-cache :app:testDebugUnitTest --rerun
           du -sh ~/.m2/repository/org/robolectric/android-all-instrumented
-      - name: Build and lint
-        if: matrix.check == 'build-lint'
-        run: bash ./gradlew --build-cache :app:assembleDebug :app:lintDebug
+      - name: Assemble debug APK
+        if: matrix.check == 'assemble'
+        run: bash ./gradlew --build-cache :app:assembleDebug
+      - name: Run lint
+        if: matrix.check == 'lint'
+        run: bash ./gradlew --build-cache :app:lintDebug
