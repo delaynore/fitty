@@ -3,6 +3,12 @@ package com.delaynore.fitty.ui
 import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.SetResult
+import com.delaynore.fitty.domain.formatDecimal
+import com.delaynore.fitty.domain.formatRecommendation
+import com.delaynore.fitty.domain.formatResult
+import com.delaynore.fitty.domain.inputText
+import com.delaynore.fitty.domain.parseGoal
+import com.delaynore.fitty.domain.parseWholeNumber
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

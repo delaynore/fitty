@@ -30,7 +30,7 @@ import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 import com.delaynore.fitty.ui.UiEventEffect
-import com.delaynore.fitty.ui.formatRecommendation
+import com.delaynore.fitty.domain.formatRecommendation
 
 @Composable
 internal fun ProgramsScreen(

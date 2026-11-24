@@ -18,7 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.ui.FittyTheme
 import com.delaynore.fitty.ui.SetFields
-import com.delaynore.fitty.ui.SetInput
+import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.ui.workout.WorkoutRowDrafts
 import com.delaynore.fitty.ui.workout.WorkoutUiState
 import kotlinx.coroutines.flow.MutableStateFlow

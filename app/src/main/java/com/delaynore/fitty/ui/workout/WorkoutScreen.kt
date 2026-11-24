@@ -71,15 +71,15 @@ import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.SET_WEIGHT_LABEL
 import com.delaynore.fitty.ui.SetFields
-import com.delaynore.fitty.ui.SetInput
-import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.ui.SwipeToRevealDelete
-import com.delaynore.fitty.ui.formatRecommendation
-import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.domain.formatRecommendation
+import com.delaynore.fitty.domain.formatResult
 import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
-import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.domain.toInput
 import com.delaynore.fitty.ui.UiEventEffect
 import kotlinx.coroutines.delay
 

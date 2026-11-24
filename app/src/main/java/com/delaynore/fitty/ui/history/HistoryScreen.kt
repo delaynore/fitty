@@ -42,11 +42,11 @@ import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 import com.delaynore.fitty.ui.SetFields
-import com.delaynore.fitty.ui.SetInput
-import com.delaynore.fitty.ui.SetInputErrors
-import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputErrors
+import com.delaynore.fitty.domain.formatResult
 import com.delaynore.fitty.ui.measureTag
-import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.domain.toInput
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

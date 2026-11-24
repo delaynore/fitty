@@ -1,5 +1,8 @@
 package com.delaynore.fitty.ui
 
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputField
+
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text

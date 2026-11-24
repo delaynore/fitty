@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
-import com.delaynore.fitty.ui.SetInput
-import com.delaynore.fitty.ui.SetInputErrors
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputErrors
 import com.delaynore.fitty.ui.launchPersistenceSave
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

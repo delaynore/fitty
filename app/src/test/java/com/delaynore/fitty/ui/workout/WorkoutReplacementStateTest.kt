@@ -7,8 +7,8 @@ import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
-import com.delaynore.fitty.ui.SetInput
-import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi

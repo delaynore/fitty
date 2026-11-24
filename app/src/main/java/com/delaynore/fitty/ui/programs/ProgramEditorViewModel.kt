@@ -8,9 +8,9 @@ import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
-import com.delaynore.fitty.ui.inputText
+import com.delaynore.fitty.domain.inputText
 import com.delaynore.fitty.ui.launchPersistenceSave
-import com.delaynore.fitty.ui.parseGoal
+import com.delaynore.fitty.domain.parseGoal
 import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

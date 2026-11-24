@@ -139,8 +139,12 @@ internal class UpdateCoordinator(
             else UpdateInstallState.PermissionDenied(waiting.apk, waiting.expectedVersionCode))
     }
     fun confirmationLaunched(sessionId: Int, requestId: Long) {
-        if (state.value.updateInstall == UpdateInstallState.PendingConfirmation(sessionId, requestId))
+        if (state.value.updateInstall == UpdateInstallState.PendingConfirmation(sessionId, requestId)) {
+            attempts.read()?.takeIf {
+                it.sessionId == sessionId && it.requestId == requestId && it.outcome == null
+            }?.let { attempts.write(it.copy(phase = UpdateAttemptPhase.Installing)) }
             setInstall(UpdateInstallState.Installing(sessionId))
+        }
     }
     fun installerUnavailable() { setInstall(UpdateInstallState.InstallerUnavailable) }
 
@@ -152,9 +156,11 @@ internal class UpdateCoordinator(
                 attempt.outcome == InstallOutcome.Success -> UpdateInstallState.Idle to true
                 attempt.outcome == InstallOutcome.Aborted -> UpdateInstallState.InstallCancelled to true
                 attempt.outcome == InstallOutcome.Failure -> UpdateInstallState.InstallFailed to true
-                installer.hasConfirmation(attempt.sessionId, attempt.requestId) ->
+                attempt.phase == UpdateAttemptPhase.PendingConfirmation &&
+                    installer.hasConfirmation(attempt.sessionId, attempt.requestId) ->
                     UpdateInstallState.PendingConfirmation(attempt.sessionId, attempt.requestId) to false
-                installer.hasSession(attempt.sessionId) -> UpdateInstallState.Installing(attempt.sessionId) to false
+                attempt.phase == UpdateAttemptPhase.Installing && installer.hasSession(attempt.sessionId) ->
+                    UpdateInstallState.Installing(attempt.sessionId) to false
                 else -> {
                     installer.abandonSession(attempt.sessionId)
                     UpdateInstallState.InstallFailed to true

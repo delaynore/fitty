@@ -7,8 +7,8 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
-import com.delaynore.fitty.ui.SetInputErrors
-import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.domain.SetInputErrors
+import com.delaynore.fitty.domain.toInput
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

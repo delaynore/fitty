@@ -66,7 +66,7 @@ import androidx.compose.ui.zIndex
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.ui.DraftTextField
 import com.delaynore.fitty.ui.DeleteIconButton
-import com.delaynore.fitty.ui.formatRecommendation
+import com.delaynore.fitty.domain.formatRecommendation
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
 import kotlinx.coroutines.delay

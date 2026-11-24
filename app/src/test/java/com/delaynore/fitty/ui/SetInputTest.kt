@@ -2,6 +2,10 @@ package com.delaynore.fitty.ui
 
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.SetResult
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputErrors
+import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.toInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

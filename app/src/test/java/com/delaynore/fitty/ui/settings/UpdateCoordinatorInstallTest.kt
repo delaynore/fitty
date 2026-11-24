@@ -92,8 +92,25 @@ class UpdateCoordinatorInstallTest {
     }
 
     @Test
-    fun reconciliationKeepsALiveSessionInstalling() = runTest {
+    fun coldStartAbandonsPendingConfirmationWithoutAnInMemoryIntent() = runTest {
         val attempt = UpdateAttempt(9, 2, requestId = 17)
+        val store = MemoryAttemptStore(attempt)
+        val installer = FakeInstaller(hasSession = true)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1", 1), FakeService(File("x")), installer, store,
+            FakeWorkoutsRepository(), this,
+        )
+
+        runCurrent()
+
+        assertEquals(UpdateInstallState.InstallFailed, coordinator.uiState.value.updateInstall)
+        assertEquals(listOf(9), installer.abandoned)
+        assertEquals(null, store.read())
+    }
+
+    @Test
+    fun coldStartKeepsAnInstallingSession() = runTest {
+        val attempt = UpdateAttempt(9, 2, requestId = 17, phase = UpdateAttemptPhase.Installing)
         val store = MemoryAttemptStore(attempt)
         val coordinator = UpdateCoordinator(
             InstalledApp("1", 1), FakeService(File("x")),
@@ -104,6 +121,22 @@ class UpdateCoordinatorInstallTest {
 
         assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
         assertEquals(attempt, store.read())
+    }
+
+    @Test
+    fun launchingConfirmationPersistsTheInstallingPhase() = runTest {
+        val attempt = UpdateAttempt(9, 2, requestId = 17)
+        val store = MemoryAttemptStore(attempt)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1", 1), FakeService(File("x")), FakeInstaller(hasConfirmation = true),
+            store, FakeWorkoutsRepository(), this,
+        )
+        runCurrent()
+
+        coordinator.confirmationLaunched(9, 17)
+
+        assertEquals(UpdateAttemptPhase.Installing, store.read()?.phase)
+        assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
     }
 
     private class FakeService(private val apk: File) : UpdateService {

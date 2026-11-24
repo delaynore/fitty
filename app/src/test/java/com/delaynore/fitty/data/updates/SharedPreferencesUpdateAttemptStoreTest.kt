@@ -18,7 +18,9 @@ class SharedPreferencesUpdateAttemptStoreTest {
     fun roundTripClearAndDatabaseIsolation() {
         val first = SharedPreferencesUpdateAttemptStore(context, "first.db")
         val second = SharedPreferencesUpdateAttemptStore(context, "second.db")
-        val attempt = UpdateAttempt(42, 9, InstallOutcome.Failure, requestId = 73)
+        val attempt = UpdateAttempt(
+            42, 9, InstallOutcome.Failure, requestId = 73, phase = UpdateAttemptPhase.Installing,
+        )
 
         first.write(attempt)
 
@@ -37,5 +39,23 @@ class SharedPreferencesUpdateAttemptStoreTest {
 
         preferences.edit().putLong("expectedVersionCode", 2).putString("outcome", "UNKNOWN").commit()
         assertNull(SharedPreferencesUpdateAttemptStore(context, "broken.db").read())
+
+        preferences.edit().putString("outcome", null).putString("phase", "UNKNOWN").commit()
+        assertNull(SharedPreferencesUpdateAttemptStore(context, "broken.db").read())
+    }
+
+    @Test
+    fun missingPhaseUsesTheLegacyPendingConfirmationPhase() {
+        val preferences = context.getSharedPreferences("legacy.db.update-attempt", Context.MODE_PRIVATE)
+        preferences.edit()
+            .putInt("sessionId", 4)
+            .putLong("expectedVersionCode", 5)
+            .putLong("requestId", 6)
+            .commit()
+
+        assertEquals(
+            UpdateAttempt(4, 5, requestId = 6, phase = UpdateAttemptPhase.PendingConfirmation),
+            SharedPreferencesUpdateAttemptStore(context, "legacy.db").read(),
+        )
     }
 }

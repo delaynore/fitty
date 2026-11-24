@@ -9,7 +9,7 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
-import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.domain.SavedRestTimer
 import com.delaynore.fitty.domain.SavedSetTimer
 import com.delaynore.fitty.domain.WorkoutTimerStore

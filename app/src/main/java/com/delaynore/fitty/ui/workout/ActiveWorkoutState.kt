@@ -14,10 +14,10 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
-import com.delaynore.fitty.ui.SetInput
-import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.ui.launchPersistenceSave
-import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.domain.toInput
 import com.delaynore.fitty.ui.consumePendingEvent
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope

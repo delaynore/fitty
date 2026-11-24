@@ -23,6 +23,10 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputErrors
+import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.inputText
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.domain.StorageException
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
