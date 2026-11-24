@@ -106,7 +106,7 @@ internal fun FittyNavigation(container: AppContainer) {
     val current by nav.currentBackStackEntryAsState()
     val selected = current?.destination
     val back: () -> Unit = { nav.popBackStack() }
-    UpdateInstallerEffect(container.updates) {
+    UpdateInstallerEffect(container.updates, container.updateInstaller) {
         val destination = selected
         destination?.hasRoute<SettingsRoute>() == true || destination?.hasRoute<EditorSettingsRoute>() == true
     }

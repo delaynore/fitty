@@ -1,7 +1,6 @@
 package com.delaynore.fitty.data.updates
 
 import android.content.Context
-import android.content.Intent
 import java.io.EOFException
 import java.io.File
 import java.io.IOException
@@ -39,7 +38,6 @@ internal class GitHubUpdateService(
     },
 ) : UpdateService {
     private val cache = UpdateApkCache(context)
-    private val installer = AndroidUpdateInstaller(context)
 
     override suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult =
         withContext(Dispatchers.IO) {
@@ -56,12 +54,7 @@ internal class GitHubUpdateService(
     ): UpdateDownloadResult =
         cache.download(update, installedVersionCode) { apk -> fetchApk(update, apk, onProgress) }
 
-    override fun canRequestInstall() = installer.canRequestInstall()
-
-    override fun requestInstallPermission(launch: (Intent) -> Unit) =
-        installer.requestInstallPermission(launch)
-
-    override fun openInstaller(apk: File, launch: (Intent) -> Unit) = installer.openInstaller(apk, launch)
+    override suspend fun deleteApk(apk: File) = cache.deleteApk(apk)
 
 }
 

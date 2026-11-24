@@ -519,9 +519,6 @@ class RepositoryConsumerTest {
             override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) = Unit
             override suspend fun download(update: FittyUpdate, installedVersionCode: Long, onProgress: (Int) -> Unit) =
                 UpdateDownloadResult.Downloaded(apk)
-            override fun canRequestInstall() = false
-            override fun requestInstallPermission(launch: (Intent) -> Unit) = error("No installer in this test")
-            override fun openInstaller(apk: File, launch: (Intent) -> Unit) = error("No installer in this test")
         }
         val settings = UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope)
         settings.checkForUpdate()
@@ -536,7 +533,7 @@ class RepositoryConsumerTest {
         val state = settings.uiState.value
         assertEquals(installed, state.installedApp)
         assertEquals(UpdateCheckState.Checked(available), state.updateCheck)
-        assertEquals(UpdateInstallState.Ready(apk), state.updateInstall)
+        assertEquals(UpdateInstallState.Ready(apk, 2), state.updateInstall)
     }
 
     private suspend fun <T : ViewModel> TestScope.withViewModel(

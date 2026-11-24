@@ -24,6 +24,10 @@ import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.data.updates.InstallSession
+import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
+import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
+import com.delaynore.fitty.platform.updates.getPackageInfoCompat
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.ui.settings.UpdateInstallState
@@ -67,8 +71,7 @@ class SettingsTest {
         }
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            @Suppress("DEPRECATION")
-            val installed = application.packageManager.getPackageInfo(application.packageName, 0)
+            val installed = application.packageManager.getPackageInfoCompat(application.packageName)
             val installedBuild = PackageInfoCompat.getLongVersionCode(installed)
             compose.onNodeWithText("Настройки").performClick()
             compose.onNodeWithText("О приложении").assertIsDisplayed()
@@ -272,7 +275,7 @@ class SettingsTest {
 
     private fun awaitReadyToInstall(updates: FakeUpdates) {
         compose.waitUntil(timeoutMillis = 5_000) {
-            application.appContainer(null).updates.uiState.value.updateInstall == UpdateInstallState.Ready(updates.apk)
+            application.appContainer(null).updates.uiState.value.updateInstall is UpdateInstallState.Ready
         }
     }
 
@@ -299,13 +302,6 @@ private class FakeUpdates(
         return downloadResult?.invoke(onProgress) ?: UpdateDownloadResult.Downloaded(apk)
     }
 
-    override fun canRequestInstall() = true
-    override fun requestInstallPermission(launch: (Intent) -> Unit) = error("Installation permission is already granted")
-    override fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean {
-        installAttempts.incrementAndGet()
-        installerOpened.complete(apk)
-        return true
-    }
 }
 
 class SettingsTestApplication : FittyApplication() {
@@ -315,4 +311,20 @@ class SettingsTestApplication : FittyApplication() {
 
     override val updateService: UpdateService
         get() = updateServiceOverride ?: super.updateService
+
+    override val updateInstaller: AndroidUpdateInstaller by lazy {
+        object : AndroidUpdateInstaller(
+            this@SettingsTestApplication,
+            SharedPreferencesUpdateAttemptStore(this@SettingsTestApplication, databaseName),
+        ) {
+            override fun canRequestInstall() = true
+            override suspend fun commitInstall(apk: File, expectedVersionCode: Long): InstallSession {
+                val updates = requireNotNull(updateServiceOverride as? FakeUpdates)
+                updates.installerOpened.complete(apk)
+                updates.installAttempts.incrementAndGet()
+                return InstallSession(42, updates.installAttempts.get().toLong())
+            }
+            override fun takeConfirmation(sessionId: Int, requestId: Long): Intent? = Intent()
+        }
+    }
 }
