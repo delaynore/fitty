@@ -27,6 +27,26 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class RoomWorkoutResultsTest {
     @Test
+    fun controlledClockRecordsExactTimesAndOrdersHistoryByFinishTime() = withWorkoutDatabase {
+        open { database ->
+            val day = saveDays(database, listOf(trainingExercise(bench))).single()
+            val times = ArrayDeque(listOf(1_000L, 4_000L, 2_000L, 3_000L))
+            val repository = RoomWorkoutsRepository(database, nowMillis = { times.removeFirst() })
+
+            val first = requireNotNull(repository.startWorkout(day.id))
+            assertTrue(repository.logSet(first, repository.workout(first).exercises.single(), loggedSet()))
+            assertTrue(repository.finishWorkout(first))
+            val second = requireNotNull(repository.startWorkout(day.id))
+            assertTrue(repository.logSet(second, repository.workout(second).exercises.single(), loggedSet()))
+            assertTrue(repository.finishWorkout(second))
+
+            assertEquals(1_000L to 4_000L, database.sessionTimes(first))
+            assertEquals(2_000L to 3_000L, database.sessionTimes(second))
+            assertEquals(listOf(first, second), repository.history.first().map { it.id })
+        }
+    }
+
+    @Test
     fun theSameExerciseSnapshotsTheGoalOfEachSelectedDay() = withWorkoutDatabase {
         val id = open { database ->
             val days = saveDays(
@@ -168,6 +188,15 @@ class RoomWorkoutResultsTest {
 
     private suspend fun RoomWorkoutsRepository.workout(id: Long) = requireNotNull(observeWorkout(id).first())
 
+    private fun FittyDatabase.sessionTimes(id: Long): Pair<Long, Long> =
+        openHelper.readableDatabase.query(
+            "SELECT startedAtMillis, finishedAtMillis FROM workout_sessions WHERE id = ?",
+            arrayOf(id.toString()),
+        ).use { cursor ->
+            check(cursor.moveToFirst())
+            cursor.getLong(0) to cursor.getLong(1)
+        }
+
     private suspend fun saveDays(database: FittyDatabase, vararg exercises: List<TrainingExercise>): List<TrainingDay> {
         val programs = RoomProgramsRepository(database)
         val days = exercises.mapIndexed { index, day -> TrainingDay(0, "Day ${index + 1}", day) }
@@ -177,6 +206,8 @@ class RoomWorkoutResultsTest {
 
     private fun trainingExercise(exercise: CatalogExercise, goal: ExerciseGoal? = null) =
         TrainingExercise(0, exercise.name, 3, goal, exercise.id, exercise.type)
+
+    private fun loggedSet() = LoggedSet(1, SetResult.WeightAndReps(60.0, 8))
 
     private fun withWorkoutDatabase(test: suspend WorkoutDatabase.() -> Unit) {
         val context = ApplicationProvider.getApplicationContext<Context>()
