@@ -90,9 +90,14 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
     val workout = current.session
-    val unavailable = current.sessionLoaded && !current.saving &&
-        (workout == null || workout.summary.finishedAtMillis != null)
-    LaunchedEffect(id, unavailable) { if (unavailable) onBack() }
+    val finished = !current.saving && (current.finished || workout?.summary?.finishedAtMillis != null)
+    val missing = current.sessionLoaded && !current.saving && workout == null
+    LaunchedEffect(id, finished, missing) {
+        when {
+            finished -> onFinished()
+            missing -> onBack()
+        }
+    }
     val exercise = workout?.exercises?.getOrNull(current.exerciseIndex)
     WorkoutContent(
         workout = workout,
@@ -121,12 +126,11 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
         onAddSetRow = actions::addSetRow,
         onRestoreRow = { actions.restoreRow(id, it) },
         onSelectExercise = actions::selectExercise,
-        onFinish = { onSaved -> actions.finish(id, onSaved) },
+        onFinish = { actions.finish(id) },
         onChangeSetEdit = actions::changeSetEdit,
         onCloseSetEditor = actions::closeSetEditor,
         onSaveSetEdit = { actions.saveSetEdit(id) },
         onBack = onBack,
-        onFinished = onFinished,
         replacement = current.replacement,
         onOpenReplacement = actions::openReplacement,
         onCloseReplacement = actions::closeReplacement,
@@ -162,12 +166,11 @@ private fun WorkoutContent(
     onAddSetRow: (Long, Int) -> Unit,
     onRestoreRow: (RemovedWorkoutRow) -> Unit,
     onSelectExercise: (Int) -> Unit,
-    onFinish: (onSaved: () -> Unit) -> Unit,
+    onFinish: () -> Unit,
     onChangeSetEdit: (SetInputField, String) -> Unit,
     onCloseSetEditor: () -> Unit,
     onSaveSetEdit: () -> Unit,
     onBack: () -> Unit,
-    onFinished: () -> Unit,
     replacement: WorkoutReplacement?,
     onOpenReplacement: () -> Unit,
     onCloseReplacement: () -> Unit,
@@ -274,12 +277,7 @@ private fun WorkoutContent(
                     },
                     confirmButton = {
                         Button(
-                            onClick = {
-                                onFinish {
-                                    confirmFinish = false
-                                    onFinished()
-                                }
-                            },
+                            onClick = onFinish,
                             enabled = !saving && setCount > 0,
                         ) { Text("Завершить тренировку") }
                     },

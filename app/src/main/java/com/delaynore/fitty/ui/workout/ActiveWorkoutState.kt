@@ -65,6 +65,7 @@ internal data class WorkoutUiState(
     val sessionId: Long? = null,
     val session: WorkoutSession? = null,
     val sessionLoaded: Boolean = false,
+    val finished: Boolean = false,
     val exerciseIndex: Int = 0,
     val rowsByExercise: Map<Long, WorkoutRowDrafts> = emptyMap(),
     val pendingRemovals: List<RemovedWorkoutRow> = emptyList(),
@@ -433,21 +434,22 @@ internal class ActiveWorkoutState(
         }
     }
 
-    fun finish(sessionId: Long, onFinished: () -> Unit) {
+    fun finish(sessionId: Long) {
         save("Не удалось завершить тренировку") {
             if (!workouts.finishWorkout(sessionId)) return@save false
-            clear(sessionId)
-            onFinished()
+            clear(sessionId, WorkoutUiState(sessionId = sessionId, sessionLoaded = true, finished = true))
             true
         }
     }
 
-    fun clear(sessionId: Long) {
+    fun clear(sessionId: Long) = clear(sessionId, WorkoutUiState())
+
+    private fun clear(sessionId: Long, nextState: WorkoutUiState) {
         setTimerSignals.cancelWorkout(sessionId)
         if (state.value.sessionId == sessionId) {
             sessionJob?.cancel()
             replacementJob?.cancel()
-            state.value = WorkoutUiState()
+            state.value = nextState
             savedRestTimer = null
             savedSetTimer = null
         } else if (state.value.sessionId == null) {
