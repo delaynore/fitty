@@ -3,6 +3,7 @@ package com.delaynore.fitty.data.exercises
 import com.delaynore.fitty.data.local.CustomExerciseEntity
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.local.runStorageOperation
+import com.delaynore.fitty.domain.catalogExerciseComparator
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -11,7 +12,7 @@ internal class RoomExerciseCatalogRepository(database: FittyDatabase) : Exercise
     private val custom = database.customExercises()
 
     override val allExercises: Flow<List<CatalogExercise>> = custom.observeAll().map { exercises ->
-        BuiltInExercises.all + exercises.map { it.toExercise() }
+        (BuiltInExercises.all + exercises.map { it.toExercise() }).sortedWith(catalogExerciseComparator)
     }
 
     override suspend fun create(name: String, type: ExerciseType): CatalogExercise = runStorageOperation {
