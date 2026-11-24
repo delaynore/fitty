@@ -1,24 +1,25 @@
 package com.delaynore.fitty.ui.settings
 
-import android.app.Activity
-import android.content.Intent
-import com.delaynore.fitty.data.updates.FittyUpdate
-import com.delaynore.fitty.data.updates.UpdateCheckResult
-import com.delaynore.fitty.data.updates.UpdateDownloadFailure
-import com.delaynore.fitty.data.updates.UpdateDownloadResult
-import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.data.updates.*
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.domain.StorageException
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+
+private object NoopSessionManager : UpdateSessionManager {
+    override fun canRequestInstall() = false
+    override suspend fun commitInstall(apk: File, expectedVersionCode: Long) = null
+    override suspend fun abandonSession(sessionId: Int) = Unit
+    override fun hasSession(sessionId: Int) = false
+    override fun hasConfirmation(sessionId: Int, requestId: Long) = false
+}
+
+private object NoopAttemptStore : UpdateAttemptStore {
+    override fun read() = null
+    override fun write(attempt: UpdateAttempt) = Unit
+    override fun clear() = Unit
+}
 
 internal data class InstalledApp(val versionName: String, val versionCode: Long)
 
@@ -33,24 +34,23 @@ internal sealed interface UpdateInstallState {
     data object CheckingWorkout : UpdateInstallState
     data object Warning : UpdateInstallState
     data class Downloading(val percent: Int? = null) : UpdateInstallState
-    data class Ready(val apk: File) : UpdateInstallState
-    data class RequestingPermission(val apk: File) : UpdateInstallState
-    data class PermissionDenied(val apk: File) : UpdateInstallState
-    data class Installing(val apk: File) : UpdateInstallState
+    data class Ready(val apk: File, val expectedVersionCode: Long = Long.MIN_VALUE) : UpdateInstallState
+    data class RequestingPermission(val apk: File, val expectedVersionCode: Long) : UpdateInstallState
+    data class PermissionDenied(val apk: File, val expectedVersionCode: Long) : UpdateInstallState
+    data object PreparingInstall : UpdateInstallState
+    data class PendingConfirmation(val sessionId: Int, val requestId: Long) : UpdateInstallState
+    data class Installing(val sessionId: Int) : UpdateInstallState
     data class DownloadFailed(val reason: UpdateDownloadFailure) : UpdateInstallState
     data object WorkoutCheckFailed : UpdateInstallState
     data object InstallerUnavailable : UpdateInstallState
     data object InstallCancelled : UpdateInstallState
     data object InstallFailed : UpdateInstallState
 
-    val canStartAnotherUpdate: Boolean
-        get() = when (this) {
-            Idle, is DownloadFailed, WorkoutCheckFailed, InstallerUnavailable, InstallCancelled, InstallFailed -> true
-            else -> false
-        }
-
-    val canCheckForUpdates: Boolean
-        get() = canStartAnotherUpdate || this is PermissionDenied
+    val canStartAnotherUpdate: Boolean get() = when (this) {
+        Idle, is DownloadFailed, WorkoutCheckFailed, InstallerUnavailable, InstallCancelled, InstallFailed -> true
+        else -> false
+    }
+    val canCheckForUpdates: Boolean get() = canStartAnotherUpdate || this is PermissionDenied
 }
 
 internal data class SettingsUiState(
@@ -62,28 +62,37 @@ internal data class SettingsUiState(
 internal class UpdateCoordinator(
     installedApp: InstalledApp,
     private val updateService: UpdateService,
+    private val installer: UpdateSessionManager,
+    private val attempts: UpdateAttemptStore,
     private val workouts: WorkoutsRepository,
     private val scope: CoroutineScope,
     pendingPermissionPath: String? = null,
+    pendingPermissionVersionCode: Long? = null,
 ) {
-    private val pendingPermissionApk = pendingPermissionPath?.let(::File)
-    private val state = MutableStateFlow(SettingsUiState(
-        installedApp = installedApp,
-        updateInstall = pendingPermissionApk?.let { UpdateInstallState.RequestingPermission(it) } ?: UpdateInstallState.Idle,
-    ))
-    val uiState = state.asStateFlow()
+    constructor(
+        installedApp: InstalledApp,
+        updateService: UpdateService,
+        workouts: WorkoutsRepository,
+        scope: CoroutineScope,
+        pendingPermissionPath: String? = null,
+    ) : this(installedApp, updateService, NoopSessionManager, NoopAttemptStore, workouts, scope, pendingPermissionPath)
 
+    private val pendingPermissionApk = pendingPermissionPath?.let(::File)
+    private val state = MutableStateFlow(SettingsUiState(installedApp, updateInstall =
+        if (pendingPermissionApk != null && pendingPermissionVersionCode != null)
+            UpdateInstallState.RequestingPermission(pendingPermissionApk, pendingPermissionVersionCode)
+        else UpdateInstallState.Idle))
+    val uiState = state.asStateFlow()
     private val pruneDownloads = scope.launch { updateService.pruneAbandonedDownloads(pendingPermissionApk) }
     private var downloadJob: Job? = null
 
+    init { reconcileInstall() }
+
     fun checkForUpdate() {
         if (state.value.updateCheck == UpdateCheckState.Checking || !state.value.updateInstall.canCheckForUpdates) return
-        (state.value.updateInstall as? UpdateInstallState.PermissionDenied)?.apk?.delete()
+        (state.value.updateInstall as? UpdateInstallState.PermissionDenied)?.apk?.let { scope.launch { updateService.deleteApk(it) } }
         state.update { it.copy(updateInstall = UpdateInstallState.Idle, updateCheck = UpdateCheckState.Checking) }
-        scope.launch {
-            val result = updateService.checkForUpdate(state.value.installedApp.versionCode)
-            state.update { it.copy(updateCheck = UpdateCheckState.Checked(result)) }
-        }
+        scope.launch { state.update { it.copy(updateCheck = UpdateCheckState.Checked(updateService.checkForUpdate(it.installedApp.versionCode))) } }
     }
 
     fun startUpdate(hasUnsavedInput: Boolean) {
@@ -92,27 +101,13 @@ internal class UpdateCoordinator(
         setInstall(UpdateInstallState.CheckingWorkout)
         scope.launch {
             try {
-                if (hasUnsavedInput || workouts.hasInProgressWorkout()) {
-                    setInstall(UpdateInstallState.Warning)
-                } else {
-                    download(update)
-                }
-            } catch (_: StorageException) {
-                setInstall(UpdateInstallState.WorkoutCheckFailed)
-            }
+                if (hasUnsavedInput || workouts.hasInProgressWorkout()) setInstall(UpdateInstallState.Warning) else download(update)
+            } catch (_: StorageException) { setInstall(UpdateInstallState.WorkoutCheckFailed) }
         }
     }
 
-    fun dismissWarning() {
-        if (state.value.updateInstall == UpdateInstallState.Warning) setInstall(UpdateInstallState.Idle)
-    }
-
-    fun confirmDownload() {
-        val update = availableUpdate() ?: return
-        if (state.value.updateInstall != UpdateInstallState.Warning) return
-        download(update)
-    }
-
+    fun dismissWarning() { if (state.value.updateInstall == UpdateInstallState.Warning) setInstall(UpdateInstallState.Idle) }
+    fun confirmDownload() { if (state.value.updateInstall == UpdateInstallState.Warning) availableUpdate()?.let(::download) }
     fun cancelDownload() {
         if (state.value.updateInstall !is UpdateInstallState.Downloading) return
         val attempt = downloadJob
@@ -120,86 +115,76 @@ internal class UpdateCoordinator(
         setInstall(UpdateInstallState.Idle)
         attempt?.cancel()
     }
-
     fun continueInstallation() {
         val waiting = state.value.updateInstall as? UpdateInstallState.PermissionDenied ?: return
-        setInstall(UpdateInstallState.Ready(waiting.apk))
+        setInstall(UpdateInstallState.Ready(waiting.apk, waiting.expectedVersionCode))
     }
-
-    fun openInstaller(
-        ready: UpdateInstallState.Ready,
-        launchPermission: (Intent) -> Unit,
-        launchInstaller: (Intent) -> Unit,
-    ) {
+    fun beginInstallation(ready: UpdateInstallState.Ready) {
         if (state.value.updateInstall != ready) return
-        if (updateService.canRequestInstall()) {
-            setInstall(UpdateInstallState.Installing(ready.apk))
-            if (!updateService.openInstaller(ready.apk, launchInstaller)) failToOpenInstaller(ready.apk)
-        } else {
-            setInstall(UpdateInstallState.RequestingPermission(ready.apk))
-            if (!updateService.requestInstallPermission(launchPermission)) failToOpenInstaller(ready.apk)
+        if (!installer.canRequestInstall()) {
+            setInstall(UpdateInstallState.RequestingPermission(ready.apk, ready.expectedVersionCode))
+            return
+        }
+        setInstall(UpdateInstallState.PreparingInstall)
+        scope.launch {
+            val session = installer.commitInstall(ready.apk, ready.expectedVersionCode)
+            updateService.deleteApk(ready.apk)
+            setInstall(if (session == null) UpdateInstallState.InstallerUnavailable
+                else UpdateInstallState.PendingConfirmation(session.sessionId, session.requestId))
+        }
+    }
+    fun onInstallPermissionReturned() {
+        val waiting = state.value.updateInstall as? UpdateInstallState.RequestingPermission ?: return
+        setInstall(if (installer.canRequestInstall()) UpdateInstallState.Ready(waiting.apk, waiting.expectedVersionCode)
+            else UpdateInstallState.PermissionDenied(waiting.apk, waiting.expectedVersionCode))
+    }
+    fun confirmationLaunched(sessionId: Int, requestId: Long) {
+        if (state.value.updateInstall == UpdateInstallState.PendingConfirmation(sessionId, requestId))
+            setInstall(UpdateInstallState.Installing(sessionId))
+    }
+    fun installerUnavailable() { setInstall(UpdateInstallState.InstallerUnavailable) }
+
+    fun reconcileInstall() {
+        scope.launch {
+            val attempt = attempts.read() ?: return@launch
+            val terminal = when {
+                state.value.installedApp.versionCode >= attempt.expectedVersionCode -> UpdateInstallState.Idle
+                attempt.outcome == InstallOutcome.Success -> UpdateInstallState.Idle
+                attempt.outcome == InstallOutcome.Aborted -> UpdateInstallState.InstallCancelled
+                attempt.outcome == InstallOutcome.Failure -> UpdateInstallState.InstallFailed
+                else -> {
+                    if (installer.hasSession(attempt.sessionId)) installer.abandonSession(attempt.sessionId)
+                    UpdateInstallState.InstallFailed
+                }
+            }
+            attempts.clear()
+            setInstall(terminal)
         }
     }
 
-    fun onInstallPermissionReturned() {
-        val requesting = state.value.updateInstall as? UpdateInstallState.RequestingPermission ?: return
-        setInstall(if (updateService.canRequestInstall()) {
-            UpdateInstallState.Ready(requesting.apk)
-        } else {
-            UpdateInstallState.PermissionDenied(requesting.apk)
-        })
-    }
-
-    fun onInstallationReturned(resultCode: Int) {
-        val installing = state.value.updateInstall as? UpdateInstallState.Installing ?: return
-        installing.apk.delete()
-        setInstall(when (resultCode) {
-            Activity.RESULT_OK -> UpdateInstallState.Idle
-            Activity.RESULT_CANCELED -> UpdateInstallState.InstallCancelled
-            else -> UpdateInstallState.InstallFailed
-        })
-    }
-
-    val pendingPermissionPath: String?
-        get() = (state.value.updateInstall as? UpdateInstallState.RequestingPermission)?.apk?.path
-
-    private fun availableUpdate(): FittyUpdate? {
-        val result = (state.value.updateCheck as? UpdateCheckState.Checked)?.result
-        return (result as? UpdateCheckResult.Available)?.update
-    }
-
+    val pendingPermissionPath: String? get() = (state.value.updateInstall as? UpdateInstallState.RequestingPermission)?.apk?.path
+    val pendingPermissionVersionCode: Long? get() = (state.value.updateInstall as? UpdateInstallState.RequestingPermission)?.expectedVersionCode
+    private fun availableUpdate() = ((state.value.updateCheck as? UpdateCheckState.Checked)?.result as? UpdateCheckResult.Available)?.update
     private fun download(update: FittyUpdate) {
         setInstall(UpdateInstallState.Downloading())
         val job = scope.launch(start = CoroutineStart.LAZY) {
             val attempt = currentCoroutineContext().job
             pruneDownloads.join()
             val result = updateService.download(update, state.value.installedApp.versionCode) { percent ->
-                scope.launch {
-                    if (attempt.isActive && state.value.updateInstall is UpdateInstallState.Downloading) {
-                        setInstall(UpdateInstallState.Downloading(percent))
-                    }
-                }
+                scope.launch { if (attempt.isActive && state.value.updateInstall is UpdateInstallState.Downloading) setInstall(UpdateInstallState.Downloading(percent)) }
             }
             if (!attempt.isActive) {
-                (result as? UpdateDownloadResult.Downloaded)?.apk?.delete()
+                (result as? UpdateDownloadResult.Downloaded)?.apk?.let { updateService.deleteApk(it) }
                 return@launch
             }
             downloadJob = null
             setInstall(when (result) {
-                is UpdateDownloadResult.Downloaded -> UpdateInstallState.Ready(result.apk)
+                is UpdateDownloadResult.Downloaded -> UpdateInstallState.Ready(result.apk, update.versionCode)
                 is UpdateDownloadResult.Failed -> UpdateInstallState.DownloadFailed(result.reason)
             })
         }
         downloadJob = job
         job.start()
     }
-
-    private fun setInstall(install: UpdateInstallState) {
-        state.update { it.copy(updateInstall = install) }
-    }
-
-    private fun failToOpenInstaller(apk: File) {
-        apk.delete()
-        setInstall(UpdateInstallState.InstallerUnavailable)
-    }
+    private fun setInstall(install: UpdateInstallState) { state.update { it.copy(updateInstall = install) } }
 }

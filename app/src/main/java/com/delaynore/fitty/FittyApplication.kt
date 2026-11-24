@@ -7,12 +7,14 @@ import androidx.room.Room
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
+import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
 import com.delaynore.fitty.ui.workout.SetTimerSignals
 import com.delaynore.fitty.ui.workout.playSetTimerCue
 import kotlinx.coroutines.delay
 
 open class FittyApplication : Application() {
-    protected open val databaseName = "fitty.db"
+    internal open val databaseName = DATABASE_NAME
 
     private var container: AppContainer? = null
 
@@ -39,6 +41,8 @@ open class FittyApplication : Application() {
     internal open suspend fun playSetTimerSignal() = playSetTimerCue(this)
 
     internal open val updateService: UpdateService by lazy { GitHubUpdateService(this) }
+    internal val updateAttemptStore by lazy { SharedPreferencesUpdateAttemptStore(this, databaseName) }
+    internal open val updateInstaller by lazy { AndroidUpdateInstaller(this, updateAttemptStore) }
 
     internal fun clearAppContainer() {
         container?.close()
@@ -53,6 +57,9 @@ open class FittyApplication : Application() {
 
     internal fun deleteDatabase() {
         closeDatabase()
+        SharedPreferencesUpdateAttemptStore.clear(this, databaseName)
         deleteDatabase(databaseName)
     }
+
+    companion object { internal const val DATABASE_NAME = "fitty.db" }
 }

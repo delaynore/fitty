@@ -113,6 +113,33 @@ class UpdateApkDownloadTest {
         assertTrue(retry.apk.isFile)
     }
 
+    @Test
+    fun followsHttpsRedirectsButRejectsDowngradeUserInfoAndRedirectLoops() = runBlocking {
+        val update = FittyUpdate("1.0", 8, apkUrl)
+        val redirected = "https://objects.githubusercontent.com/release/fitty-8.apk"
+        val followed = mutableListOf<String>()
+        val success = transfer({ url ->
+            followed += url.toString()
+            if (url.toString() == apkUrl) FakeApkResponse(url, 302, location = redirected)
+            else FakeApkResponse(url, body = ByteArray(4))
+        }, update)
+        assertTrue(success is UpdateDownloadResult.Downloaded)
+        assertEquals(listOf(apkUrl, redirected), followed)
+
+        for (location in listOf("http://example.com/fitty.apk", "https://user@example.com/fitty.apk")) {
+            val result = transfer({ url -> FakeApkResponse(url, 302, location = location) }, update)
+            assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.Delivery), result)
+        }
+
+        var redirects = 0
+        val loop = transfer({ url ->
+            redirects++
+            FakeApkResponse(url, 302, location = "https://example.com/$redirects.apk")
+        }, update)
+        assertEquals(UpdateDownloadResult.Failed(UpdateDownloadFailure.Delivery), loop)
+        assertEquals(6, redirects)
+    }
+
     private suspend fun transfer(
         openConnection: (URL) -> HttpsURLConnection,
         update: FittyUpdate,
@@ -129,10 +156,12 @@ private class FakeApkResponse(
     private val status: Int = 200,
     private val body: ByteArray = byteArrayOf(),
     private val length: Long = -1,
+    private val location: String? = null,
 ) : HttpsURLConnection(url) {
     override fun getResponseCode() = status
     override fun getInputStream() = body.inputStream()
     override fun getContentLengthLong() = length
+    override fun getHeaderField(name: String?) = if (name.equals("Location", ignoreCase = true)) location else null
     override fun connect() = Unit
     override fun disconnect() = Unit
     override fun usingProxy() = false
