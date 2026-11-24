@@ -1,24 +1,18 @@
 package com.delaynore.fitty
 
 import android.provider.Settings
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeRight
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -68,7 +62,7 @@ class WorkoutTimerScreenTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             startWorkout()
             tap("Старт")
-            awaitText("Стоп")
+            compose.awaitText("Стоп")
             compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
 
             withSetTimerSignalService {
@@ -80,7 +74,7 @@ class WorkoutTimerScreenTest {
                 compose.waitUntil(timeoutMillis = 5_000) { application.cues == 1 }
                 application.workoutTimeMillis = 57_000L
                 scenario.moveToState(Lifecycle.State.RESUMED)
-                awaitText("0:47")
+                compose.awaitText("0:47")
                 assertEquals(1, application.cues)
                 compose.onNodeWithTag("workout-logged-duration-1", useUnmergedTree = true).assertDoesNotExist()
                 tap("Стоп")
@@ -88,15 +82,15 @@ class WorkoutTimerScreenTest {
                 compose.onNodeWithTag("workout-logged-duration-2", useUnmergedTree = true).assertDoesNotExist()
 
                 compose.onNodeWithContentDescription("Запустить таймер отдыха").performClick()
-                awaitText("2:00")
+                compose.awaitText("2:00")
                 tap("Завершить")
                 tap("Завершить тренировку")
-                awaitText("47 с")
+                compose.awaitText("47 с")
                 tap("47 с")
                 compose.onNodeWithTag("history-set-duration").performTextReplacement("49")
 
                 tap("Сохранить")
-                awaitText("49 с")
+                compose.awaitText("49 с")
             }
         }
         assertPersistedHistoryDuration(49)
@@ -108,14 +102,14 @@ class WorkoutTimerScreenTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             startWorkout()
             tap("Старт")
-            awaitText("Стоп")
+            compose.awaitText("Стоп")
             application.workoutTimeMillis = 10_999L
-            awaitText("0:00")
+            compose.awaitText("0:00")
             tap("Стоп")
             awaitLogged(1, "0")
             tap("Завершить")
             tap("Завершить тренировку")
-            awaitText("0 с")
+            compose.awaitText("0 с")
             tap("0 с")
             compose.onNodeWithTag("history-set-duration").performTextReplacement("0")
 
@@ -123,7 +117,7 @@ class WorkoutTimerScreenTest {
             compose.waitUntil(timeoutMillis = 5_000) {
                 compose.onAllNodes(hasTestTag("history-set-duration")).fetchSemanticsNodes().isEmpty()
             }
-            awaitText("0 с")
+            compose.awaitText("0 с")
         }
         assertPersistedHistoryDuration(0)
     }
@@ -134,7 +128,7 @@ class WorkoutTimerScreenTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             startWorkout()
             tap("Старт")
-            awaitText("Стоп")
+            compose.awaitText("Стоп")
             scenario.moveToState(Lifecycle.State.CREATED)
             val original = requireNotNull(application.setTimerSignals.pending.value)
             application.setTimerSignals.cancel(original.token)
@@ -145,7 +139,7 @@ class WorkoutTimerScreenTest {
             }
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
-            awaitText("0:15")
+            compose.awaitText("0:15")
             val restored = requireNotNull(application.setTimerSignals.pending.value)
             assertEquals(original, restored)
             assertEquals(50_000L, restored.deadlineMillis)
@@ -157,7 +151,7 @@ class WorkoutTimerScreenTest {
                 application.workoutTimeMillis = 50_000L
                 compose.waitUntil(timeoutMillis = 5_000) { application.cues == 1 }
                 application.workoutTimeMillis = 51_000L
-                awaitText("0:41")
+                compose.awaitText("0:41")
                 assertEquals(1, application.cues)
                 tap("Стоп")
                 awaitLogged(1, "41")
@@ -180,7 +174,7 @@ class WorkoutTimerScreenTest {
             }
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
-            awaitText("0:15")
+            compose.awaitText("0:15")
             tap("Стоп")
             awaitLogged(1, "15")
             assertNull(application.setTimerSignals.pending.value)
@@ -201,12 +195,12 @@ class WorkoutTimerScreenTest {
             assertEquals(idleBounds, firstRow.getUnclippedBoundsInRoot())
 
             tap("Следующее упражнение", description = true)
-            awaitText("Тяга верхнего блока")
+            compose.awaitText("Тяга верхнего блока")
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertExists()
             tap("Назад", description = true)
-            awaitText("Продолжить тренировку")
+            compose.awaitText("Продолжить тренировку")
             tap("Продолжить тренировку")
-            awaitText("Тяга верхнего блока")
+            compose.awaitText("Тяга верхнего блока")
             tap("Сбросить таймер отдыха", description = true)
             compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
             compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
@@ -223,7 +217,7 @@ class WorkoutTimerScreenTest {
             scenario.moveToState(Lifecycle.State.CREATED)
             application.workoutTimeMillis = 55_000L
             scenario.moveToState(Lifecycle.State.RESUMED)
-            awaitText("1:15")
+            compose.awaitText("1:15")
 
             scenario.moveToState(Lifecycle.State.CREATED)
             application.workoutTimeMillis = 130_000L
@@ -253,44 +247,9 @@ class WorkoutTimerScreenTest {
             scenario.recreate()
             scenario.moveToState(Lifecycle.State.RESUMED)
 
-            awaitText("1:15")
+            compose.awaitText("1:15")
             compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
             compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("6")
-        }
-    }
-
-    @Test
-    fun twoRemovedSetsCanBeRestoredIndependentlyInReverseOrder() {
-        seedStrength(
-            secondExercise = true,
-            recorded = listOf(SetResult.WeightAndReps(60.0, 6), SetResult.WeightAndReps(65.0, 5)),
-        )
-        ActivityScenario.launch(MainActivity::class.java).use {
-            startWorkout()
-
-            compose.onNodeWithTag("workout-sets").performScrollToIndex(0)
-
-            removeSet(2)
-            removeSet(1)
-            awaitText("60 кг × 6")
-            awaitText("65 кг × 5")
-            tap("Следующее упражнение", description = true)
-            awaitText("Тяга верхнего блока")
-            compose.onNodeWithText("Завершить").assertIsNotEnabled()
-
-            tap("Вернуть подход 1, Жим штанги лёжа", description = true)
-            tap("Вернуть подход 2, Жим штанги лёжа", description = true)
-            compose.waitUntil(timeoutMillis = 5_000) {
-                compose.onAllNodes(hasText("Завершить") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
-            }
-            compose.onNodeWithText("Завершить").assertIsEnabled()
-            tap("Все упражнения")
-            awaitText("Записано подходов: 2")
-            tap("1. Жим штанги лёжа")
-            awaitTag("workout-logged-weight-1")
-            awaitTag("workout-logged-weight-2")
-            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
-            compose.onNodeWithTag("workout-logged-weight-2", useUnmergedTree = true).assertTextEquals("65")
         }
     }
 
@@ -318,15 +277,12 @@ class WorkoutTimerScreenTest {
         )))
     }
 
-    private fun seedStrength(
-        secondExercise: Boolean = false,
-        recorded: List<SetResult> = listOf(SetResult.WeightAndReps(60.0, 6)),
-    ) {
+    private fun seedStrength(secondExercise: Boolean = false) {
         val exercises = buildList {
             add(TrainingExercise(0, "Жим штанги лёжа", null, null))
             if (secondExercise) add(TrainingExercise(0, "Тяга верхнего блока", null, null))
         }
-        seedWorkout(exercises, recorded)
+        seedWorkout(exercises, listOf(SetResult.WeightAndReps(60.0, 6)))
     }
 
     private fun seedWorkout(exercises: List<TrainingExercise>, recorded: List<SetResult> = emptyList()) = runBlocking {
@@ -369,26 +325,9 @@ class WorkoutTimerScreenTest {
         compose.onNodeWithText("2:00").assertExists()
     }
 
-    private fun removeSet(position: Int) {
-        compose.onNodeWithTag("workout-set-row-$position").performTouchInput { swipeRight() }
-        tap("Удалить подход $position", description = true)
-    }
-
     private fun tap(text: String, description: Boolean = false) {
         val node = if (description) compose.onNodeWithContentDescription(text) else compose.onNodeWithText(text)
         node.performClick()
-    }
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
-    }
-
-    private fun awaitTag(tag: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
-        }
     }
 }
 

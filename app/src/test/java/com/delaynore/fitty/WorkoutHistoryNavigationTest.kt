@@ -43,9 +43,9 @@ class WorkoutHistoryNavigationTest {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             compose.onNodeWithText("История").performClick()
-            awaitText("День А")
+            compose.awaitText("День А")
             compose.onNodeWithText("День А").performClick()
-            awaitText("60,5 кг × 8")
+            compose.awaitText("60,5 кг × 8")
             compose.onNodeWithText("Жим штанги лёжа").assertIsDisplayed()
 
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
@@ -60,7 +60,7 @@ class WorkoutHistoryNavigationTest {
     fun cancellingWorkoutRequiresConfirmationAndReturnsToTheTrainingDay() {
         createWorkout()
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitText("Записано подходов: 1")
+            compose.awaitText("Записано подходов: 1")
             compose.onNodeWithText("Отменить тренировку").performClick()
             compose.onNodeWithText("Отменить тренировку?").assertIsDisplayed()
             compose.onNodeWithText("Оставить тренировку").performClick()
@@ -85,11 +85,5 @@ class WorkoutHistoryNavigationTest {
         val exercise = requireNotNull(container.workouts.observeWorkout(workoutId).first()).exercises.single()
         assertTrue(container.workouts.logSet(workoutId, exercise, LoggedSet(1, SetResult.WeightAndReps(60.5, 8))))
         workoutId
-    }
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
     }
 }

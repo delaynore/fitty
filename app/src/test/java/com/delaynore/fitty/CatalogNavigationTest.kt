@@ -106,11 +106,7 @@ class CatalogNavigationTest {
 
     private fun back() = compose.onNodeWithContentDescription("Назад").performClick()
 
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text) and !hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
-        }
-    }
+    private fun awaitText(text: String) = compose.awaitNode(hasText(text) and !hasSetTextAction())
 }
 
 class CatalogNavigationTestApplication : FittyApplication() {

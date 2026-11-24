@@ -7,7 +7,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -88,7 +87,7 @@ class SettingsTest {
                     FittyUpdate(installed.versionName.orEmpty(), nextBuild, "https://github.com/delaynore/fitty/releases/download/test/fitty-$nextBuild.apk"),
                 ),
             )
-            awaitText("Доступно обновление")
+            compose.awaitText("Доступно обновление")
             compose.onNodeWithText("Доступно обновление").assertIsDisplayed()
             compose.onNodeWithText("Версия ${installed.versionName} · сборка $nextBuild").assertIsDisplayed()
         }
@@ -101,10 +100,10 @@ class SettingsTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             awaitLoggedSet()
             compose.onNodeWithText("Продолжить тренировку").performClick()
-            awaitText("Завершить")
+            compose.awaitText("Завершить")
             compose.onNodeWithText("Завершить").performClick()
             compose.onNodeWithText("Завершить тренировку").performClick()
-            awaitText("60 кг × 6")
+            compose.awaitText("60 кг × 6")
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
             findUpdate()
@@ -121,12 +120,12 @@ class SettingsTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitLoggedSet()
             compose.onNodeWithText("Продолжить тренировку").performClick()
-            awaitText("Завершить")
+            compose.awaitText("Завершить")
             compose.onNodeWithContentDescription("Назад").performClick()
 
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Продолжить обновление?")
+            compose.awaitText("Продолжить обновление?")
             compose.onNodeWithText("Продолжить обновление?").assertIsDisplayed()
             compose.onNodeWithText("Сохранённые программы и записанные подходы останутся. Несохранённый ввод может пропасть.")
                 .assertIsDisplayed()
@@ -134,7 +133,7 @@ class SettingsTest {
             compose.runOnIdle { assertFalse(updates.downloadStarted.isCompleted) }
 
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Продолжить обновление?")
+            compose.awaitText("Продолжить обновление?")
             compose.onNodeWithText("Продолжить").performClick()
             compose.onNodeWithText("Продолжить обновление?").assertDoesNotExist()
             assertInstallerOpened(updates)
@@ -145,14 +144,14 @@ class SettingsTest {
     fun unsavedProgramWarnsBeforeDownloadAndRemainsInTheEditor() {
         val updates = offerUpdate()
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
             compose.onNodeWithText("Создать программу").performClick()
             compose.onNodeWithTag("program-name").performTextInput("Черновик программы")
 
             compose.onNodeWithContentDescription("Настройки").performClick()
             compose.onNodeWithText("Проверить обновления").performClick()
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Продолжить обновление?")
+            compose.awaitText("Продолжить обновление?")
             compose.onNodeWithText("Продолжить обновление?").assertIsDisplayed()
             compose.onNodeWithText("Назад").performClick()
             compose.runOnIdle { assertFalse(updates.downloadStarted.isCompleted) }
@@ -162,7 +161,7 @@ class SettingsTest {
 
             compose.onNodeWithContentDescription("Настройки").performClick()
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Продолжить обновление?")
+            compose.awaitText("Продолжить обновление?")
             compose.onNodeWithText("Продолжить").performClick()
             assertInstallerOpened(updates)
         }
@@ -175,7 +174,7 @@ class SettingsTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Скачиваем обновление…")
+            compose.awaitText("Скачиваем обновление…")
             compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
             compose.onNodeWithText("История").performClick()
             compose.runOnIdle { download.complete(UpdateDownloadResult.Downloaded(updates.apk)) }
@@ -197,7 +196,7 @@ class SettingsTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             findUpdate()
             compose.onNodeWithText("Обновить").performClick()
-            awaitText("Скачиваем обновление…")
+            compose.awaitText("Скачиваем обновление…")
             compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
 
             scenario.moveToState(Lifecycle.State.STARTED)
@@ -248,13 +247,7 @@ class SettingsTest {
     }
 
     private fun awaitLoggedSet() {
-        awaitText("Записано подходов: 1")
-    }
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
+        compose.awaitText("Записано подходов: 1")
     }
 
     private fun assertProgress(progress: ProgressBarRangeInfo) {

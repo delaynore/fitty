@@ -74,6 +74,8 @@ internal sealed interface TabRoute
 @Serializable private data class ProgramEditorGraph(val programId: Long? = null)
 @Serializable internal object ProgramEditorRoute
 @Serializable private data class DayEditorRoute(val dayId: Long)
+// Exercise picking routes repeat flat dayId and replaceId fields: a nested @Serializable argument
+// would need a custom NavType. pickExercise keeps the shared selection logic in one place.
 @Serializable private data class PickExerciseRoute(val dayId: Long, val replaceId: Long? = null)
 @Serializable private data class PickExerciseCardRoute(val dayId: Long, val replaceId: Long?, val exerciseId: String)
 @Serializable private data class CreateExerciseRoute(val dayId: Long, val name: String, val replaceId: Long?)
@@ -177,10 +179,7 @@ internal fun FittyNavigation(container: AppContainer) {
                     val (dayId, replaceId) = entry.toRoute<PickExerciseRoute>()
                     val editor = programEditor(nav, entry, container)
                     val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
-                    val select: (CatalogExercise) -> Unit = {
-                        editor.selectExercise(it, replaceId)
-                        nav.popBackStack(DayEditorRoute(dayId), inclusive = false)
-                    }
+                    val select: (CatalogExercise) -> Unit = { nav.pickExercise(editor, dayId, replaceId, it) }
                     ExerciseCatalogScreen(
                         viewModel = catalog,
                         onBack = back,
@@ -194,8 +193,7 @@ internal fun FittyNavigation(container: AppContainer) {
                     val editor = programEditor(nav, entry, container)
                     val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
                     CatalogCard(catalog, exerciseId, back, replacing = replaceId != null, onSelect = {
-                        editor.selectExercise(it, replaceId)
-                        nav.popBackStack(DayEditorRoute(dayId), inclusive = false)
+                        nav.pickExercise(editor, dayId, replaceId, it)
                     })
                 }
                 composable<CreateExerciseRoute> { entry ->
@@ -212,8 +210,7 @@ internal fun FittyNavigation(container: AppContainer) {
                         }
                     }
                     ExerciseEditorDestination(exercise, back) {
-                        editor.selectExercise(it, route.replaceId)
-                        nav.popBackStack(DayEditorRoute(route.dayId), inclusive = false)
+                        nav.pickExercise(editor, route.dayId, route.replaceId, it)
                     }
                 }
                 composable<EditorSettingsRoute> { entry ->
@@ -287,6 +284,16 @@ private fun NavHostController.selectTab(route: TabRoute) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+private fun NavHostController.pickExercise(
+    editor: ProgramEditorViewModel,
+    dayId: Long,
+    replaceId: Long?,
+    exercise: CatalogExercise,
+) {
+    editor.selectExercise(exercise, replaceId)
+    popBackStack(DayEditorRoute(dayId), inclusive = false)
 }
 
 @Composable

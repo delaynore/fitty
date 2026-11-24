@@ -1,6 +1,5 @@
 package com.delaynore.fitty
 
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,22 +26,16 @@ class ProgramEditorRestorationTest {
     @Test
     fun restoredDayRouteReturnsHomeWhenTheProgramDraftIsGone() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
             tap("Создать программу")
-            awaitText("Добавить день")
+            compose.awaitText("Добавить день")
             tap("Добавить день")
-            awaitText("Тренировочный день")
+            compose.awaitText("Тренировочный день")
             scenario.onActivity { it.viewModelStore.clear() }
             scenario.recreate()
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
         }
     }
 
     private fun tap(text: String) = compose.onNodeWithText(text).performClick()
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
-    }
 }

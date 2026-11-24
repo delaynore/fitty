@@ -32,25 +32,25 @@ class ProgramsTest {
     @SmokeTest
     fun systemBackKeepsDayDraftAndConfirmsLeavingTheProgram() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
             tap("Создать программу")
             replace("program-name", "Силовая")
             tap("Добавить день")
             replace("day-name", "Мой день")
             closeSoftKeyboard()
             pressBack()
-            awaitText("Мой день")
+            compose.awaitText("Мой день")
             tap("Мой день")
             compose.onNodeWithTag("day-name").assert(hasText("Мой день"))
             pressBack()
-            awaitText("Мой день")
+            compose.awaitText("Мой день")
             pressBack()
-            awaitText("Выйти без сохранения?")
+            compose.awaitText("Выйти без сохранения?")
             tap("Продолжить редактирование")
-            awaitText("Мой день")
+            compose.awaitText("Мой день")
             pressBack()
             tap("Выйти")
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
         }
     }
 
@@ -60,11 +60,5 @@ class ProgramsTest {
         val field = compose.onNodeWithTag(tag).performScrollTo()
         field.performClick()
         field.performTextReplacement(text)
-    }
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
     }
 }

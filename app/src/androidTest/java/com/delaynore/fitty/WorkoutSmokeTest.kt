@@ -3,7 +3,6 @@ package com.delaynore.fitty
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -38,10 +37,10 @@ class WorkoutSmokeTest {
     @Test
     fun launchesWithCleanData() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitText("Создать программу")
+            compose.awaitText("Создать программу")
             compose.onNodeWithText("Создать программу").assertIsDisplayed()
             compose.onNodeWithText("История").performClick()
-            awaitText("Завершённых тренировок пока нет")
+            compose.awaitText("Завершённых тренировок пока нет")
         }
     }
 
@@ -63,20 +62,20 @@ class WorkoutSmokeTest {
                 closeSoftKeyboard()
                 compose.onNodeWithText("Завершить").performClick()
                 compose.onNodeWithText("Завершить тренировку").performClick()
-                awaitText("60,5 кг × 8")
+                compose.awaitText("60,5 кг × 8")
             }
 
             // Closing the Activity discards its ViewModels. Keep the Room file and reopen it.
             instrumentation.runOnMainSync { application.closeDatabase() }
 
             ActivityScenario.launch(MainActivity::class.java).use {
-                awaitText("Силовая")
+                compose.awaitText("Силовая")
                 compose.onNodeWithText("История").performClick()
-                awaitText("День А")
+                compose.awaitText("День А")
                 val date = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMMM uuuu", Locale.forLanguageTag("ru")))
                 compose.onNodeWithText(date).assertIsDisplayed()
                 compose.onNodeWithText("День А").performClick()
-                awaitText("60,5 кг × 8")
+                compose.awaitText("60,5 кг × 8")
                 compose.onNodeWithText("Жим штанги лёжа").assertIsDisplayed()
                 compose.onNodeWithText("60,5 кг × 8").assertIsDisplayed()
             }
@@ -87,12 +86,6 @@ class WorkoutSmokeTest {
             shell("svc wifi $wifi")
             compose.waitUntil(timeoutMillis = 5_000) { wifiEnabled() == wifiWasEnabled }
             assertEquals(wasInAirplaneMode, airplaneModeEnabled())
-        }
-    }
-
-    private fun awaitText(text: String) {
-        compose.waitUntil(timeoutMillis = 5_000) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
