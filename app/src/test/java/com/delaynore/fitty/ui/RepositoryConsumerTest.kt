@@ -266,6 +266,31 @@ class RepositoryConsumerTest {
     }
 
     @Test
+    fun workoutRejectsInvalidCorrectionsAndKeepsTheLoggedSet() = runTest {
+        val set = LoggedSet(1, SetResult.WeightAndReps(60.5, 6))
+        val exercise = WorkoutExercise(8, "Жим", listOf(set))
+        val workouts = FakeWorkoutsRepository(mapOf(4L to workout(exercise)))
+        val workoutId = requireNotNull(workouts.startWorkout(4))
+        val active = ActiveWorkoutState(
+            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, FakeExerciseCatalogRepository(), backgroundScope,
+        )
+        active.open(workoutId)
+        runCurrent()
+
+        active.openSetEditor(exercise, 1, set)
+        active.changeSetEdit(SetInputField.Weight, "62.50001")
+        active.changeSetEdit(SetInputField.Measure, "0")
+        active.saveSetEdit(workoutId)
+        runCurrent()
+
+        assertEquals(
+            SetInputErrors("Введи вес, например 62,5", "Целое число от 1"),
+            active.uiState.value.editingSet?.input?.errors,
+        )
+        assertEquals(listOf(set), active.uiState.value.session?.exercises?.single()?.sets)
+    }
+
+    @Test
     fun historyLoadsOnlySelectedDetailsAndValidatesBeforeUpdatingTheSet() = runTest {
         val set = LoggedSet(1, SetResult.Reps(8), id = 12)
         val exercise = WorkoutExercise(8, "Pull-up", listOf(set), type = ExerciseType.REPS)
