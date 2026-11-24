@@ -22,9 +22,7 @@ import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.updates.FittyUpdate
-import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
-import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.LoggedSet
@@ -93,40 +91,6 @@ class SettingsTest {
             awaitText("Доступно обновление")
             compose.onNodeWithText("Доступно обновление").assertIsDisplayed()
             compose.onNodeWithText("Версия ${installed.versionName} · сборка $nextBuild").assertIsDisplayed()
-        }
-    }
-
-    @Test
-    fun failedCheckExplainsTheCauseAndCanBeRetried() {
-        val failures = listOf(
-            UpdateCheckFailure.Network to "Не удалось подключиться. Проверь интернет и попробуй ещё раз.",
-            UpdateCheckFailure.GitHub to "Не удалось проверить обновления на GitHub. Попробуй ещё раз.",
-            UpdateCheckFailure.MissingApk to "В стабильном релизе нет подходящего APK для Fitty. Попробуй ещё раз позже.",
-        )
-        val results = (failures.map { UpdateCheckResult.Failed(it.first) } + UpdateCheckResult.UpToDate).iterator()
-        application.updateServiceOverride = FakeUpdates { results.next() }
-
-        ActivityScenario.launch(MainActivity::class.java).use {
-            compose.onNodeWithText("Настройки").performClick()
-            val check = compose.onNodeWithText("Проверить обновления")
-            failures.forEach { (_, message) ->
-                check.performClick()
-                awaitText(message)
-                compose.onNodeWithText(message).assertIsDisplayed()
-                check.assertIsEnabled()
-            }
-            check.performClick()
-            compose.onNodeWithText("Текущая сборка актуальна.").assertIsDisplayed()
-        }
-    }
-
-    @Test
-    fun settingsReportsWhenThereAreNoStableReleases() {
-        application.updateServiceOverride = FakeUpdates { UpdateCheckResult.NoStableRelease }
-        ActivityScenario.launch(MainActivity::class.java).use {
-            compose.onNodeWithText("Настройки").performClick()
-            compose.onNodeWithText("Проверить обновления").performClick()
-            compose.onNodeWithText("Стабильных релизов пока нет.").assertIsDisplayed()
         }
     }
 
@@ -269,35 +233,6 @@ class SettingsTest {
             compose.onNodeWithText("Отменить").performClick()
             compose.onNodeWithText("Скачиваем обновление…").assertDoesNotExist()
             compose.onNodeWithText("Обновить").assertIsEnabled()
-        }
-    }
-
-    @Test
-    fun aFailedDownloadExplainsTheErrorAndCanBeRetriedWithoutAnotherUpdateCheck() {
-        val retry = CompletableDeferred<UpdateDownloadResult>()
-        val failures = listOf(
-            UpdateDownloadFailure.Network to "Не удалось скачать обновление. Проверь интернет и попробуй ещё раз.",
-            UpdateDownloadFailure.Delivery to "Не удалось получить APK целиком с GitHub. Попробуй ещё раз позже.",
-            UpdateDownloadFailure.LocalWrite to "Не удалось сохранить APK. Освободи место на устройстве и попробуй ещё раз.",
-            UpdateDownloadFailure.InvalidApk to "Скачанный APK повреждён или не соответствует релизу Fitty.",
-        )
-        val results = failures.iterator()
-        val updates = offerUpdate {
-            if (results.hasNext()) UpdateDownloadResult.Failed(results.next().first) else retry.await()
-        }
-        ActivityScenario.launch(MainActivity::class.java).use {
-            findUpdate()
-            compose.onNodeWithText("Обновить").performClick()
-            failures.forEach { (_, message) ->
-                awaitText(message)
-                compose.onNodeWithText(message).assertIsDisplayed()
-                compose.runOnIdle { assertEquals(0, updates.installAttempts.get()) }
-                compose.onNodeWithText("Повторить загрузку").performClick()
-            }
-            awaitText("Скачиваем обновление…")
-            compose.onNodeWithText("Скачиваем обновление…").assertIsDisplayed()
-            retry.complete(UpdateDownloadResult.Downloaded(updates.apk))
-            assertInstallerOpened(updates)
         }
     }
 

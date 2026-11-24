@@ -71,9 +71,7 @@ class WorkoutTimerScreenTest {
             awaitText("Стоп")
             compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
 
-            val service = Robolectric.buildService(SetTimerSignalService::class.java).create()
-            service.get().onStartCommand(null, 0, 1)
-            try {
+            withSetTimerSignalService {
                 scenario.moveToState(Lifecycle.State.CREATED)
                 application.workoutTimeMillis = 49_999L
                 compose.waitForIdle()
@@ -99,8 +97,6 @@ class WorkoutTimerScreenTest {
 
                 tap("Сохранить")
                 awaitText("49 с")
-            } finally {
-                service.destroy()
             }
         }
         assertPersistedHistoryDuration(49)
@@ -153,10 +149,20 @@ class WorkoutTimerScreenTest {
             val restored = requireNotNull(application.setTimerSignals.pending.value)
             assertEquals(original, restored)
             assertEquals(50_000L, restored.deadlineMillis)
-            application.workoutTimeMillis = 50_000L
+            withSetTimerSignalService {
+                application.workoutTimeMillis = 49_999L
+                compose.waitForIdle()
+                assertEquals(0, application.cues)
 
-            tap("Стоп")
-            awaitLogged(1, "40")
+                application.workoutTimeMillis = 50_000L
+                compose.waitUntil(timeoutMillis = 5_000) { application.cues == 1 }
+                application.workoutTimeMillis = 51_000L
+                awaitText("0:41")
+                assertEquals(1, application.cues)
+                tap("Стоп")
+                awaitLogged(1, "41")
+                assertNull(application.setTimerSignals.pending.value)
+            }
         }
     }
 
@@ -285,6 +291,16 @@ class WorkoutTimerScreenTest {
             awaitTag("workout-logged-weight-2")
             compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
             compose.onNodeWithTag("workout-logged-weight-2", useUnmergedTree = true).assertTextEquals("65")
+        }
+    }
+
+    private fun withSetTimerSignalService(block: () -> Unit) {
+        val service = Robolectric.buildService(SetTimerSignalService::class.java).create()
+        try {
+            service.get().onStartCommand(null, 0, 1)
+            block()
+        } finally {
+            service.destroy()
         }
     }
 

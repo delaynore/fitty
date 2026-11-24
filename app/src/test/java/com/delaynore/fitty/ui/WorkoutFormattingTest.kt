@@ -17,7 +17,11 @@ class WorkoutFormattingTest {
             ExerciseType.DISTANCE to listOf("Дистанция, м"),
         )
         for ((type, labels) in expectedLabels) {
-            assertEquals(labels, listOfNotNull(type.weightLabel, type.measureLabel))
+            val fieldLabels = buildList {
+                if (type.hasWeightField) add(SET_WEIGHT_LABEL)
+                add(type.measureLabel)
+            }
+            assertEquals(labels, fieldLabels)
         }
     }
 

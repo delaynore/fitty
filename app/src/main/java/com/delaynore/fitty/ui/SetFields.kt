@@ -44,12 +44,12 @@ internal fun SetFields(
     showLabels: Boolean,
     keepDraftBuffer: Boolean = true,
 ) {
-    input.type.weightLabel?.let { weightLabel ->
+    if (input.type.hasWeightField) {
         SetField(
             value = input.weight,
             onValueChange = { onFieldChange(SetInputField.Weight, it) },
             enabled = enabled,
-            label = if (showLabels) ({ Text(weightLabel) }) else null,
+            label = if (showLabels) ({ Text(SET_WEIGHT_LABEL) }) else null,
             error = input.errors?.weight,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             modifier = weightModifier,

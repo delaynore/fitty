@@ -9,12 +9,13 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
-import com.delaynore.fitty.ui.weightLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,7 +51,7 @@ class WorkoutReplacementStateTest {
         val replacement = requireNotNull(state.session).exercises.single()
         assertEquals("push-up", replacement.catalogExerciseId)
         assertEquals(ExerciseType.REPS, replacement.type)
-        assertNull(replacement.type.weightLabel)
+        assertFalse(replacement.type.hasWeightField)
         assertEquals("Повторения", replacement.type.measureLabel)
     }
 

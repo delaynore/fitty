@@ -69,16 +69,17 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
+import com.delaynore.fitty.ui.SET_WEIGHT_LABEL
 import com.delaynore.fitty.ui.SetFields
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputField
 import com.delaynore.fitty.ui.SwipeToRevealDelete
 import com.delaynore.fitty.ui.formatRecommendation
 import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
 import com.delaynore.fitty.ui.toInput
-import com.delaynore.fitty.ui.weightLabel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -625,8 +626,8 @@ private fun SetHeadings(type: ExerciseType, modifier: Modifier = Modifier) {
     ProvideTextStyle(MaterialTheme.typography.labelMedium) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("№", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            type.weightLabel?.let { weightLabel ->
-                Text(weightLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (type.hasWeightField) {
+                Text(SET_WEIGHT_LABEL, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(type.measureLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("✓", Modifier.width(48.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -643,7 +644,7 @@ private fun DraftSetRow(
     onLog: () -> Unit,
     firstFieldModifier: Modifier,
 ) {
-    val hasWeight = input.type.weightLabel != null
+    val hasWeight = input.type.hasWeightField
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
