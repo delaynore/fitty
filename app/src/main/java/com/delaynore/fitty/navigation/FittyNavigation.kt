@@ -65,23 +65,24 @@ import com.delaynore.fitty.ui.workout.WorkoutViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
-private sealed interface TabRoute
+internal sealed interface TabRoute
 
-@Serializable private object HomeRoute : TabRoute
-@Serializable private object ProgramsRoute
+// Serialization looks up object instances reflectively on the JVM.
+@Serializable internal object HomeRoute : TabRoute
+@Serializable internal object ProgramsRoute
 @Serializable private data class ProgramDetailsRoute(val programId: Long)
 @Serializable private data class ProgramEditorGraph(val programId: Long? = null)
-@Serializable private object ProgramEditorRoute
+@Serializable internal object ProgramEditorRoute
 @Serializable private data class DayEditorRoute(val dayId: Long)
 @Serializable private data class PickExerciseRoute(val dayId: Long, val replaceId: Long? = null)
 @Serializable private data class PickExerciseCardRoute(val dayId: Long, val replaceId: Long?, val exerciseId: String)
 @Serializable private data class CreateExerciseRoute(val dayId: Long, val name: String, val replaceId: Long?)
 @Serializable private data class WorkoutRoute(val workoutId: Long)
-@Serializable private object HistoryRoute : TabRoute
+@Serializable internal object HistoryRoute : TabRoute
 @Serializable private data class WorkoutDetailsRoute(val workoutId: Long)
-@Serializable private object SettingsRoute : TabRoute
-@Serializable private object EditorSettingsRoute
-@Serializable private object BrowseCatalogRoute
+@Serializable internal object SettingsRoute : TabRoute
+@Serializable internal object EditorSettingsRoute
+@Serializable internal object BrowseCatalogRoute
 @Serializable private data class ExerciseCardRoute(val exerciseId: String)
 @Serializable private data class EditExerciseRoute(val exerciseId: String)
 
