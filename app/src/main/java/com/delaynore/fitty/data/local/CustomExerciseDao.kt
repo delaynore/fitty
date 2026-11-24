@@ -22,7 +22,7 @@ internal data class CustomExerciseEntity(
 
 @Dao
 internal interface CustomExerciseDao {
-    @Query("SELECT * FROM custom_exercises ORDER BY name, id")
+    @Query("SELECT * FROM custom_exercises")
     fun observeAll(): Flow<List<CustomExerciseEntity>>
 
     @Insert

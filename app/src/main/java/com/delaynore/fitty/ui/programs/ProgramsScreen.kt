@@ -30,6 +30,7 @@ import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+import com.delaynore.fitty.ui.UiEventEffect
 import com.delaynore.fitty.ui.formatRecommendation
 
 @Composable
@@ -41,7 +42,8 @@ internal fun ProgramsScreen(
     onSelected: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProgramsContent(state, onBack, onCreate, onDetails, onSelect = { viewModel.selectProgram(it, onSelected) })
+    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { onSelected() }
+    ProgramsContent(state, onBack, onCreate, onDetails, onSelect = viewModel::selectProgram)
 }
 
 @Composable

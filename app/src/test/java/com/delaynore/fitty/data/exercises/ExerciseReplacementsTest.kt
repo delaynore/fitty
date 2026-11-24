@@ -25,4 +25,18 @@ class ExerciseReplacementsTest {
     fun unknownExerciseHasNoReplacements() {
         assertEquals(ExerciseReplacements(), BuiltInExercises.all.replacementsFor("missing"))
     }
+
+    @Test
+    fun sameMuscleUsesCanonicalOrderWithoutChangingSimilarPairPriority() {
+        val source = CatalogExercise("barbell-bench-press", "Source", ExerciseType.REPS, primaryMuscle = MuscleGroup.CHEST)
+        val similar = CatalogExercise("dumbbell-bench-press", "Similar", ExerciseType.REPS, primaryMuscle = MuscleGroup.CHEST)
+        val customYo = CatalogExercise("custom:yo", "Ёж", ExerciseType.REPS, primaryMuscle = MuscleGroup.CHEST)
+        val builtInYe = CatalogExercise("ye", "еж", ExerciseType.REPS, primaryMuscle = MuscleGroup.CHEST)
+        val first = CatalogExercise("first", "Армейский жим", ExerciseType.REPS, primaryMuscle = MuscleGroup.CHEST)
+
+        val replacements = listOf(customYo, similar, builtInYe, source, first).replacementsFor(source.id)
+
+        assertEquals(listOf(similar.id), replacements.similar.map(CatalogExercise::id))
+        assertEquals(listOf(first.id, builtInYe.id, customYo.id), replacements.sameMuscle.map(CatalogExercise::id))
+    }
 }

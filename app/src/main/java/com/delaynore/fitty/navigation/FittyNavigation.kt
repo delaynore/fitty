@@ -64,6 +64,8 @@ import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import com.delaynore.fitty.ui.settings.SettingsScreen
 import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
 import com.delaynore.fitty.ui.workout.WorkoutScreen
+import com.delaynore.fitty.ui.UiEventEffect
+import com.delaynore.fitty.ui.exercises.ExerciseEditorEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
@@ -340,7 +342,7 @@ private fun ProgramEditorDestination(editor: ProgramEditorViewModel, nav: NavHos
     ProgramEditorScreen(
         viewModel = editor,
         onBack = back,
-        onEditDay = { editor.uiState.value.editingDayId?.let { nav.navigate(DayEditorRoute(it)) } },
+        onEditDay = { nav.navigate(DayEditorRoute(it)) },
         onSettings = { nav.navigate(EditorSettingsRoute) },
         onSaved = exit,
     )
@@ -355,8 +357,8 @@ private fun ExerciseEditorDestination(
     val state by editor.uiState.collectAsStateWithLifecycle()
     val back = { if (editor.uiState.value.draft?.saving != true) onBack() }
     BackHandler(onBack = back)
-    LaunchedEffect(state.savedExercise) {
-        state.savedExercise?.let(onSaved)
+    UiEventEffect(state.pendingEvent, editor::consumeEvent) { event ->
+        if (event is ExerciseEditorEvent.Saved) onSaved(event.exercise)
     }
     ExerciseEditorScreen(editor, back)
 }

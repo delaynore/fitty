@@ -23,9 +23,10 @@ internal data class ExerciseEditorState(
 
 internal data class ExerciseEditorUiState(
     val draft: ExerciseEditorState? = null,
-    val savedExercise: CatalogExercise? = null,
     val draftVersion: Long = 0,
+    val pendingEvent: ExerciseEditorEvent? = null,
 )
+internal sealed interface ExerciseEditorEvent { data class Saved(val exercise: CatalogExercise) : ExerciseEditorEvent }
 
 internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepository) : ViewModel() {
     private val state = MutableStateFlow(ExerciseEditorUiState())
@@ -73,7 +74,7 @@ internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepos
             try {
                 val saved = current.details?.also { catalog.saveDetails(it) }
                     ?: catalog.create(current.name, type)
-                state.update { if (it.draftVersion == version) it.copy(savedExercise = saved) else it }
+                state.update { if (it.draftVersion == version) it.copy(pendingEvent = ExerciseEditorEvent.Saved(saved)) else it }
             } catch (_: StorageException) {
                 state.update {
                     if (it.draftVersion == version) {
@@ -84,5 +85,9 @@ internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepos
                 }
             }
         }
+    }
+
+    fun consumeEvent(event: ExerciseEditorEvent) {
+        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 }

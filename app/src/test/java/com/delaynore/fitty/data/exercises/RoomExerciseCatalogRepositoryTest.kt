@@ -9,6 +9,7 @@ import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.RoomWorkoutsRepository
+import com.delaynore.fitty.domain.catalogExerciseComparator
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -22,6 +23,30 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class RoomExerciseCatalogRepositoryTest {
+    @Test
+    fun customExerciseIsMergedIntoTheCanonicalCatalogOrder() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databaseName = "catalog-order-test.db"
+        context.deleteDatabase(databaseName)
+        try {
+            runBlocking {
+                withTimeout(10_000) {
+                    withDatabase(context, databaseName) { database ->
+                        val catalog = RoomExerciseCatalogRepository(database)
+                        val custom = catalog.create("мертвый жук", ExerciseType.REPS)
+                        val exercises = catalog.allExercises.first()
+                        val builtInIndex = exercises.indexOfFirst { it.id == "dead-bug" }
+
+                        assertEquals(exercises.sortedWith(catalogExerciseComparator), exercises)
+                        assertEquals(builtInIndex + 1, exercises.indexOf(custom))
+                    }
+                }
+            }
+        } finally {
+            context.deleteDatabase(databaseName)
+        }
+    }
+
     @Test
     fun editedCustomExerciseReopensInTheCatalogAndCanBeUsedInAnotherDay() {
         val context = ApplicationProvider.getApplicationContext<Context>()

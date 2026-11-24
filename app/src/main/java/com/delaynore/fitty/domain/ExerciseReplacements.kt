@@ -41,7 +41,9 @@ internal fun List<CatalogExercise>.replacementsFor(sourceId: String): ExerciseRe
         }
     }.toSet() - sourceId
     val sameMuscle = source.primaryMuscle?.let { muscle ->
-        byId.values.filter { it.primaryMuscle == muscle && it.id != sourceId && it.id !in similarIds }
+        byId.values
+            .filter { it.primaryMuscle == muscle && it.id != sourceId && it.id !in similarIds }
+            .sortedWith(catalogExerciseComparator)
     }.orEmpty()
     return ExerciseReplacements(similarIds.mapNotNull(byId::get), sameMuscle)
 }

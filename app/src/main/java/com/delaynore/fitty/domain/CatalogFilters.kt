@@ -15,8 +15,8 @@ internal data class CatalogFilters(
 ) {
     val activeCount: Int get() = listOf(muscle != null, availableEquipment.isNotEmpty()).count { it }
     fun applyTo(exercises: List<CatalogExercise>, query: String): List<CatalogExercise> {
-        val name = query.trim().lowercase().replace('ё', 'е')
-        return exercises.filter { it.name.lowercase().replace('ё', 'е').contains(name) && matches(it) }
+        val name = normalizeExerciseName(query)
+        return exercises.filter { normalizeExerciseName(it.name).contains(name) && matches(it) }
     }
     private fun matches(exercise: CatalogExercise): Boolean {
         val matchesMuscle = muscle == null || when (role) {
