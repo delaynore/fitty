@@ -2,7 +2,7 @@ name: ATD spike
 on:
   push:
     branches: [prototype/test-environment-spike]
-    paths: ['.github/workflows/atd-spike-trigger']
+    paths: ['.github/workflows/atd-spike.yml']
 permissions:
   contents: read
 jobs:
@@ -10,7 +10,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        pass: [1, 2, 3]
+        pass: [1, 2]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
@@ -33,7 +33,7 @@ jobs:
           path: |
             ~/.android/avd
             ~/.android/adb*
-          key: atd-spike-${{ github.run_id }}-api36-x86_64
+          key: atd-spike-45345067665-api36-x86_64
       - name: Create clean snapshot
         if: steps.avd.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -45,6 +45,17 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: adb shell getprop sys.boot_completed
       - name: Boot cached AVD and run offline workout
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: aosp_atd
+          arch: x86_64
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: bash ./gradlew :app:connectedDebugAndroidTest --configuration-cache '-Pandroid.testInstrumentationRunnerArguments.class=com.delaynore.fitty.InProgressWorkoutTest#recordedAndCorrectedSetSurvivesReopeningAndCanBeFinishedOffline'
+      - name: Verify Gradle reuses the configuration
+        if: matrix.pass == 2
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
