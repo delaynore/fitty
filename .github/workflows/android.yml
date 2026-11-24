@@ -25,7 +25,7 @@ jobs:
           - name: Debug build
             task: ':app:assembleDebug'
           - name: Android lint
-            task: ':app:lintDebug'
+            task: ':app:lintDebug -Pkotlin.compiler.execution.strategy=in-process'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
