@@ -25,7 +25,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36])
 class SetFieldsCursorTest {
     @get:Rule
     val compose = createComposeRule()
@@ -42,7 +47,8 @@ class SetFieldsCursorTest {
             state.update {
                 val rows = it.rows(exerciseId)
                 val current = rows.inputs.getValue(position)
-                it.copy(rowsByExercise = mapOf(exerciseId to rows.copy(inputs = mapOf(position to change(current)))))
+                val updatedRows = rows.copy(inputs = mapOf(position to change(current)))
+                it.copy(rowsByExercise = mapOf(exerciseId to updatedRows))
             }
         }
 

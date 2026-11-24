@@ -2,7 +2,15 @@
 
 ## Run checks
 
-Set up JDK 17 and the Android SDK as described below. From the repository root, run the JVM tests, build the app, and run Android lint.
+Set up JDK 21 and the Android SDK as described below. Gradle and the Kotlin toolchain use JDK 21 and target Java 17 bytecode for app code.
+
+From the repository root, run one JVM class while you work. This example reruns the Robolectric cursor test on API 36. A targeted run should take at most 15 seconds once Gradle is warm.
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest --tests com.delaynore.fitty.SetFieldsCursorTest --rerun
+```
+
+Before handoff, run the full JVM suite, build the app, and run Android lint.
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
@@ -15,11 +23,11 @@ Start a dedicated Android emulator and list connected devices to find its serial
 .\scripts\test-android.ps1 -Serial emulator-5556
 ```
 
-The script prints the test log path under `build/reports/android-device/`. GitHub Actions runs build and lint on every pull request and runs the JVM tests before starting the Android 16 emulator for instrumented tests.
+The script prints the test log path under `build/reports/android-device/`. The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, and Android lint in parallel on each push to a pull request. The three checks should finish within two minutes of workflow creation with warm caches. A separate Android 16 emulator job runs the full instrumented suite and uploads its reports.
 
 ## Build and sign an APK
 
-Install JDK 17 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
+Install JDK 21 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
 
 Create a signing key once, before the first installation. Keep the keystore and its password outside the repository. Back up the key so you can sign future updates with it.
 
