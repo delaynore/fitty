@@ -24,6 +24,8 @@ jobs:
             cache-robolectric: true
           - name: Debug build
             task: ':app:assembleDebug'
+          - name: Release build
+            task: ':app:assembleRelease'
           - name: Android lint
             task: ':app:lintDebug -Pkotlin.compiler.execution.strategy=in-process'
     steps:

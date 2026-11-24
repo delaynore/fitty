@@ -21,7 +21,7 @@ From the repository root, run one JVM class while you work. This example reruns 
 Before handoff, run the full JVM suite, build the app, and run Android lint.
 
 ```powershell
-.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:lintDebug
 ```
 
 Start a dedicated Android emulator with animations disabled. CI uses AOSP ATD API 36 on x86_64. Run the Smoke tests on the emulator by passing its serial to the script. The tests use a separate Room database and temporarily toggle airplane mode.
@@ -33,7 +33,7 @@ Start a dedicated Android emulator with animations disabled. CI uses AOSP ATD AP
 
 The script prints the test log path under `build/reports/android-device/`. It selects methods marked with `@SmokeTest` when you pass `-Smoke`. Omit the switch to run the full instrumented suite while investigating a failure.
 
-The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, and Android lint in parallel on each push to a pull request. The three checks should finish within two minutes of workflow creation with warm caches.
+The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, the unsigned release build, and Android lint in parallel on each push to a pull request. The four checks should finish within two minutes of workflow creation with warm caches.
 
 The [Android Smoke workflow](../.github/workflows/android-smoke.yml) checks whether a PR into the default branch changes the Android app or its build. Add the `android-smoke` label to run Smoke on the PR's current commit. With the label in place, a new commit gets its own run. The gate accepts a successful run for that same SHA and passes without Smoke for changes outside the Android app and build. For a release, run **Android Smoke** manually in Actions and select the release branch or tag. The emulator job should finish within four minutes of starting with warm caches. Its Gradle output and the `android-smoke-results` artifact contain the results.
 
@@ -69,6 +69,8 @@ if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed' }
 ```
 
 For an update, compare the `Signer #1 certificate SHA-256 digest` with the previous signed APK. Check that `aapt` reports `com.delaynore.fitty`, the new `versionCode`, and the chosen `versionName`. [Android signing and verification](https://developer.android.com/tools/apksigner)
+
+Install the signed release APK and check navigation between Home, History, Settings, program details, and workout screens. Create a custom exercise and open it again from the exercise catalog. Start a workout and check both the exercise timer and rest timer, including returning to the workout after leaving the app.
 
 ## Publish on GitHub
 
