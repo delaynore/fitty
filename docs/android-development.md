@@ -2,6 +2,14 @@
 
 ## Run checks
 
+Choose the lightest test layer that catches the regression. Start with a targeted test and run the full JVM suite before handoff.
+
+- Use plain JVM tests by default for logic and state. Use a focused Robolectric test when the regression needs Android APIs or Compose behavior such as cursor selection. Use isolated Room tests for SQL and migrations.
+- Add an instrumented test only for a regression the lower layers cannot catch. Prefer extending an existing Smoke scenario. Keep Smoke within four minutes from job start to result with warm caches.
+- Check ordinary UI, copy, buttons, and layout manually. Fitty does not use screenshot tests.
+
+Once these rules justify a Compose test, use [Compose UI testing patterns](../.agents/skills/compose-ui-testing-patterns/SKILL.md) for mechanics such as semantics, input, and synchronization. Use the Fitty rules above to decide whether to automate and which layer to use.
+
 Set up JDK 21 and the Android SDK as described below. Gradle and the Kotlin toolchain use JDK 21 and target Java 17 bytecode for app code.
 
 From the repository root, run one JVM class while you work. This example reruns the Robolectric cursor test on API 36. A targeted run should take at most 15 seconds once Gradle is warm.

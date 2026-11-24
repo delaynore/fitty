@@ -1,7 +1,7 @@
 ## Android app
 
 - Before changing navigation, workout behavior, or data boundaries, read the [MVP overview](docs/mvp.md). The Android app lives in `app/`.
-- For build, lint, and device tests, use the [Android check commands](docs/android-development.md#run-checks). Instrumented tests live in `app/src/androidTest/` and use an isolated Room database.
+- Before adding or changing an Android test, use the [Fitty test-layer rules](docs/android-development.md#run-checks). The same section covers local builds, lint, and device checks. Instrumented tests use an isolated Room database.
 - When changing the Room schema, keep the exported schema history in `app/schemas/`, add a migration, and follow the [APK update check](docs/android-development.md#install-or-update-fitty) with data created by the previous build.
 
 ## Agent skills

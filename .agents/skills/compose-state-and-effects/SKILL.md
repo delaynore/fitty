@@ -66,4 +66,4 @@ from app wiring and composition-owned runtime objects.
 | State shared by siblings, UI state holders, ViewModel/component wiring, or previewable screen boundaries | [State hoisting](references/state-hoisting.md) |
 | `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `snapshotFlow`, `rememberCoroutineScope`, `rememberUpdatedState`, `produceState`, imperative `requestFocus`, callbacks, event Flow collection, snackbar, navigation, or analytics | [Side effects](references/side-effects.md) |
 | Focus ownership and keyboard/TV/D-pad behavior | [Compose focus navigation](https://github.com/chrisbanes/skills/blob/44522c0030ca852f8f489bbd155311b20c00b12d/skills/compose-focus-navigation/SKILL.md) |
-| Tests or previews for the resulting UI contract | [Compose UI testing patterns](../compose-ui-testing-patterns/SKILL.md) |
+| Writing or reviewing a Compose UI test justified by Fitty's test-layer rules | [Compose UI testing patterns](../compose-ui-testing-patterns/SKILL.md) |
