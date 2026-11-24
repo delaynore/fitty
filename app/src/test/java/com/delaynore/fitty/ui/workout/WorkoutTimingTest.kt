@@ -16,7 +16,9 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,15 +86,17 @@ class WorkoutTimingTest {
     }
 
     @Test
-    fun removedSetsCanBeRestoredInReverseOrder() = runTest {
+    fun removedSetsCanBeRestoredInReverseOrderFromAnotherExercise() = runTest {
         val sets = listOf(LoggedSet(1, SetResult.Duration(12)), LoggedSet(2, SetResult.Duration(24)))
-        val (workout, id) = openWorkout(sets = sets)
+        val (workout, id) = openWorkout(sets = sets, secondExercise = true)
         workout.deleteRow(id, workout.exercise(), 2, 2, isRecorded = true)
         runCurrent()
         workout.deleteRow(id, workout.exercise(), 1, 1, isRecorded = true)
         runCurrent()
         assertEquals(emptyList<LoggedSet>(), workout.exercise().sets)
 
+        workout.selectExercise(1)
+        assertFalse(workout.canFinish())
         val (second, first) = workout.uiState.value.pendingRemovals
         workout.restoreRow(id, first)
         runCurrent()
@@ -102,6 +106,11 @@ class WorkoutTimingTest {
         runCurrent()
         assertEquals(sets, workout.exercise().sets)
         assertEquals(emptyList<RemovedWorkoutRow>(), workout.uiState.value.pendingRemovals)
+        assertTrue(workout.canFinish())
+
+        workout.finish(id)
+        runCurrent()
+        assertTrue(workout.uiState.value.finished)
     }
 
     @Test
@@ -139,9 +148,13 @@ class WorkoutTimingTest {
         goal: ExerciseGoal.Duration? = null,
         sets: List<LoggedSet> = emptyList(),
         signals: RecordingSignals = RecordingSignals(),
+        secondExercise: Boolean = false,
     ): Pair<ActiveWorkoutState, Long> {
-        val exercise = WorkoutExercise(1, "Plank", sets, type = ExerciseType.DURATION, goal = goal)
-        val session = WorkoutSession(WorkoutSummary(0, "Strength", "A", null), listOf(exercise))
+        val exercises = buildList {
+            add(WorkoutExercise(1, "Plank", sets, type = ExerciseType.DURATION, goal = goal))
+            if (secondExercise) add(WorkoutExercise(2, "Side plank", emptyList(), type = ExerciseType.DURATION))
+        }
+        val session = WorkoutSession(WorkoutSummary(0, "Strength", "A", null), exercises)
         val repository = FakeWorkoutsRepository(mapOf(1L to session))
         val id = requireNotNull(repository.startWorkout(1))
         val workout = ActiveWorkoutState(
@@ -152,7 +165,11 @@ class WorkoutTimingTest {
         return workout to id
     }
 
-    private fun ActiveWorkoutState.exercise() = requireNotNull(uiState.value.session).exercises.single()
+    private fun ActiveWorkoutState.exercise() = requireNotNull(uiState.value.session).exercises.first()
+
+    // Mirrors the Finish button's enabled state in WorkoutScreen.
+    private fun ActiveWorkoutState.canFinish() =
+        requireNotNull(uiState.value.session).exercises.any { it.sets.isNotEmpty() }
 
     private class RecordingSignals : SetTimerSignalScheduler {
         var pending: SetTimerSignal? = null

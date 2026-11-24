@@ -1,7 +1,9 @@
 package com.delaynore.fitty
 
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.test.core.app.ApplicationProvider
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseGoal
@@ -25,9 +27,11 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -37,8 +41,29 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProgramRoomTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val name = "program-room-test.db"
+    private lateinit var database: FittyDatabase
+    private lateinit var programs: RoomProgramsRepository
+    private lateinit var workouts: RoomWorkoutsRepository
+    private lateinit var editor: ProgramEditorViewModel
+
+    @Before
+    fun openDatabase() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        reopen()
+    }
+
+    @After
+    fun deleteDatabase() {
+        editor.viewModelScope.cancel()
+        Dispatchers.resetMain()
+        database.close()
+        context.deleteDatabase(name)
+    }
+
     @Test
-    fun savesTheEditedGoalAndOrderAndUsesThemInTheWorkout() = withRoom { programs, workouts, editor ->
+    fun savesTheEditedGoalAndOrderAndUsesThemInTheWorkout() = withRoom {
         val day = TrainingDay(0, "Upper body", listOf(
             TrainingExercise(0, "Bench press", null, null),
             TrainingExercise(0, "Pulldown", 3, ExerciseGoal.Repetitions(8)),
@@ -61,6 +86,7 @@ class ProgramRoomTest {
         editor.moveExercise(pulldownId, 0)
         save(editor)
 
+        reopen()
         val reloaded = requireNotNull(programs.observeProgram(saved.id).first())
         editor.openEditor(reloaded)
         editor.openDay(dayId)
@@ -78,7 +104,7 @@ class ProgramRoomTest {
     }
 
     @Test
-    fun linkingALegacyExerciseToACatalogCardOnlyChangesFutureSessions() = withRoom { programs, workouts, editor ->
+    fun linkingALegacyExerciseToACatalogCardOnlyChangesFutureSessions() = withRoom {
         val legacy = TrainingExercise(0, "Press", 3, ExerciseGoal.Repetitions(8))
         val fly = TrainingExercise(0, "Fly", null, null)
         val card = CatalogExercise("dumbbell-bench-press", "Dumbbell bench press", ExerciseType.WEIGHT_AND_REPS)
@@ -103,6 +129,7 @@ class ProgramRoomTest {
         editor.deleteExercise(day.exercises.last().id)
         save(editor)
 
+        reopen()
         assertEquals(inProgress, workouts.observeWorkout(inProgressId).first())
         assertTrue(workouts.cancelWorkout(inProgressId))
         val newId = requireNotNull(workouts.startWorkout(day.id))
@@ -121,25 +148,19 @@ class ProgramRoomTest {
         assertEquals(ExerciseGoal.Repetitions(8), history.exercises.first().goal)
     }
 
-    private fun withRoom(
-        verify: suspend (RoomProgramsRepository, RoomWorkoutsRepository, ProgramEditorViewModel) -> Unit,
-    ) = runBlocking {
-        val database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext<FittyApplication>(),
-            FittyDatabase::class.java,
-        ).build()
-        val programs = RoomProgramsRepository(database)
-        Dispatchers.setMain(UnconfinedTestDispatcher())
-        val editor = ProgramEditorViewModel(programs)
-        try {
-            withTimeout(5_000) {
-                verify(programs, RoomWorkoutsRepository(database), editor)
-            }
-        } finally {
-            editor.viewModelScope.cancel()
-            Dispatchers.resetMain()
-            database.close()
-        }
+    private fun withRoom(verify: suspend () -> Unit) = runBlocking {
+        withTimeout(5_000) { verify() }
+    }
+
+    private fun reopen() {
+        if (::editor.isInitialized) editor.viewModelScope.cancel()
+        if (::database.isInitialized) database.close()
+        database = Room.databaseBuilder(context, FittyDatabase::class.java, name)
+            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+            .build()
+        programs = RoomProgramsRepository(database)
+        workouts = RoomWorkoutsRepository(database)
+        editor = ProgramEditorViewModel(programs)
     }
 
     private suspend fun save(editor: ProgramEditorViewModel) {
