@@ -83,13 +83,12 @@ import com.delaynore.fitty.ui.toInput
 import kotlinx.coroutines.delay
 
 @Composable
-internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> Unit, onFinished: () -> Unit) {
-    val actions = viewModel.activeWorkout
-    LaunchedEffect(viewModel, id) { actions.open(id) }
-    DisposableEffect(viewModel, id) {
-        onDispose { actions.closeReplacement() }
+internal fun WorkoutScreen(id: Long, activeWorkout: ActiveWorkoutState, onBack: () -> Unit, onFinished: () -> Unit) {
+    LaunchedEffect(activeWorkout, id) { activeWorkout.open(id) }
+    DisposableEffect(activeWorkout, id) {
+        onDispose { activeWorkout.closeReplacement() }
     }
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by activeWorkout.uiState.collectAsStateWithLifecycle()
     val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
     val workout = current.session
     val finished = !current.saving && (current.finished || workout?.summary?.finishedAtMillis != null)
@@ -113,30 +112,30 @@ internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> 
         pendingRemovals = current.pendingRemovals,
         editingSet = current.editingSet,
         restDeadlineMillis = current.restDeadlineMillis,
-        remainingRestMillis = actions::remainingRestMillis,
-        elapsedSetMillis = actions::elapsedSetMillis,
-        onStartRest = actions::startRestTimer,
-        onResetRest = actions::resetRestTimer,
-        onExpireRest = actions::expireRestTimer,
-        onClearFocusRequest = actions::clearFocusRequest,
-        onStartSetTimer = { exerciseId, position -> actions.startSetTimer(id, exerciseId, position) },
-        onStopSetTimer = actions::stopSetTimer,
-        onDeleteRow = { current, position, number, logged -> actions.deleteRow(id, current, position, number, logged) },
-        onChangeDraft = actions::changeDraft,
-        onLogSet = { current, position -> actions.logSet(id, current, position) },
-        onOpenSetEditor = actions::openSetEditor,
-        onAddSetRow = actions::addSetRow,
-        onRestoreRow = { actions.restoreRow(id, it) },
-        onSelectExercise = actions::selectExercise,
-        onFinish = { actions.finish(id) },
-        onChangeSetEdit = actions::changeSetEdit,
-        onCloseSetEditor = actions::closeSetEditor,
-        onSaveSetEdit = { actions.saveSetEdit(id) },
+        remainingRestMillis = activeWorkout::remainingRestMillis,
+        elapsedSetMillis = activeWorkout::elapsedSetMillis,
+        onStartRest = activeWorkout::startRestTimer,
+        onResetRest = activeWorkout::resetRestTimer,
+        onExpireRest = activeWorkout::expireRestTimer,
+        onClearFocusRequest = activeWorkout::clearFocusRequest,
+        onStartSetTimer = { exerciseId, position -> activeWorkout.startSetTimer(id, exerciseId, position) },
+        onStopSetTimer = activeWorkout::stopSetTimer,
+        onDeleteRow = { current, position, number, logged -> activeWorkout.deleteRow(id, current, position, number, logged) },
+        onChangeDraft = activeWorkout::changeDraft,
+        onLogSet = { current, position -> activeWorkout.logSet(id, current, position) },
+        onOpenSetEditor = activeWorkout::openSetEditor,
+        onAddSetRow = activeWorkout::addSetRow,
+        onRestoreRow = { activeWorkout.restoreRow(id, it) },
+        onSelectExercise = activeWorkout::selectExercise,
+        onFinish = { activeWorkout.finish(id) },
+        onChangeSetEdit = activeWorkout::changeSetEdit,
+        onCloseSetEditor = activeWorkout::closeSetEditor,
+        onSaveSetEdit = { activeWorkout.saveSetEdit(id) },
         onBack = onBack,
         replacement = current.replacement,
-        onOpenReplacement = actions::openReplacement,
-        onCloseReplacement = actions::closeReplacement,
-        onReplace = actions::replaceExercise,
+        onOpenReplacement = activeWorkout::openReplacement,
+        onCloseReplacement = activeWorkout::closeReplacement,
+        onReplace = activeWorkout::replaceExercise,
     )
 }
 

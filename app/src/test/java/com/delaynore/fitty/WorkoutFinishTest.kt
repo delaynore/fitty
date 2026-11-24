@@ -19,7 +19,6 @@ import com.delaynore.fitty.ui.FittyTheme
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
 import com.delaynore.fitty.ui.workout.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.WorkoutScreen
-import com.delaynore.fitty.ui.workout.WorkoutViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,7 +74,7 @@ class WorkoutFinishTest {
                     FittyTheme {
                         WorkoutScreen(
                             id,
-                            remember { WorkoutViewModel(active) },
+                            active,
                             onBack = { destinations += "Back from $generation" },
                             onFinished = { destinations += "History from $generation" },
                         )

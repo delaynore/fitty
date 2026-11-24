@@ -1,12 +1,12 @@
 package com.delaynore.fitty.ui.home
 
-import android.database.sqlite.SQLiteException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.ui.launchPersistenceSave
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -33,7 +33,15 @@ internal class HomeViewModel(
     init {
         viewModelScope.launch {
             combine(programs.homeProgram, workouts.inProgressWorkout, ::Pair).collect { (program, workout) ->
-                state.update { it.copy(loading = false, program = program, inProgressWorkout = workout) }
+                state.update {
+                    val selectedDayId = if (program?.id == it.program?.id) it.selectedDayId else null
+                    it.copy(
+                        loading = false,
+                        program = program,
+                        inProgressWorkout = workout,
+                        selectedDayId = selectedDayId,
+                    )
+                }
             }
         }
     }
@@ -63,16 +71,13 @@ internal class HomeViewModel(
     }
 
     private fun changeWorkout(failureMessage: String, change: suspend () -> Boolean) {
-        if (state.value.starting) return
-        state.update { it.copy(starting = true, error = null) }
-        viewModelScope.launch {
-            try {
-                if (!change()) state.update { it.copy(error = failureMessage) }
-            } catch (_: SQLiteException) {
-                state.update { it.copy(error = failureMessage) }
-            } finally {
-                state.update { it.copy(starting = false) }
-            }
-        }
+        viewModelScope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.starting },
+            onStart = { it.copy(starting = true, error = null) },
+            onFailure = { it.copy(error = failureMessage) },
+            onFinish = { it.copy(starting = false) },
+            operation = change,
+        )
     }
 }

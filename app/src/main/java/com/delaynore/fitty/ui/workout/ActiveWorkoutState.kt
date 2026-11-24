@@ -1,6 +1,5 @@
 package com.delaynore.fitty.ui.workout
 
-import android.database.sqlite.SQLiteException
 import android.os.Bundle
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
@@ -15,6 +14,7 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.SetInput
 import com.delaynore.fitty.ui.SetInputField
+import com.delaynore.fitty.ui.launchPersistenceSave
 import com.delaynore.fitty.ui.toInput
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -478,20 +478,14 @@ internal class ActiveWorkoutState(
     }
 
     private fun save(errorMessage: String, operation: suspend () -> Boolean) {
-        val current = state.value
-        if (current.saving) return
-        state.update { it.copy(saving = true, error = null) }
-        scope.launch {
-            var error: String? = null
-            try {
-                if (!operation()) error = errorMessage
-            } catch (_: SQLiteException) {
-                error = errorMessage
-            } finally {
-                state.update {
-                    if (it.sessionId == current.sessionId) it.copy(saving = false, error = error ?: it.error) else it
-                }
-            }
-        }
+        val sessionId = state.value.sessionId
+        scope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.saving },
+            onStart = { it.copy(saving = true, error = null) },
+            onFailure = { if (it.sessionId == sessionId) it.copy(error = errorMessage) else it },
+            onFinish = { if (it.sessionId == sessionId) it.copy(saving = false) else it },
+            operation = operation,
+        )
     }
 }

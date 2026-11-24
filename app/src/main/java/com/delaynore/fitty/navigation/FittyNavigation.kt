@@ -50,18 +50,19 @@ import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryScreen
 import com.delaynore.fitty.ui.history.HistoryViewModel
 import com.delaynore.fitty.ui.history.WorkoutDetailsScreen
+import com.delaynore.fitty.ui.history.WorkoutDetailsViewModel
 import com.delaynore.fitty.ui.home.HomeScreen
 import com.delaynore.fitty.ui.home.HomeViewModel
 import com.delaynore.fitty.ui.programs.ProgramDetailsScreen
+import com.delaynore.fitty.ui.programs.ProgramDetailsViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorScreen
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.programs.ProgramsScreen
+import com.delaynore.fitty.ui.programs.ProgramsViewModel
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import com.delaynore.fitty.ui.settings.SettingsScreen
-import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
 import com.delaynore.fitty.ui.workout.WorkoutScreen
-import com.delaynore.fitty.ui.workout.WorkoutViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
@@ -132,27 +133,20 @@ internal fun FittyNavigation(container: AppContainer) {
                     onWorkout = { nav.navigate(WorkoutRoute(it)) },
                 )
             }
-            composable<ProgramsRoute> { entry ->
-                val editor = viewModel { ProgramEditorViewModel(container.programs) }
-                val homeEntry = remember(entry) { nav.getBackStackEntry<HomeRoute>() }
-                val home = viewModel(viewModelStoreOwner = homeEntry) {
-                    HomeViewModel(container.programs, container.workouts, container.activeWorkout::clear)
-                }
+            composable<ProgramsRoute> {
+                val programs = viewModel { ProgramsViewModel(container.programs) }
                 ProgramsScreen(
-                    viewModel = editor,
+                    viewModel = programs,
                     onBack = back,
                     onCreate = { nav.navigate(ProgramEditorGraph()) },
                     onDetails = { nav.navigate(ProgramDetailsRoute(it)) },
-                    onSelected = {
-                        home.selectDay(null)
-                        nav.popBackStack<HomeRoute>(inclusive = false)
-                    },
+                    onSelected = { nav.popBackStack<HomeRoute>(inclusive = false) },
                 )
             }
             composable<ProgramDetailsRoute> { entry ->
                 val id = entry.toRoute<ProgramDetailsRoute>().programId
-                val editor = viewModel { ProgramEditorViewModel(container.programs) }
-                ProgramDetailsScreen(id, editor, back) { nav.navigate(ProgramEditorGraph(it.id)) }
+                val details = viewModel { ProgramDetailsViewModel(container.programs) }
+                ProgramDetailsScreen(id, details, back) { nav.navigate(ProgramEditorGraph(it.id)) }
             }
             navigation<ProgramEditorGraph>(startDestination = ProgramEditorRoute) {
                 composable<ProgramEditorRoute> { entry ->
@@ -215,16 +209,14 @@ internal fun FittyNavigation(container: AppContainer) {
                 }
                 composable<EditorSettingsRoute> { entry ->
                     val editor = programEditor(nav, entry, container)
-                    val settings = viewModel { SettingsViewModel(container.updates) }
-                    SettingsScreen(settings, back, { nav.navigate(BrowseCatalogRoute) }) {
-                        settings.updates.startUpdate(editor.uiState.value.hasChanges)
+                    SettingsScreen(container.updates, back, { nav.navigate(BrowseCatalogRoute) }) {
+                        container.updates.startUpdate(editor.uiState.value.hasChanges)
                     }
                 }
             }
             composable<WorkoutRoute> { entry ->
                 val id = entry.toRoute<WorkoutRoute>().workoutId
-                val workout = viewModel { WorkoutViewModel(container.activeWorkout) }
-                WorkoutScreen(id, workout, back) {
+                WorkoutScreen(id, container.activeWorkout, back) {
                     if (nav.currentBackStackEntry == entry) {
                         nav.popBackStack()
                         nav.selectTab(HistoryRoute)
@@ -238,13 +230,12 @@ internal fun FittyNavigation(container: AppContainer) {
                 HistoryScreen(history) { nav.navigate(WorkoutDetailsRoute(it)) }
             }
             composable<WorkoutDetailsRoute> { entry ->
-                val history = viewModel { HistoryViewModel(container.workouts) }
-                WorkoutDetailsScreen(entry.toRoute<WorkoutDetailsRoute>().workoutId, history, back)
+                val details = viewModel { WorkoutDetailsViewModel(container.workouts) }
+                WorkoutDetailsScreen(entry.toRoute<WorkoutDetailsRoute>().workoutId, details, back)
             }
             composable<SettingsRoute> {
-                val settings = viewModel { SettingsViewModel(container.updates) }
-                SettingsScreen(settings, null, { nav.navigate(BrowseCatalogRoute) }) {
-                    settings.updates.startUpdate(hasUnsavedInput = false)
+                SettingsScreen(container.updates, null, { nav.navigate(BrowseCatalogRoute) }) {
+                    container.updates.startUpdate(hasUnsavedInput = false)
                 }
             }
             composable<BrowseCatalogRoute> {

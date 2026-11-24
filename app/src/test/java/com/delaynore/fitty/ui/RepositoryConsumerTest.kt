@@ -26,16 +26,17 @@ import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
 import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryViewModel
+import com.delaynore.fitty.ui.history.WorkoutDetailsViewModel
 import com.delaynore.fitty.ui.home.HomeViewModel
+import com.delaynore.fitty.ui.programs.ProgramDetailsViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
+import com.delaynore.fitty.ui.programs.ProgramsViewModel
 import com.delaynore.fitty.ui.settings.InstalledApp
-import com.delaynore.fitty.ui.settings.SettingsViewModel
 import com.delaynore.fitty.ui.settings.UpdateCoordinator
 import com.delaynore.fitty.ui.settings.UpdateCheckState
 import com.delaynore.fitty.ui.settings.UpdateInstallState
 import com.delaynore.fitty.ui.workout.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
-import com.delaynore.fitty.ui.workout.WorkoutViewModel
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -72,17 +73,24 @@ class RepositoryConsumerTest {
             assertTrue(home.uiState.value.loading)
             runCurrent()
             assertEquals("Warmup", home.uiState.value.program?.name)
-            val editor = ProgramEditorViewModel(programs) { testScheduler.currentTime }
+            val programsList = ProgramsViewModel(programs)
             try {
                 var selected = false
-                editor.selectProgram(program.id) { selected = true }
+                programsList.selectProgram(program.id) { selected = true }
                 runCurrent()
                 assertTrue(selected)
-                assertTrue(editor.uiState.value.programs.orEmpty().single { it.id == program.id }.selected)
+                assertTrue(programsList.uiState.value.programs.orEmpty().single { it.id == program.id }.selected)
                 assertEquals(program, home.uiState.value.program)
             } finally {
-                editor.viewModelScope.cancel()
+                programsList.viewModelScope.cancel()
             }
+            home.selectDay(5)
+            assertEquals(5L, home.uiState.value.selectedDayId)
+            programs.selectProgram(2)
+            runCurrent()
+            assertNull(home.uiState.value.selectedDayId)
+            programs.selectProgram(program.id)
+            runCurrent()
             home.selectDay(5)
             assertEquals(5L, home.uiState.value.selectedDayId)
             var startedId: Long? = null
@@ -156,26 +164,32 @@ class RepositoryConsumerTest {
         programs.saveProgram(first)
         programs.saveProgram(second)
         val observed = mutableSetOf<Long>()
+        var allProgramsObserved = false
         val repository = object : ProgramsRepository by programs {
+            override val allPrograms = programs.allPrograms.onStart { allProgramsObserved = true }
             override fun observeProgram(id: Long) = programs.observeProgram(id)
                 .onStart { observed.add(id) }
                 .onCompletion { observed.remove(id) }
         }
-        withViewModel({ ProgramEditorViewModel(repository) { testScheduler.currentTime } }) { editor ->
+        withViewModel({ ProgramDetailsViewModel(repository) }) { details ->
             runCurrent()
+            assertFalse(allProgramsObserved)
             assertTrue(observed.isEmpty())
-            editor.showProgram(first.id)
+            details.showProgram(first.id)
             runCurrent()
-            assertEquals(first, editor.uiState.value.details)
-            editor.showProgram(second.id)
-            assertNull(editor.uiState.value.details)
+            assertEquals(first, details.uiState.value.details)
+            details.showProgram(second.id)
+            assertNull(details.uiState.value.details)
             runCurrent()
             assertEquals(setOf(second.id), observed)
-            assertEquals(second, editor.uiState.value.details)
-            editor.showProgram(null)
+            assertEquals(second, details.uiState.value.details)
+            details.showProgram(null)
             runCurrent()
             assertTrue(observed.isEmpty())
-
+        }
+        withViewModel({ ProgramEditorViewModel(repository) { testScheduler.currentTime } }) { editor ->
+            runCurrent()
+            assertFalse(allProgramsObserved)
             editor.openEditor(first)
             editor.changeName("Strength")
             editor.openDay(day.id)
@@ -231,38 +245,34 @@ class RepositoryConsumerTest {
         val catalog = FakeExerciseCatalogRepository()
         catalog.allExercises.value = listOf(CatalogExercise("barbell-bench-press", "Жим", exercise.type), replacement)
         val workoutId = requireNotNull(workouts.startWorkout(4))
-        withViewModel({
-            WorkoutViewModel(ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope))
-        }) { route ->
-            val viewModel = route.activeWorkout
-            viewModel.open(workoutId)
-            runCurrent()
-            assertEquals(0, catalog.allExercises.subscriptionCount.value)
-            viewModel.openReplacement()
-            assertNull(viewModel.uiState.value.replacement?.options)
-            runCurrent()
-            assertEquals(listOf(replacement), viewModel.uiState.value.replacement?.options?.similar)
-            assertEquals(1, catalog.allExercises.subscriptionCount.value)
-            viewModel.closeReplacement()
-            viewModel.openReplacement()
-            assertNull(viewModel.uiState.value.replacement?.options)
-            viewModel.closeReplacement()
-            runCurrent()
-            assertNull(viewModel.uiState.value.replacement)
-            assertEquals(0, catalog.allExercises.subscriptionCount.value)
+        val viewModel = ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        viewModel.open(workoutId)
+        runCurrent()
+        assertEquals(0, catalog.allExercises.subscriptionCount.value)
+        viewModel.openReplacement()
+        assertNull(viewModel.uiState.value.replacement?.options)
+        runCurrent()
+        assertEquals(listOf(replacement), viewModel.uiState.value.replacement?.options?.similar)
+        assertEquals(1, catalog.allExercises.subscriptionCount.value)
+        viewModel.closeReplacement()
+        viewModel.openReplacement()
+        assertNull(viewModel.uiState.value.replacement?.options)
+        viewModel.closeReplacement()
+        runCurrent()
+        assertNull(viewModel.uiState.value.replacement)
+        assertEquals(0, catalog.allExercises.subscriptionCount.value)
 
-            viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")
-            viewModel.changeDraft(exercise, 1, SetInputField.Measure, "8")
-            val input = requireNotNull(viewModel.uiState.value.rows(exercise.id).inputs[1])
-            assertEquals("62,5", input.weight)
-            assertEquals("8", input.measure)
-            viewModel.logSet(workoutId, exercise, 1)
-            runCurrent()
-            val stored = requireNotNull(viewModel.uiState.value.session).exercises.single().sets.single()
-            assertEquals(SetResult.WeightAndReps(62.5, 8), stored.result)
-            assertNull(viewModel.uiState.value.rows(exercise.id).inputs[1])
-            assertEquals(1, viewModel.uiState.value.savedPosition)
-        }
+        viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")
+        viewModel.changeDraft(exercise, 1, SetInputField.Measure, "8")
+        val input = requireNotNull(viewModel.uiState.value.rows(exercise.id).inputs[1])
+        assertEquals("62,5", input.weight)
+        assertEquals("8", input.measure)
+        viewModel.logSet(workoutId, exercise, 1)
+        runCurrent()
+        val stored = requireNotNull(viewModel.uiState.value.session).exercises.single().sets.single()
+        assertEquals(SetResult.WeightAndReps(62.5, 8), stored.result)
+        assertNull(viewModel.uiState.value.rows(exercise.id).inputs[1])
+        assertEquals(1, viewModel.uiState.value.savedPosition)
     }
 
     @Test
@@ -302,24 +312,32 @@ class RepositoryConsumerTest {
         withViewModel({ HistoryViewModel(workouts) }) { history ->
             runCurrent()
             assertEquals(listOf(firstId, secondId), history.uiState.value.history?.map { it.id })
-            assertNull(history.uiState.value.details)
-            history.showWorkout(firstId)
+        }
+        var historyObserved = false
+        val detailsRepository = object : WorkoutsRepository by workouts {
+            override val history = workouts.history.onStart { historyObserved = true }
+        }
+        withViewModel({ WorkoutDetailsViewModel(detailsRepository) }) { details ->
             runCurrent()
-            assertEquals(firstId, history.uiState.value.details?.workout?.summary?.id)
-            history.showWorkout(secondId)
-            assertNull(history.uiState.value.details)
+            assertFalse(historyObserved)
+            assertNull(details.uiState.value.details)
+            details.showWorkout(firstId)
             runCurrent()
-            assertEquals(secondId, history.uiState.value.details?.workout?.summary?.id)
+            assertEquals(firstId, details.uiState.value.details?.workout?.summary?.id)
+            details.showWorkout(secondId)
+            assertNull(details.uiState.value.details)
+            runCurrent()
+            assertEquals(secondId, details.uiState.value.details?.workout?.summary?.id)
 
-            history.saveSet(secondId, set, SetInput(ExerciseType.REPS), { error("Invalid set") })
-            assertEquals("Целое число от 1", history.uiState.value.setErrors?.measure)
-            history.saveSet(secondId, set, SetInput(ExerciseType.REPS, measure = "10"), {})
+            details.saveSet(secondId, set, SetInput(ExerciseType.REPS), { error("Invalid set") })
+            assertEquals("Целое число от 1", details.uiState.value.setErrors?.measure)
+            details.saveSet(secondId, set, SetInput(ExerciseType.REPS, measure = "10"), {})
             runCurrent()
-            val updated = history.uiState.value.details?.workout?.exercises?.single()?.sets?.single()
+            val updated = details.uiState.value.details?.workout?.exercises?.single()?.sets?.single()
             assertEquals(SetResult.Reps(10), updated?.result)
-            assertNull(history.uiState.value.setErrors)
-            history.showWorkout(null)
-            assertNull(history.uiState.value.details)
+            assertNull(details.uiState.value.setErrors)
+            details.showWorkout(null)
+            assertNull(details.uiState.value.details)
         }
     }
 
@@ -343,26 +361,22 @@ class RepositoryConsumerTest {
             }
         }
         val workoutId = requireNotNull(workouts.startWorkout(4))
-        withViewModel({
-            WorkoutViewModel(ActiveWorkoutState(repository, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope))
-        }) { route ->
-            val viewModel = route.activeWorkout
-            viewModel.open(workoutId)
-            runCurrent()
-            viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")
-            viewModel.openReplacement()
-            viewModel.replaceExercise(replacement)
-            runCurrent()
+        val viewModel = ActiveWorkoutState(repository, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        viewModel.open(workoutId)
+        runCurrent()
+        viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")
+        viewModel.openReplacement()
+        viewModel.replaceExercise(replacement)
+        runCurrent()
 
-            val state = viewModel.uiState.value
-            assertTrue(state.saving)
-            assertEquals(replacement.id, state.session?.exercises?.single()?.catalogExerciseId)
-            assertNull(state.replacement)
-            assertTrue(state.rows(exercise.id).inputs.isEmpty())
-            complete.complete(Unit)
-            runCurrent()
-            assertFalse(viewModel.uiState.value.saving)
-        }
+        val state = viewModel.uiState.value
+        assertTrue(state.saving)
+        assertEquals(replacement.id, state.session?.exercises?.single()?.catalogExerciseId)
+        assertNull(state.replacement)
+        assertTrue(state.rows(exercise.id).inputs.isEmpty())
+        complete.complete(Unit)
+        runCurrent()
+        assertFalse(viewModel.uiState.value.saving)
     }
 
     @Test
@@ -380,24 +394,20 @@ class RepositoryConsumerTest {
             override fun requestInstallPermission(launch: (Intent) -> Unit) = error("No installer in this test")
             override fun openInstaller(apk: File, launch: (Intent) -> Unit) = error("No installer in this test")
         }
-        withViewModel({
-            SettingsViewModel(UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope))
-        }) { route ->
-            val settings = route.updates
-            settings.checkForUpdate()
-            assertEquals(UpdateCheckState.Checking, settings.uiState.value.updateCheck)
-            runCurrent()
-            settings.startUpdate(hasUnsavedInput = true)
-            runCurrent()
-            assertEquals(UpdateInstallState.Warning, settings.uiState.value.updateInstall)
-            settings.confirmDownload()
-            assertEquals(UpdateInstallState.Downloading(), settings.uiState.value.updateInstall)
-            runCurrent()
-            val state = settings.uiState.value
-            assertEquals(installed, state.installedApp)
-            assertEquals(UpdateCheckState.Checked(available), state.updateCheck)
-            assertEquals(UpdateInstallState.Ready(apk), state.updateInstall)
-        }
+        val settings = UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope)
+        settings.checkForUpdate()
+        assertEquals(UpdateCheckState.Checking, settings.uiState.value.updateCheck)
+        runCurrent()
+        settings.startUpdate(hasUnsavedInput = true)
+        runCurrent()
+        assertEquals(UpdateInstallState.Warning, settings.uiState.value.updateInstall)
+        settings.confirmDownload()
+        assertEquals(UpdateInstallState.Downloading(), settings.uiState.value.updateInstall)
+        runCurrent()
+        val state = settings.uiState.value
+        assertEquals(installed, state.installedApp)
+        assertEquals(UpdateCheckState.Checked(available), state.updateCheck)
+        assertEquals(UpdateInstallState.Ready(apk), state.updateInstall)
     }
 
     private suspend fun <T : ViewModel> TestScope.withViewModel(

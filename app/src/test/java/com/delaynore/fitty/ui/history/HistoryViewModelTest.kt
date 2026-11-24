@@ -29,7 +29,7 @@ class HistoryViewModelTest {
         val store = ViewModelStore()
         try {
             val (repository, id) = completedWorkout()
-            val viewModel = HistoryViewModel(repository)
+            val viewModel = WorkoutDetailsViewModel(repository)
             store.put("history", viewModel)
             viewModel.showWorkout(id)
             runCurrent()

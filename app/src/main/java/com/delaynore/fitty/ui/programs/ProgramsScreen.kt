@@ -34,7 +34,7 @@ import com.delaynore.fitty.ui.formatRecommendation
 
 @Composable
 internal fun ProgramsScreen(
-    viewModel: ProgramEditorViewModel,
+    viewModel: ProgramsViewModel,
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onDetails: (Long) -> Unit,
@@ -46,7 +46,7 @@ internal fun ProgramsScreen(
 
 @Composable
 private fun ProgramsContent(
-    state: ProgramEditorUiState,
+    state: ProgramsUiState,
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onDetails: (Long) -> Unit,
@@ -96,7 +96,7 @@ private fun ProgramsContent(
 @Composable
 internal fun ProgramDetailsScreen(
     id: Long,
-    viewModel: ProgramEditorViewModel,
+    viewModel: ProgramDetailsViewModel,
     onBack: () -> Unit,
     onEdit: (TrainingProgram) -> Unit,
 ) {

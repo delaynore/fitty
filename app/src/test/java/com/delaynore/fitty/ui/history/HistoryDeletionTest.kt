@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.ViewModelStore
 import com.delaynore.fitty.ui.FittyTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -27,7 +28,7 @@ class HistoryDeletionTest {
     fun theLastSetCanOnlyBeDeletedByConfirmingDeletionOfTheWorkout() {
         val (workouts, id) = runBlocking { completedWorkout() }
         val store = ViewModelStore()
-        val viewModel = HistoryViewModel(workouts)
+        val viewModel = WorkoutDetailsViewModel(workouts)
         store.put("history", viewModel)
         try {
             var backCount = 0
@@ -43,11 +44,13 @@ class HistoryDeletionTest {
             compose.onNodeWithText("Удалить подход").assertDoesNotExist()
             compose.onNodeWithText("Удалить тренировку целиком").performScrollTo().performClick()
             compose.onNodeWithText("Удалить тренировку?").assertExists()
-            compose.runOnIdle { assertEquals(listOf(id), viewModel.uiState.value.history?.map { it.id }) }
+            compose.runOnIdle {
+                assertEquals(listOf(id), runBlocking { workouts.history.first().map { it.id } })
+            }
 
             compose.onNode(hasAnyAncestor(isDialog()) and hasText("Удалить тренировку")).performClick()
             compose.runOnIdle {
-                assertEquals(emptyList<Long>(), viewModel.uiState.value.history?.map { it.id })
+                assertEquals(emptyList<Long>(), runBlocking { workouts.history.first().map { it.id } })
                 assertEquals(1, backCount)
             }
         } finally {

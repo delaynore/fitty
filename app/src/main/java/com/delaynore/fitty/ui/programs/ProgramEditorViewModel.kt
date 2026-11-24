@@ -1,19 +1,17 @@
 package com.delaynore.fitty.ui.programs
 
-import android.database.sqlite.SQLiteException
 import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseType
-import com.delaynore.fitty.data.programs.ProgramSelection
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.ui.inputText
+import com.delaynore.fitty.ui.launchPersistenceSave
 import com.delaynore.fitty.ui.parseGoal
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,12 +53,6 @@ internal data class TrainingDayDraft(val id: Long, val name: String, val exercis
 private const val UNDO_MILLIS = 5_000L
 
 internal data class ProgramEditorUiState(
-    val programs: List<ProgramSelection>? = null,
-    val detailsId: Long? = null,
-    val details: TrainingProgram? = null,
-    val detailsLoaded: Boolean = false,
-    val selecting: Boolean = false,
-    val selectionError: String? = null,
     val draftVersion: Long = 0,
     val editing: Boolean = false,
     val programId: Long = 0,
@@ -88,26 +80,6 @@ internal class ProgramEditorViewModel(
     private val state = MutableStateFlow(ProgramEditorUiState())
     val uiState = state.asStateFlow()
     private var nextDraftId = -1L
-    private var detailsJob: Job? = null
-
-    init {
-        viewModelScope.launch {
-            programs.allPrograms.collect { programs -> state.update { it.copy(programs = programs) } }
-        }
-    }
-
-    fun showProgram(id: Long?) {
-        if (state.value.detailsId == id) return
-        detailsJob?.cancel()
-        state.update { it.copy(detailsId = id, details = null, detailsLoaded = false) }
-        detailsJob = id?.let {
-            viewModelScope.launch {
-                programs.observeProgram(id).collect { program ->
-                    state.update { it.copy(details = program, detailsLoaded = true) }
-                }
-            }
-        }
-    }
 
     fun openEditor(program: TrainingProgram? = null) {
         val name = program?.name.orEmpty()
@@ -134,21 +106,6 @@ internal class ProgramEditorViewModel(
 
     fun closeEditor() {
         state.update { it.copy(editing = false, undoDeadlines = emptyMap()) }
-    }
-
-    fun selectProgram(id: Long, onSelected: () -> Unit) {
-        if (state.value.selecting) return
-        state.update { it.copy(selecting = true, selectionError = null) }
-        viewModelScope.launch {
-            try {
-                programs.selectProgram(id)
-                onSelected()
-            } catch (_: SQLiteException) {
-                state.update { it.copy(selectionError = "Не удалось выбрать программу") }
-            } finally {
-                state.update { it.copy(selecting = false) }
-            }
-        }
     }
 
     fun changeName(value: String) {
@@ -259,17 +216,17 @@ internal class ProgramEditorViewModel(
             return
         }
         val program = TrainingProgram(current.programId, current.name, days.map { it.toDay() })
-        state.update { it.copy(saving = true, error = null) }
-        viewModelScope.launch {
-            try {
-                programs.saveProgram(program)
-                closeEditor()
-                onSaved()
-            } catch (_: SQLiteException) {
-                state.update { it.copy(error = "Не удалось сохранить программу") }
-            } finally {
-                state.update { it.copy(saving = false) }
-            }
+        viewModelScope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.saving },
+            onStart = { it.copy(saving = true, error = null) },
+            onFailure = { it.copy(error = "Не удалось сохранить программу") },
+            onFinish = { it.copy(saving = false) },
+        ) {
+            programs.saveProgram(program)
+            closeEditor()
+            onSaved()
+            true
         }
     }
 }

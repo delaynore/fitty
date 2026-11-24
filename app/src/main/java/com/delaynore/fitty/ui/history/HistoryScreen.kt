@@ -93,7 +93,7 @@ internal fun HistoryScreen(viewModel: HistoryViewModel, onOpen: (Long) -> Unit) 
 }
 
 @Composable
-internal fun WorkoutDetailsScreen(id: Long, viewModel: HistoryViewModel, onBack: () -> Unit) {
+internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, onBack: () -> Unit) {
     DisposableEffect(viewModel, id) {
         viewModel.showWorkout(id)
         onDispose { viewModel.showWorkout(null) }

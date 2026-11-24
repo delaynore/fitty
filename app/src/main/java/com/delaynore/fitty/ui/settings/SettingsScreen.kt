@@ -29,13 +29,12 @@ import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
 internal fun SettingsScreen(
-    viewModel: SettingsViewModel,
+    updates: UpdateCoordinator,
     onBack: (() -> Unit)?,
     onBrowseExercises: () -> Unit,
     onUpdate: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val updates = viewModel.updates
+    val state by updates.uiState.collectAsStateWithLifecycle()
     SettingsContent(
         installedApp = state.installedApp,
         check = state.updateCheck,
