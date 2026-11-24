@@ -93,7 +93,17 @@ jobs:
         id: emulator
         run: |
           # Install before reading the version so the cache tracks the stable SDK package.
-          sdkmanager --install emulator --channel=0
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$sdkmanager" ]]; then
+            candidates=("$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager)
+            sdkmanager="${candidates[0]}"
+          fi
+          if [[ ! -x "$sdkmanager" ]]; then
+            echo "::error::Android SDK command-line tools are missing from $ANDROID_HOME."
+            exit 1
+          fi
+          dirname "$sdkmanager" >> "$GITHUB_PATH"
+          "$sdkmanager" --install emulator --channel=0
           version=$("$ANDROID_HOME/emulator/emulator" -version | sed -n 's/^Android emulator version \([^ ]*\) (build_id \([0-9]*\)).*/\1-\2/p')
           test -n "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
