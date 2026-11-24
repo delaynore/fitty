@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -59,17 +60,29 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class RepositoryConsumerTest {
     @Test
-    fun homeStartsTheSelectedDayAndObservesCancellation() = runTest {
+    fun homeStartsTheSelectedProgramsChosenDayAndObservesCancellation() = runTest {
         val programs = FakeProgramsRepository()
         val days = listOf(TrainingDay(4, "A", emptyList()), TrainingDay(5, "B", emptyList()))
         val program = TrainingProgram(1, "Strength", days)
+        programs.saveProgram(TrainingProgram(2, "Warmup", listOf(days.first())))
         programs.saveProgram(program)
         val workouts = FakeWorkoutsRepository(days.associate { it.id to workout(dayName = it.name) })
         var cancelledId: Long? = null
         withViewModel({ HomeViewModel(programs, workouts) { cancelledId = it } }) { home ->
             assertTrue(home.uiState.value.loading)
             runCurrent()
-            assertEquals(program, home.uiState.value.program)
+            assertEquals("Warmup", home.uiState.value.program?.name)
+            val editor = ProgramEditorViewModel(programs) { testScheduler.currentTime }
+            try {
+                var selected = false
+                editor.selectProgram(program.id) { selected = true }
+                runCurrent()
+                assertTrue(selected)
+                assertTrue(editor.uiState.value.programs.orEmpty().single { it.id == program.id }.selected)
+                assertEquals(program, home.uiState.value.program)
+            } finally {
+                editor.viewModelScope.cancel()
+            }
             home.selectDay(5)
             assertEquals(5L, home.uiState.value.selectedDayId)
             var startedId: Long? = null
@@ -83,6 +96,54 @@ class RepositoryConsumerTest {
             runCurrent()
             assertNull(home.uiState.value.inProgressWorkout)
             assertEquals(startedId, cancelledId)
+        }
+    }
+
+    @Test
+    fun deletedDaysReturnToTheirOriginalPositionsAndExpireIndependently() = runTest {
+        val programs = FakeProgramsRepository()
+        val squat = TrainingExercise(8, "Squat", null, null)
+        val lunge = TrainingExercise(9, "Lunge", null, null)
+        val days = listOf(
+            TrainingDay(1, "A", listOf(squat)),
+            TrainingDay(2, "B", listOf(squat, lunge)),
+            TrainingDay(3, "C", listOf(lunge)),
+        )
+        val program = TrainingProgram(1, "Strength", days)
+        programs.saveProgram(program)
+        withViewModel({ ProgramEditorViewModel(programs) { testScheduler.currentTime } }) { editor ->
+            editor.openEditor(program)
+            editor.removeDay(1)
+            editor.removeDay(2)
+            assertEquals(listOf("C"), editor.uiState.value.visibleDays.map { it.name })
+            editor.restoreDay(2)
+            editor.restoreDay(1)
+            assertEquals(listOf("A", "B", "C"), editor.uiState.value.visibleDays.map { it.name })
+
+            advanceTimeBy(1)
+            editor.removeDay(1)
+            advanceTimeBy(2_000)
+            editor.removeDay(2)
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(listOf("B"), editor.uiState.value.removedDays.map { it.name })
+            editor.restoreDay(1)
+            editor.restoreDay(2)
+            editor.saveProgram({ error("The days are valid") }, {})
+            runCurrent()
+            assertEquals(days.drop(1), programs.observeProgram(program.id).first()?.days)
+
+            editor.openEditor(program)
+            editor.removeDay(1)
+            advanceTimeBy(2_000)
+            editor.removeDay(2)
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(listOf("B"), editor.uiState.value.removedDays.map { it.name })
+            advanceTimeBy(2_000)
+            runCurrent()
+            assertTrue(editor.uiState.value.removedDays.isEmpty())
+            assertEquals(listOf("C"), editor.uiState.value.visibleDays.map { it.name })
         }
     }
 
