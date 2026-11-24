@@ -32,6 +32,8 @@ android {
         testInstrumentationRunner = "com.delaynore.fitty.FittyTestRunner"
     }
 
+    testOptions.unitTests.isIncludeAndroidResources = true
+
     buildFeatures {
         compose = true
     }
@@ -61,6 +63,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.3")
     ksp("androidx.room:room-compiler:2.8.3")
 
+    testImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("org.robolectric:robolectric:4.18.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("app.cash.turbine:turbine:1.2.0")
@@ -72,4 +77,9 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+tasks.withType<Test>().configureEach {
+    javaLauncher = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
+    systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
 }
