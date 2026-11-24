@@ -44,12 +44,12 @@ internal fun SetFields(
     showLabels: Boolean,
     keepDraftBuffer: Boolean = true,
 ) {
-    if (input.type == ExerciseType.WEIGHT_AND_REPS) {
+    input.type.weightLabel?.let { weightLabel ->
         SetField(
             value = input.weight,
             onValueChange = { onFieldChange(SetInputField.Weight, it) },
             enabled = enabled,
-            label = if (showLabels) ({ Text("Вес, кг") }) else null,
+            label = if (showLabels) ({ Text(weightLabel) }) else null,
             error = input.errors?.weight,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             modifier = weightModifier,
