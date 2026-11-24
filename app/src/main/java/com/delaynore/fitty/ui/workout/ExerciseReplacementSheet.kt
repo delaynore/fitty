@@ -23,7 +23,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.delaynore.fitty.data.exercises.CatalogExercise
-import com.delaynore.fitty.data.exercises.ExerciseReplacements
+import com.delaynore.fitty.domain.ExerciseReplacements
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -3,6 +3,8 @@ package com.delaynore.fitty.ui.exercises
 import com.delaynore.fitty.data.exercises.BuiltInExercises
 import com.delaynore.fitty.data.exercises.Equipment
 import com.delaynore.fitty.data.exercises.MuscleGroup
+import com.delaynore.fitty.domain.CatalogFilters
+import com.delaynore.fitty.domain.MuscleRole
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -4,9 +4,9 @@ import android.os.Bundle
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseGoal
-import com.delaynore.fitty.data.exercises.ExerciseReplacements
+import com.delaynore.fitty.domain.ExerciseReplacements
+import com.delaynore.fitty.domain.replacementsFor
 import com.delaynore.fitty.data.exercises.ExerciseType
-import com.delaynore.fitty.data.exercises.replacementsFor
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
@@ -105,7 +105,7 @@ internal class ActiveWorkoutState(
         sessionJob?.cancel()
         replacementJob?.cancel()
         discardSetTimer()
-        val timer = SetTimer.restore(savedSetTimer, id, bootCount, timerClock())
+        val timer = restoreSetTimer(savedSetTimer, id, bootCount, timerClock())
         if (timer == null) savedSetTimer = null
         val restDeadline = restoreRestTimer(id)
         state.value = WorkoutUiState(sessionId = id, restDeadlineMillis = restDeadline, setTimer = timer)

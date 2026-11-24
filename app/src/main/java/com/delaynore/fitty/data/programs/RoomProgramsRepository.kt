@@ -10,6 +10,7 @@ import com.delaynore.fitty.data.local.TrainingExerciseEntity
 import com.delaynore.fitty.data.local.TrainingProgramEntity
 import com.delaynore.fitty.data.local.goal
 import com.delaynore.fitty.data.local.orderedExercises
+import com.delaynore.fitty.data.local.runStorageOperation
 import kotlinx.coroutines.flow.map
 
 internal class RoomProgramsRepository(private val database: FittyDatabase) : ProgramsRepository {
@@ -23,10 +24,10 @@ internal class RoomProgramsRepository(private val database: FittyDatabase) : Pro
     override fun observeProgram(id: Long) = dao.observeProgram(id).map { it?.toProgram() }
 
     override suspend fun selectProgram(id: Long) {
-        dao.selectHomeProgram(HomeProgramEntity(id))
+        runStorageOperation { dao.selectHomeProgram(HomeProgramEntity(id)) }
     }
 
-    override suspend fun saveProgram(program: TrainingProgram) {
+    override suspend fun saveProgram(program: TrainingProgram) = runStorageOperation {
         require(program.name.isNotBlank() && program.days.isNotEmpty())
         require(program.days.all { day ->
             day.name.isNotBlank() && day.exercises.isNotEmpty() && day.exercises.all {

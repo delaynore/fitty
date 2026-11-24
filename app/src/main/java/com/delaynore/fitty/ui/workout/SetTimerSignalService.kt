@@ -37,13 +37,8 @@ private const val NOTIFICATION_CHANNEL_ID = "set_timer"
 private const val NOTIFICATION_ID = 1
 private const val SIGNAL_MILLIS = 750L
 
-internal data class SetTimerSignal(val token: String, val workoutId: Long, val deadlineMillis: Long)
-
-internal interface SetTimerSignalScheduler {
-    fun schedule(token: String, workoutId: Long, deadlineMillis: Long): Boolean
-    fun cancel(token: String)
-    fun cancelWorkout(workoutId: Long)
-}
+internal typealias SetTimerSignal = com.delaynore.fitty.domain.SetTimerSignal
+internal typealias SetTimerSignalScheduler = com.delaynore.fitty.domain.SetTimerSignalScheduler
 
 internal class SetTimerSignals(private val context: Context) : SetTimerSignalScheduler {
     private val request = MutableStateFlow<SetTimerSignal?>(null)

@@ -9,6 +9,27 @@ import org.junit.Test
 
 class WorkoutFormattingTest {
     @Test
+    fun decimalsUseCommaAndTrimOnlyTrailingZeroes() {
+        assertEquals("0", formatDecimal(0.0))
+        assertEquals("1,2345", formatDecimal(1.2345))
+        assertEquals("15", formatDecimal(15.0))
+    }
+
+    @Test
+    fun wholeNumbersTrimSpacesAndRejectOverflowOrNonDigits() {
+        assertEquals(12, parseWholeNumber(" 12 "))
+        assertNull(parseWholeNumber("2147483648"))
+        assertNull(parseWholeNumber("1.0"))
+        assertNull(parseWholeNumber("12a"))
+    }
+
+    @Test
+    fun goalsExposeEditableInputText() {
+        assertEquals("8", ExerciseGoal.Repetitions(8).inputText())
+        assertEquals("30", ExerciseGoal.Duration(30).inputText())
+        assertEquals("1,5", ExerciseGoal.Distance(1.5).inputText())
+    }
+    @Test
     fun setFieldsMatchEachExerciseTypeAndItsUnits() {
         val expectedLabels = mapOf(
             ExerciseType.WEIGHT_AND_REPS to listOf("Вес, кг", "Повторения"),
@@ -40,6 +61,7 @@ class WorkoutFormattingTest {
         assertEquals("8 повт.", formatRecommendation(null, ExerciseGoal.Repetitions(8)))
         assertEquals("3 × 8", formatRecommendation(3, ExerciseGoal.Repetitions(8)))
         assertEquals("2 × 30 с", formatRecommendation(2, ExerciseGoal.Duration(30)))
+        assertEquals("4 × 1,5 м", formatRecommendation(4, ExerciseGoal.Distance(1.5)))
     }
 
     @Test

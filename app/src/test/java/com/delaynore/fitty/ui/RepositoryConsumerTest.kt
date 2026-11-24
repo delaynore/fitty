@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.FakeExerciseCatalogRepository
 import com.delaynore.fitty.data.programs.FakeProgramsRepository
 import com.delaynore.fitty.data.programs.ProgramsRepository
@@ -23,6 +24,7 @@ import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.domain.StorageException
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
 import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryViewModel
@@ -234,6 +236,27 @@ class RepositoryConsumerTest {
             assertEquals("Боковая планка", saved.name)
             assertEquals(ExerciseType.DURATION, saved.type)
             assertEquals(saved, editor.uiState.value.savedExercise)
+        }
+    }
+
+    @Test
+    fun exerciseEditorRemainsEditableWhenStorageFails() = runTest {
+        val stored = FakeExerciseCatalogRepository()
+        val failing = object : ExerciseCatalogRepository by stored {
+            override suspend fun create(name: String, type: ExerciseType): CatalogExercise =
+                throw StorageException(IllegalStateException("storage failed"))
+        }
+        withViewModel({ ExerciseEditorViewModel(failing) }) { editor ->
+            editor.open("Планка")
+            editor.selectType(ExerciseType.DURATION)
+            editor.save()
+            runCurrent()
+
+            val draft = requireNotNull(editor.uiState.value.draft)
+            assertFalse(draft.saving)
+            assertEquals("Планка", draft.name)
+            assertEquals("Не удалось сохранить упражнение", draft.error)
+            assertNull(editor.uiState.value.savedExercise)
         }
     }
 

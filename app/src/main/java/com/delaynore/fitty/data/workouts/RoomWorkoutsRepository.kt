@@ -12,6 +12,7 @@ import com.delaynore.fitty.data.local.WorkoutExerciseEntity
 import com.delaynore.fitty.data.local.WorkoutSessionEntity
 import com.delaynore.fitty.data.local.goal
 import com.delaynore.fitty.data.local.orderedExercises
+import com.delaynore.fitty.data.local.runStorageOperation
 import kotlinx.coroutines.flow.map
 
 internal class RoomWorkoutsRepository(private val database: FittyDatabase) : WorkoutsRepository {
@@ -24,7 +25,7 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
 
     override val history = workouts.observeHistory().map { history -> history.map { it.toSummary() } }
 
-    override suspend fun hasInProgressWorkout(): Boolean = workouts.inProgressWorkoutId() != null
+    override suspend fun hasInProgressWorkout(): Boolean = runStorageOperation { workouts.inProgressWorkoutId() != null }
 
     override fun observeWorkout(id: Long) = workouts.observeWorkout(id).map { stored ->
         stored?.let {
@@ -48,7 +49,7 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
         }
     }
 
-    override suspend fun startWorkout(dayId: Long): Long? = database.withTransaction {
+    override suspend fun startWorkout(dayId: Long): Long? = runStorageOperation { database.withTransaction {
         val activeWorkoutId = workouts.inProgressWorkoutId()
         if (activeWorkoutId != null) return@withTransaction activeWorkoutId
         val day = programs.trainingDay(dayId) ?: return@withTransaction null
@@ -72,14 +73,14 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
             ).withGoal(exercise.goal)
         })
         sessionId
-    }
+    } }
 
     override suspend fun replaceExercise(
         sessionId: Long,
         exerciseId: Long,
         sourceCatalogId: String,
         replacement: CatalogExercise,
-    ): Boolean = database.withTransaction {
+    ): Boolean = runStorageOperation { database.withTransaction {
         val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
         if (exercise.hasEverLoggedSet || exercise.catalogExerciseId != sourceCatalogId ||
             replacement.id == sourceCatalogId
@@ -94,11 +95,11 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
         if (workouts.updateExercise(updated) != 1) return@withTransaction false
         workouts.clearRemovedSetPositions(exerciseId)
         true
-    }
+    } }
 
     override suspend fun logSet(sessionId: Long, expectedExercise: WorkoutExercise, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
-        return database.withTransaction {
+        return runStorageOperation { database.withTransaction {
             val exerciseId = expectedExercise.id
             val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
             if (exercise.type != set.result.type ||
@@ -111,16 +112,16 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
             workouts.insertSet(set.copy(id = 0).toEntity(exerciseId))
             if (!exercise.hasEverLoggedSet) workouts.markSetLogged(exerciseId)
             true
-        }
+        } }
     }
 
     override suspend fun updateInProgressSet(sessionId: Long, exerciseId: Long, set: LoggedSet): Boolean {
         if (!set.isValid()) return false
-        return database.withTransaction {
+        return runStorageOperation { database.withTransaction {
             if (inProgressExercise(sessionId, exerciseId)?.type != set.result.type) return@withTransaction false
             val stored = workouts.loggedSetAtPosition(exerciseId, set.position) ?: return@withTransaction false
             workouts.updateSet(set.copy(id = stored.id).toEntity(exerciseId)) == 1
-        }
+        } }
     }
 
     override suspend fun removeSetPosition(
@@ -128,7 +129,7 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
         expectedExercise: WorkoutExercise,
         position: Int,
         isRecorded: Boolean,
-    ): RemovedWorkoutSet? = database.withTransaction {
+    ): RemovedWorkoutSet? = runStorageOperation { database.withTransaction {
         if (position <= 0) return@withTransaction null
         val exerciseId = expectedExercise.id
         val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction null
@@ -142,10 +143,10 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
         }
         if (set != null) workouts.deleteInProgressSet(set.id)
         RemovedWorkoutSet(set?.toLoggedSet(exercise.type))
-    }
+    } }
 
     override suspend fun restoreSetPosition(sessionId: Long, exerciseId: Long, position: Int, set: LoggedSet?): Boolean =
-        database.withTransaction {
+        runStorageOperation { database.withTransaction {
             val exercise = inProgressExercise(sessionId, exerciseId) ?: return@withTransaction false
             if (set != null && (set.position != position || !set.isValid() || set.result.type != exercise.type)) {
                 return@withTransaction false
@@ -156,29 +157,29 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
                 if (!exercise.hasEverLoggedSet) workouts.markSetLogged(exerciseId)
             }
             true
-        }
+        } }
 
-    override suspend fun finishWorkout(sessionId: Long): Boolean = database.withTransaction {
+    override suspend fun finishWorkout(sessionId: Long): Boolean = runStorageOperation { database.withTransaction {
         workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, System.currentTimeMillis()) == 1
-    }
+    } }
 
-    override suspend fun cancelWorkout(sessionId: Long): Boolean = workouts.cancelWorkout(sessionId) == 1
+    override suspend fun cancelWorkout(sessionId: Long): Boolean = runStorageOperation { workouts.cancelWorkout(sessionId) == 1 }
 
     override suspend fun updateCompletedSet(sessionId: Long, setId: Long, result: SetResult): Boolean {
         if (!result.isValid()) return false
-        return database.withTransaction {
+        return runStorageOperation { database.withTransaction {
             val stored = workouts.completedSet(sessionId, setId) ?: return@withTransaction false
             if (stored.type != result.type) return@withTransaction false
             val updated = LoggedSet(stored.set.position, result, stored.set.id)
             workouts.updateSet(updated.toEntity(stored.set.exerciseId)) == 1
-        }
+        } }
     }
 
     override suspend fun deleteCompletedSet(sessionId: Long, setId: Long): Boolean =
-        workouts.deleteCompletedSet(sessionId, setId) == 1
+        runStorageOperation { workouts.deleteCompletedSet(sessionId, setId) == 1 }
 
     override suspend fun deleteCompletedWorkout(sessionId: Long): Boolean =
-        workouts.deleteCompletedWorkout(sessionId) == 1
+        runStorageOperation { workouts.deleteCompletedWorkout(sessionId) == 1 }
 
     private suspend fun inProgressExercise(sessionId: Long, exerciseId: Long): WorkoutExerciseEntity? =
         if (workouts.inProgressWorkoutId() == sessionId) workouts.workoutExercise(exerciseId, sessionId) else null

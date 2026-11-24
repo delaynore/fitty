@@ -57,6 +57,7 @@ import com.delaynore.fitty.ui.programs.ProgramDetailsScreen
 import com.delaynore.fitty.ui.programs.ProgramDetailsViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorScreen
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
+import com.delaynore.fitty.platform.elapsedRealtime
 import com.delaynore.fitty.ui.programs.ProgramsScreen
 import com.delaynore.fitty.ui.programs.ProgramsViewModel
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
@@ -295,7 +296,7 @@ private fun programEditor(
 ): ProgramEditorViewModel {
     val parent = remember(entry) { nav.getBackStackEntry<ProgramEditorGraph>() }
     val editor = viewModel<ProgramEditorViewModel>(viewModelStoreOwner = parent) {
-        ProgramEditorViewModel(container.programs)
+        ProgramEditorViewModel(container.programs, ::elapsedRealtime)
     }
     LaunchedEffect(entry) {
         if (editor.uiState.value.editing) return@LaunchedEffect

@@ -103,7 +103,7 @@ class TrainingDayEditorContentTest {
     @Test
     fun invalidDurationGoalCanBeCollapsedAndOpenedAgain() {
         val day = TrainingDay(1, "A", listOf(TrainingExercise(1, "Plank", null, null, type = ExerciseType.DURATION)))
-        val editor = ProgramEditorViewModel(FakeProgramsRepository())
+        val editor = ProgramEditorViewModel(FakeProgramsRepository()) { 0L }
         editor.openEditor(TrainingProgram(1, "Strength", listOf(day)))
         editor.openDay(day.id)
         var finished = false

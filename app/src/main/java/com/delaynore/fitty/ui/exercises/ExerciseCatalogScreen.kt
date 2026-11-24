@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.exercises.CatalogExercise
+import com.delaynore.fitty.domain.CatalogFilters
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 
@@ -71,7 +72,7 @@ private fun ExerciseCatalogList(
     onSelectExercise: ((CatalogExercise) -> Unit)?,
     onCreateExercise: ((String) -> Unit)?,
 ) {
-    var filters by rememberSaveable(stateSaver = CatalogFilters.Saver) { mutableStateOf(CatalogFilters()) }
+    var filters by rememberSaveable(stateSaver = CatalogFiltersSaver) { mutableStateOf(CatalogFilters()) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current

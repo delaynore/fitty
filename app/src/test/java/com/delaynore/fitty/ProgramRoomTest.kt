@@ -160,7 +160,7 @@ class ProgramRoomTest {
             .build()
         programs = RoomProgramsRepository(database)
         workouts = RoomWorkoutsRepository(database)
-        editor = ProgramEditorViewModel(programs)
+        editor = ProgramEditorViewModel(programs) { 0L }
     }
 
     private suspend fun save(editor: ProgramEditorViewModel) {

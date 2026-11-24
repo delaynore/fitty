@@ -1,6 +1,5 @@
 package com.delaynore.fitty.ui.programs
 
-import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
@@ -75,7 +74,7 @@ internal data class ProgramEditorUiState(
 
 internal class ProgramEditorViewModel(
     private val programs: ProgramsRepository,
-    private val clock: () -> Long = SystemClock::elapsedRealtime,
+    private val clock: () -> Long,
 ) : ViewModel() {
     private val state = MutableStateFlow(ProgramEditorUiState())
     val uiState = state.asStateFlow()

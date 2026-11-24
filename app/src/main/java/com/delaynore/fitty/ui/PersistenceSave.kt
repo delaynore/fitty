@@ -1,6 +1,6 @@
 package com.delaynore.fitty.ui
 
-import android.database.sqlite.SQLiteException
+import com.delaynore.fitty.domain.StorageException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Runs a repository write inside [this] scope while guarding against concurrent saves and
- * mapping `false` results or [SQLiteException] through [onFailure].
+ * mapping `false` results or [StorageException] through [onFailure].
  */
 internal inline fun <S> CoroutineScope.launchPersistenceSave(
     state: MutableStateFlow<S>,
@@ -24,7 +24,7 @@ internal inline fun <S> CoroutineScope.launchPersistenceSave(
         var failed = false
         try {
             failed = !operation()
-        } catch (_: SQLiteException) {
+        } catch (_: StorageException) {
             failed = true
         } finally {
             state.update { current ->

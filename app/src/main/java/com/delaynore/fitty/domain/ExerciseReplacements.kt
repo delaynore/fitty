@@ -1,4 +1,6 @@
-package com.delaynore.fitty.data.exercises
+package com.delaynore.fitty.domain
+
+import com.delaynore.fitty.data.exercises.CatalogExercise
 
 internal data class ExerciseReplacements(
     val similar: List<CatalogExercise> = emptyList(),

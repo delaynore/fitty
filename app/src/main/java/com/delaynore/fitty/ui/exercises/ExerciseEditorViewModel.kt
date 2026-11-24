@@ -1,11 +1,11 @@
 package com.delaynore.fitty.ui.exercises
 
-import android.database.sqlite.SQLiteException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.domain.StorageException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -74,7 +74,7 @@ internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepos
                 val saved = current.details?.also { catalog.saveDetails(it) }
                     ?: catalog.create(current.name, type)
                 state.update { if (it.draftVersion == version) it.copy(savedExercise = saved) else it }
-            } catch (_: SQLiteException) {
+            } catch (_: StorageException) {
                 state.update {
                     if (it.draftVersion == version) {
                         it.copy(draft = it.draft?.copy(saving = false, error = "Не удалось сохранить упражнение"))

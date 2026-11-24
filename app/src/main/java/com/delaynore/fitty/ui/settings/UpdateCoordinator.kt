@@ -2,13 +2,13 @@ package com.delaynore.fitty.ui.settings
 
 import android.app.Activity
 import android.content.Intent
-import android.database.sqlite.SQLiteException
 import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.domain.StorageException
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -97,7 +97,7 @@ internal class UpdateCoordinator(
                 } else {
                     download(update)
                 }
-            } catch (_: SQLiteException) {
+            } catch (_: StorageException) {
                 setInstall(UpdateInstallState.WorkoutCheckFailed)
             }
         }

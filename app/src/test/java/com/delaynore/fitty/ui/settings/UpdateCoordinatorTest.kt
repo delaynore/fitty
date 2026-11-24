@@ -10,6 +10,8 @@ import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
+import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.domain.StorageException
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -149,6 +151,25 @@ class UpdateCoordinatorTest {
         assertEquals(UpdateInstallState.Downloading(), coordinator.uiState.value.updateInstall)
         assertEquals(3, updates.downloads)
         coordinator.cancelDownload()
+    }
+
+    @Test
+    fun storageFailureLeavesUpdateReadyForRetry() = runTest {
+        val stored = FakeWorkoutsRepository()
+        val failing = object : WorkoutsRepository by stored {
+            override suspend fun hasInProgressWorkout(): Boolean =
+                throw StorageException(IllegalStateException("storage failed"))
+        }
+        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), FakeUpdates(), failing, this)
+        coordinator.checkForUpdate()
+        runCurrent()
+
+        coordinator.startUpdate(hasUnsavedInput = false)
+        runCurrent()
+
+        assertEquals(UpdateInstallState.WorkoutCheckFailed, coordinator.uiState.value.updateInstall)
+        coordinator.startUpdate(hasUnsavedInput = false)
+        assertEquals(UpdateInstallState.CheckingWorkout, coordinator.uiState.value.updateInstall)
     }
 
     private open class FakeUpdates(

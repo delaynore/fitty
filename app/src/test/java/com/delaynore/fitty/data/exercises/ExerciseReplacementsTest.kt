@@ -1,5 +1,8 @@
 package com.delaynore.fitty.data.exercises
 
+import com.delaynore.fitty.domain.ExerciseReplacements
+import com.delaynore.fitty.domain.replacementsFor
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
