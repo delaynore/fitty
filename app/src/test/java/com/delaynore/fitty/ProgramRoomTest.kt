@@ -17,7 +17,7 @@ import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.RoomWorkoutsRepository
 import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
-import kotlinx.coroutines.CompletableDeferred
+import com.delaynore.fitty.ui.programs.ProgramEditorEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -164,8 +164,7 @@ class ProgramRoomTest {
     }
 
     private suspend fun save(editor: ProgramEditorViewModel) {
-        val saved = CompletableDeferred<Unit>()
-        editor.saveProgram({ error("The day is valid") }, { saved.complete(Unit) })
-        saved.await()
+        editor.saveProgram()
+        withTimeout(5_000) { editor.uiState.first { it.pendingEvent == ProgramEditorEvent.Saved } }
     }
 }

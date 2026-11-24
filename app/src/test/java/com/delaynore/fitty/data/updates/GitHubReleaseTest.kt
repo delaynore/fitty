@@ -80,6 +80,21 @@ class GitHubReleaseTest {
     }
 
     @Test
+    fun multipleValidApksFailTheCheckInsteadOfChoosingOne() {
+        val duplicate = stableRelease
+            .replace("\"name\": \"notes.txt\"", "\"name\": \"fitty-9.apk\"")
+            .replace(
+                "https://github.com/delaynore/fitty/releases/download/v1.0-build-8/notes.txt",
+                "https://github.com/delaynore/fitty/releases/download/v1.0-build-8/fitty-9.apk",
+            )
+
+        assertEquals(
+            UpdateCheckResult.Failed(UpdateCheckFailure.MissingApk),
+            checkLatestRelease(1) { GitHubReleaseResponse(200, duplicate) },
+        )
+    }
+
+    @Test
     fun githubErrorsAndUnusableResponsesFailTheCheck() {
         val rateLimited = GitHubReleaseResponse(403, """{"message":"API rate limit exceeded"}""")
         val malformedRelease = GitHubReleaseResponse(200, "{")

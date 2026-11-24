@@ -66,6 +66,7 @@ internal data class WorkoutUiState(
     val session: WorkoutSession? = null,
     val sessionLoaded: Boolean = false,
     val finished: Boolean = false,
+    val pendingEvent: WorkoutEvent? = null,
     val exerciseIndex: Int = 0,
     val rowsByExercise: Map<Long, WorkoutRowDrafts> = emptyMap(),
     val pendingRemovals: List<RemovedWorkoutRow> = emptyList(),
@@ -79,6 +80,8 @@ internal data class WorkoutUiState(
 ) {
     fun rows(exerciseId: Long) = rowsByExercise[exerciseId] ?: WorkoutRowDrafts()
 }
+
+internal sealed interface WorkoutEvent { data class Finished(val sessionId: Long) : WorkoutEvent }
 
 internal class ActiveWorkoutState(
     private val workouts: WorkoutsRepository,
@@ -437,9 +440,21 @@ internal class ActiveWorkoutState(
     fun finish(sessionId: Long) {
         save("Не удалось завершить тренировку") {
             if (!workouts.finishWorkout(sessionId)) return@save false
-            clear(sessionId, WorkoutUiState(sessionId = sessionId, sessionLoaded = true, finished = true))
+            clear(
+                sessionId,
+                WorkoutUiState(
+                    sessionId = sessionId,
+                    sessionLoaded = true,
+                    finished = true,
+                    pendingEvent = WorkoutEvent.Finished(sessionId),
+                ),
+            )
             true
         }
+    }
+
+    fun consumeEvent(event: WorkoutEvent) {
+        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 
     fun clear(sessionId: Long) = clear(sessionId, WorkoutUiState())

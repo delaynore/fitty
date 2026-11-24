@@ -1,6 +1,5 @@
 package com.delaynore.fitty.ui.settings
 
-import android.content.Intent
 import com.delaynore.fitty.data.updates.FittyUpdate
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
@@ -64,7 +63,7 @@ class UpdateCoordinatorTest {
             updates.retryResult.complete(UpdateDownloadResult.Downloaded(retryApk))
             runCurrent()
 
-            assertEquals(UpdateInstallState.Ready(retryApk), coordinator.uiState.value.updateInstall)
+            assertEquals(UpdateInstallState.Ready(retryApk, 8), coordinator.uiState.value.updateInstall)
             assertEquals(1, updates.checks)
         } finally {
             updates.lateResult.complete(UpdateDownloadResult.Downloaded(cancelledApk))
@@ -107,7 +106,7 @@ class UpdateCoordinatorTest {
         coordinator.startUpdate(hasUnsavedInput = false)
         runCurrent()
 
-        assertEquals(UpdateInstallState.Ready(apk), coordinator.uiState.value.updateInstall)
+        assertEquals(UpdateInstallState.Ready(apk, 8), coordinator.uiState.value.updateInstall)
         assertEquals(1, updates.checks)
     }
 
@@ -201,9 +200,8 @@ class UpdateCoordinatorTest {
             return downloadResult()
         }
 
-        override fun canRequestInstall() = error("The installer is invoked by the UI")
-        override fun requestInstallPermission(launch: (Intent) -> Unit) = error("The installer is invoked by the UI")
-        override fun openInstaller(apk: File, launch: (Intent) -> Unit) = error("The installer is invoked by the UI")
+        override suspend fun deleteApk(apk: File) { apk.delete() }
+
     }
 
     private class DelayedDownloads : FakeUpdates() {

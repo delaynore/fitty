@@ -40,24 +40,32 @@ import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 import com.delaynore.fitty.ui.SwipeToRevealDelete
+import com.delaynore.fitty.ui.UiEventEffect
 
 @Composable
 internal fun ProgramEditorScreen(
     viewModel: ProgramEditorViewModel,
     onBack: () -> Unit,
-    onEditDay: () -> Unit,
+    onEditDay: (Long) -> Unit,
     onSettings: () -> Unit,
     onSaved: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { event ->
+        when (event) {
+            is ProgramEditorEvent.OpenDay -> onEditDay(event.id)
+            ProgramEditorEvent.Saved -> onSaved()
+            ProgramEditorEvent.DayFinished -> Unit
+        }
+    }
     ProgramEditorContent(
-        state, onBack, onSettings, onEditDay,
+        state, onBack, onSettings,
         onNameChange = viewModel::changeName,
         onRemoveDay = viewModel::removeDay,
         onRestoreDay = viewModel::restoreDay,
         onOpenDay = viewModel::openDay,
         onAddDay = viewModel::addDay,
-        onSave = { viewModel.saveProgram(onEditDay, onSaved) },
+        onSave = viewModel::saveProgram,
     )
 }
 
@@ -66,7 +74,6 @@ private fun ProgramEditorContent(
     state: ProgramEditorUiState,
     onBack: () -> Unit,
     onSettings: () -> Unit,
-    onEditDay: () -> Unit,
     onNameChange: (String) -> Unit,
     onRemoveDay: (Long) -> Unit,
     onRestoreDay: (Long) -> Unit,
@@ -110,7 +117,6 @@ private fun ProgramEditorContent(
                             onClick = {
                                 focus.clearFocus()
                                 onOpenDay(day.id)
-                                onEditDay()
                             },
                             enabled = !state.saving,
                             modifier = Modifier.fillMaxWidth(),
@@ -129,7 +135,6 @@ private fun ProgramEditorContent(
                 onClick = {
                     focus.clearFocus()
                     onAddDay()
-                    onEditDay()
                 },
                 enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -190,6 +195,9 @@ internal fun TrainingDayEditorScreen(
     onPickExercise: (Long?) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { event ->
+        if (event == ProgramEditorEvent.DayFinished) onBack()
+    }
     val day = state.editingDay ?: return
     key(state.draftVersion, day.id) {
         TrainingDayEditorContent(
@@ -202,7 +210,7 @@ internal fun TrainingDayEditorScreen(
             onChangeExercise = viewModel::changeExercise,
             onDeleteExercise = viewModel::deleteExercise,
             onMoveExercise = viewModel::moveExercise,
-            onSave = { viewModel.finishDay(onBack) },
+            onSave = viewModel::finishDay,
         )
     }
 }

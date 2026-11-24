@@ -2,6 +2,7 @@ package com.delaynore.fitty.data.updates
 
 import android.content.Context
 import androidx.core.content.pm.PackageInfoCompat
+import com.delaynore.fitty.platform.updates.getPackageArchiveInfoCompat
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -20,8 +21,7 @@ internal class UpdateApkCache(
     private val matchesRelease: (File, FittyUpdate) -> Boolean,
 ) {
     constructor(context: Context) : this(context.cacheDir, { apk, update ->
-        @Suppress("DEPRECATION")
-        val archive = context.packageManager.getPackageArchiveInfo(apk.path, 0)
+        val archive = context.packageManager.getPackageArchiveInfoCompat(apk.path)
         archive != null && archive.packageName == context.packageName &&
             PackageInfoCompat.getLongVersionCode(archive) == update.versionCode &&
             archive.versionName == update.versionName
@@ -76,6 +76,8 @@ internal class UpdateApkCache(
             }
         }
     }
+
+    suspend fun deleteApk(apk: File) = withContext(NonCancellable + Dispatchers.IO) { apk.delete(); Unit }
 }
 
 internal inline fun <T> writeToCache(write: () -> T): T = try {

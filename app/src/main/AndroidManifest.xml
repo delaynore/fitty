@@ -12,15 +12,9 @@
         android:icon="@drawable/ic_launcher"
         android:label="Fitty"
         android:theme="@android:style/Theme.Material.NoActionBar">
-        <provider
-            android:name=".data.updates.UpdateFileProvider"
-            android:authorities="${applicationId}.updates"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/update_file_paths" />
-        </provider>
+        <receiver
+            android:name=".platform.updates.UpdateInstallReceiver"
+            android:exported="false" />
         <service
             android:name=".ui.workout.SetTimerSignalService"
             android:exported="false"

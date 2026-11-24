@@ -20,7 +20,11 @@ internal data class HomeUiState(
     val selectedDayId: Long? = null,
     val starting: Boolean = false,
     val error: String? = null,
+    val confirmingCancelWorkoutId: Long? = null,
+    val pendingEvent: HomeEvent? = null,
 )
+
+internal sealed interface HomeEvent { data class OpenWorkout(val id: Long) : HomeEvent }
 
 internal class HomeViewModel(
     programs: ProgramsRepository,
@@ -50,24 +54,31 @@ internal class HomeViewModel(
         state.update { it.copy(selectedDayId = dayId, error = null) }
     }
 
-    fun startWorkout(onStarted: (Long) -> Unit) {
+    fun startWorkout() {
         val current = state.value
         val program = current.program ?: return
         val dayId = program.days.firstOrNull { it.id == current.selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
         changeWorkout("Не удалось начать тренировку") {
             val sessionId = workouts.startWorkout(dayId) ?: return@changeWorkout false
-            onStarted(sessionId)
+            state.update { it.copy(pendingEvent = HomeEvent.OpenWorkout(sessionId)) }
             true
         }
     }
 
-    fun cancelWorkout(id: Long, onCancelled: () -> Unit) {
+    fun confirmCancelWorkout(id: Long) { state.update { it.copy(confirmingCancelWorkoutId = id, error = null) } }
+    fun dismissCancelWorkout() { state.update { it.copy(confirmingCancelWorkoutId = null, error = null) } }
+
+    fun cancelWorkout(id: Long) {
         changeWorkout("Не удалось отменить тренировку") {
             if (!workouts.cancelWorkout(id)) return@changeWorkout false
             onWorkoutCancelled(id)
-            onCancelled()
+            state.update { it.copy(confirmingCancelWorkoutId = null) }
             true
         }
+    }
+
+    fun consumeEvent(event: HomeEvent) {
+        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 
     private fun changeWorkout(failureMessage: String, change: suspend () -> Boolean) {

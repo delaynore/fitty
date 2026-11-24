@@ -27,12 +27,16 @@ import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.domain.StorageException
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
 import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
+import com.delaynore.fitty.ui.exercises.ExerciseEditorEvent
 import com.delaynore.fitty.ui.history.HistoryViewModel
 import com.delaynore.fitty.ui.history.WorkoutDetailsViewModel
 import com.delaynore.fitty.ui.home.HomeViewModel
+import com.delaynore.fitty.ui.home.HomeEvent
 import com.delaynore.fitty.ui.programs.ProgramDetailsViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
+import com.delaynore.fitty.ui.programs.ProgramEditorEvent
 import com.delaynore.fitty.ui.programs.ProgramsViewModel
+import com.delaynore.fitty.ui.programs.ProgramsEvent
 import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.UpdateCoordinator
 import com.delaynore.fitty.ui.settings.UpdateCheckState
@@ -77,10 +81,11 @@ class RepositoryConsumerTest {
             assertEquals("Warmup", home.uiState.value.program?.name)
             val programsList = ProgramsViewModel(programs)
             try {
-                var selected = false
-                programsList.selectProgram(program.id) { selected = true }
+                programsList.selectProgram(program.id)
                 runCurrent()
-                assertTrue(selected)
+                assertEquals(ProgramsEvent.ProgramSelected, programsList.uiState.value.pendingEvent)
+                programsList.consumeEvent(ProgramsEvent.ProgramSelected)
+                assertNull(programsList.uiState.value.pendingEvent)
                 assertTrue(programsList.uiState.value.programs.orEmpty().single { it.id == program.id }.selected)
                 assertEquals(program, home.uiState.value.program)
             } finally {
@@ -95,17 +100,23 @@ class RepositoryConsumerTest {
             runCurrent()
             home.selectDay(5)
             assertEquals(5L, home.uiState.value.selectedDayId)
-            var startedId: Long? = null
-            home.startWorkout { startedId = it }
+            home.startWorkout()
             assertTrue(home.uiState.value.starting)
             runCurrent()
             val active = requireNotNull(home.uiState.value.inProgressWorkout)
             assertEquals("B", active.dayName)
-            assertEquals(active.id, startedId)
-            home.cancelWorkout(active.id) {}
+            assertEquals(HomeEvent.OpenWorkout(active.id), home.uiState.value.pendingEvent)
+            home.consumeEvent(HomeEvent.OpenWorkout(active.id + 1))
+            assertEquals(HomeEvent.OpenWorkout(active.id), home.uiState.value.pendingEvent)
+            home.consumeEvent(HomeEvent.OpenWorkout(active.id))
+            assertNull(home.uiState.value.pendingEvent)
+            home.confirmCancelWorkout(active.id)
+            assertEquals(active.id, home.uiState.value.confirmingCancelWorkoutId)
+            home.cancelWorkout(active.id)
             runCurrent()
             assertNull(home.uiState.value.inProgressWorkout)
-            assertEquals(startedId, cancelledId)
+            assertEquals(active.id, cancelledId)
+            assertNull(home.uiState.value.confirmingCancelWorkoutId)
         }
     }
 
@@ -139,7 +150,7 @@ class RepositoryConsumerTest {
             assertEquals(listOf("B"), editor.uiState.value.removedDays.map { it.name })
             editor.restoreDay(1)
             editor.restoreDay(2)
-            editor.saveProgram({ error("The days are valid") }, {})
+            editor.saveProgram()
             runCurrent()
             assertEquals(days.drop(1), programs.observeProgram(program.id).first()?.days)
 
@@ -198,7 +209,7 @@ class RepositoryConsumerTest {
             editor.changeDayName("Legs")
             editor.changeExercise(8) { it.copy(sets = "3") }
             editor.changeExercise(8) { it.copy(target = "8") }
-            editor.saveProgram({ error("The day is valid") }, {})
+            editor.saveProgram()
             runCurrent()
             val saved = requireNotNull(programs.observeProgram(first.id).first())
             assertEquals("Strength", saved.name)
@@ -207,6 +218,11 @@ class RepositoryConsumerTest {
             assertEquals(3, savedDay.exercises.single().recommendedSets)
             assertEquals("8", savedDay.exercises.single().goal?.inputText())
             assertFalse(editor.uiState.value.editing)
+            assertEquals(ProgramEditorEvent.Saved, editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
+            assertEquals(ProgramEditorEvent.Saved, editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ProgramEditorEvent.Saved)
+            assertNull(editor.uiState.value.pendingEvent)
         }
     }
 
@@ -235,7 +251,11 @@ class RepositoryConsumerTest {
             val saved = catalog.allExercises.value.single()
             assertEquals("Боковая планка", saved.name)
             assertEquals(ExerciseType.DURATION, saved.type)
-            assertEquals(saved, editor.uiState.value.savedExercise)
+            assertEquals(ExerciseEditorEvent.Saved(saved), editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ExerciseEditorEvent.Saved(saved.copy(name = "Other")))
+            assertEquals(ExerciseEditorEvent.Saved(saved), editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ExerciseEditorEvent.Saved(saved))
+            assertNull(editor.uiState.value.pendingEvent)
         }
     }
 
@@ -256,7 +276,7 @@ class RepositoryConsumerTest {
             assertFalse(draft.saving)
             assertEquals("Планка", draft.name)
             assertEquals("Не удалось сохранить упражнение", draft.error)
-            assertNull(editor.uiState.value.savedExercise)
+            assertNull(editor.uiState.value.pendingEvent)
         }
     }
 
@@ -352,9 +372,9 @@ class RepositoryConsumerTest {
             runCurrent()
             assertEquals(secondId, details.uiState.value.details?.workout?.summary?.id)
 
-            details.saveSet(secondId, set, SetInput(ExerciseType.REPS), { error("Invalid set") })
+            details.saveSet(secondId, set, SetInput(ExerciseType.REPS))
             assertEquals("Целое число от 1", details.uiState.value.setErrors?.measure)
-            details.saveSet(secondId, set, SetInput(ExerciseType.REPS, measure = "10"), {})
+            details.saveSet(secondId, set, SetInput(ExerciseType.REPS, measure = "10"))
             runCurrent()
             val updated = details.uiState.value.details?.workout?.exercises?.single()?.sets?.single()
             assertEquals(SetResult.Reps(10), updated?.result)
@@ -413,9 +433,6 @@ class RepositoryConsumerTest {
             override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) = Unit
             override suspend fun download(update: FittyUpdate, installedVersionCode: Long, onProgress: (Int) -> Unit) =
                 UpdateDownloadResult.Downloaded(apk)
-            override fun canRequestInstall() = false
-            override fun requestInstallPermission(launch: (Intent) -> Unit) = error("No installer in this test")
-            override fun openInstaller(apk: File, launch: (Intent) -> Unit) = error("No installer in this test")
         }
         val settings = UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope)
         settings.checkForUpdate()
@@ -430,7 +447,7 @@ class RepositoryConsumerTest {
         val state = settings.uiState.value
         assertEquals(installed, state.installedApp)
         assertEquals(UpdateCheckState.Checked(available), state.updateCheck)
-        assertEquals(UpdateInstallState.Ready(apk), state.updateInstall)
+        assertEquals(UpdateInstallState.Ready(apk, 2), state.updateInstall)
     }
 
     private suspend fun <T : ViewModel> TestScope.withViewModel(

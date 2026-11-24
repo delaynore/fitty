@@ -39,6 +39,7 @@ The prototype shows the flow from the first launch through editing a completed w
 - Build the Android app in Kotlin with Jetpack Compose for the UI and Room for the SQLite database.
 - Keep the MVP in one Gradle module, `:app`. Put Android-free business rules and value types in the flat `domain/` package. Group screens with their ViewModels in `ui/home/`, `ui/programs/`, `ui/workout/`, and `ui/history/`. Keep navigation in `navigation/`.
 - Put training program operations in `data/programs/`. Both the workout screen and workout history use the workout repository in `data/workouts/`. Keep Room entities, DAOs, and database migrations in `data/local/`.
+- Keep update release and cache operations in `data/updates/`; keep Android's `PackageInstaller` adapter and receiver in `platform/updates/`.
 - Put Android system adapters, such as clocks, in `platform/`. The composition point passes them to ViewModels and domain state holders.
 - Compose screens send user actions to their screen `ViewModel` (or an app-scoped state holder such as `ActiveWorkoutState` or `UpdateCoordinator` when state outlives a single screen) and render the state it exposes. State holders and `ViewModel`s call repositories directly. Repositories access Room through DAOs and enforce rules for changes to stored data. For example, the workout repository checks for a logged set and completes the workout in the same transaction.
 - Extract a use case when several screens need the same business logic or when coordinating a complex operation would make a `ViewModel` hard to follow.
