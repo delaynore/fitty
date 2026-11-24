@@ -12,14 +12,14 @@ val fittyVersionCode = providers.gradleProperty("fittyVersionCode").map { value 
     requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) {
         "fittyVersionCode must be a positive integer"
     }
-}.getOrElse(3)
+}.getOrElse(8)
 
 val fittyVersionName = providers.gradleProperty("fittyVersionName").map { value ->
     require(value.isNotBlank() && value == value.trim()) {
         "fittyVersionName must be non-blank and have no surrounding whitespace"
     }
     value
-}.getOrElse("1.0")
+}.getOrElse("1.2.0")
 
 android {
     namespace = "com.delaynore.fitty"
