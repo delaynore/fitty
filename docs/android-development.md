@@ -16,14 +16,20 @@ Before handoff, run the full JVM suite, build the app, and run Android lint.
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
-Start a dedicated Android emulator and list connected devices to find its serial. Pass that serial to the test script. The tests use a separate Room database and temporarily toggle airplane mode.
+Start a dedicated Android emulator with animations disabled. CI uses AOSP ATD API 36 on x86_64. Run the Smoke tests on the emulator by passing its serial to the script. The tests use a separate Room database and temporarily toggle airplane mode.
 
 ```powershell
 & "$env:ANDROID_HOME/platform-tools/adb.exe" devices
-.\scripts\test-android.ps1 -Serial emulator-5556
+.\scripts\test-android.ps1 -Serial emulator-5556 -Smoke
 ```
 
-The script prints the test log path under `build/reports/android-device/`. The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, and Android lint in parallel on each push to a pull request. The three checks should finish within two minutes of workflow creation with warm caches. A separate Android 16 emulator job runs the full instrumented suite and uploads its reports.
+The script prints the test log path under `build/reports/android-device/`. It selects methods marked with `@SmokeTest` when you pass `-Smoke`. Omit the switch to run the full instrumented suite while investigating a failure.
+
+The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, and Android lint in parallel on each push to a pull request. The three checks should finish within two minutes of workflow creation with warm caches.
+
+The [Android Smoke workflow](../.github/workflows/android-smoke.yml) checks whether a PR into the default branch changes the Android app or its build. Add the `android-smoke` label to run Smoke on the PR's current commit. With the label in place, a new commit gets its own run. The gate accepts a successful run for that same SHA and passes without Smoke for changes outside the Android app and build. For a release, run **Android Smoke** manually in Actions and select the release branch or tag. The emulator job should finish within four minutes of starting with warm caches. Its Gradle output and the `android-smoke-results` artifact contain the results.
+
+In GitHub, create the `android-smoke` label and require **Android Smoke gate** from GitHub Actions in the protection rule for the default branch. The gate handles the exemption for docs-only changes. The label and branch rule live in repository settings.
 
 ## Build and sign an APK
 
