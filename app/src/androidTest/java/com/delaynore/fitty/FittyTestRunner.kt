@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import androidx.test.runner.AndroidJUnitRunner
-import com.delaynore.fitty.data.updates.UpdateService
 import java.util.UUID
 
 class FittyTestRunner : AndroidJUnitRunner() {
@@ -23,12 +22,6 @@ class FittyTestRunner : AndroidJUnitRunner() {
 
 class FittyTestApplication : FittyApplication() {
     override val databaseName = "fitty-test-${UUID.randomUUID()}.db"
-
-    @Volatile
-    internal var updateServiceOverride: UpdateService? = null
-
-    override val updateService: UpdateService
-        get() = updateServiceOverride ?: super.updateService
 
     fun resetDatabase() = deleteDatabase()
 }

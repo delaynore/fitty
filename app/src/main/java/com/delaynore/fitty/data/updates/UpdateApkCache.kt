@@ -15,8 +15,19 @@ import kotlinx.coroutines.withContext
 private const val CACHED_APK_PREFIX = "fitty-update-"
 private const val APK_SUFFIX = ".apk"
 
-internal class UpdateApkCache(private val context: Context) {
-    private val updatesDirectory = File(context.cacheDir, "updates")
+internal class UpdateApkCache(
+    cacheDirectory: File,
+    private val matchesRelease: (File, FittyUpdate) -> Boolean,
+) {
+    constructor(context: Context) : this(context.cacheDir, { apk, update ->
+        @Suppress("DEPRECATION")
+        val archive = context.packageManager.getPackageArchiveInfo(apk.path, 0)
+        archive != null && archive.packageName == context.packageName &&
+            PackageInfoCompat.getLongVersionCode(archive) == update.versionCode &&
+            archive.versionName == update.versionName
+    })
+
+    private val updatesDirectory = File(cacheDirectory, "updates")
     private val pruneLock = Mutex()
     private var prunedAtStartup = false
 
@@ -47,12 +58,7 @@ internal class UpdateApkCache(private val context: Context) {
                 pendingApk = apk
                 fetchApk(apk)
                 currentCoroutineContext().ensureActive()
-                @Suppress("DEPRECATION")
-                val archive = context.packageManager.getPackageArchiveInfo(apk.path, 0)
-                if (archive == null || archive.packageName != context.packageName ||
-                    PackageInfoCompat.getLongVersionCode(archive) != update.versionCode ||
-                    update.versionCode <= installedVersionCode || archive.versionName != update.versionName
-                ) {
+                if (update.versionCode <= installedVersionCode || !matchesRelease(apk, update)) {
                     return@withContext UpdateDownloadResult.Failed(UpdateDownloadFailure.InvalidApk)
                 }
                 UpdateDownloadResult.Downloaded(apk)
@@ -60,6 +66,10 @@ internal class UpdateApkCache(private val context: Context) {
             // Keep ownership until withContext delivers the result to the caller's dispatcher.
             if (result is UpdateDownloadResult.Downloaded) pendingApk = null
             return result
+        } catch (failure: ApkDownloadException) {
+            return UpdateDownloadResult.Failed(failure.reason)
+        } catch (failure: IOException) {
+            return UpdateDownloadResult.Failed(transferFailure(failure))
         } finally {
             pendingApk?.let { apk ->
                 withContext(NonCancellable + Dispatchers.IO) { apk.delete() }

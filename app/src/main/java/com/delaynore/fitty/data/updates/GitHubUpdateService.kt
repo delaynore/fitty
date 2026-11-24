@@ -53,13 +53,8 @@ internal class GitHubUpdateService(
         update: FittyUpdate,
         installedVersionCode: Long,
         onProgress: (Int) -> Unit,
-    ): UpdateDownloadResult = try {
+    ): UpdateDownloadResult =
         cache.download(update, installedVersionCode) { apk -> fetchApk(update, apk, onProgress) }
-    } catch (failure: ApkDownloadException) {
-        UpdateDownloadResult.Failed(failure.reason)
-    } catch (failure: IOException) {
-        UpdateDownloadResult.Failed(transferFailure(failure))
-    }
 
     override fun canRequestInstall() = installer.canRequestInstall()
 
@@ -181,7 +176,7 @@ internal suspend fun downloadReleaseApk(
 
 internal class ApkDownloadException(val reason: UpdateDownloadFailure) : Exception()
 
-private fun transferFailure(failure: IOException): UpdateDownloadFailure = when (failure) {
+internal fun transferFailure(failure: IOException): UpdateDownloadFailure = when (failure) {
     is EOFException, is MalformedURLException, is ProtocolException -> UpdateDownloadFailure.Delivery
     else -> UpdateDownloadFailure.Network
 }
