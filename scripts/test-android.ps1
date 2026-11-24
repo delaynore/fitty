@@ -2,7 +2,9 @@
 param(
     [Parameter(Mandatory)]
     [ValidatePattern('^emulator-[0-9]{4,5}$')]
-    [string]$Serial
+    [string]$Serial,
+
+    [switch]$Smoke
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,7 +52,12 @@ try {
     $log = Join-Path $reportDirectory.FullName "$Serial-$stamp.log"
     Write-Host "Instrumentation log: $log"
 
-    & $adb -s $Serial shell am instrument -w -r com.delaynore.fitty.test/com.delaynore.fitty.FittyTestRunner |
+    $testFilter = @()
+    if ($Smoke) {
+        $testFilter = @('-e', 'annotation', 'com.delaynore.fitty.SmokeTest')
+    }
+
+    & $adb -s $Serial shell am instrument -w -r @testFilter com.delaynore.fitty.test/com.delaynore.fitty.FittyTestRunner |
         Tee-Object -FilePath $log
 
     if ($LASTEXITCODE -ne 0 -or -not (Select-String -Path $log -Pattern '^OK \([1-9][0-9]* tests?\)$' -Quiet)) {
