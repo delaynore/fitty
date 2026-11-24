@@ -16,10 +16,17 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.programs.FakeProgramsRepository
+import com.delaynore.fitty.data.programs.TrainingDay
+import com.delaynore.fitty.data.programs.TrainingExercise
+import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.ui.FittyTheme
 import com.delaynore.fitty.ui.programs.ExerciseDraft
+import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.programs.TrainingDayDraft
 import com.delaynore.fitty.ui.programs.TrainingDayEditorContent
+import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -90,6 +97,31 @@ class TrainingDayEditorContentTest {
         compose.onNodeWithText("3 × 10").performClick()
         compose.onNodeWithTag("recommendation-repetitions").assertDoesNotExist()
         compose.onNodeWithText("3 × 10").assertIsDisplayed()
+    }
+
+    @Test
+    fun invalidDurationGoalCanBeCollapsedAndOpenedAgain() {
+        val day = TrainingDay(1, "A", listOf(TrainingExercise(1, "Plank", null, null, type = ExerciseType.DURATION)))
+        val editor = ProgramEditorViewModel(FakeProgramsRepository())
+        editor.openEditor(TrainingProgram(1, "Strength", listOf(day)))
+        editor.openDay(day.id)
+        var finished = false
+        compose.setContent {
+            FittyTheme {
+                TrainingDayEditorScreen(editor, onBack = { finished = true }, onSettings = {}, onPickExercise = {})
+            }
+        }
+
+        compose.onNodeWithText("Plank").performClick()
+        val goal = compose.onNodeWithTag("recommendation-duration")
+        goal.performScrollTo().performTextReplacement("0")
+        compose.onNodeWithText("Сохранить день").performClick()
+        compose.runOnIdle { assertTrue(!finished) }
+        goal.assertExists()
+        compose.onNodeWithText("Plank").performClick()
+        goal.assertDoesNotExist()
+        compose.onNodeWithText("Plank").performClick()
+        goal.assertExists()
     }
 
     private fun showEditor(exercises: List<ExerciseDraft>, onMove: (Long, Int) -> Unit = { _, _ -> }) {
