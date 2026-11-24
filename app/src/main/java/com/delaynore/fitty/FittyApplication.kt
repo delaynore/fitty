@@ -9,8 +9,9 @@ import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
-import com.delaynore.fitty.ui.workout.SetTimerSignals
-import com.delaynore.fitty.ui.workout.playSetTimerCue
+import com.delaynore.fitty.platform.workout.SetTimerSignals
+import com.delaynore.fitty.platform.workout.SharedPreferencesWorkoutTimerStore
+import com.delaynore.fitty.platform.workout.playSetTimerCue
 import kotlinx.coroutines.delay
 
 open class FittyApplication : Application() {
@@ -58,6 +59,7 @@ open class FittyApplication : Application() {
     internal fun deleteDatabase() {
         closeDatabase()
         SharedPreferencesUpdateAttemptStore.clear(this, databaseName)
+        SharedPreferencesWorkoutTimerStore.clear(this, databaseName)
         deleteDatabase(databaseName)
     }
 

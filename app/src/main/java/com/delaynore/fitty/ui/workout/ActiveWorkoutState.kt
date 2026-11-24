@@ -1,10 +1,12 @@
 package com.delaynore.fitty.ui.workout
 
-import android.os.Bundle
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseGoal
 import com.delaynore.fitty.domain.ExerciseReplacements
+import com.delaynore.fitty.domain.SavedRestTimer
+import com.delaynore.fitty.domain.WorkoutTimerStore
+import com.delaynore.fitty.domain.WorkoutTimersSnapshot
 import com.delaynore.fitty.domain.replacementsFor
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.LoggedSet
@@ -27,8 +29,6 @@ import kotlinx.coroutines.launch
 
 private const val UNDO_MILLIS = 5_000L
 internal const val REST_DURATION_MILLIS = 120_000L
-private const val REST_TIMER_KEY = "workoutRestTimer"
-private const val SET_TIMER_KEY = "workoutSetTimer"
 
 internal data class WorkoutRowDrafts(
     val addedThrough: Int = 0,
@@ -90,10 +90,10 @@ internal class ActiveWorkoutState(
     private val setTimerSignals: SetTimerSignalScheduler,
     private val catalog: ExerciseCatalogRepository,
     private val scope: CoroutineScope,
-    restoredTimers: Bundle? = null,
+    private val timerStore: WorkoutTimerStore = EmptyWorkoutTimerStore,
+    private val tokenGenerator: () -> String = { UUID.randomUUID().toString() },
 ) {
-    private var savedRestTimer = restoredTimers?.getLongArray(REST_TIMER_KEY)
-    private var savedSetTimer = restoredTimers?.getBundle(SET_TIMER_KEY)
+    private var timers = timerStore.read()
     private val state = MutableStateFlow(WorkoutUiState())
     val uiState = state.asStateFlow()
     private var sessionJob: Job? = null
@@ -108,8 +108,8 @@ internal class ActiveWorkoutState(
         sessionJob?.cancel()
         replacementJob?.cancel()
         discardSetTimer()
-        val timer = restoreSetTimer(savedSetTimer, id, bootCount, timerClock())
-        if (timer == null) savedSetTimer = null
+        val timer = restoreSetTimer(timers.setTimer, id, bootCount, timerClock())
+        if (timer == null && timers.setTimer != null) saveTimers(timers.copy(setTimer = null))
         val restDeadline = restoreRestTimer(id)
         state.value = WorkoutUiState(sessionId = id, restDeadlineMillis = restDeadline, setTimer = timer)
         sessionJob = scope.launch {
@@ -150,12 +150,12 @@ internal class ActiveWorkoutState(
         val id = state.value.sessionId ?: return
         val deadline = timerClock() + REST_DURATION_MILLIS
         state.update { it.copy(restDeadlineMillis = deadline) }
-        if (bootCount >= 0) savedRestTimer = longArrayOf(id, deadline, bootCount.toLong())
+        if (bootCount >= 0) saveTimers(timers.copy(restTimer = SavedRestTimer(id, deadline, bootCount)))
     }
 
     fun resetRestTimer() {
         state.update { it.copy(restDeadlineMillis = null) }
-        savedRestTimer = null
+        saveTimers(timers.copy(restTimer = null))
     }
 
     fun expireRestTimer(deadline: Long) {
@@ -175,7 +175,7 @@ internal class ActiveWorkoutState(
         val startedAt = timerClock()
         val goalAt = (exercise.goal as? ExerciseGoal.Duration)?.let { startedAt + it.seconds * 1_000L }
         val timer = SetTimer(
-            UUID.randomUUID().toString(), workoutId, exerciseId, exercise.catalogExerciseId, position, startedAt, goalAt,
+            tokenGenerator(), workoutId, exerciseId, exercise.catalogExerciseId, position, startedAt, goalAt,
         )
         storeSetTimer(timer)
         scheduleFutureCue(timer)
@@ -207,7 +207,7 @@ internal class ActiveWorkoutState(
 
     private fun storeSetTimer(timer: SetTimer) {
         state.update { it.copy(setTimer = timer) }
-        if (bootCount >= 0) savedSetTimer = timer.saved(bootCount)
+        if (bootCount >= 0) saveTimers(timers.copy(setTimer = timer.saved(bootCount)))
     }
 
     private fun validateSetTimer(id: Long, workout: WorkoutSession?) {
@@ -238,18 +238,17 @@ internal class ActiveWorkoutState(
 
     private fun clearSetTimer() {
         state.update { it.copy(setTimer = null) }
-        savedSetTimer = null
+        saveTimers(timers.copy(setTimer = null))
     }
 
     private fun restoreRestTimer(id: Long): Long? {
-        val timer = savedRestTimer
+        val timer = timers.restTimer
         if (timer != null) {
-            val (workoutId, deadline, savedBootCount) = timer
-            if (workoutId == id && bootCount >= 0 && savedBootCount == bootCount.toLong() &&
-                remainingRestMillis(deadline) > 0L
-            ) return deadline
+            if (timer.workoutId == id && bootCount >= 0 && timer.bootCount == bootCount &&
+                remainingRestMillis(timer.deadlineMillis) > 0L
+            ) return timer.deadlineMillis
         }
-        savedRestTimer = null
+        if (timer != null) saveTimers(timers.copy(restTimer = null))
         return null
     }
 
@@ -461,15 +460,15 @@ internal class ActiveWorkoutState(
 
     private fun clear(sessionId: Long, nextState: WorkoutUiState) {
         setTimerSignals.cancelWorkout(sessionId)
+        val snapshot = timers
+        saveTimers(snapshot.copy(
+            restTimer = snapshot.restTimer?.takeUnless { it.workoutId == sessionId },
+            setTimer = snapshot.setTimer?.takeUnless { it.workoutId == sessionId },
+        ))
         if (state.value.sessionId == sessionId) {
             sessionJob?.cancel()
             replacementJob?.cancel()
             state.value = nextState
-            savedRestTimer = null
-            savedSetTimer = null
-        } else if (state.value.sessionId == null) {
-            if (savedRestTimer?.firstOrNull() == sessionId) savedRestTimer = null
-            if (savedSetTimer?.getLong("workoutId") == sessionId) savedSetTimer = null
         }
     }
 
@@ -487,9 +486,9 @@ internal class ActiveWorkoutState(
         }
     }
 
-    fun saveTimers() = Bundle().apply {
-        putLongArray(REST_TIMER_KEY, savedRestTimer)
-        putBundle(SET_TIMER_KEY, savedSetTimer)
+    private fun saveTimers(snapshot: WorkoutTimersSnapshot) {
+        timers = snapshot
+        timerStore.save(snapshot)
     }
 
     private fun save(errorMessage: String, operation: suspend () -> Boolean) {
@@ -503,4 +502,9 @@ internal class ActiveWorkoutState(
             operation = operation,
         )
     }
+}
+
+private object EmptyWorkoutTimerStore : WorkoutTimerStore {
+    override fun read() = WorkoutTimersSnapshot()
+    override fun save(snapshot: WorkoutTimersSnapshot) = Unit
 }
