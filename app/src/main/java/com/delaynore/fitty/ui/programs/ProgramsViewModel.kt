@@ -14,7 +14,9 @@ internal data class ProgramsUiState(
     val programs: List<ProgramSelection>? = null,
     val selecting: Boolean = false,
     val selectionError: String? = null,
+    val pendingEvent: ProgramsEvent? = null,
 )
+internal sealed interface ProgramsEvent { data object ProgramSelected : ProgramsEvent }
 
 internal class ProgramsViewModel(private val programs: ProgramsRepository) : ViewModel() {
     private val state = MutableStateFlow(ProgramsUiState())
@@ -26,7 +28,7 @@ internal class ProgramsViewModel(private val programs: ProgramsRepository) : Vie
         }
     }
 
-    fun selectProgram(id: Long, onSelected: () -> Unit) {
+    fun selectProgram(id: Long) {
         viewModelScope.launchPersistenceSave(
             state = state,
             isBusy = { it.selecting },
@@ -35,8 +37,12 @@ internal class ProgramsViewModel(private val programs: ProgramsRepository) : Vie
             onFinish = { it.copy(selecting = false) },
         ) {
             programs.selectProgram(id)
-            onSelected()
+            state.update { it.copy(pendingEvent = ProgramsEvent.ProgramSelected) }
             true
         }
+    }
+
+    fun consumeEvent(event: ProgramsEvent) {
+        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 }

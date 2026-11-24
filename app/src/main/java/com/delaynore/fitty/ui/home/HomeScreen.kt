@@ -20,9 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
+import com.delaynore.fitty.ui.UiEventEffect
 import com.delaynore.fitty.ui.formatRecommendation
 
 @Composable
@@ -40,10 +38,15 @@ internal fun HomeScreen(
     onWorkout: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { event ->
+        when (event) { is HomeEvent.OpenWorkout -> onWorkout(event.id) }
+    }
     HomeContent(
         state, onCreateProgram, onPrograms, onWorkout,
         onSelectDay = viewModel::selectDay,
-        onStartWorkout = { viewModel.startWorkout(onWorkout) },
+        onStartWorkout = viewModel::startWorkout,
+        onConfirmCancelWorkout = viewModel::confirmCancelWorkout,
+        onDismissCancelWorkout = viewModel::dismissCancelWorkout,
         onCancelWorkout = viewModel::cancelWorkout,
     )
 }
@@ -56,14 +59,19 @@ private fun HomeContent(
     onWorkout: (Long) -> Unit,
     onSelectDay: (Long) -> Unit,
     onStartWorkout: () -> Unit,
-    onCancelWorkout: (Long, () -> Unit) -> Unit,
+    onConfirmCancelWorkout: (Long) -> Unit,
+    onDismissCancelWorkout: () -> Unit,
+    onCancelWorkout: (Long) -> Unit,
 ) {
     ScreenColumn {
         PageHeader("Fitty")
         val program = state.program
         val inProgress = state.inProgressWorkout
         if (inProgress != null) {
-            InProgressWorkoutCard(inProgress, state.starting, state.error, onWorkout, onCancelWorkout)
+            InProgressWorkoutCard(
+                inProgress, state.starting, state.error, state.confirmingCancelWorkoutId == inProgress.id,
+                onWorkout, onConfirmCancelWorkout, onDismissCancelWorkout, onCancelWorkout,
+            )
         }
         when {
             state.loading -> CircularProgressIndicator()
@@ -142,10 +150,12 @@ private fun InProgressWorkoutCard(
     workout: InProgressWorkout,
     starting: Boolean,
     error: String?,
+    confirmingCancel: Boolean,
     onWorkout: (Long) -> Unit,
-    onCancelWorkout: (Long, () -> Unit) -> Unit,
+    onConfirmCancelWorkout: (Long) -> Unit,
+    onDismissCancelWorkout: () -> Unit,
+    onCancelWorkout: (Long) -> Unit,
 ) {
-    var confirmCancel by remember(workout.id) { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Незавершённая тренировка", style = MaterialTheme.typography.labelLarge)
@@ -157,15 +167,15 @@ private fun InProgressWorkoutCard(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Продолжить тренировку") }
             TextButton(
-                onClick = { confirmCancel = true },
+                onClick = { onConfirmCancelWorkout(workout.id) },
                 enabled = !starting,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Отменить тренировку", color = MaterialTheme.colorScheme.error) }
         }
     }
-    if (confirmCancel) {
+    if (confirmingCancel) {
         AlertDialog(
-            onDismissRequest = { confirmCancel = false },
+            onDismissRequest = onDismissCancelWorkout,
             title = { Text("Отменить тренировку?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,11 +186,11 @@ private fun InProgressWorkoutCard(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { onCancelWorkout(workout.id) { confirmCancel = false } },
+                    onClick = { onCancelWorkout(workout.id) },
                     enabled = !starting,
                 ) { Text("Отменить", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("Оставить тренировку") } },
+            dismissButton = { TextButton(onClick = onDismissCancelWorkout) { Text("Оставить тренировку") } },
         )
     }
 }

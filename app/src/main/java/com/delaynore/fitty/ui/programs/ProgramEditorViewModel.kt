@@ -64,12 +64,19 @@ internal data class ProgramEditorUiState(
     val saving: Boolean = false,
     val error: String? = null,
     val showDayErrors: Boolean = false,
+    val pendingEvent: ProgramEditorEvent? = null,
 ) {
     val visibleDays get() = days.filterNot { it.id in undoDeadlines }
     val removedDays get() = undoDeadlines.keys.mapNotNull { id -> days.find { it.id == id } }
     val editingDay get() = days.find { it.id == editingDayId }
     val hasChanges get() = name != initialName || visibleDays != initialDays
     val editingExistingProgram get() = programId > 0
+}
+
+internal sealed interface ProgramEditorEvent {
+    data class OpenDay(val id: Long) : ProgramEditorEvent
+    data object Saved : ProgramEditorEvent
+    data object DayFinished : ProgramEditorEvent
 }
 
 internal class ProgramEditorViewModel(
@@ -113,11 +120,18 @@ internal class ProgramEditorViewModel(
 
     fun addDay() {
         val day = TrainingDayDraft(nextDraftId--, "", emptyList())
-        state.update { it.copy(days = it.days + day, editingDayId = day.id, showDayErrors = false, error = null) }
+        state.update { it.copy(days = it.days + day, editingDayId = day.id, showDayErrors = false, error = null, pendingEvent = ProgramEditorEvent.OpenDay(day.id)) }
     }
 
     fun openDay(id: Long) {
-        state.update { it.copy(editingDayId = id, showDayErrors = false, error = null) }
+        state.update {
+            it.copy(
+                editingDayId = id,
+                showDayErrors = false,
+                error = null,
+                pendingEvent = ProgramEditorEvent.OpenDay(id),
+            )
+        }
     }
 
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
@@ -162,8 +176,8 @@ internal class ProgramEditorViewModel(
         }
     }
 
-    fun finishDay(onFinished: () -> Unit) {
-        if (state.value.editingDay?.valid == true) onFinished()
+    fun finishDay() {
+        if (state.value.editingDay?.valid == true) state.update { it.copy(pendingEvent = ProgramEditorEvent.DayFinished) }
         else state.update { it.copy(showDayErrors = true) }
     }
 
@@ -195,7 +209,7 @@ internal class ProgramEditorViewModel(
         if (clock() < deadline) state.update { it.copy(undoDeadlines = it.undoDeadlines - id) }
     }
 
-    fun saveProgram(onInvalidDay: () -> Unit, onSaved: () -> Unit) {
+    fun saveProgram() {
         val current = state.value
         if (current.saving) return
         val days = current.visibleDays
@@ -211,7 +225,7 @@ internal class ProgramEditorViewModel(
         val invalidDay = days.firstOrNull { !it.valid }
         if (invalidDay != null) {
             state.update { it.copy(editingDayId = invalidDay.id, showDayErrors = true, error = null) }
-            onInvalidDay()
+            state.update { it.copy(pendingEvent = ProgramEditorEvent.OpenDay(invalidDay.id)) }
             return
         }
         val program = TrainingProgram(current.programId, current.name, days.map { it.toDay() })
@@ -224,8 +238,12 @@ internal class ProgramEditorViewModel(
         ) {
             programs.saveProgram(program)
             closeEditor()
-            onSaved()
+            state.update { it.copy(pendingEvent = ProgramEditorEvent.Saved) }
             true
         }
+    }
+
+    fun consumeEvent(event: ProgramEditorEvent) {
+        state.update { if (it.pendingEvent == event) it.copy(pendingEvent = null) else it }
     }
 }

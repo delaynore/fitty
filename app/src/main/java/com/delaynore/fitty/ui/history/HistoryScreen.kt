@@ -100,12 +100,10 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val details = state.details.takeIf { state.workoutId == id }
-    var editingSetId by rememberSaveable(id) { mutableStateOf<Long?>(null) }
     var confirmingDeletion by rememberSaveable(id) { mutableStateOf(false) }
     val workout = details?.workout?.takeIf { it.summary.id == id }
     val closeEditor = {
-        editingSetId = null
-        viewModel.clearError()
+        viewModel.closeSetEditor()
     }
     val confirmDeletion = {
         closeEditor()
@@ -143,8 +141,7 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
                             Row(
                                 Modifier.fillMaxWidth()
                                     .clickable(enabled = !state.saving) {
-                                        viewModel.clearError()
-                                        editingSetId = set.id
+                                        viewModel.openSetEditor(set.id)
                                     }
                                     .heightIn(min = 48.dp)
                                     .padding(horizontal = 18.dp, vertical = 8.dp),
@@ -168,8 +165,8 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
         }
     }
 
-    val exercise = workout?.exercises?.find { item -> item.sets.any { it.id == editingSetId } }
-    val set = exercise?.sets?.find { it.id == editingSetId }
+    val exercise = workout?.exercises?.find { item -> item.sets.any { it.id == state.editingSetId } }
+    val set = exercise?.sets?.find { it.id == state.editingSetId }
     if (workout != null && exercise != null && set != null) {
         key(set.id) {
             EditSetSheet(
@@ -181,8 +178,8 @@ internal fun WorkoutDetailsScreen(id: Long, viewModel: WorkoutDetailsViewModel, 
                 onDismiss = closeEditor,
                 setErrors = state.setErrors,
                 onEdit = viewModel::changeSetInput,
-                onSave = { input -> viewModel.saveSet(id, set, input, closeEditor) },
-                onDeleteSet = { viewModel.deleteSet(id, set.id, closeEditor) },
+                onSave = { input -> viewModel.saveSet(id, set, input) },
+                onDeleteSet = { viewModel.deleteSet(id, set.id) },
                 onDeleteWorkout = confirmDeletion,
             )
         }

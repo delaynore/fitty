@@ -22,6 +22,7 @@ internal data class WorkoutDetailsUiState(
     val saving: Boolean = false,
     val error: String? = null,
     val setErrors: SetInputErrors? = null,
+    val editingSetId: Long? = null,
 )
 
 internal class WorkoutDetailsViewModel(private val workouts: WorkoutsRepository) : ViewModel() {
@@ -32,7 +33,7 @@ internal class WorkoutDetailsViewModel(private val workouts: WorkoutsRepository)
     fun showWorkout(id: Long?) {
         if (state.value.workoutId == id) return
         detailsJob?.cancel()
-        state.update { it.copy(workoutId = id, details = null, error = null, setErrors = null) }
+        state.update { it.copy(workoutId = id, details = null, error = null, setErrors = null, editingSetId = null) }
         detailsJob = id?.let {
             viewModelScope.launch {
                 workouts.observeWorkout(id).collect { session ->
@@ -47,30 +48,33 @@ internal class WorkoutDetailsViewModel(private val workouts: WorkoutsRepository)
         state.update { it.copy(error = null, setErrors = null) }
     }
 
+    fun openSetEditor(id: Long) { state.update { it.copy(editingSetId = id, error = null, setErrors = null) } }
+    fun closeSetEditor() { state.update { it.copy(editingSetId = null, error = null, setErrors = null) } }
+
     fun changeSetInput(input: SetInput) {
         state.update { it.copy(error = null, setErrors = it.setErrors?.let { input.validate().errors }) }
     }
 
-    fun saveSet(sessionId: Long, set: LoggedSet, input: SetInput, onSaved: () -> Unit) {
+    fun saveSet(sessionId: Long, set: LoggedSet, input: SetInput) {
         val updated = input.toLoggedSet(set.position)
         if (updated == null) {
             state.update { it.copy(setErrors = input.validate().errors) }
             return
         }
-        changeHistory("Не удалось сохранить подход", onSaved) {
+        changeHistory("Не удалось сохранить подход") {
             workouts.updateCompletedSet(sessionId, set.id, updated.result)
         }
     }
 
-    fun deleteSet(sessionId: Long, setId: Long, onDeleted: () -> Unit) {
-        changeHistory("Не удалось удалить подход", onDeleted) { workouts.deleteCompletedSet(sessionId, setId) }
+    fun deleteSet(sessionId: Long, setId: Long) {
+        changeHistory("Не удалось удалить подход") { workouts.deleteCompletedSet(sessionId, setId) }
     }
 
     fun deleteWorkout(sessionId: Long) {
         changeHistory("Не удалось удалить тренировку") { workouts.deleteCompletedWorkout(sessionId) }
     }
 
-    private fun changeHistory(failureMessage: String, onSuccess: () -> Unit = {}, change: suspend () -> Boolean) {
+    private fun changeHistory(failureMessage: String, change: suspend () -> Boolean) {
         val workoutId = state.value.workoutId
         viewModelScope.launchPersistenceSave(
             state = state,
@@ -79,7 +83,7 @@ internal class WorkoutDetailsViewModel(private val workouts: WorkoutsRepository)
             onFailure = { if (it.workoutId == workoutId) it.copy(error = failureMessage) else it },
             onFinish = { it.copy(saving = false) },
         ) {
-            change().also { if (it) onSuccess() }
+            change().also { success -> if (success) state.update { it.copy(editingSetId = null) } }
         }
     }
 }

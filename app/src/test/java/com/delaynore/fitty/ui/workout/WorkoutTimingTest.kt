@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -110,7 +111,11 @@ class WorkoutTimingTest {
 
         workout.finish(id)
         runCurrent()
-        assertTrue(workout.uiState.value.finished)
+        assertEquals(WorkoutEvent.Finished(id), workout.uiState.value.pendingEvent)
+        workout.consumeEvent(WorkoutEvent.Finished(id + 1))
+        assertEquals(WorkoutEvent.Finished(id), workout.uiState.value.pendingEvent)
+        workout.consumeEvent(WorkoutEvent.Finished(id))
+        assertNull(workout.uiState.value.pendingEvent)
     }
 
     @Test

@@ -80,6 +80,7 @@ import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
 import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.ui.UiEventEffect
 import kotlinx.coroutines.delay
 
 @Composable
@@ -91,13 +92,16 @@ internal fun WorkoutScreen(id: Long, activeWorkout: ActiveWorkoutState, onBack: 
     val state by activeWorkout.uiState.collectAsStateWithLifecycle()
     val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
     val workout = current.session
-    val finished = !current.saving && (current.finished || workout?.summary?.finishedAtMillis != null)
-    val missing = current.sessionLoaded && !current.saving && workout == null
+    val finished = !current.saving && workout?.summary?.finishedAtMillis != null
+    val missing = current.sessionLoaded && !current.saving && !current.finished && workout == null
     LaunchedEffect(id, finished, missing) {
         when {
             finished -> onFinished()
             missing -> onBack()
         }
+    }
+    UiEventEffect(current.pendingEvent, activeWorkout::consumeEvent) { event ->
+        if (event is WorkoutEvent.Finished && event.sessionId == id) onFinished()
     }
     val exercise = workout?.exercises?.getOrNull(current.exerciseIndex)
     WorkoutContent(

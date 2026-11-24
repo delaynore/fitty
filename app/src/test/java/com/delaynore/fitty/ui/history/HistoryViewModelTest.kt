@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,19 +38,19 @@ class HistoryViewModelTest {
                 ?: error("Expected the completed set")
             val input = set.result.toInput()
             val invalid = input.copy(weight = "62,50001", measure = "0")
-            var saved = false
-            viewModel.saveSet(id, set, invalid) { saved = true }
+            viewModel.openSetEditor(set.id)
+            viewModel.saveSet(id, set, invalid)
             runCurrent()
-            assertFalse(saved)
+            assertEquals(set.id, viewModel.uiState.value.editingSetId)
             assertEquals(SetInputErrors("Введи вес, например 62,5", "Целое число от 1"), viewModel.uiState.value.setErrors)
             assertEquals(set, viewModel.uiState.value.details?.workout?.exercises?.single()?.sets?.single())
 
             val corrected = input.copy(weight = "62,5", measure = "7")
             viewModel.changeSetInput(corrected)
             assertEquals(SetInputErrors(), viewModel.uiState.value.setErrors)
-            viewModel.saveSet(id, set, corrected) { saved = true }
+            viewModel.saveSet(id, set, corrected)
             runCurrent()
-            assertTrue(saved)
+            assertNull(viewModel.uiState.value.editingSetId)
             assertEquals(
                 set.copy(result = SetResult.WeightAndReps(62.5, 7)),
                 viewModel.uiState.value.details?.workout?.exercises?.single()?.sets?.single(),
