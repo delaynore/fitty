@@ -28,6 +28,7 @@ import com.delaynore.fitty.ui.programs.TrainingDayDraft
 import com.delaynore.fitty.ui.programs.TrainingDayEditorContent
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -116,7 +117,7 @@ class TrainingDayEditorContentTest {
         val goal = compose.onNodeWithTag("recommendation-duration")
         goal.performScrollTo().performTextReplacement("0")
         compose.onNodeWithText("Сохранить день").performClick()
-        compose.runOnIdle { assertTrue(!finished) }
+        compose.runOnIdle { assertFalse(finished) }
         goal.assertExists()
         compose.onNodeWithText("Plank").performClick()
         goal.assertDoesNotExist()

@@ -88,7 +88,7 @@ class WorkoutTimerScreenTest {
                 tap("Стоп")
                 awaitLogged(1, "47")
                 compose.onNodeWithTag("workout-logged-duration-2", useUnmergedTree = true).assertDoesNotExist()
-    
+
                 compose.onNodeWithContentDescription("Запустить таймер отдыха").performClick()
                 awaitText("2:00")
                 tap("Завершить")
@@ -96,7 +96,7 @@ class WorkoutTimerScreenTest {
                 awaitText("47 с")
                 tap("47 с")
                 compose.onNodeWithTag("history-set-duration").performTextReplacement("49")
-    
+
                 tap("Сохранить")
                 awaitText("49 с")
             } finally {
@@ -377,6 +377,8 @@ class WorkoutTimerScreenTest {
 }
 
 class WorkoutTimerTestApplication : FittyApplication() {
+    override val databaseName = "workout-timer-test.db"
+
     private val time = MutableStateFlow(10_000L)
     var workoutTimeMillis: Long
         get() = time.value
