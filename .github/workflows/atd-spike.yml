@@ -2,6 +2,7 @@ name: ATD spike
 on:
   push:
     branches: [prototype/test-environment-spike]
+    paths: ['.github/workflows/atd-spike-trigger']
 permissions:
   contents: read
 jobs:

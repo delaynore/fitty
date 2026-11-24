@@ -2,7 +2,7 @@
 
 ## Run checks
 
-Set up JDK 17 and the Android SDK as described below. From the repository root, run the JVM tests, build the app, and run Android lint.
+Set up JDK 21 and the Android SDK as described below. From the repository root, run the JVM tests, build the app, and run Android lint.
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
@@ -19,7 +19,7 @@ The script prints the test log path under `build/reports/android-device/`. GitHu
 
 ## Build and sign an APK
 
-Install JDK 17 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
+Install JDK 21 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
 
 Create a signing key once, before the first installation. Keep the keystore and its password outside the repository. Back up the key so you can sign future updates with it.
 

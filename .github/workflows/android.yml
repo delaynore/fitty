@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
       - name: Build and lint
         run: bash ./gradlew :app:assembleDebug :app:lintDebug
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
       - name: Run JVM unit tests
         run: bash ./gradlew :app:testDebugUnitTest
