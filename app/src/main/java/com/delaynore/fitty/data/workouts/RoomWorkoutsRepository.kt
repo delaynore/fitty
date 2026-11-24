@@ -15,7 +15,10 @@ import com.delaynore.fitty.data.local.orderedExercises
 import com.delaynore.fitty.data.local.runStorageOperation
 import kotlinx.coroutines.flow.map
 
-internal class RoomWorkoutsRepository(private val database: FittyDatabase) : WorkoutsRepository {
+internal class RoomWorkoutsRepository(
+    private val database: FittyDatabase,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
+) : WorkoutsRepository {
     private val workouts = database.workouts()
     private val programs = database.programs()
 
@@ -59,7 +62,7 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
             WorkoutSessionEntity(
                 programName = programs.programName(day.day.programId),
                 dayName = day.day.name,
-                startedAtMillis = System.currentTimeMillis(),
+                startedAtMillis = nowMillis(),
             ),
         )
         workouts.insertExercises(day.orderedExercises().mapIndexed { position, exercise ->
@@ -160,7 +163,7 @@ internal class RoomWorkoutsRepository(private val database: FittyDatabase) : Wor
         } }
 
     override suspend fun finishWorkout(sessionId: Long): Boolean = runStorageOperation { database.withTransaction {
-        workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, System.currentTimeMillis()) == 1
+        workouts.hasLoggedSets(sessionId) && workouts.finishWorkout(sessionId, nowMillis()) == 1
     } }
 
     override suspend fun cancelWorkout(sessionId: Long): Boolean = runStorageOperation { workouts.cancelWorkout(sessionId) == 1 }
