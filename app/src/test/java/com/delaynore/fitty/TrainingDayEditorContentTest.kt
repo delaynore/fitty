@@ -23,12 +23,14 @@ import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.ui.FittyTheme
 import com.delaynore.fitty.ui.programs.ExerciseDraft
+import com.delaynore.fitty.ui.programs.ProgramEditorEvent
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
 import com.delaynore.fitty.ui.programs.TrainingDayDraft
 import com.delaynore.fitty.ui.programs.TrainingDayEditorContent
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -101,6 +103,39 @@ class TrainingDayEditorContentTest {
     }
 
     @Test
+    fun restoredDayScreenSelectsTheRouteDayWithoutRequestingNavigation() {
+        val previousDay = TrainingDay(1, "День A", emptyList())
+        val routeDay = TrainingDay(2, "День B", emptyList())
+        val editor = ProgramEditorViewModel(FakeProgramsRepository()) { 0L }
+        editor.openEditor(TrainingProgram(1, "Strength", listOf(previousDay, routeDay)))
+        editor.openDay(previousDay.id)
+        editor.consumeEvent(ProgramEditorEvent.OpenDay(previousDay.id))
+        editor.finishDay()
+        assertTrue(editor.uiState.value.showDayErrors)
+
+        compose.setContent {
+            FittyTheme {
+                TrainingDayEditorScreen(
+                    viewModel = editor,
+                    dayId = routeDay.id,
+                    onMissingDay = { error("The route day is in the draft") },
+                    onBack = {},
+                    onSettings = {},
+                    onPickExercise = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText(routeDay.name).assertIsDisplayed()
+        compose.runOnIdle {
+            val state = editor.uiState.value
+            assertEquals(routeDay.id, state.editingDayId)
+            assertFalse(state.showDayErrors)
+            assertNull(state.pendingEvent)
+        }
+    }
+
+    @Test
     fun invalidDurationGoalCanBeCollapsedAndOpenedAgain() {
         val day = TrainingDay(1, "A", listOf(TrainingExercise(1, "Plank", null, null, type = ExerciseType.DURATION)))
         val editor = ProgramEditorViewModel(FakeProgramsRepository()) { 0L }
@@ -109,7 +144,14 @@ class TrainingDayEditorContentTest {
         var finished = false
         compose.setContent {
             FittyTheme {
-                TrainingDayEditorScreen(editor, onBack = { finished = true }, onSettings = {}, onPickExercise = {})
+                TrainingDayEditorScreen(
+                    viewModel = editor,
+                    dayId = day.id,
+                    onMissingDay = { error("The route day is in the draft") },
+                    onBack = { finished = true },
+                    onSettings = {},
+                    onPickExercise = {},
+                )
             }
         }
 

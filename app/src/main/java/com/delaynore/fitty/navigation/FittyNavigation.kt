@@ -159,18 +159,14 @@ internal fun FittyNavigation(container: AppContainer) {
                 composable<DayEditorRoute> { entry ->
                     val (dayId) = entry.toRoute<DayEditorRoute>()
                     val editor = programEditor(nav, entry, container)
-                    val state by editor.uiState.collectAsStateWithLifecycle()
-                    LaunchedEffect(state.editing, dayId) {
-                        if (state.editing && editor.uiState.value.editingDayId != dayId) {
-                            if (editor.uiState.value.visibleDays.any { it.id == dayId }) editor.selectEditingDay(dayId)
-                            else nav.popBackStack<ProgramEditorRoute>(inclusive = false)
-                        }
-                    }
-                    if (state.editingDayId == dayId) {
-                        TrainingDayEditorScreen(editor, back, { nav.navigate(EditorSettingsRoute) }) { replaceId ->
-                            nav.navigate(PickExerciseRoute(dayId, replaceId))
-                        }
-                    }
+                    TrainingDayEditorScreen(
+                        viewModel = editor,
+                        dayId = dayId,
+                        onMissingDay = { nav.popBackStack<ProgramEditorRoute>(inclusive = false) },
+                        onBack = back,
+                        onSettings = { nav.navigate(EditorSettingsRoute) },
+                        onPickExercise = { replaceId -> nav.navigate(PickExerciseRoute(dayId, replaceId)) },
+                    )
                 }
                 composable<PickExerciseRoute> { entry ->
                     val (dayId, replaceId) = entry.toRoute<PickExerciseRoute>()

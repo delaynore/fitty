@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -40,12 +41,14 @@ internal class AndroidUpdateInstaller(
             if (!apk.isFile) return@withContext null
             val previous = attempts.read()
             if (previous != null) abandonSession(previous.sessionId)
+            ensureActive()
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
                 }
             }
             var sessionId: Int? = null
+            var submitted: InstallSession? = null
             try {
                 val id = packageInstaller.createSession(params)
                 sessionId = id
@@ -56,6 +59,7 @@ internal class AndroidUpdateInstaller(
                             session.fsync(output)
                         }
                     }
+                    ensureActive()
                     val requestId = nextRequestId.incrementAndGet()
                     attempts.write(UpdateAttempt(id, expectedVersionCode, requestId = requestId))
                     val callback = Intent(context, UpdateInstallReceiver::class.java)
@@ -63,18 +67,20 @@ internal class AndroidUpdateInstaller(
                     val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
                     val pending = PendingIntent.getBroadcast(context, id, callback, flags)
+                    ensureActive()
                     session.commit(pending.intentSender)
-                    InstallSession(id, requestId)
+                    // The receiver needs the attempt even if the caller is cancelled on return from IO.
+                    submitted = InstallSession(id, requestId)
                 }
-            } catch (failure: CancellationException) {
-                sessionId?.let { runCatching { packageInstaller.abandonSession(it) } }
-                attempts.clear()
-                throw failure
-            } catch (_: Exception) {
-                sessionId?.let { runCatching { packageInstaller.abandonSession(it) } }
-                attempts.clear()
-                null
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+            } finally {
+                if (submitted == null) {
+                    sessionId?.let { runCatching { packageInstaller.abandonSession(it) } }
+                    attempts.clear()
+                }
             }
+            submitted
         }
 
     override suspend fun abandonSession(sessionId: Int) = withContext(Dispatchers.IO) {

@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -193,11 +194,22 @@ private fun EditorSettingsButton(onClick: () -> Unit) {
 @Composable
 internal fun TrainingDayEditorScreen(
     viewModel: ProgramEditorViewModel,
+    dayId: Long,
+    onMissingDay: () -> Unit,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onPickExercise: (Long?) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel, state.editing, dayId) {
+        val current = viewModel.uiState.value
+        if (current.editing && current.editingDayId != dayId) {
+            if (current.visibleDays.any { it.id == dayId }) viewModel.selectEditingDay(dayId)
+            else onMissingDay()
+        }
+    }
+    if (state.editingDayId != dayId) return
+
     UiEventEffect(state.pendingEvent as? ProgramEditorEvent.DayFinished, viewModel::consumeEvent) { onBack() }
     val day = state.editingDay ?: return
     key(state.draftVersion, day.id) {

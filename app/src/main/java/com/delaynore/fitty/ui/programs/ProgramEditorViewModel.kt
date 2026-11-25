@@ -122,24 +122,16 @@ internal class ProgramEditorViewModel(
 
     fun openDay(id: Long) {
         state.update {
-            it.copy(
-                editingDayId = id,
-                showDayErrors = false,
-                error = null,
-                pendingEvent = ProgramEditorEvent.OpenDay(id),
-            )
+            it.withEditingDay(id).copy(pendingEvent = ProgramEditorEvent.OpenDay(id))
         }
     }
 
     fun selectEditingDay(id: Long) {
-        state.update {
-            it.copy(
-                editingDayId = id,
-                showDayErrors = false,
-                error = null,
-            )
-        }
+        state.update { it.withEditingDay(id) }
     }
+
+    private fun ProgramEditorUiState.withEditingDay(id: Long) =
+        copy(editingDayId = id, showDayErrors = false, error = null)
 
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
 
