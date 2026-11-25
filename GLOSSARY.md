@@ -8,6 +8,9 @@ Fitty helps a lifter follow a training program and record their strength trainin
 A plan that specifies what the lifter should do on each training day.
 _Avoid_: Workout, routine
 
+**Training week**:
+One pass through a training program's training days, independent of calendar weeks. When a program alternates heavy and light weeks, each training week runs as either a heavy or light variant.
+
 **Training day**:
 A selectable plan in a training program that lists exercises in the order the lifter intends to do them. Each exercise may have a target for that day.
 _Avoid_: Workout session
