@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty · Прототип недели</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101410;color:#edf2e9;font:16px Inter,"Segoe UI",sans-serif}main{width:min(100%,410px);margin:18px auto 100px;padding:24px 18px 28px;background:#171d17;border:1px solid #354035;border-radius:24px}header,section,footer{margin-bottom:24px}header,.line,.switch,.row{display:flex;align-items:center;justify-content:space-between;gap:8px}h1{font-size:28px;letter-spacing:-1px;margin:7px 0}small,label,.muted{color:#bdc7b9}h2{font-size:17px}.timer{border:3px solid #64784b;border-radius:50%;width:76px;height:76px;display:grid;place-content:center;text-align:center;font-weight:bold}.timer small{font-size:11px}.tag{display:inline-block;background:#314029;color:#d6efa5;padding:5px 10px;border-radius:16px}.panel,details{background:#222b22;border-radius:12px;padding:14px;margin:12px 0}.panel p,details p{margin:8px 0 0}.rule{border-bottom:1px solid #3d483b;padding-bottom:8px}button,input{font:inherit;color:inherit}button{cursor:pointer;border:0;border-radius:12px;background:#34452d;padding:10px 14px}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #c5fa55}.row{display:grid;grid-template-columns:28px 1fr 1fr 46px}.row label{font-size:12px}.row input{width:100%;margin-top:4px;background:#171d17;border:1px dashed #73806e;border-radius:8px;padding:9px;color:white}.row input:not(:placeholder-shown){border:1px solid #c5fa55}.row input::placeholder{color:#acb5a8}.row button{align-self:end}.row:has(input:not(:placeholder-shown)) button,.next{background:#c5fa55;color:#172110}.saved{padding:12px;border-radius:10px;background:#2f482b}.next{width:100%;margin-top:12px;font-weight:650}details summary{cursor:pointer}footer{margin-top:38px;border-top:1px solid #394137;padding-top:14px}footer p{margin:6px 0}.switch{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#e1e8da;color:#182015;padding:5px;border-radius:30px;white-space:nowrap;box-shadow:0 4px 18px #0008}.switch button{background:transparent;color:inherit}.switch span{font-size:14px}button:disabled{opacity:.45;cursor:default}
+</style>
+<main>
+  <header><div><small>День А · Грудь</small><h1>Жим лёжа</h1><span id="week"></span></div><div class="timer">2:00<small>Отдых</small></div></header>
+  <section id="context"></section>
+  <section><h2>Подходы</h2><form class="row" id="entry"><b>1</b><label>Вес, кг<input id="weight" type="number" min="0.1" step="any"></label><label>Повторы<input id="reps" type="number" min="1" step="1"></label><button aria-label="Записать подход">✓</button></form><div id="result" aria-live="polite"></div></section>
+  <footer><small>Сценарий прототипа</small><p id="guide"></p><button class="next" id="advance"></button></footer>
+</main>
+<nav class="switch" aria-label="Вариант прототипа"><button id="prev" aria-label="Предыдущий вариант">←</button><span id="variantName"></span><button id="next" aria-label="Следующий вариант">→</button></nav>
+<script>
+const el = id => document.getElementById(id);
+const variants = ['В шапке','Сравнение','По нажатию'];
+const keys = ['A','B','C'];
+let variant = Math.max(0,keys.indexOf(new URL(location.href).searchParams.get('variant')));
+const weeks = ['Лёгкая','Тяжёлая','Лёгкая'];
+let stage = 0;
+let previousSets, saved;
+function reset(){
+  previousSets = {'Тяжёлая':[60,10]};
+  stage = 0;
+  start();
+}
+function start(){
+  saved = null;
+  el('entry').reset();
+  render();
+}
+function render(){
+  const week = weeks[stage];
+  const plan = [60,week === 'Лёгкая' ? 7 : 10];
+  const previous = previousSets[week];
+  const suggestion = previous || plan;
+  const fmt = set => set.join(' × ');
+  const past = previous ? fmt(previous) : 'Первый раз';
+  el('week').className = variant === 0 ? 'tag' : 'muted';
+  el('week').textContent = week+' неделя';
+  const context = [
+    '<p class="rule">План на сегодня · <b>'+fmt(plan)+'</b></p>',
+    '<div class="panel line"><div><small>План недели</small><p>'+fmt(plan)+'</p></div><div><small>В прошлый раз</small><p>'+past+'</p></div></div>',
+    '<details><summary>План · '+fmt(plan)+'</summary><p>В прошлую '+week.toLowerCase().slice(0,-2)+'ую неделю: '+past+'</p></details>'
+  ];
+  el('context').innerHTML = context[variant];
+  el('weight').placeholder = suggestion[0];
+  el('reps').placeholder = suggestion[1];
+  el('entry').style.display = saved ? 'none' : '';
+  el('result').className = saved ? 'saved' : '';
+  el('result').textContent = saved ? '1　 '+saved[0]+' кг × '+saved[1]+'　✓' : '';
+  el('guide').textContent = ['Первая лёгкая неделя. Попробуй записать 8 повторов вместо 7.','Вернулась тяжёлая неделя. Сравни подсказку с её прошлым результатом.','Снова лёгкая неделя. Сравни цель и свой прошлый подход.'][stage];
+  el('advance').textContent = ['К тяжёлой неделе','К следующей лёгкой неделе','Начать сначала'][stage];
+  el('advance').disabled = stage < 2 && !saved;
+  el('variantName').textContent = keys[variant]+' · '+variants[variant];
+}
+el('entry').onsubmit = event => {
+  event.preventDefault();
+  saved = ['weight','reps'].map(id=>Number(el(id).value || el(id).placeholder));
+  render();
+};
+el('advance').onclick = () => {
+  if(stage === 2) return reset();
+  previousSets[weeks[stage]] = saved;
+  stage++;
+  start();
+};
+function switchBy(delta){
+  variant = (variant+delta+3)%3;
+  const url = new URL(location.href);
+  url.searchParams.set('variant',keys[variant]);
+  try { window.history.replaceState(null,'',url); } catch { /* Embedded previews can restrict URL changes. */ }
+  render();
+}
+el('prev').onclick = ()=>switchBy(-1);
+el('next').onclick = ()=>switchBy(1);
+document.addEventListener('keydown',event=>{
+  if(event.target.matches('input,textarea,[contenteditable]')) return;
+  if(['ArrowLeft','ArrowRight'].includes(event.key)) switchBy(event.key === 'ArrowLeft' ? -1 : 1);
+});
+reset();
+</script>
+</html>
