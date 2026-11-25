@@ -42,13 +42,27 @@ A workout session the lifter has started and can still continue with its logged 
 
 **Logged set**:
 A record of what the lifter completed in one set, using the measures for that exercise type.
-_Avoid_: Planned set
+_Avoid_: Planned set, trial set
+
+**Set suggestion**:
+Values Fitty proposes for an upcoming set from an earlier logged set of the same exercise or from a weight calibration. The lifter can confirm or adjust them when recording the completed set.
+
+**Weight calibration**:
+An optional flow for finding an initial working weight for a weight-and-repetitions exercise with no history, either through trial sets or a repetition-maximum estimate.
+
+**Trial set**:
+A temporary set performed during weight calibration to test whether a weight fits the exercise. It is discarded unless the lifter accepts it as their first logged set.
+_Avoid_: Warm-up set, logged set
+
+**Session target**:
+A temporary target adjusted for an exercise during a workout session without changing the training day plan.
+_Avoid_: Plan, program target
 
 **Exercise timer**:
 A timer the lifter starts to measure how long they perform a set.
 
 **Rest timer**:
-A countdown the lifter starts to time a rest between sets.
+A countdown between sets that starts manually or automatically after a set is logged.
 
 **Workout history**:
 The record of completed workout sessions and the sets logged in each. Exercises appear under the names they had at the time of the workout.
