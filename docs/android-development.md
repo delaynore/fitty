@@ -74,6 +74,8 @@ Install the signed release APK and check navigation between Home, History, Setti
 
 ## Publish on GitHub
 
+You can publish a stable release automatically from `master` using **Actions → Publish Stable Release → Run workflow** (requires `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, and optionally `RELEASE_KEY_ALIAS` in repository secrets), or manually:
+
 1. In the public `delaynore/fitty` repository, open **Releases** and choose **Draft a new release**. Tag the commit used to build the APK. Use a unique tag such as `v1.1-build-5` so a later build can reuse the Android version name.
 2. Set the release title to the exact `versionName` from the APK, such as `1.1`.
 3. Attach one signed APK named `fitty-<versionCode>.apk`. Use the code reported by `aapt`.

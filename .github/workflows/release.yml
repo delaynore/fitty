@@ -1,0 +1,96 @@
+name: Publish Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Display version name (e.g. 1.2.0)'
+        required: true
+        default: '1.2.0'
+      version_code:
+        description: 'Android versionCode (positive integer, higher than the previous release)'
+        required: true
+        default: '8'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    name: Build, sign, and publish stable release
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+
+      - name: Validate inputs and signing secrets
+        id: meta
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          if [[ -z "$KEYSTORE_B64" || -z "$KEYSTORE_PASS" ]]; then
+            echo "::error::Missing RELEASE_KEYSTORE_BASE64 or RELEASE_KEYSTORE_PASSWORD repository secrets."
+            exit 1
+          fi
+          version_name="$(printf '%s' "$INPUT_VERSION_NAME" | xargs)"
+          if [[ -z "$version_name" ]]; then
+            echo "::error::version_name must not be blank."
+            exit 1
+          fi
+          if ! [[ "$INPUT_VERSION_CODE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::version_code must be a positive integer, got: $INPUT_VERSION_CODE"
+            exit 1
+          fi
+          echo "version_code=$INPUT_VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version_name}-build-${INPUT_VERSION_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build unsigned release APK
+        run: |
+          bash ./gradlew :app:assembleRelease --build-cache \
+            "-PfittyVersionCode=${{ steps.meta.outputs.version_code }}" \
+            "-PfittyVersionName=${{ steps.meta.outputs.version_name }}"
+
+      - name: Sign and verify release APK
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        run: |
+          keystore="$RUNNER_TEMP/release.p12"
+          echo "$KEYSTORE_B64" | base64 --decode > "$keystore"
+          alias_name="${KEY_ALIAS:-fitty}"
+          apk="app/build/outputs/apk/release/fitty-${{ steps.meta.outputs.version_code }}.apk"
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$build_tools/apksigner" sign --ks "$keystore" --ks-pass "env:KEYSTORE_PASS" \
+            --ks-key-alias "$alias_name" \
+            --out "$apk" app/build/outputs/apk/release/app-release-unsigned.apk
+          "$build_tools/apksigner" verify --print-certs "$apk"
+          "$build_tools/aapt" dump badging "$apk" | grep '^package:'
+          rm -f "$keystore"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" "${{ steps.sign.outputs.apk }}" \
+            --latest \
+            --title "${{ steps.meta.outputs.version_name }}" \
+            --notes "Release ${{ steps.meta.outputs.version_name }} (build ${{ steps.meta.outputs.version_code }}) from \`${GITHUB_SHA::7}\`."
