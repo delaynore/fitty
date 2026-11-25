@@ -43,6 +43,13 @@ _Avoid_: Training day, training program
 **In-progress workout**:
 A workout session the lifter has started and can still continue with its logged sets.
 
+**Readiness check-in**:
+An optional pre-workout prompt where the lifter can report feeling recovered or fatigued before starting a workout session.
+
+**Lightened session**:
+A workout session temporarily eased for the day through adjusted session targets, without changing the training program, training week variant, or future set suggestions.
+_Avoid_: Light week, deload week
+
 **Logged set**:
 A record of what the lifter completed in one set, using the measures for that exercise type.
 _Avoid_: Planned set, trial set
