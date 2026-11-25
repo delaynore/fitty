@@ -26,6 +26,7 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
+import com.delaynore.fitty.domain.NoopWorkoutTimerStore
 import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.domain.SetInputErrors
 import com.delaynore.fitty.domain.SetInputField
@@ -239,6 +240,11 @@ class RepositoryConsumerTest {
             editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
             assertNull(editor.uiState.value.pendingEvent)
 
+            editor.selectEditingDay(day.id)
+            assertEquals(day.id, editor.uiState.value.editingDayId)
+            assertFalse(editor.uiState.value.showDayErrors)
+            assertNull(editor.uiState.value.pendingEvent)
+
             editor.finishDay()
             assertEquals(ProgramEditorEvent.DayFinished, editor.uiState.value.pendingEvent)
             editor.consumeEvent(ProgramEditorEvent.DayFinished)
@@ -395,7 +401,9 @@ class RepositoryConsumerTest {
         val catalog = FakeExerciseCatalogRepository()
         catalog.allExercises.value = listOf(CatalogExercise("barbell-bench-press", "Жим", exercise.type), replacement)
         val workoutId = requireNotNull(workouts.startWorkout(4))
-        val viewModel = ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        val viewModel = ActiveWorkoutState(
+            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope, NoopWorkoutTimerStore,
+        )
         viewModel.open(workoutId)
         runCurrent()
         assertEquals(0, catalog.allExercises.subscriptionCount.value)
@@ -432,7 +440,7 @@ class RepositoryConsumerTest {
         val workouts = FakeWorkoutsRepository(mapOf(4L to workout(exercise)))
         val workoutId = requireNotNull(workouts.startWorkout(4))
         val active = ActiveWorkoutState(
-            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, FakeExerciseCatalogRepository(), backgroundScope,
+            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, FakeExerciseCatalogRepository(), backgroundScope, NoopWorkoutTimerStore,
         )
         active.open(workoutId)
         runCurrent()
@@ -507,7 +515,9 @@ class RepositoryConsumerTest {
             }
         }
         val workoutId = requireNotNull(workouts.startWorkout(4))
-        val viewModel = ActiveWorkoutState(repository, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        val viewModel = ActiveWorkoutState(
+            repository, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope, NoopWorkoutTimerStore,
+        )
         viewModel.open(workoutId)
         runCurrent()
         viewModel.changeDraft(exercise, 1, SetInputField.Weight, "62,5")

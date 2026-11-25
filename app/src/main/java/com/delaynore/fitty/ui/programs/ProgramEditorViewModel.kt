@@ -131,6 +131,16 @@ internal class ProgramEditorViewModel(
         }
     }
 
+    fun selectEditingDay(id: Long) {
+        state.update {
+            it.copy(
+                editingDayId = id,
+                showDayErrors = false,
+                error = null,
+            )
+        }
+    }
+
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
 
     fun selectExercise(exercise: CatalogExercise, legacyId: Long?) {

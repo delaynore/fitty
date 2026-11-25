@@ -10,13 +10,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
+import com.delaynore.fitty.platform.updates.UpdateInstaller
 import kotlinx.coroutines.delay
 
 @Composable
 internal fun UpdateInstallerEffect(
     updates: UpdateCoordinator,
-    installer: AndroidUpdateInstaller,
+    installer: UpdateInstaller,
     settingsVisible: () -> Boolean,
 ) {
     val state by updates.uiState.collectAsStateWithLifecycle()

@@ -25,8 +25,7 @@ import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.updates.InstallSession
-import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
-import com.delaynore.fitty.platform.updates.SharedPreferencesUpdateAttemptStore
+import com.delaynore.fitty.platform.updates.UpdateInstaller
 import com.delaynore.fitty.platform.updates.getPackageInfoCompat
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
@@ -312,11 +311,8 @@ class SettingsTestApplication : FittyApplication() {
     override val updateService: UpdateService
         get() = updateServiceOverride ?: super.updateService
 
-    override val updateInstaller: AndroidUpdateInstaller by lazy {
-        object : AndroidUpdateInstaller(
-            this@SettingsTestApplication,
-            SharedPreferencesUpdateAttemptStore(this@SettingsTestApplication, databaseName),
-        ) {
+    override val updateInstaller: UpdateInstaller by lazy {
+        object : UpdateInstaller {
             override fun canRequestInstall() = true
             override suspend fun commitInstall(apk: File, expectedVersionCode: Long): InstallSession {
                 val updates = requireNotNull(updateServiceOverride as? FakeUpdates)
@@ -324,7 +320,11 @@ class SettingsTestApplication : FittyApplication() {
                 updates.installAttempts.incrementAndGet()
                 return InstallSession(42, updates.installAttempts.get().toLong())
             }
-            override fun takeConfirmation(sessionId: Int, requestId: Long): Intent? = Intent()
+            override suspend fun abandonSession(sessionId: Int) = Unit
+            override fun hasSession(sessionId: Int) = false
+            override fun hasConfirmation(sessionId: Int, requestId: Long) = false
+            override fun permissionIntent() = Intent()
+            override fun takeConfirmation(sessionId: Int, requestId: Long): Intent = Intent()
         }
     }
 }

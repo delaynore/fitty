@@ -94,7 +94,7 @@ internal class ActiveWorkoutState(
     private val setTimerSignals: SetTimerSignalScheduler,
     private val catalog: ExerciseCatalogRepository,
     private val scope: CoroutineScope,
-    private val timerStore: WorkoutTimerStore = EmptyWorkoutTimerStore,
+    private val timerStore: WorkoutTimerStore,
     private val tokenGenerator: () -> String = { UUID.randomUUID().toString() },
 ) {
     private var timers = timerStore.read()
@@ -514,9 +514,4 @@ internal class ActiveWorkoutState(
             operation = operation,
         )
     }
-}
-
-private object EmptyWorkoutTimerStore : WorkoutTimerStore {
-    override fun read() = WorkoutTimersSnapshot()
-    override fun save(snapshot: WorkoutTimersSnapshot) = Unit
 }

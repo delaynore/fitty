@@ -162,7 +162,7 @@ internal fun FittyNavigation(container: AppContainer) {
                     val state by editor.uiState.collectAsStateWithLifecycle()
                     LaunchedEffect(state.editing, dayId) {
                         if (state.editing && editor.uiState.value.editingDayId != dayId) {
-                            if (editor.uiState.value.visibleDays.any { it.id == dayId }) editor.openDay(dayId)
+                            if (editor.uiState.value.visibleDays.any { it.id == dayId }) editor.selectEditingDay(dayId)
                             else nav.popBackStack<ProgramEditorRoute>(inclusive = false)
                         }
                     }

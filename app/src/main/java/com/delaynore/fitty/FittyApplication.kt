@@ -9,6 +9,7 @@ import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
 import com.delaynore.fitty.platform.updates.SharedPreferencesUpdateAttemptStore
+import com.delaynore.fitty.platform.updates.UpdateInstaller
 import com.delaynore.fitty.platform.workout.SetTimerSignals
 import com.delaynore.fitty.platform.workout.SharedPreferencesWorkoutTimerStore
 import com.delaynore.fitty.platform.workout.playSetTimerCue
@@ -43,7 +44,7 @@ open class FittyApplication : Application() {
 
     internal open val updateService: UpdateService by lazy { GitHubUpdateService(this) }
     internal val updateAttemptStore by lazy { SharedPreferencesUpdateAttemptStore(this, databaseName) }
-    internal open val updateInstaller by lazy { AndroidUpdateInstaller(this, updateAttemptStore) }
+    internal open val updateInstaller: UpdateInstaller by lazy { AndroidUpdateInstaller(this, updateAttemptStore) }
 
     internal fun clearAppContainer() {
         container?.close()

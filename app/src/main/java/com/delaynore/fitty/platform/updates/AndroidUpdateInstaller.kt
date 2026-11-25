@@ -14,16 +14,22 @@ import com.delaynore.fitty.data.updates.UpdateSessionManager
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
-internal open class AndroidUpdateInstaller(
+internal interface UpdateInstaller : UpdateSessionManager {
+    fun permissionIntent(): Intent
+    fun takeConfirmation(sessionId: Int, requestId: Long): Intent?
+}
+
+internal class AndroidUpdateInstaller(
     private val context: Context,
     private val attempts: UpdateAttemptStore,
-) : UpdateSessionManager {
+) : UpdateInstaller {
     private val packageInstaller get() = context.packageManager.packageInstaller
     override val sessionUpdates: Flow<Unit> = updates.asSharedFlow()
 
@@ -60,6 +66,10 @@ internal open class AndroidUpdateInstaller(
                     session.commit(pending.intentSender)
                     InstallSession(id, requestId)
                 }
+            } catch (failure: CancellationException) {
+                sessionId?.let { runCatching { packageInstaller.abandonSession(it) } }
+                attempts.clear()
+                throw failure
             } catch (_: Exception) {
                 sessionId?.let { runCatching { packageInstaller.abandonSession(it) } }
                 attempts.clear()
@@ -76,10 +86,10 @@ internal open class AndroidUpdateInstaller(
 
     override fun hasConfirmation(sessionId: Int, requestId: Long) = confirmations.containsKey(Key(sessionId, requestId))
 
-    fun permissionIntent() =
+    override fun permissionIntent() =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))
 
-    open fun takeConfirmation(sessionId: Int, requestId: Long): Intent? = confirmations.remove(Key(sessionId, requestId))
+    override fun takeConfirmation(sessionId: Int, requestId: Long): Intent? = confirmations.remove(Key(sessionId, requestId))
 
     companion object {
         private data class Key(val sessionId: Int, val requestId: Long)

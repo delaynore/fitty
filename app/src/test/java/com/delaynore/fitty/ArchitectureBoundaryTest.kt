@@ -14,11 +14,23 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    fun dataPackageHasNoComposeOrUiImports() {
+    fun dataPackageHasNoComposeUiOrNavigationImports() {
         val dataDir = sourceRoot().resolve("data")
-        val forbidden = listOf("androidx.compose.", "com.delaynore.fitty.ui.")
+        val forbidden = listOf("androidx.compose.", "com.delaynore.fitty.ui.", "com.delaynore.fitty.navigation.")
         val violations = findViolations(dataDir, forbidden)
         assertTrue("Forbidden imports in data/:\n${violations.joinToString("\n")}", violations.isEmpty())
+    }
+
+    @Test
+    fun uiAndNavigationPackagesHaveNoRoomOrLocalDatabaseImports() {
+        val forbidden = listOf("com.delaynore.fitty.data.local.", "androidx.room.", "android.database.sqlite.")
+        val violations = listOf("ui", "navigation").flatMap { pkg ->
+            findViolations(sourceRoot().resolve(pkg), forbidden)
+        }
+        assertTrue(
+            "Forbidden imports in ui/ or navigation/:\n${violations.joinToString("\n")}",
+            violations.isEmpty(),
+        )
     }
 
     private fun sourceRoot(): File =
