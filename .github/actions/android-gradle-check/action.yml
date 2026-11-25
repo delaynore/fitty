@@ -1,0 +1,35 @@
+name: Android Gradle check
+description: Set up Java and Gradle and run one Android Gradle task.
+
+inputs:
+  name:
+    description: Human-readable check name.
+    required: true
+  task:
+    description: Gradle task and arguments to pass to ./gradlew --build-cache.
+    required: true
+  cache-robolectric:
+    description: Whether to cache Robolectric instrumented Android SDK jars.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '21'
+    - uses: gradle/actions/setup-gradle@v6
+      with:
+        cache-read-only: false
+    - name: Cache Robolectric Android SDK
+      if: inputs.cache-robolectric == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository/org/robolectric/android-all-instrumented
+        # Update when the Robolectric dependency or its test SDK changes.
+        key: robolectric-4.18.1-api36-${{ runner.os }}-${{ runner.arch }}
+    - name: Run ${{ inputs.name }}
+      shell: bash
+      run: bash ./gradlew --build-cache ${{ inputs.task }}
