@@ -1,0 +1,353 @@
+package com.delaynore.fitty
+
+import android.provider.Settings
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
+import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import com.delaynore.fitty.data.exercises.ExerciseGoal
+import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.data.programs.TrainingDay
+import com.delaynore.fitty.data.programs.TrainingExercise
+import com.delaynore.fitty.data.programs.TrainingProgram
+import com.delaynore.fitty.data.workouts.LoggedSet
+import com.delaynore.fitty.data.workouts.SetResult
+import com.delaynore.fitty.platform.workout.SetTimerSignalService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36], application = WorkoutTimerTestApplication::class)
+class WorkoutTimerScreenTest {
+    @get:Rule
+    val compose = createEmptyComposeRule()
+
+    private val application get() = ApplicationProvider.getApplicationContext<WorkoutTimerTestApplication>()
+
+    @Before
+    fun setBootCount() {
+        Settings.Global.putInt(application.contentResolver, Settings.Global.BOOT_COUNT, 1)
+    }
+
+    @After
+    fun deleteDatabase() {
+        application.deleteDatabase()
+    }
+
+    @Test
+    fun stoppingAfterReturningFromBackgroundLogsOneSetAndCanBeCorrectedInHistory() {
+        seedPlank(goal = 40)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startWorkout()
+            tap("Старт")
+            compose.awaitText("Стоп")
+            compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
+
+            withSetTimerSignalService {
+                scenario.moveToState(Lifecycle.State.CREATED)
+                application.workoutTimeMillis = 49_999L
+                compose.waitForIdle()
+                assertEquals(0, application.cues)
+                application.workoutTimeMillis = 50_000L
+                compose.waitUntil(timeoutMillis = 5_000) { application.cues == 1 }
+                application.workoutTimeMillis = 57_000L
+                scenario.moveToState(Lifecycle.State.RESUMED)
+                compose.awaitText("0:47")
+                assertEquals(1, application.cues)
+                compose.onNodeWithTag("workout-logged-duration-1", useUnmergedTree = true).assertDoesNotExist()
+                tap("Стоп")
+                awaitLogged(1, "47")
+                compose.onNodeWithTag("workout-logged-duration-2", useUnmergedTree = true).assertDoesNotExist()
+
+                compose.onNodeWithContentDescription("Запустить таймер отдыха").performClick()
+                compose.awaitText("2:00")
+                tap("Завершить")
+                tap("Завершить тренировку")
+                compose.awaitText("47 с")
+                tap("47 с")
+                compose.onNodeWithTag("history-set-duration").performTextReplacement("49")
+
+                tap("Сохранить")
+                compose.awaitText("49 с")
+            }
+        }
+        assertPersistedHistoryDuration(49)
+    }
+
+    @Test
+    fun stoppingWithinTheFirstSecondLogsZeroAndCanBeSavedAgainInHistory() {
+        seedPlank(goal = null)
+        ActivityScenario.launch(MainActivity::class.java).use {
+            startWorkout()
+            tap("Старт")
+            compose.awaitText("Стоп")
+            application.workoutTimeMillis = 10_999L
+            compose.awaitText("0:00")
+            tap("Стоп")
+            awaitLogged(1, "0")
+            tap("Завершить")
+            tap("Завершить тренировку")
+            compose.awaitText("0 с")
+            tap("0 с")
+            compose.onNodeWithTag("history-set-duration").performTextReplacement("0")
+
+            tap("Сохранить")
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasTestTag("history-set-duration")).fetchSemanticsNodes().isEmpty()
+            }
+            compose.awaitText("0 с")
+        }
+        assertPersistedHistoryDuration(0)
+    }
+
+    @Test
+    fun restoringAnActiveTimerSchedulesItsFutureCueAgain() {
+        seedPlank(goal = 40)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startWorkout()
+            tap("Старт")
+            compose.awaitText("Стоп")
+            scenario.moveToState(Lifecycle.State.CREATED)
+            val original = requireNotNull(application.setTimerSignals.pending.value)
+            application.setTimerSignals.cancel(original.token)
+            application.workoutTimeMillis = 25_000L
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
+            scenario.recreate()
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.awaitText("0:15")
+            val restored = requireNotNull(application.setTimerSignals.pending.value)
+            assertEquals(original, restored)
+            assertEquals(50_000L, restored.deadlineMillis)
+            withSetTimerSignalService {
+                application.workoutTimeMillis = 49_999L
+                compose.waitForIdle()
+                assertEquals(0, application.cues)
+
+                application.workoutTimeMillis = 50_000L
+                compose.waitUntil(timeoutMillis = 5_000) { application.cues == 1 }
+                application.workoutTimeMillis = 51_000L
+                compose.awaitText("0:41")
+                assertEquals(1, application.cues)
+                tap("Стоп")
+                awaitLogged(1, "41")
+                assertNull(application.setTimerSignals.pending.value)
+            }
+        }
+    }
+
+    @Test
+    fun stoppingWithoutAGoalLogsElapsedTimeAfterSavedStateRestoration() {
+        seedPlank(goal = null)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startWorkout()
+            tap("Старт")
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.workoutTimeMillis = 25_000L
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
+            scenario.recreate()
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.awaitText("0:15")
+            tap("Стоп")
+            awaitLogged(1, "15")
+            assertNull(application.setTimerSignals.pending.value)
+        }
+    }
+
+    @Test
+    fun restTimerStartsManuallyKeepsSetRowsInPlaceAndCanBeReset() {
+        seedStrength(secondExercise = true)
+        ActivityScenario.launch(MainActivity::class.java).use {
+            startWorkout()
+
+            val firstRow = compose.onNodeWithTag("workout-set-row-1")
+            val idleBounds = firstRow.getUnclippedBoundsInRoot()
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+
+            startRestTimerAtKnownTime()
+            assertEquals(idleBounds, firstRow.getUnclippedBoundsInRoot())
+
+            tap("Следующее упражнение", description = true)
+            compose.awaitText("Тяга верхнего блока")
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertExists()
+            tap("Назад", description = true)
+            compose.awaitText("Продолжить тренировку")
+            tap("Продолжить тренировку")
+            compose.awaitText("Тяга верхнего блока")
+            tap("Сбросить таймер отдыха", description = true)
+            compose.onNodeWithContentDescription("Запустить таймер отдыха").assertExists()
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun restTimerUsesElapsedTimeOnReturnFromBackground() {
+        seedStrength()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startWorkout()
+            startRestTimerAtKnownTime()
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.workoutTimeMillis = 55_000L
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.awaitText("1:15")
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.workoutTimeMillis = 130_000L
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(timeoutMillis = 5_000) {
+                compose.onAllNodes(hasContentDescription("Запустить таймер отдыха")).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithContentDescription("Сбросить таймер отдыха").assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun restTimerAndLoggedSetReturnWithSavedStateAfterViewModelsAreLost() {
+        seedStrength()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            startWorkout()
+
+            startRestTimerAtKnownTime()
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            application.workoutTimeMillis = 55_000L
+            // Keep the activity's saved state while discarding the in-memory ViewModels.
+            scenario.onActivity {
+                it.viewModelStore.clear()
+                (it.application as FittyApplication).clearAppContainer()
+            }
+            scenario.recreate()
+            scenario.moveToState(Lifecycle.State.RESUMED)
+
+            compose.awaitText("1:15")
+            compose.onNodeWithTag("workout-logged-weight-1", useUnmergedTree = true).assertTextEquals("60")
+            compose.onNodeWithTag("workout-logged-repetitions-1", useUnmergedTree = true).assertTextEquals("6")
+        }
+    }
+
+    private fun withSetTimerSignalService(block: () -> Unit) {
+        val service = Robolectric.buildService(SetTimerSignalService::class.java).create()
+        try {
+            service.get().onStartCommand(null, 0, 1)
+            block()
+        } finally {
+            service.destroy()
+        }
+    }
+
+    private fun assertPersistedHistoryDuration(seconds: Int) = runBlocking {
+        application.closeDatabase()
+        val workouts = application.appContainer(null).workouts
+        val id = workouts.history.first().single().id
+        val session = requireNotNull(workouts.observeWorkout(id).first())
+        assertEquals(SetResult.Duration(seconds), session.exercises.single().sets.single().result)
+    }
+
+    private fun seedPlank(goal: Int?) {
+        seedWorkout(listOf(TrainingExercise(
+            0, "Планка на предплечьях", null, goal?.let { ExerciseGoal.Duration(it) }, type = ExerciseType.DURATION,
+        )))
+    }
+
+    private fun seedStrength(secondExercise: Boolean = false) {
+        val exercises = buildList {
+            add(TrainingExercise(0, "Жим штанги лёжа", null, null))
+            if (secondExercise) add(TrainingExercise(0, "Тяга верхнего блока", null, null))
+        }
+        seedWorkout(exercises, listOf(SetResult.WeightAndReps(60.0, 6)))
+    }
+
+    private fun seedWorkout(exercises: List<TrainingExercise>, recorded: List<SetResult> = emptyList()) = runBlocking {
+        val container = application.appContainer(null)
+        val programs = container.programs
+        programs.saveProgram(TrainingProgram(0, "Strength", listOf(TrainingDay(0, "A", exercises))))
+        val day = requireNotNull(programs.homeProgram.first()).days.single()
+        if (recorded.isNotEmpty()) {
+            val workouts = container.workouts
+            val id = requireNotNull(workouts.startWorkout(day.id))
+            val exercise = requireNotNull(workouts.observeWorkout(id).first()).exercises.first()
+            recorded.forEachIndexed { index, result ->
+                check(workouts.logSet(id, exercise, LoggedSet(index + 1, result)))
+            }
+        }
+    }
+
+    private fun startWorkout() {
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText("Начать тренировку") or hasText("Продолжить тренировку"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNode(hasText("Начать тренировку") or hasText("Продолжить тренировку"))
+            .performScrollTo().performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasText("Упражнение 1 из", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun awaitLogged(number: Int, text: String) {
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodes(hasTestTag("workout-logged-duration-$number") and hasText(text), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun startRestTimerAtKnownTime() {
+        application.workoutTimeMillis = 10_000L
+        tap("Запустить таймер отдыха", description = true)
+        compose.onNodeWithText("2:00").assertExists()
+    }
+
+    private fun tap(text: String, description: Boolean = false) {
+        val node = if (description) compose.onNodeWithContentDescription(text) else compose.onNodeWithText(text)
+        node.performClick()
+    }
+}
+
+class WorkoutTimerTestApplication : FittyApplication() {
+    override val databaseName = "workout-timer-test.db"
+
+    private val time = MutableStateFlow(10_000L)
+    var workoutTimeMillis: Long
+        get() = time.value
+        set(value) { time.value = value }
+    var cues: Int = 0
+        private set
+
+    override fun workoutTimerElapsedRealtime() = workoutTimeMillis
+
+    override suspend fun awaitSetTimerDeadline(deadlineMillis: Long) {
+        time.first { it >= deadlineMillis }
+    }
+
+    override suspend fun playSetTimerSignal() {
+        cues++
+    }
+}

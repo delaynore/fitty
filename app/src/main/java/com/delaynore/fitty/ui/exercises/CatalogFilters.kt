@@ -26,55 +26,21 @@ import androidx.compose.ui.unit.dp
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.Equipment
 import com.delaynore.fitty.data.exercises.MuscleGroup
+import com.delaynore.fitty.domain.CatalogFilters
+import com.delaynore.fitty.domain.MuscleRole
 
-internal enum class MuscleRole(val label: String) {
-    PRIMARY("Основная"),
-    ASSISTING("Вспомогательная"),
-}
-
-internal data class CatalogFilters(
-    val muscle: MuscleGroup? = null,
-    val role: MuscleRole = MuscleRole.PRIMARY,
-    val availableEquipment: Set<Equipment> = emptySet(),
-) {
-    val activeCount: Int
-        get() = listOf(muscle != null, availableEquipment.isNotEmpty()).count { it }
-
-    fun matches(exercise: CatalogExercise): Boolean {
-        val matchesMuscle = muscle == null || when (role) {
-            MuscleRole.PRIMARY -> exercise.primaryMuscle == muscle
-            MuscleRole.ASSISTING -> muscle in exercise.assistingMuscles
-        }
-        if (!matchesMuscle) return false
-        if (availableEquipment.isEmpty()) return true
-        return exercise.equipment.isNotEmpty() &&
-            exercise.equipment.all { it == Equipment.NONE || it in availableEquipment }
-    }
-
-    fun toggleEquipment(equipment: Equipment): CatalogFilters {
-        val updated = when {
-            equipment in availableEquipment -> availableEquipment - equipment
-            equipment == Equipment.NONE -> setOf(equipment)
-            else -> availableEquipment - Equipment.NONE + equipment
-        }
-        return copy(availableEquipment = updated)
-    }
-
-    companion object {
-        val Saver = listSaver<CatalogFilters, String>(
-            save = { filters ->
-                listOf(filters.muscle?.name.orEmpty(), filters.role.name) + filters.availableEquipment.map { it.name }
-            },
-            restore = {
-                CatalogFilters(
-                    muscle = it[0].takeIf(String::isNotEmpty)?.let(MuscleGroup::valueOf),
-                    role = MuscleRole.valueOf(it[1]),
-                    availableEquipment = it.drop(2).map(Equipment::valueOf).toSet(),
-                )
-            },
+internal val CatalogFiltersSaver = listSaver<CatalogFilters, String>(
+    save = { filters ->
+        listOf(filters.muscle?.name.orEmpty(), filters.role.name) + filters.availableEquipment.map { it.name }
+    },
+    restore = {
+        CatalogFilters(
+            muscle = it[0].takeIf(String::isNotEmpty)?.let(MuscleGroup::valueOf),
+            role = MuscleRole.valueOf(it[1]),
+            availableEquipment = it.drop(2).map(Equipment::valueOf).toSet(),
         )
-    }
-}
+    },
+)
 
 @Composable
 internal fun CatalogFiltersDialog(
@@ -82,7 +48,7 @@ internal fun CatalogFiltersDialog(
     onApply: (CatalogFilters) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var draft by rememberSaveable(stateSaver = CatalogFilters.Saver) { mutableStateOf(filters) }
+    var draft by rememberSaveable(stateSaver = CatalogFiltersSaver) { mutableStateOf(filters) }
 
     AlertDialog(
         onDismissRequest = onCancel,

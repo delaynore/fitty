@@ -15,7 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,58 +33,95 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.delaynore.fitty.ui.DraftTextField
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
 import com.delaynore.fitty.ui.SwipeToRevealDelete
+import com.delaynore.fitty.ui.UiEventEffect
 
 @Composable
 internal fun ProgramEditorScreen(
     viewModel: ProgramEditorViewModel,
     onBack: () -> Unit,
-    onEditDay: () -> Unit,
+    onEditDay: (Long) -> Unit,
     onSettings: () -> Unit,
     onSaved: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(
+        state.pendingEvent?.takeUnless { it is ProgramEditorEvent.DayFinished },
+        viewModel::consumeEvent,
+    ) { event ->
+        when (event) {
+            is ProgramEditorEvent.OpenDay -> onEditDay(event.id)
+            ProgramEditorEvent.Saved -> onSaved()
+            ProgramEditorEvent.DayFinished -> Unit
+        }
+    }
+    ProgramEditorContent(
+        state, onBack, onSettings,
+        onNameChange = viewModel::changeName,
+        onRemoveDay = viewModel::removeDay,
+        onRestoreDay = viewModel::restoreDay,
+        onOpenDay = viewModel::openDay,
+        onAddDay = viewModel::addDay,
+        onSave = viewModel::saveProgram,
+    )
+}
+
+@Composable
+private fun ProgramEditorContent(
+    state: ProgramEditorUiState,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+    onNameChange: (String) -> Unit,
+    onRemoveDay: (Long) -> Unit,
+    onRestoreDay: (Long) -> Unit,
+    onOpenDay: (Long) -> Unit,
+    onAddDay: () -> Unit,
+    onSave: () -> Unit,
 ) {
     val focus = LocalFocusManager.current
     Column(Modifier.fillMaxHeight()) {
         ScreenColumn(Modifier.weight(1f)) {
             PageHeader(
-                if (viewModel.editingExistingProgram) "Редактирование программы" else "Новая программа",
+                if (state.editingExistingProgram) "Редактирование программы" else "Новая программа",
                 onBack,
             ) {
-                if (viewModel.hasChanges && !viewModel.saving) {
+                if (state.hasChanges && !state.saving) {
                     EditorSettingsButton {
                         focus.clearFocus()
                         onSettings()
                     }
                 }
             }
-            OutlinedTextField(
-                value = viewModel.name,
-                onValueChange = viewModel::changeName,
+            DraftTextField(
+                value = state.name,
+                resetKey = state.draftVersion,
+                onValueChange = onNameChange,
                 label = { Text("Название программы") },
                 singleLine = true,
-                enabled = !viewModel.saving,
+                enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().testTag("program-name"),
             )
             Text("Тренировочные дни", style = MaterialTheme.typography.titleMedium)
-            viewModel.visibleDays.forEach { day ->
+            state.visibleDays.forEach { day ->
                 key(day.id) {
                     val name = day.name.ifBlank { "День без названия" }
                     SwipeToRevealDelete(
                         description = "Удалить день «$name»",
                         modifier = Modifier.testTag("training-day-$name"),
-                        onDelete = { if (!viewModel.saving) viewModel.removeDay(day.id) },
+                        onDelete = { if (!state.saving) onRemoveDay(day.id) },
                     ) {
                         Surface(
                             onClick = {
                                 focus.clearFocus()
-                                viewModel.openDay(day.id)
-                                onEditDay()
+                                onOpenDay(day.id)
                             },
-                            enabled = !viewModel.saving,
+                            enabled = !state.saving,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.surfaceContainer,
@@ -101,21 +137,20 @@ internal fun ProgramEditorScreen(
             OutlinedButton(
                 onClick = {
                     focus.clearFocus()
-                    viewModel.addDay()
-                    onEditDay()
+                    onAddDay()
                 },
-                enabled = !viewModel.saving,
+                enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             ) { Text("Добавить день") }
-            viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
-            if (viewModel.removedDays.isNotEmpty()) {
+            if (state.removedDays.isNotEmpty()) {
                 Column(
                     Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()).padding(bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    viewModel.removedDays.forEach { day ->
+                    state.removedDays.forEach { day ->
                         key(day.id) {
                             val name = day.name.ifBlank { "День без названия" }
                             Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp)) {
@@ -126,8 +161,8 @@ internal fun ProgramEditorScreen(
                                 ) {
                                     Text("Удалён день «$name»", Modifier.weight(1f))
                                     TextButton(
-                                        onClick = { viewModel.restoreDay(day.id) },
-                                        enabled = !viewModel.saving,
+                                        onClick = { onRestoreDay(day.id) },
+                                        enabled = !state.saving,
                                         modifier = Modifier.semantics { contentDescription = "Вернуть день «$name»" },
                                     ) { Text("Вернуть") }
                                 }
@@ -139,9 +174,9 @@ internal fun ProgramEditorScreen(
             Button(
                 onClick = {
                     focus.clearFocus()
-                    viewModel.saveProgram(onEditDay, onSaved)
+                    onSave()
                 },
-                enabled = !viewModel.saving,
+                enabled = !state.saving,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) { Text("Сохранить программу") }
         }
@@ -162,19 +197,23 @@ internal fun TrainingDayEditorScreen(
     onSettings: () -> Unit,
     onPickExercise: (Long?) -> Unit,
 ) {
-    val day = viewModel.editingDay ?: return
-    TrainingDayEditorContent(
-        day = day,
-        showErrors = viewModel.showDayErrors,
-        onBack = onBack,
-        onSettings = if (viewModel.hasChanges) onSettings else null,
-        onPickExercise = onPickExercise,
-        onDayNameChange = viewModel::changeDayName,
-        onChangeExercise = viewModel::changeExercise,
-        onDeleteExercise = viewModel::deleteExercise,
-        onMoveExercise = viewModel::moveExercise,
-        onSave = { viewModel.finishDay(onBack) },
-    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(state.pendingEvent as? ProgramEditorEvent.DayFinished, viewModel::consumeEvent) { onBack() }
+    val day = state.editingDay ?: return
+    key(state.draftVersion, day.id) {
+        TrainingDayEditorContent(
+            day = day,
+            showErrors = state.showDayErrors,
+            onBack = onBack,
+            onSettings = if (state.hasChanges) onSettings else null,
+            onPickExercise = onPickExercise,
+            onDayNameChange = viewModel::changeDayName,
+            onChangeExercise = viewModel::changeExercise,
+            onDeleteExercise = viewModel::deleteExercise,
+            onMoveExercise = viewModel::moveExercise,
+            onSave = viewModel::finishDay,
+        )
+    }
 }
 
 @Composable
@@ -185,7 +224,7 @@ internal fun TrainingDayEditorContent(
     onSettings: (() -> Unit)?,
     onPickExercise: (Long?) -> Unit,
     onDayNameChange: (String) -> Unit,
-    onChangeExercise: (ExerciseDraft) -> Unit,
+    onChangeExercise: (Long, (ExerciseDraft) -> ExerciseDraft) -> Unit,
     onDeleteExercise: (Long) -> Unit,
     onMoveExercise: (Long, Int) -> Unit,
     onSave: () -> Unit,
@@ -206,8 +245,9 @@ internal fun TrainingDayEditorContent(
                     }
                 }
             }
-            OutlinedTextField(
+            DraftTextField(
                 value = day.name,
+                resetKey = day.id,
                 onValueChange = onDayNameChange,
                 label = { Text("Название дня") },
                 singleLine = true,

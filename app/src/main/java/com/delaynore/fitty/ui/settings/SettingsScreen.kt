@@ -29,25 +29,24 @@ import com.delaynore.fitty.ui.ScreenColumn
 
 @Composable
 internal fun SettingsScreen(
-    viewModel: SettingsViewModel,
+    updates: UpdateCoordinator,
     onBack: (() -> Unit)?,
     onBrowseExercises: () -> Unit,
     onUpdate: () -> Unit,
 ) {
-    val check by viewModel.updateCheck.collectAsStateWithLifecycle()
-    val install by viewModel.updateInstall.collectAsStateWithLifecycle()
+    val state by updates.uiState.collectAsStateWithLifecycle()
     SettingsContent(
-        installedApp = viewModel.installedApp,
-        check = check,
-        install = install,
+        installedApp = state.installedApp,
+        check = state.updateCheck,
+        install = state.updateInstall,
         onBack = onBack,
         onBrowseExercises = onBrowseExercises,
-        onCheck = viewModel::checkForUpdate,
+        onCheck = updates::checkForUpdate,
         onUpdate = onUpdate,
-        onConfirmDownload = viewModel::confirmDownload,
-        onDismissWarning = viewModel::dismissWarning,
-        onCancelDownload = viewModel::cancelDownload,
-        onContinueInstallation = viewModel::continueInstallation,
+        onConfirmDownload = updates::confirmDownload,
+        onDismissWarning = updates::dismissWarning,
+        onCancelDownload = updates::cancelDownload,
+        onContinueInstallation = updates::continueInstallation,
     )
 }
 

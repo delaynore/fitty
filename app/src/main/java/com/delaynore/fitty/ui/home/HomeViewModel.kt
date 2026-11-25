@@ -1,78 +1,103 @@
 package com.delaynore.fitty.ui.home
 
-import android.database.sqlite.SQLiteException
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.workouts.InProgressWorkout
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import com.delaynore.fitty.ui.consumePendingEvent
+import com.delaynore.fitty.ui.launchPersistenceSave
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 
-internal data class HomeState(val program: TrainingProgram?, val inProgressWorkout: InProgressWorkout?)
+internal data class HomeUiState(
+    val loading: Boolean = true,
+    val program: TrainingProgram? = null,
+    val inProgressWorkout: InProgressWorkout? = null,
+    val selectedDayId: Long? = null,
+    val starting: Boolean = false,
+    val error: String? = null,
+    val confirmingCancelWorkoutId: Long? = null,
+    val pendingEvent: HomeEvent? = null,
+)
+
+private data class LocalHomeState(
+    val ui: HomeUiState = HomeUiState(),
+    val selectedProgramId: Long? = null,
+)
+
+internal sealed interface HomeEvent { data class OpenWorkout(val id: Long) : HomeEvent }
 
 internal class HomeViewModel(
     programs: ProgramsRepository,
     private val workouts: WorkoutsRepository,
     private val onWorkoutCancelled: (Long) -> Unit,
 ) : ViewModel() {
-    val home = combine(programs.homeProgram, workouts.inProgressWorkout, ::HomeState)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    var selectedDayId by mutableStateOf<Long?>(null)
-        private set
-    var starting by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
+    private val localState = MutableStateFlow(LocalHomeState())
+    val uiState = combine(programs.homeProgram, workouts.inProgressWorkout, localState) { program, workout, local ->
+        local.ui.copy(
+            loading = false,
+            program = program,
+            inProgressWorkout = workout,
+            selectedDayId = local.ui.selectedDayId?.takeIf { local.selectedProgramId == program?.id },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun selectDay(dayId: Long?) {
-        selectedDayId = dayId
-        error = null
-    }
-
-    fun startWorkout(onStarted: (Long) -> Unit) {
-        val program = home.value?.program ?: return
-        val dayId = program.days.firstOrNull { it.id == selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
-        if (starting) return
-        starting = true
-        error = null
-        viewModelScope.launch {
-            try {
-                val sessionId = workouts.startWorkout(dayId)
-                if (sessionId == null) error = "Не удалось начать тренировку"
-                else onStarted(sessionId)
-            } catch (_: SQLiteException) {
-                error = "Не удалось начать тренировку"
-            } finally {
-                starting = false
-            }
+        localState.update {
+            it.copy(
+                ui = it.ui.copy(selectedDayId = dayId, error = null),
+                selectedProgramId = uiState.value.program?.id,
+            )
         }
     }
 
-    fun cancelWorkout(id: Long, onCancelled: () -> Unit) {
-        if (starting) return
-        starting = true
-        error = null
-        viewModelScope.launch {
-            try {
-                if (workouts.cancelWorkout(id)) {
-                    onWorkoutCancelled(id)
-                    onCancelled()
-                } else {
-                    error = "Не удалось отменить тренировку"
-                }
-            } catch (_: SQLiteException) {
-                error = "Не удалось отменить тренировку"
-            } finally {
-                starting = false
-            }
+    fun startWorkout() {
+        val current = uiState.value
+        val program = current.program ?: return
+        val dayId = program.days.firstOrNull { it.id == current.selectedDayId }?.id ?: program.days.firstOrNull()?.id ?: return
+        changeWorkout("Не удалось начать тренировку") {
+            val sessionId = workouts.startWorkout(dayId) ?: return@changeWorkout false
+            localState.update { it.copy(ui = it.ui.copy(pendingEvent = HomeEvent.OpenWorkout(sessionId))) }
+            true
         }
+    }
+
+    fun confirmCancelWorkout(id: Long) {
+        localState.update { it.copy(ui = it.ui.copy(confirmingCancelWorkoutId = id, error = null)) }
+    }
+
+    fun dismissCancelWorkout() {
+        localState.update { it.copy(ui = it.ui.copy(confirmingCancelWorkoutId = null, error = null)) }
+    }
+
+    fun cancelWorkout(id: Long) {
+        changeWorkout("Не удалось отменить тренировку") {
+            if (!workouts.cancelWorkout(id)) return@changeWorkout false
+            onWorkoutCancelled(id)
+            localState.update { it.copy(ui = it.ui.copy(confirmingCancelWorkoutId = null)) }
+            true
+        }
+    }
+
+    fun consumeEvent(event: HomeEvent) {
+        localState.update { current ->
+            if (current.ui.pendingEvent == event) current.copy(ui = current.ui.copy(pendingEvent = null)) else current
+        }
+    }
+
+    private fun changeWorkout(failureMessage: String, change: suspend () -> Boolean) {
+        viewModelScope.launchPersistenceSave(
+            state = localState,
+            isBusy = { it.ui.starting },
+            onStart = { it.copy(ui = it.ui.copy(starting = true, error = null)) },
+            onFailure = { it.copy(ui = it.ui.copy(error = failureMessage)) },
+            onFinish = { it.copy(ui = it.ui.copy(starting = false)) },
+            operation = change,
+        )
     }
 }

@@ -1,5 +1,6 @@
 package com.delaynore.fitty.data.exercises
 
+import com.delaynore.fitty.domain.catalogExerciseComparator
 import com.delaynore.fitty.data.exercises.Equipment.BAND
 import com.delaynore.fitty.data.exercises.Equipment.BARBELL
 import com.delaynore.fitty.data.exercises.Equipment.BENCH
@@ -196,7 +197,7 @@ internal object BuiltInExercises {
             "side-plank", "Боковая планка", DURATION, setOf(NONE), ABS, setOf(GLUTES, SHOULDERS), INTERMEDIATE,
             "Поставь локоть под плечо и подними таз. Выстрой плечи, таз и стопы в линию. Удерживай положение и дыши ровно.",
         ),
-    ).sortedBy { it.name.lowercase().replace('ё', 'е') }
+    ).sortedWith(catalogExerciseComparator)
 
 }
 

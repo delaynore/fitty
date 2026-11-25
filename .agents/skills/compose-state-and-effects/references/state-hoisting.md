@@ -48,4 +48,4 @@ A plain state holder can retain `LazyListState`, `FocusRequester`, `PagerState`,
 
 - [Local state](local-state.md) for correct `remember` and snapshot-state authoring.
 - [Side effects](side-effects.md) for effect APIs, keys, and cleanup.
-- [Compose UI testing patterns](../../compose-ui-testing-patterns/SKILL.md) for testing plain UI without the app graph.
+- [Compose UI testing patterns](../../compose-ui-testing-patterns/SKILL.md) when writing or reviewing a Compose UI test justified by Fitty's test-layer rules.

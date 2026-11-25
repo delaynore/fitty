@@ -1,0 +1,180 @@
+name: Android Smoke
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, edited]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  API_LEVEL: '36'
+  SYSTEM_IMAGE: aosp_atd
+  ABI: x86_64
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+
+jobs:
+  plan:
+    name: Check Smoke requirement
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    outputs:
+      required: ${{ steps.plan.outputs.required }}
+      passed: ${{ steps.plan.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Check changed paths and prior runs
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # The PR merge commit's first parent is the base commit.
+          paths=(app gradle build.gradle.kts settings.gradle.kts gradle.properties gradlew gradlew.bat .github/workflows/android.yml .github/workflows/android-smoke.yml)
+          if git diff --quiet HEAD^1 HEAD -- "${paths[@]}"; then
+            echo 'No Android code or build changes.'
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          else
+            diff_status=$?
+            if [[ $diff_status -ne 1 ]]; then
+              exit "$diff_status"
+            fi
+          fi
+          echo 'required=true' >> "$GITHUB_OUTPUT"
+
+          # An exemption also concludes the workflow successfully, so inspect the emulator job.
+          runs=$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/android-smoke.yml/runs?head_sha=$HEAD_SHA&status=success&per_page=100" \
+            --jq '(.workflow_runs // [])[].id')
+          for run in $runs; do
+            passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs" \
+              --jq 'any(.jobs[]; .name == "Smoke on AOSP ATD" and .conclusion == "success")')
+            if [[ "$passed" == true ]]; then
+              echo "Reusing successful Smoke on $HEAD_SHA from run $run."
+              echo 'passed=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo 'passed=false' >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: Smoke on AOSP ATD
+    needs: plan
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+      (needs.plan.outputs.required == 'true' && needs.plan.outputs.passed == 'false' &&
+      contains(github.event.pull_request.labels.*.name, 'android-smoke')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Resolve emulator version
+        id: emulator
+        run: |
+          # Install before reading the version so the cache tracks the stable SDK package.
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$sdkmanager" ]]; then
+            candidates=("$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager)
+            sdkmanager="${candidates[0]}"
+          fi
+          if [[ ! -x "$sdkmanager" ]]; then
+            echo "::error::Android SDK command-line tools are missing from $ANDROID_HOME."
+            exit 1
+          fi
+          dirname "$sdkmanager" >> "$GITHUB_PATH"
+          "$sdkmanager" --install emulator --channel=0
+          version=$(sed -n 's/^Pkg\.Revision[[:space:]]*=[[:space:]]*\([0-9.]*\).*/\1/p' "$ANDROID_HOME/emulator/source.properties")
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Restore clean AVD snapshot
+        id: avd
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.android/avd
+            ~/.android/adb*
+          key: smoke-avd-v1-${{ runner.os }}-api${{ env.API_LEVEL }}-${{ env.SYSTEM_IMAGE }}-${{ env.ABI }}-${{ steps.emulator.outputs.version }}
+      - name: Create clean snapshot
+        if: steps.avd.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.SYSTEM_IMAGE }}
+          arch: ${{ env.ABI }}
+          disable-animations: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          script: adb shell getprop sys.boot_completed
+      - name: Save clean snapshot before tests
+        if: steps.avd.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.android/avd
+            ~/.android/adb*
+          key: ${{ steps.avd.outputs.cache-primary-key }}
+      - name: Run Smoke with animations disabled
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.SYSTEM_IMAGE }}
+          arch: ${{ env.ABI }}
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: ${{ env.EMULATOR_OPTIONS }} -no-snapshot-save
+          script: bash ./gradlew :app:connectedDebugAndroidTest --build-cache --configuration-cache '-Pandroid.testInstrumentationRunnerArguments.annotation=com.delaynore.fitty.SmokeTest'
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-smoke-results
+          path: |
+            app/build/outputs/androidTest-results/connected/
+            app/build/reports/androidTests/connected/
+
+  gate:
+    name: Android Smoke gate
+    needs: [plan, smoke]
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require successful Smoke for Android changes
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          REQUIRED: ${{ needs.plan.outputs.required }}
+          PASSED: ${{ needs.plan.outputs.passed }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: |
+          if [[ "$PLAN_RESULT" != success ]]; then
+            echo '::error::Could not determine whether this PR requires Smoke.'
+            exit 1
+          fi
+          if [[ "$REQUIRED" == false || "$PASSED" == true || "$SMOKE_RESULT" == success ]]; then
+            exit 0
+          fi
+          if [[ "$SMOKE_RESULT" == skipped ]]; then
+            echo '::error::Add the android-smoke label to test this PR commit.'
+          else
+            echo '::error::Smoke must pass before this PR can merge.'
+          fi
+          exit 1

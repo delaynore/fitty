@@ -1,10 +1,5 @@
 package com.delaynore.fitty.ui.programs
 
-import android.database.sqlite.SQLiteException
-import android.os.SystemClock
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
@@ -13,9 +8,14 @@ import com.delaynore.fitty.data.programs.ProgramsRepository
 import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
-import com.delaynore.fitty.ui.inputText
-import com.delaynore.fitty.ui.parseGoal
+import com.delaynore.fitty.domain.inputText
+import com.delaynore.fitty.ui.launchPersistenceSave
+import com.delaynore.fitty.domain.parseGoal
+import com.delaynore.fitty.ui.consumePendingEvent
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal data class ExerciseDraft(
@@ -52,42 +52,45 @@ internal data class TrainingDayDraft(val id: Long, val name: String, val exercis
 
 private const val UNDO_MILLIS = 5_000L
 
-internal class ProgramEditorViewModel(private val programs: ProgramsRepository) : ViewModel() {
-    private var nextDraftId = -1L
-    private var programId = 0L
-    private var initialName = ""
-    private var initialDays = emptyList<TrainingDayDraft>()
-    private var days by mutableStateOf(emptyList<TrainingDayDraft>())
-    private var undoDeadlines by mutableStateOf(emptyMap<Long, Long>())
-    private var editingDayId by mutableStateOf<Long?>(null)
-
-    var editing by mutableStateOf(false)
-        private set
-    var name by mutableStateOf("")
-        private set
-    var saving by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-    var showDayErrors by mutableStateOf(false)
-        private set
-
-    val allPrograms = programs.allPrograms
-    var selecting by mutableStateOf(false)
-        private set
-    var selectionError by mutableStateOf<String?>(null)
-        private set
-
+internal data class ProgramEditorUiState(
+    val draftVersion: Long = 0,
+    val editing: Boolean = false,
+    val programId: Long = 0,
+    val name: String = "",
+    val days: List<TrainingDayDraft> = emptyList(),
+    val initialName: String = "",
+    val initialDays: List<TrainingDayDraft> = emptyList(),
+    val undoDeadlines: Map<Long, Long> = emptyMap(),
+    val editingDayId: Long? = null,
+    val saving: Boolean = false,
+    val error: String? = null,
+    val showDayErrors: Boolean = false,
+    val pendingEvent: ProgramEditorEvent? = null,
+) {
     val visibleDays get() = days.filterNot { it.id in undoDeadlines }
     val removedDays get() = undoDeadlines.keys.mapNotNull { id -> days.find { it.id == id } }
     val editingDay get() = days.find { it.id == editingDayId }
     val hasChanges get() = name != initialName || visibleDays != initialDays
     val editingExistingProgram get() = programId > 0
+}
+
+internal sealed interface ProgramEditorEvent {
+    data class OpenDay(val id: Long) : ProgramEditorEvent
+    data object Saved : ProgramEditorEvent
+    data object DayFinished : ProgramEditorEvent
+}
+
+internal class ProgramEditorViewModel(
+    private val programs: ProgramsRepository,
+    private val clock: () -> Long,
+) : ViewModel() {
+    private val state = MutableStateFlow(ProgramEditorUiState())
+    val uiState = state.asStateFlow()
+    private var nextDraftId = -1L
 
     fun openEditor(program: TrainingProgram? = null) {
-        programId = program?.id ?: 0
-        initialName = program?.name.orEmpty()
-        initialDays = program?.days.orEmpty().map { day ->
+        val name = program?.name.orEmpty()
+        val days = program?.days.orEmpty().map { day ->
             TrainingDayDraft(day.id, day.name, day.exercises.map { exercise ->
                 ExerciseDraft(
                     exercise.id,
@@ -99,80 +102,64 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
                 )
             })
         }
-        name = initialName
-        days = initialDays
-        undoDeadlines = emptyMap()
-        editingDayId = null
-        error = null
-        editing = true
-    }
-
-    fun closeEditor() {
-        editing = false
-        undoDeadlines = emptyMap()
-    }
-
-    fun observeProgram(id: Long) = programs.observeProgram(id)
-
-    fun selectProgram(id: Long, onSelected: () -> Unit) {
-        if (selecting) return
-        selecting = true
-        selectionError = null
-        viewModelScope.launch {
-            try {
-                programs.selectProgram(id)
-                onSelected()
-            } catch (_: SQLiteException) {
-                selectionError = "Не удалось выбрать программу"
-            } finally {
-                selecting = false
-            }
+        state.update {
+            it.copy(
+                draftVersion = it.draftVersion + 1, editing = true, programId = program?.id ?: 0,
+                name = name, days = days, initialName = name, initialDays = days,
+                undoDeadlines = emptyMap(), editingDayId = null, error = null, showDayErrors = false,
+            )
         }
     }
 
     fun changeName(value: String) {
-        name = value
-        error = null
+        state.update { it.copy(name = value, error = null) }
     }
 
     fun addDay() {
         val day = TrainingDayDraft(nextDraftId--, "", emptyList())
-        days = days + day
-        openDay(day.id)
+        state.update { it.copy(days = it.days + day, editingDayId = day.id, showDayErrors = false, error = null, pendingEvent = ProgramEditorEvent.OpenDay(day.id)) }
     }
 
     fun openDay(id: Long) {
-        editingDayId = id
-        showDayErrors = false
-        error = null
+        state.update {
+            it.copy(
+                editingDayId = id,
+                showDayErrors = false,
+                error = null,
+                pendingEvent = ProgramEditorEvent.OpenDay(id),
+            )
+        }
     }
 
     fun changeDayName(value: String) = updateDay { it.copy(name = value) }
 
-    fun selectExercise(exercise: CatalogExercise, legacyId: Long?) = updateDay { day ->
-        if (legacyId == null) {
-            day.copy(exercises = day.exercises + ExerciseDraft(
-                id = nextDraftId--,
-                name = exercise.name,
-                catalogExerciseId = exercise.id,
-                type = exercise.type,
-            ))
-        } else {
-            day.copy(exercises = day.exercises.map { draft ->
-                if (draft.id != legacyId || draft.catalogExerciseId != null) draft else draft.copy(
+    fun selectExercise(exercise: CatalogExercise, legacyId: Long?) {
+        val newId = if (legacyId == null) nextDraftId-- else null
+        updateDay { day ->
+            if (newId != null) {
+                day.copy(exercises = day.exercises + ExerciseDraft(
+                    id = newId,
                     name = exercise.name,
-                    target = if (draft.type == exercise.type) draft.target else "",
                     catalogExerciseId = exercise.id,
                     type = exercise.type,
-                )
-            })
+                ))
+            } else {
+                day.copy(exercises = day.exercises.map { draft ->
+                    if (draft.id != legacyId || draft.catalogExerciseId != null) draft else draft.copy(
+                        name = exercise.name,
+                        target = if (draft.type == exercise.type) draft.target else "",
+                        catalogExerciseId = exercise.id,
+                        type = exercise.type,
+                    )
+                })
+            }
         }
     }
 
     fun deleteExercise(id: Long) = updateDay { day -> day.copy(exercises = day.exercises.filterNot { it.id == id }) }
 
-    fun changeExercise(exercise: ExerciseDraft) = updateDay { day ->
-        day.copy(exercises = day.exercises.map { if (it.id == exercise.id) exercise else it })
+    fun changeExercise(id: Long, change: (ExerciseDraft) -> ExerciseDraft) = updateDay { day ->
+        day.copy(exercises = day.exercises.map { if (it.id == id) change(it) else it })
     }
 
     fun moveExercise(id: Long, destination: Int) = updateDay { day ->
@@ -186,60 +173,73 @@ internal class ProgramEditorViewModel(private val programs: ProgramsRepository) 
         }
     }
 
-    fun finishDay(onFinished: () -> Unit) {
-        if (editingDay?.valid == true) onFinished() else showDayErrors = true
+    fun finishDay() {
+        if (state.value.editingDay?.valid == true) state.update { it.copy(pendingEvent = ProgramEditorEvent.DayFinished) }
+        else state.update { it.copy(showDayErrors = true) }
     }
 
-    private fun updateDay(update: (TrainingDayDraft) -> TrainingDayDraft) {
-        days = days.map { if (it.id == editingDayId) update(it) else it }
+    private fun updateDay(change: (TrainingDayDraft) -> TrainingDayDraft) {
+        state.update { current ->
+            current.copy(days = current.days.map { if (it.id == current.editingDayId) change(it) else it })
+        }
     }
 
     fun removeDay(id: Long) {
-        if (id in undoDeadlines) return
-        val deadline = SystemClock.elapsedRealtime() + UNDO_MILLIS
-        undoDeadlines = undoDeadlines + (id to deadline)
+        val current = state.value
+        if (id in current.undoDeadlines || current.days.none { it.id == id }) return
+        val deadline = clock() + UNDO_MILLIS
+        state.update { it.copy(undoDeadlines = it.undoDeadlines + (id to deadline)) }
         viewModelScope.launch {
             delay(UNDO_MILLIS)
-            if (undoDeadlines[id] == deadline) {
-                days = days.filterNot { it.id == id }
-                undoDeadlines = undoDeadlines - id
+            state.update {
+                if (it.draftVersion == current.draftVersion && it.undoDeadlines[id] == deadline) {
+                    it.copy(days = it.days.filterNot { day -> day.id == id }, undoDeadlines = it.undoDeadlines - id)
+                } else {
+                    it
+                }
             }
         }
     }
 
     fun restoreDay(id: Long) {
-        val deadline = undoDeadlines[id] ?: return
-        if (SystemClock.elapsedRealtime() < deadline) undoDeadlines = undoDeadlines - id
+        val deadline = state.value.undoDeadlines[id] ?: return
+        if (clock() < deadline) state.update { it.copy(undoDeadlines = it.undoDeadlines - id) }
     }
 
-    fun saveProgram(onInvalidDay: () -> Unit, onSaved: () -> Unit) {
-        if (saving) return
-        val currentDays = visibleDays
-        error = when {
-            name.isBlank() -> "Введи название программы"
-            currentDays.isEmpty() -> "Добавь хотя бы один тренировочный день"
+    fun saveProgram() {
+        val current = state.value
+        if (current.saving) return
+        val days = current.visibleDays
+        val error = when {
+            current.name.isBlank() -> "Введи название программы"
+            days.isEmpty() -> "Добавь хотя бы один тренировочный день"
             else -> null
         }
-        if (error != null) return
-        val invalidDay = currentDays.firstOrNull { !it.valid }
-        if (invalidDay != null) {
-            openDay(invalidDay.id)
-            showDayErrors = true
-            onInvalidDay()
+        if (error != null) {
+            state.update { it.copy(error = error) }
             return
         }
-        val program = TrainingProgram(programId, name, currentDays.map { it.toDay() })
-        saving = true
-        viewModelScope.launch {
-            try {
-                programs.saveProgram(program)
-                closeEditor()
-                onSaved()
-            } catch (_: SQLiteException) {
-                error = "Не удалось сохранить программу"
-            } finally {
-                saving = false
-            }
+        val invalidDay = days.firstOrNull { !it.valid }
+        if (invalidDay != null) {
+            state.update { it.copy(editingDayId = invalidDay.id, showDayErrors = true, error = null) }
+            state.update { it.copy(pendingEvent = ProgramEditorEvent.OpenDay(invalidDay.id)) }
+            return
         }
+        val program = TrainingProgram(current.programId, current.name, days.map { it.toDay() })
+        viewModelScope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.saving },
+            onStart = { it.copy(saving = true, error = null) },
+            onFailure = { it.copy(error = "Не удалось сохранить программу") },
+            onFinish = { it.copy(saving = false) },
+        ) {
+            programs.saveProgram(program)
+            state.update { it.copy(pendingEvent = ProgramEditorEvent.Saved) }
+            true
+        }
+    }
+
+    fun consumeEvent(event: ProgramEditorEvent) {
+        state.consumePendingEvent(event, ProgramEditorUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 }

@@ -15,8 +15,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -29,20 +29,33 @@ import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
 import com.delaynore.fitty.ui.ScreenColumn
-import com.delaynore.fitty.ui.formatRecommendation
+import com.delaynore.fitty.ui.UiEventEffect
+import com.delaynore.fitty.domain.formatRecommendation
 
 @Composable
 internal fun ProgramsScreen(
-    viewModel: ProgramEditorViewModel,
+    viewModel: ProgramsViewModel,
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onDetails: (Long) -> Unit,
     onSelected: () -> Unit,
 ) {
-    val programs by viewModel.allPrograms.collectAsStateWithLifecycle(initialValue = null)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { onSelected() }
+    ProgramsContent(state, onBack, onCreate, onDetails, onSelect = viewModel::selectProgram)
+}
+
+@Composable
+private fun ProgramsContent(
+    state: ProgramsUiState,
+    onBack: () -> Unit,
+    onCreate: () -> Unit,
+    onDetails: (Long) -> Unit,
+    onSelect: (Long) -> Unit,
+) {
     ScreenColumn {
         PageHeader("Мои программы", onBack)
-        val entries = programs
+        val entries = state.programs
         if (entries == null) CircularProgressIndicator()
         else entries.forEach { program ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -61,8 +74,8 @@ internal fun ProgramsScreen(
                     }
                 }
                 IconButton(
-                    onClick = { viewModel.selectProgram(program.id, onSelected) },
-                    enabled = !viewModel.selecting,
+                    onClick = { onSelect(program.id) },
+                    enabled = !state.selecting,
                     modifier = Modifier.semantics {
                         contentDescription = "Выбрать программу «${program.name}»"
                         if (program.selected) stateDescription = "Выбрана"
@@ -76,7 +89,7 @@ internal fun ProgramsScreen(
                 ) { FittyGlyph(FittyIcon.Check) }
             }
         }
-        viewModel.selectionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        state.selectionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Создать программу") }
     }
 }
@@ -84,12 +97,22 @@ internal fun ProgramsScreen(
 @Composable
 internal fun ProgramDetailsScreen(
     id: Long,
-    viewModel: ProgramEditorViewModel,
+    viewModel: ProgramDetailsViewModel,
     onBack: () -> Unit,
     onEdit: (TrainingProgram) -> Unit,
 ) {
-    val details = remember(id) { viewModel.observeProgram(id) }
-    val program by details.collectAsStateWithLifecycle(initialValue = null)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val missingProgram = state.detailsId == id && state.detailsLoaded && state.details == null
+    LaunchedEffect(id, missingProgram) { if (missingProgram) onBack() }
+    ProgramDetailsContent(state.details.takeIf { state.detailsId == id }, onBack, onEdit)
+}
+
+@Composable
+private fun ProgramDetailsContent(
+    program: TrainingProgram?,
+    onBack: () -> Unit,
+    onEdit: (TrainingProgram) -> Unit,
+) {
     ScreenColumn {
         val current = program
         PageHeader(current?.name ?: "Программа", onBack)

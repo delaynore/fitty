@@ -1,14 +1,15 @@
 package com.delaynore.fitty.navigation
 
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -18,23 +19,30 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
-import com.delaynore.fitty.data.programs.ProgramsRepository
-import com.delaynore.fitty.data.updates.UpdateService
-import com.delaynore.fitty.data.workouts.WorkoutsRepository
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
+import androidx.navigation.toRoute
+import com.delaynore.fitty.AppContainer
+import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
+import com.delaynore.fitty.ui.exercises.ExerciseCardContent
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogScreen
 import com.delaynore.fitty.ui.exercises.ExerciseCatalogViewModel
 import com.delaynore.fitty.ui.exercises.ExerciseEditorScreen
@@ -42,263 +50,350 @@ import com.delaynore.fitty.ui.exercises.ExerciseEditorViewModel
 import com.delaynore.fitty.ui.history.HistoryScreen
 import com.delaynore.fitty.ui.history.HistoryViewModel
 import com.delaynore.fitty.ui.history.WorkoutDetailsScreen
+import com.delaynore.fitty.ui.history.WorkoutDetailsViewModel
 import com.delaynore.fitty.ui.home.HomeScreen
 import com.delaynore.fitty.ui.home.HomeViewModel
 import com.delaynore.fitty.ui.programs.ProgramDetailsScreen
+import com.delaynore.fitty.ui.programs.ProgramDetailsViewModel
 import com.delaynore.fitty.ui.programs.ProgramEditorScreen
 import com.delaynore.fitty.ui.programs.ProgramEditorViewModel
+import com.delaynore.fitty.platform.elapsedRealtime
 import com.delaynore.fitty.ui.programs.ProgramsScreen
+import com.delaynore.fitty.ui.programs.ProgramsViewModel
 import com.delaynore.fitty.ui.programs.TrainingDayEditorScreen
-import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.SettingsScreen
 import com.delaynore.fitty.ui.settings.UpdateInstallerEffect
-import com.delaynore.fitty.ui.settings.SettingsViewModel
-import com.delaynore.fitty.ui.workout.SetTimerSignals
 import com.delaynore.fitty.ui.workout.WorkoutScreen
-import com.delaynore.fitty.ui.workout.WorkoutViewModel
+import com.delaynore.fitty.ui.UiEventEffect
+import com.delaynore.fitty.ui.exercises.ExerciseEditorEvent
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.Serializable
 
-private enum class Destination {
-    Home, Programs, ProgramDetails, ProgramEditor, DayEditor, DayEditorCatalog, CreateExercise,
-    Workout, History, WorkoutDetails, Settings, SettingsCatalog, EditExerciseDetails,
-}
+internal sealed interface TabRoute
 
-private data class BottomTab(val destination: Destination, val label: String, val icon: FittyIcon)
+// Serialization looks up object instances reflectively on the JVM.
+@Serializable internal object HomeRoute : TabRoute
+@Serializable internal object ProgramsRoute
+@Serializable private data class ProgramDetailsRoute(val programId: Long)
+@Serializable private data class ProgramEditorGraph(val programId: Long? = null)
+@Serializable internal object ProgramEditorRoute
+@Serializable private data class DayEditorRoute(val dayId: Long)
+// Exercise picking routes repeat flat dayId and replaceId fields: a nested @Serializable argument
+// would need a custom NavType. pickExercise keeps the shared selection logic in one place.
+@Serializable private data class PickExerciseRoute(val dayId: Long, val replaceId: Long? = null)
+@Serializable private data class PickExerciseCardRoute(val dayId: Long, val replaceId: Long?, val exerciseId: String)
+@Serializable private data class CreateExerciseRoute(val dayId: Long, val name: String, val replaceId: Long?)
+@Serializable private data class WorkoutRoute(val workoutId: Long)
+@Serializable internal object HistoryRoute : TabRoute
+@Serializable private data class WorkoutDetailsRoute(val workoutId: Long)
+@Serializable internal object SettingsRoute : TabRoute
+@Serializable internal object EditorSettingsRoute
+@Serializable internal object BrowseCatalogRoute
+@Serializable private data class ExerciseCardRoute(val exerciseId: String)
+@Serializable private data class EditExerciseRoute(val exerciseId: String)
+
+private data class BottomTab(val route: TabRoute, val label: String, val icon: FittyIcon)
 
 private val bottomTabs = listOf(
-    BottomTab(Destination.Home, "Главная", FittyIcon.Home),
-    BottomTab(Destination.History, "История", FittyIcon.History),
-    BottomTab(Destination.Settings, "Настройки", FittyIcon.Settings),
+    BottomTab(HomeRoute, "Главная", FittyIcon.Home),
+    BottomTab(HistoryRoute, "История", FittyIcon.History),
+    BottomTab(SettingsRoute, "Настройки", FittyIcon.Settings),
 )
 
 @Composable
-internal fun FittyNavigation(
-    programs: ProgramsRepository,
-    workouts: WorkoutsRepository,
-    catalog: ExerciseCatalogRepository,
-    workoutTimerClock: () -> Long,
-    installedApp: InstalledApp,
-    updateService: UpdateService,
-    setTimerSignals: SetTimerSignals,
-) {
-    var destination by rememberSaveable { mutableStateOf(Destination.Home) }
-    var workoutId by rememberSaveable { mutableLongStateOf(0L) }
-    var programId by rememberSaveable { mutableLongStateOf(0L) }
-    var settingsOrigin by rememberSaveable { mutableStateOf<Destination?>(null) }
-    var editorOrigin by rememberSaveable { mutableStateOf(Destination.Home) }
-    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
-    var legacyExerciseId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val home = viewModel { HomeViewModel(programs, workouts, setTimerSignals::cancelWorkout) }
-    val programEditor = viewModel { ProgramEditorViewModel(programs) }
-    val exerciseEditor = viewModel { ExerciseEditorViewModel(catalog) }
-    val history = viewModel { HistoryViewModel(workouts) }
-    val settings = viewModel { SettingsViewModel(installedApp, updateService, workouts, createSavedStateHandle()) }
-    UpdateInstallerEffect(settings) { destination == Destination.Settings }
-    val context = LocalContext.current
-    val workout = viewModel {
-        val bootCount = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
-        WorkoutViewModel(workouts, createSavedStateHandle(), bootCount, workoutTimerClock, setTimerSignals, catalog)
-    }
-
-    val closeEditor = {
-        confirmDiscard = false
-        legacyExerciseId = null
-        exerciseEditor.close()
-        programEditor.closeEditor()
-        destination = editorOrigin
-    }
-    val editorSettings = {
-        settingsOrigin = destination
-        destination = Destination.Settings
-    }
-    val settingsFromEditor = settingsOrigin != null && programEditor.editing
-    val back = {
-        when (destination) {
-            Destination.DayEditor -> destination = Destination.ProgramEditor
-            Destination.DayEditorCatalog -> {
-                legacyExerciseId = null
-                destination = Destination.DayEditor
-            }
-            Destination.CreateExercise -> if (exerciseEditor.state?.saving != true) {
-                exerciseEditor.close()
-                destination = Destination.DayEditorCatalog
-            }
-            Destination.ProgramEditor -> if (!programEditor.saving) {
-                if (programEditor.hasChanges) confirmDiscard = true else closeEditor()
-            }
-            Destination.ProgramDetails -> destination = Destination.Programs
-            Destination.WorkoutDetails -> destination = Destination.History
-            Destination.SettingsCatalog -> destination = Destination.Settings
-            Destination.EditExerciseDetails -> if (exerciseEditor.state?.saving != true) {
-                exerciseEditor.close()
-                destination = Destination.SettingsCatalog
-            }
-            Destination.Settings -> {
-                destination = settingsOrigin?.takeIf { programEditor.editing } ?: Destination.Home
-                settingsOrigin = null
-            }
-            else -> destination = Destination.Home
-        }
-    }
-    val createProgram = {
-        editorOrigin = destination
-        programEditor.openEditor()
-        destination = Destination.ProgramEditor
-    }
-    LaunchedEffect(destination) {
-        val inEditor = destination == Destination.ProgramEditor ||
-            destination == Destination.DayEditor || destination == Destination.DayEditorCatalog ||
-            destination == Destination.CreateExercise
-        if (inEditor && !programEditor.editing) {
-            closeEditor()
-        } else if (destination == Destination.EditExerciseDetails && exerciseEditor.state == null) {
-            destination = Destination.SettingsCatalog
-        }
-    }
-    val savedExercise = exerciseEditor.savedExercise
-    LaunchedEffect(savedExercise, destination) {
-        if (savedExercise != null) {
-            when (destination) {
-                Destination.CreateExercise -> if (programEditor.editing) {
-                    exerciseEditor.close()
-                    programEditor.selectExercise(savedExercise, legacyExerciseId)
-                    legacyExerciseId = null
-                    destination = Destination.DayEditor
-                }
-                Destination.EditExerciseDetails -> {
-                    exerciseEditor.close()
-                    destination = Destination.SettingsCatalog
-                }
-                else -> Unit
-            }
-        }
-    }
-    BackHandler(enabled = destination != Destination.Home, onBack = back)
-    if (confirmDiscard) {
-        AlertDialog(
-            onDismissRequest = { confirmDiscard = false },
-            title = { Text("Выйти без сохранения?") },
-            confirmButton = { TextButton(onClick = closeEditor) { Text("Выйти") } },
-            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Продолжить редактирование") } },
-        )
+internal fun FittyNavigation(container: AppContainer) {
+    val nav = rememberNavController()
+    val current by nav.currentBackStackEntryAsState()
+    val selected = current?.destination
+    val back: () -> Unit = { nav.popBackStack() }
+    UpdateInstallerEffect(container.updates, container.updateInstaller) {
+        val destination = selected
+        destination?.hasRoute<SettingsRoute>() == true || destination?.hasRoute<EditorSettingsRoute>() == true
     }
 
     Scaffold(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!settingsFromEditor && bottomTabs.any { it.destination == destination }) {
-                TabBar(selected = destination, onSelect = { destination = it })
+            if (bottomTabs.any { selected?.hasRoute(it.route::class) == true }) {
+                TabBar(selected, nav::selectTab)
             }
         },
     ) { padding ->
-        Box(Modifier.padding(padding)) {
-            when (destination) {
-                Destination.Home -> HomeScreen(
+        NavHost(
+            navController = nav,
+            startDestination = HomeRoute,
+            modifier = Modifier.padding(padding),
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+        ) {
+            composable<HomeRoute> {
+                val home = viewModel { HomeViewModel(container.programs, container.workouts, container.activeWorkout::clear) }
+                HomeScreen(
                     viewModel = home,
-                    onCreateProgram = createProgram,
-                    onPrograms = { destination = Destination.Programs },
-                    onWorkout = { id ->
-                        workoutId = id
-                        destination = Destination.Workout
-                    },
+                    onCreateProgram = { nav.navigate(ProgramEditorGraph()) },
+                    onPrograms = { nav.navigate(ProgramsRoute) },
+                    onWorkout = { nav.navigate(WorkoutRoute(it)) },
                 )
-                Destination.Programs -> ProgramsScreen(
-                    viewModel = programEditor,
+            }
+            composable<ProgramsRoute> {
+                val programs = viewModel { ProgramsViewModel(container.programs) }
+                ProgramsScreen(
+                    viewModel = programs,
                     onBack = back,
-                    onCreate = createProgram,
-                    onDetails = { id ->
-                        programId = id
-                        destination = Destination.ProgramDetails
-                    },
-                    onSelected = {
-                        home.selectDay(null)
-                        destination = Destination.Home
-                    },
+                    onCreate = { nav.navigate(ProgramEditorGraph()) },
+                    onDetails = { nav.navigate(ProgramDetailsRoute(it)) },
+                    onSelected = { nav.popBackStack<HomeRoute>(inclusive = false) },
                 )
-                Destination.ProgramDetails -> ProgramDetailsScreen(programId, programEditor, back) { program ->
-                    editorOrigin = Destination.ProgramDetails
-                    programEditor.openEditor(program)
-                    destination = Destination.ProgramEditor
+            }
+            composable<ProgramDetailsRoute> { entry ->
+                val id = entry.toRoute<ProgramDetailsRoute>().programId
+                val details = viewModel { ProgramDetailsViewModel(id, container.programs) }
+                ProgramDetailsScreen(id, details, back) { nav.navigate(ProgramEditorGraph(it.id)) }
+            }
+            navigation<ProgramEditorGraph>(startDestination = ProgramEditorRoute) {
+                composable<ProgramEditorRoute> { entry ->
+                    val editor = programEditor(nav, entry, container)
+                    ProgramEditorDestination(editor, nav)
                 }
-                Destination.ProgramEditor -> ProgramEditorScreen(
-                    viewModel = programEditor,
-                    onBack = back,
-                    onEditDay = { destination = Destination.DayEditor },
-                    onSettings = editorSettings,
-                    onSaved = { destination = editorOrigin },
-                )
-                Destination.DayEditor, Destination.DayEditorCatalog, Destination.CreateExercise -> {
-                    val editorState = rememberSaveableStateHolder()
-                    when (destination) {
-                        Destination.DayEditor -> editorState.SaveableStateProvider("day") {
-                            TrainingDayEditorScreen(programEditor, back, editorSettings) { existingExerciseId ->
-                                editorState.removeState("catalog")
-                                legacyExerciseId = existingExerciseId
-                                destination = Destination.DayEditorCatalog
+                composable<DayEditorRoute> { entry ->
+                    val (dayId) = entry.toRoute<DayEditorRoute>()
+                    val editor = programEditor(nav, entry, container)
+                    val state by editor.uiState.collectAsStateWithLifecycle()
+                    LaunchedEffect(state.editing, dayId) {
+                        if (state.editing && editor.uiState.value.editingDayId != dayId) {
+                            if (editor.uiState.value.visibleDays.any { it.id == dayId }) editor.openDay(dayId)
+                            else nav.popBackStack<ProgramEditorRoute>(inclusive = false)
+                        }
+                    }
+                    if (state.editingDayId == dayId) {
+                        TrainingDayEditorScreen(editor, back, { nav.navigate(EditorSettingsRoute) }) { replaceId ->
+                            nav.navigate(PickExerciseRoute(dayId, replaceId))
+                        }
+                    }
+                }
+                composable<PickExerciseRoute> { entry ->
+                    val (dayId, replaceId) = entry.toRoute<PickExerciseRoute>()
+                    val editor = programEditor(nav, entry, container)
+                    val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
+                    val select: (CatalogExercise) -> Unit = { nav.pickExercise(editor, dayId, replaceId, it) }
+                    ExerciseCatalogScreen(
+                        viewModel = catalog,
+                        onBack = back,
+                        onOpenExercise = { nav.navigate(PickExerciseCardRoute(dayId, replaceId, it)) },
+                        onSelect = select.takeIf { replaceId == null },
+                        onCreate = { nav.navigate(CreateExerciseRoute(dayId, it, replaceId)) },
+                    )
+                }
+                composable<PickExerciseCardRoute> { entry ->
+                    val (dayId, replaceId, exerciseId) = entry.toRoute<PickExerciseCardRoute>()
+                    val editor = programEditor(nav, entry, container)
+                    val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
+                    CatalogCard(catalog, exerciseId, back, replacing = replaceId != null, onSelect = {
+                        nav.pickExercise(editor, dayId, replaceId, it)
+                    })
+                }
+                composable<CreateExerciseRoute> { entry ->
+                    val route = entry.toRoute<CreateExerciseRoute>()
+                    val editor = programEditor(nav, entry, container)
+                    val exercise = viewModel { ExerciseEditorViewModel(container.catalog) }
+                    LaunchedEffect(entry) {
+                        if (exercise.uiState.value.draft == null && editor.uiState.value.editing) {
+                            if (entry.savedStateHandle.get<Boolean>(EDITOR_OPENED) == true) nav.popBackStack()
+                            else {
+                                exercise.open(route.name)
+                                entry.savedStateHandle[EDITOR_OPENED] = true
                             }
                         }
-                        Destination.DayEditorCatalog -> editorState.SaveableStateProvider("catalog") {
-                            ExerciseCatalogScreen(
-                                viewModel = viewModel { ExerciseCatalogViewModel(catalog) },
-                                onBack = back,
-                                replacingLegacyExercise = legacyExerciseId != null,
-                                onSelect = { exercise ->
-                                    if (destination == Destination.DayEditorCatalog) {
-                                        programEditor.selectExercise(exercise, legacyExerciseId)
-                                        back()
-                                    }
-                                },
-                                onCreate = { name ->
-                                    exerciseEditor.open(name)
-                                    destination = Destination.CreateExercise
-                                },
-                            )
-                        }
-                        Destination.CreateExercise -> ExerciseEditorScreen(exerciseEditor, back)
-                        else -> Unit
+                    }
+                    ExerciseEditorDestination(exercise, back) {
+                        nav.pickExercise(editor, route.dayId, route.replaceId, it)
                     }
                 }
-                Destination.Workout -> WorkoutScreen(
-                    id = workoutId,
-                    viewModel = workout,
-                    onBack = back,
-                    onFinished = { destination = Destination.WorkoutDetails },
-                )
-                Destination.History -> HistoryScreen(history) { id ->
-                    workoutId = id
-                    destination = Destination.WorkoutDetails
-                }
-                Destination.WorkoutDetails -> WorkoutDetailsScreen(workoutId, history, back)
-                Destination.Settings -> SettingsScreen(
-                    viewModel = settings,
-                    onBack = back.takeIf { settingsFromEditor },
-                    onBrowseExercises = { destination = Destination.SettingsCatalog },
-                    onUpdate = { settings.startUpdate(programEditor.editing && programEditor.hasChanges) },
-                )
-                Destination.SettingsCatalog, Destination.EditExerciseDetails -> {
-                    val catalogState = rememberSaveableStateHolder()
-                    if (destination == Destination.SettingsCatalog) {
-                        catalogState.SaveableStateProvider("catalog") {
-                            ExerciseCatalogScreen(
-                                viewModel = viewModel { ExerciseCatalogViewModel(catalog) },
-                                onBack = back,
-                                onEdit = { exercise ->
-                                    exerciseEditor.open(exercise)
-                                    destination = Destination.EditExerciseDetails
-                                },
-                            )
-                        }
-                    } else {
-                        ExerciseEditorScreen(exerciseEditor, back)
+                composable<EditorSettingsRoute> { entry ->
+                    val editor = programEditor(nav, entry, container)
+                    SettingsScreen(container.updates, back, { nav.navigate(BrowseCatalogRoute) }) {
+                        container.updates.startUpdate(editor.uiState.value.hasChanges)
                     }
                 }
+            }
+            composable<WorkoutRoute> { entry ->
+                val id = entry.toRoute<WorkoutRoute>().workoutId
+                WorkoutScreen(id, container.activeWorkout, back) {
+                    if (nav.currentBackStackEntry == entry) {
+                        nav.popBackStack()
+                        nav.selectTab(HistoryRoute)
+                        nav.popBackStack<HistoryRoute>(inclusive = false)
+                        nav.navigate(WorkoutDetailsRoute(id))
+                    }
+                }
+            }
+            composable<HistoryRoute> {
+                val history = viewModel { HistoryViewModel(container.workouts) }
+                HistoryScreen(history) { nav.navigate(WorkoutDetailsRoute(it)) }
+            }
+            composable<WorkoutDetailsRoute> { entry ->
+                val id = entry.toRoute<WorkoutDetailsRoute>().workoutId
+                val details = viewModel { WorkoutDetailsViewModel(id, container.workouts) }
+                WorkoutDetailsScreen(id, details, back)
+            }
+            composable<SettingsRoute> {
+                SettingsScreen(container.updates, null, { nav.navigate(BrowseCatalogRoute) }) {
+                    container.updates.startUpdate(hasUnsavedInput = false)
+                }
+            }
+            composable<BrowseCatalogRoute> {
+                val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
+                ExerciseCatalogScreen(catalog, back, onOpenExercise = { nav.navigate(ExerciseCardRoute(it)) })
+            }
+            composable<ExerciseCardRoute> { entry ->
+                val id = entry.toRoute<ExerciseCardRoute>().exerciseId
+                val catalog = viewModel { ExerciseCatalogViewModel(container.catalog) }
+                CatalogCard(catalog, id, back, onEdit = { nav.navigate(EditExerciseRoute(it.id)) })
+            }
+            composable<EditExerciseRoute> { entry ->
+                val id = entry.toRoute<EditExerciseRoute>().exerciseId
+                val exercise = viewModel { ExerciseEditorViewModel(container.catalog) }
+                LaunchedEffect(entry) {
+                    if (exercise.uiState.value.draft != null) return@LaunchedEffect
+                    val stored = if (entry.savedStateHandle.get<Boolean>(EDITOR_OPENED) == true) null
+                    else container.catalog.allExercises.first().find { it.id == id && it.isCustom }
+                    if (stored == null) nav.popBackStack()
+                    else {
+                        exercise.open(stored)
+                        entry.savedStateHandle[EDITOR_OPENED] = true
+                    }
+                }
+                ExerciseEditorDestination(exercise, back) { nav.popBackStack() }
             }
         }
     }
 }
 
+private const val EDITOR_OPENED = "editorOpened"
+
+private fun NavHostController.selectTab(route: TabRoute) {
+    if (currentDestination?.hasRoute(route::class) == true) return
+    navigate(route) {
+        popUpTo<HomeRoute> { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+private fun NavHostController.pickExercise(
+    editor: ProgramEditorViewModel,
+    dayId: Long,
+    replaceId: Long?,
+    exercise: CatalogExercise,
+) {
+    editor.selectExercise(exercise, replaceId)
+    popBackStack(DayEditorRoute(dayId), inclusive = false)
+}
+
 @Composable
-private fun TabBar(selected: Destination, onSelect: (Destination) -> Unit) {
+private fun programEditor(
+    nav: NavHostController,
+    entry: NavBackStackEntry,
+    container: AppContainer,
+): ProgramEditorViewModel {
+    val parent = remember(entry) { nav.getBackStackEntry<ProgramEditorGraph>() }
+    val editor = viewModel<ProgramEditorViewModel>(viewModelStoreOwner = parent) {
+        ProgramEditorViewModel(container.programs, ::elapsedRealtime)
+    }
+    LaunchedEffect(entry) {
+        if (editor.uiState.value.editing) return@LaunchedEffect
+        val id = parent.toRoute<ProgramEditorGraph>().programId
+        val wasOpened = parent.savedStateHandle.get<Boolean>(EDITOR_OPENED) == true
+        val program = if (id == null || wasOpened) null else container.programs.observeProgram(id).first()
+        if (wasOpened || (id != null && program == null)) {
+            nav.popBackStack<ProgramEditorGraph>(inclusive = true)
+        } else {
+            editor.openEditor(program)
+            parent.savedStateHandle[EDITOR_OPENED] = true
+        }
+    }
+    return editor
+}
+
+@Composable
+private fun ProgramEditorDestination(editor: ProgramEditorViewModel, nav: NavHostController) {
+    val state by editor.uiState.collectAsStateWithLifecycle()
+    if (!state.editing) {
+        CircularProgressIndicator()
+        return
+    }
+    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
+    val exit: () -> Unit = { nav.popBackStack<ProgramEditorGraph>(inclusive = true) }
+    val back = {
+        val current = editor.uiState.value
+        if (!current.saving) {
+            if (current.hasChanges) confirmDiscard = true else exit()
+        }
+    }
+    BackHandler(onBack = back)
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text("Выйти без сохранения?") },
+            confirmButton = { TextButton(onClick = exit) { Text("Выйти") } },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Продолжить редактирование") } },
+        )
+    }
+    ProgramEditorScreen(
+        viewModel = editor,
+        onBack = back,
+        onEditDay = { nav.navigate(DayEditorRoute(it)) },
+        onSettings = { nav.navigate(EditorSettingsRoute) },
+        onSaved = exit,
+    )
+}
+
+@Composable
+private fun ExerciseEditorDestination(
+    editor: ExerciseEditorViewModel,
+    onBack: () -> Unit,
+    onSaved: (CatalogExercise) -> Unit,
+) {
+    val state by editor.uiState.collectAsStateWithLifecycle()
+    val back = { if (editor.uiState.value.draft?.saving != true) onBack() }
+    BackHandler(onBack = back)
+    UiEventEffect(state.pendingEvent, editor::consumeEvent) { event ->
+        if (event is ExerciseEditorEvent.Saved) onSaved(event.exercise)
+    }
+    ExerciseEditorScreen(editor, back)
+}
+
+@Composable
+private fun CatalogCard(
+    catalog: ExerciseCatalogViewModel,
+    id: String,
+    onBack: () -> Unit,
+    replacing: Boolean = false,
+    onSelect: ((CatalogExercise) -> Unit)? = null,
+    onEdit: ((CatalogExercise) -> Unit)? = null,
+) {
+    val state by catalog.uiState.collectAsStateWithLifecycle()
+    val exercises = state.exercises
+    val exercise = exercises?.find { it.id == id }
+    LaunchedEffect(exercises != null, exercise != null) {
+        if (exercises != null && exercise == null) onBack()
+    }
+    if (exercise == null) {
+        CircularProgressIndicator()
+        return
+    }
+    ExerciseCardContent(
+        exercise,
+        onBack = onBack,
+        selectionLabel = if (replacing) "Заменить упражнение" else "Добавить упражнение",
+        onSelect = onSelect?.let { { it(exercise) } },
+        onEdit = onEdit?.takeIf { exercise.isCustom }?.let { { it(exercise) } },
+    )
+}
+
+@Composable
+private fun TabBar(selected: NavDestination?, onSelect: (TabRoute) -> Unit) {
     NavigationBar(
         modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(26.dp)),
@@ -307,8 +402,8 @@ private fun TabBar(selected: Destination, onSelect: (Destination) -> Unit) {
     ) {
         bottomTabs.forEach { tab ->
             NavigationBarItem(
-                selected = selected == tab.destination,
-                onClick = { onSelect(tab.destination) },
+                selected = selected?.hasRoute(tab.route::class) == true,
+                onClick = { onSelect(tab.route) },
                 label = { Text(tab.label) },
                 icon = { FittyGlyph(tab.icon) },
             )

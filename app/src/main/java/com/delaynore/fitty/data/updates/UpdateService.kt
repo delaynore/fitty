@@ -1,7 +1,11 @@
 package com.delaynore.fitty.data.updates
 
-import android.content.Intent
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.withContext
 
 internal interface UpdateService {
     suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult
@@ -11,10 +15,19 @@ internal interface UpdateService {
         installedVersionCode: Long,
         onProgress: (percent: Int) -> Unit = {},
     ): UpdateDownloadResult
-    fun canRequestInstall(): Boolean
-    fun requestInstallPermission(launch: (Intent) -> Unit): Boolean
-    fun openInstaller(apk: File, launch: (Intent) -> Unit): Boolean
+    suspend fun deleteApk(apk: File) { withContext(NonCancellable + Dispatchers.IO) { apk.delete() } }
 }
+
+internal interface UpdateSessionManager {
+    val sessionUpdates: Flow<Unit> get() = emptyFlow()
+    fun canRequestInstall(): Boolean
+    suspend fun commitInstall(apk: File, expectedVersionCode: Long): InstallSession?
+    suspend fun abandonSession(sessionId: Int)
+    fun hasSession(sessionId: Int): Boolean
+    fun hasConfirmation(sessionId: Int, requestId: Long): Boolean
+}
+
+internal data class InstallSession(val sessionId: Int, val requestId: Long)
 
 internal data class FittyUpdate(
     val versionName: String,

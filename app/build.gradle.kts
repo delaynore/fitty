@@ -1,22 +1,25 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 val fittyVersionCode = providers.gradleProperty("fittyVersionCode").map { value ->
     requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) {
         "fittyVersionCode must be a positive integer"
     }
-}.getOrElse(3)
+}.getOrElse(8)
 
 val fittyVersionName = providers.gradleProperty("fittyVersionName").map { value ->
     require(value.isNotBlank() && value == value.trim()) {
         "fittyVersionName must be non-blank and have no surrounding whitespace"
     }
     value
-}.getOrElse("1.0")
+}.getOrElse("1.2.0")
 
 android {
     namespace = "com.delaynore.fitty"
@@ -31,9 +34,38 @@ android {
         testInstrumentationRunner = "com.delaynore.fitty.FittyTestRunner"
     }
 
+    buildTypes {
+        debug {
+            resValue("string", "app_name", "Fitty")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "false")
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            resValue("string", "app_name", "Fitty")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "false")
+        }
+        create("prerelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prerelease"
+            matchingFallbacks += listOf("release")
+            resValue("string", "app_name", "Fitty Test")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "true")
+        }
+    }
+
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
+    testOptions.unitTests.isIncludeAndroidResources = true
+
+    sourceSets["androidTest"].assets.srcDir(layout.projectDirectory.dir("schemas"))
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -42,7 +74,8 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
 }
 
 ksp {
@@ -50,19 +83,36 @@ ksp {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    implementation("androidx.activity:activity-compose:1.11.0")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
-    implementation("androidx.room:room-runtime:2.8.3")
-    implementation("androidx.room:room-ktx:2.8.3")
-    ksp("androidx.room:room-compiler:2.8.3")
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.activity.compose)
+    implementation(libs.compose.material3)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.navigation.compose)
+    implementation(platform(libs.kotlinx.serialization.bom))
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test:runner:1.7.0")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(composeBom)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.json)
+
+    androidTestImplementation(composeBom)
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    debugImplementation(libs.compose.ui.test.manifest)
+}
+
+tasks.withType<Test>().configureEach {
+    javaLauncher = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
+    systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
 }

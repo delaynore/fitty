@@ -1,15 +1,15 @@
 package com.delaynore.fitty.ui.exercises
 
-import android.database.sqlite.SQLiteException
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseCatalogRepository
 import com.delaynore.fitty.data.exercises.ExerciseType
-import kotlinx.coroutines.launch
+import com.delaynore.fitty.ui.launchPersistenceSave
+import com.delaynore.fitty.ui.consumePendingEvent
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 internal data class ExerciseEditorState(
     val name: String,
@@ -21,49 +21,79 @@ internal data class ExerciseEditorState(
     val canSave: Boolean get() = name.isNotBlank() && type != null && !saving
 }
 
+internal data class ExerciseEditorUiState(
+    val draft: ExerciseEditorState? = null,
+    val draftVersion: Long = 0,
+    val pendingEvent: ExerciseEditorEvent? = null,
+)
+internal sealed interface ExerciseEditorEvent { data class Saved(val exercise: CatalogExercise) : ExerciseEditorEvent }
+
 internal class ExerciseEditorViewModel(private val catalog: ExerciseCatalogRepository) : ViewModel() {
-    var state by mutableStateOf<ExerciseEditorState?>(null)
-        private set
-    var savedExercise by mutableStateOf<CatalogExercise?>(null)
-        private set
+    private val state = MutableStateFlow(ExerciseEditorUiState())
+    val uiState = state.asStateFlow()
 
     fun open(name: String) {
-        state = ExerciseEditorState(name)
+        openDraft(ExerciseEditorState(name))
     }
 
     fun open(exercise: CatalogExercise) {
-        state = ExerciseEditorState(exercise.name, exercise.type, details = exercise)
+        openDraft(ExerciseEditorState(exercise.name, exercise.type, details = exercise))
+    }
+
+    private fun openDraft(draft: ExerciseEditorState?) {
+        state.update { ExerciseEditorUiState(draft = draft, draftVersion = it.draftVersion + 1) }
     }
 
     fun close() {
-        state = null
-        savedExercise = null
+        openDraft(null)
     }
 
     fun changeName(name: String) {
-        state = state?.copy(name = name, error = null)
+        state.update { it.copy(draft = it.draft?.copy(name = name, error = null)) }
     }
 
     fun selectType(type: ExerciseType) {
-        state = state?.copy(type = type, error = null)
+        state.update { it.copy(draft = it.draft?.copy(type = type, error = null)) }
     }
 
-    fun changeDetails(details: CatalogExercise) {
-        state = state?.copy(details = details, error = null)
+    fun changeDetails(change: (CatalogExercise) -> CatalogExercise) {
+        state.update { current ->
+            val draft = current.draft ?: return@update current
+            val details = draft.details ?: return@update current
+            current.copy(draft = draft.copy(details = change(details), error = null))
+        }
     }
 
     fun save() {
-        val current = state ?: return
+        val version = state.value.draftVersion
+        val current = state.value.draft ?: return
         val type = current.type ?: return
         if (!current.canSave) return
-        state = current.copy(saving = true, error = null)
-        viewModelScope.launch {
-            try {
-                savedExercise = current.details?.also { catalog.saveDetails(it) }
-                    ?: catalog.create(current.name, type)
-            } catch (_: SQLiteException) {
-                state = current.copy(error = "Не удалось сохранить упражнение")
+        viewModelScope.launchPersistenceSave(
+            state = state,
+            isBusy = { it.draft?.saving == true || it.pendingEvent != null },
+            onStart = { it.copy(draft = current.copy(saving = true, error = null)) },
+            onFailure = {
+                if (it.draftVersion == version) {
+                    it.copy(draft = it.draft?.copy(error = "Не удалось сохранить упражнение"))
+                } else {
+                    it
+                }
+            },
+            onFinish = {
+                if (it.draftVersion == version) it.copy(draft = it.draft?.copy(saving = false)) else it
+            },
+        ) {
+            val saved = current.details?.also { catalog.saveDetails(it) }
+                ?: catalog.create(current.name, type)
+            state.update {
+                if (it.draftVersion == version) it.copy(pendingEvent = ExerciseEditorEvent.Saved(saved)) else it
             }
+            true
         }
+    }
+
+    fun consumeEvent(event: ExerciseEditorEvent) {
+        state.consumePendingEvent(event, ExerciseEditorUiState::pendingEvent) { it.copy(pendingEvent = null) }
     }
 }

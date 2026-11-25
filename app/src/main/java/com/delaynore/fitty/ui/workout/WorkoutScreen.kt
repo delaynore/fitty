@@ -1,4 +1,4 @@
-﻿package com.delaynore.fitty.ui.workout
+package com.delaynore.fitty.ui.workout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -59,6 +60,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.delaynore.fitty.data.exercises.CatalogExercise
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
@@ -67,67 +69,78 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.ui.FittyGlyph
 import com.delaynore.fitty.ui.FittyIcon
 import com.delaynore.fitty.ui.PageHeader
+import com.delaynore.fitty.ui.SET_WEIGHT_LABEL
 import com.delaynore.fitty.ui.SetFields
-import com.delaynore.fitty.ui.SetInput
+import com.delaynore.fitty.domain.SetInput
+import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.SetTimer
 import com.delaynore.fitty.ui.SwipeToRevealDelete
-import com.delaynore.fitty.ui.formatRecommendation
-import com.delaynore.fitty.ui.formatResult
+import com.delaynore.fitty.domain.formatRecommendation
+import com.delaynore.fitty.domain.formatResult
+import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
-import com.delaynore.fitty.ui.toInput
+import com.delaynore.fitty.domain.toInput
+import com.delaynore.fitty.ui.UiEventEffect
 import kotlinx.coroutines.delay
 
 @Composable
-internal fun WorkoutScreen(id: Long, viewModel: WorkoutViewModel, onBack: () -> Unit, onFinished: () -> Unit) {
-    LaunchedEffect(id) { viewModel.open(id) }
-    val session by viewModel.session.collectAsStateWithLifecycle()
-    val workout = session?.takeIf { it.summary.id == id }
-    val exercise = workout?.exercises?.getOrNull(viewModel.exerciseIndex)
+internal fun WorkoutScreen(id: Long, activeWorkout: ActiveWorkoutState, onBack: () -> Unit, onFinished: () -> Unit) {
+    LaunchedEffect(activeWorkout, id) { activeWorkout.open(id) }
+    DisposableEffect(activeWorkout, id) {
+        onDispose { activeWorkout.closeReplacement() }
+    }
+    val state by activeWorkout.uiState.collectAsStateWithLifecycle()
+    val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
+    val workout = current.session
+    val finished = !current.saving && workout?.summary?.finishedAtMillis != null
+    val missing = current.sessionLoaded && !current.saving && workout == null
+    LaunchedEffect(id, finished, missing) {
+        when {
+            finished -> onFinished()
+            missing -> onBack()
+        }
+    }
+    UiEventEffect(current.pendingEvent, activeWorkout::consumeEvent) { event ->
+        if (event is WorkoutEvent.Finished && event.sessionId == id) onFinished()
+    }
+    val exercise = workout?.exercises?.getOrNull(current.exerciseIndex)
     WorkoutContent(
         workout = workout,
         exercise = exercise,
-        exerciseIndex = viewModel.exerciseIndex,
-        rows = exercise?.let { viewModel.rowDrafts(it.id) } ?: WorkoutRowDrafts(),
-        timer = viewModel.setTimer,
-        savedPosition = viewModel.savedPosition,
-        saving = viewModel.saving,
-        error = viewModel.error,
-        pendingRemovals = viewModel.pendingRemovals,
-        editingSet = viewModel.editingSet,
-        restDeadlineMillis = viewModel.restDeadlineMillis,
-        remainingRestMillis = viewModel::remainingRestMillis,
-        elapsedSetMillis = viewModel::elapsedSetMillis,
-        onStartRest = viewModel::startRestTimer,
-        onResetRest = viewModel::resetRestTimer,
-        onExpireRest = viewModel::expireRestTimer,
-        onClearError = viewModel::clearError,
-        onClearFocusRequest = viewModel::clearFocusRequest,
-        onStartSetTimer = { exerciseId, position -> viewModel.startSetTimer(id, exerciseId, position) },
-        onStopSetTimer = viewModel::stopSetTimer,
-        onDeleteRow = { current, position, number, logged -> viewModel.deleteRow(id, current, position, number, logged) },
-        onChangeDraft = viewModel::changeDraft,
-        onLogSet = { current, position -> viewModel.logSet(id, current, position) },
-        onOpenSetEditor = viewModel::openSetEditor,
-        onAddSetRow = viewModel::addSetRow,
-        onRestoreRow = { viewModel.restoreRow(id, it) },
-        onSelectExercise = viewModel::selectExercise,
-        onFinish = { onSaved -> viewModel.finish(id, onSaved) },
-        onChangeSetEdit = viewModel::changeSetEdit,
-        onCloseSetEditor = viewModel::closeSetEditor,
-        onSaveSetEdit = { viewModel.saveSetEdit(id) },
+        exerciseIndex = current.exerciseIndex,
+        rows = exercise?.let { current.rows(it.id) } ?: WorkoutRowDrafts(),
+        timer = current.setTimer,
+        savedPosition = current.savedPosition,
+        saving = current.saving,
+        error = current.error,
+        pendingRemovals = current.pendingRemovals,
+        editingSet = current.editingSet,
+        restDeadlineMillis = current.restDeadlineMillis,
+        remainingRestMillis = activeWorkout::remainingRestMillis,
+        elapsedSetMillis = activeWorkout::elapsedSetMillis,
+        onStartRest = activeWorkout::startRestTimer,
+        onResetRest = activeWorkout::resetRestTimer,
+        onExpireRest = activeWorkout::expireRestTimer,
+        onClearFocusRequest = activeWorkout::clearFocusRequest,
+        onStartSetTimer = { exerciseId, position -> activeWorkout.startSetTimer(id, exerciseId, position) },
+        onStopSetTimer = activeWorkout::stopSetTimer,
+        onDeleteRow = { current, position, number, logged -> activeWorkout.deleteRow(id, current, position, number, logged) },
+        onChangeDraft = activeWorkout::changeDraft,
+        onLogSet = { current, position -> activeWorkout.logSet(id, current, position) },
+        onOpenSetEditor = activeWorkout::openSetEditor,
+        onAddSetRow = activeWorkout::addSetRow,
+        onRestoreRow = { activeWorkout.restoreRow(id, it) },
+        onSelectExercise = activeWorkout::selectExercise,
+        onFinish = { activeWorkout.finish(id) },
+        onChangeSetEdit = activeWorkout::changeSetEdit,
+        onCloseSetEditor = activeWorkout::closeSetEditor,
+        onSaveSetEdit = { activeWorkout.saveSetEdit(id) },
         onBack = onBack,
-        onFinished = onFinished,
-        replacementSheet = { exerciseId, catalogId, onDismiss ->
-            val options by remember(viewModel, catalogId) { viewModel.replacementOptions(catalogId) }
-                .collectAsStateWithLifecycle(initialValue = null)
-            ExerciseReplacementSheet(
-                options = options,
-                saving = viewModel.saving,
-                error = viewModel.error,
-                onSelect = { viewModel.replaceExercise(id, exerciseId, catalogId, it, onDismiss) },
-                onDismiss = onDismiss,
-            )
-        },
+        replacement = current.replacement,
+        onOpenReplacement = activeWorkout::openReplacement,
+        onCloseReplacement = activeWorkout::closeReplacement,
+        onReplace = activeWorkout::replaceExercise,
     )
 }
 
@@ -149,24 +162,25 @@ private fun WorkoutContent(
     onStartRest: () -> Unit,
     onResetRest: () -> Unit,
     onExpireRest: (Long) -> Unit,
-    onClearError: () -> Unit,
     onClearFocusRequest: () -> Unit,
     onStartSetTimer: (Long, Int) -> Unit,
     onStopSetTimer: (String) -> Unit,
     onDeleteRow: (WorkoutExercise, Int, Int, Boolean) -> Unit,
-    onChangeDraft: (Long, Int, SetInput) -> Unit,
+    onChangeDraft: (WorkoutExercise, Int, SetInputField, String) -> Unit,
     onLogSet: (WorkoutExercise, Int) -> Unit,
     onOpenSetEditor: (WorkoutExercise, Int, LoggedSet) -> Unit,
     onAddSetRow: (Long, Int) -> Unit,
     onRestoreRow: (RemovedWorkoutRow) -> Unit,
     onSelectExercise: (Int) -> Unit,
-    onFinish: (onSaved: () -> Unit) -> Unit,
-    onChangeSetEdit: (SetInput) -> Unit,
+    onFinish: () -> Unit,
+    onChangeSetEdit: (SetInputField, String) -> Unit,
     onCloseSetEditor: () -> Unit,
     onSaveSetEdit: () -> Unit,
     onBack: () -> Unit,
-    onFinished: () -> Unit,
-    replacementSheet: @Composable (exerciseId: Long, catalogId: String, onDismiss: () -> Unit) -> Unit,
+    replacement: WorkoutReplacement?,
+    onOpenReplacement: () -> Unit,
+    onCloseReplacement: () -> Unit,
+    onReplace: (CatalogExercise) -> Unit,
 ) {
     var showExercises by remember { mutableStateOf(false) }
     var confirmFinish by remember { mutableStateOf(false) }
@@ -179,7 +193,7 @@ private fun WorkoutContent(
         } else {
             val catalogId = exercise.catalogExerciseId
             val canReplace = catalogId != null && !exercise.hasEverLoggedSet
-            var showReplacement by remember(workout.summary.id, exercise.id, catalogId) { mutableStateOf(false) }
+            val activeReplacement = replacement?.takeIf { it.exerciseId == exercise.id && it.catalogId == catalogId }
             WorkoutHeader(
                 exercise = exercise,
                 exerciseIndex = exerciseIndex,
@@ -193,13 +207,12 @@ private fun WorkoutContent(
                 onReplace = if (canReplace) {
                     {
                         focus.clearFocus()
-                        onClearError()
-                        showReplacement = true
+                        onOpenReplacement()
                     }
                 } else null,
                 saving = saving,
             )
-            key(exercise.id, catalogId) {
+            key(workout.summary.id, exercise.id, catalogId) {
                 val measuredExercise = workout.exercises.firstOrNull { current -> timer?.matches(current) == true }
                 WorkoutSetList(
                     exercise = exercise,
@@ -213,14 +226,14 @@ private fun WorkoutContent(
                     onStopTimer = onStopSetTimer,
                     onClearFocusRequest = onClearFocusRequest,
                     onDeleteRow = { position, number, logged -> onDeleteRow(exercise, position, number, logged) },
-                    onChangeDraft = { position, input -> onChangeDraft(exercise.id, position, input) },
+                    onChangeDraft = { position, field, text -> onChangeDraft(exercise, position, field, text) },
                     onLogSet = { onLogSet(exercise, it) },
                     onOpenSetEditor = { number, set -> onOpenSetEditor(exercise, number, set) },
                     onAddSetRow = { onAddSetRow(exercise.id, it) },
                     modifier = Modifier.weight(1f),
                 )
             }
-            error?.takeUnless { showReplacement && canReplace }?.let {
+            error?.takeUnless { activeReplacement != null && canReplace }?.let {
                 Text(it, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.error)
             }
             UndoRemovedRows(pendingRemovals, saving, onRestoreRow)
@@ -242,8 +255,14 @@ private fun WorkoutContent(
                     confirmFinish = true
                 },
             )
-            if (showReplacement && canReplace) {
-                replacementSheet(exercise.id, catalogId) { showReplacement = false }
+            if (activeReplacement != null && canReplace) {
+                ExerciseReplacementSheet(
+                    options = activeReplacement.options,
+                    saving = saving,
+                    error = error,
+                    onSelect = onReplace,
+                    onDismiss = onCloseReplacement,
+                )
             }
             if (showExercises) {
                 AllExercises(workout, onDismiss = { showExercises = false }) { index ->
@@ -264,12 +283,7 @@ private fun WorkoutContent(
                     },
                     confirmButton = {
                         Button(
-                            onClick = {
-                                onFinish {
-                                    confirmFinish = false
-                                    onFinished()
-                                }
-                            },
+                            onClick = onFinish,
                             enabled = !saving && setCount > 0,
                         ) { Text("Завершить тренировку") }
                     },
@@ -279,14 +293,16 @@ private fun WorkoutContent(
                 )
             }
             editingSet?.let { edit ->
-                EditSetSheet(
-                    edit = edit,
-                    saving = saving,
-                    error = error,
-                    onInput = onChangeSetEdit,
-                    onDismiss = onCloseSetEditor,
-                    onSave = onSaveSetEdit,
-                )
+                key(workout.summary.id, edit.version) {
+                    EditSetSheet(
+                        edit = edit,
+                        saving = saving,
+                        error = error,
+                        onInput = onChangeSetEdit,
+                        onDismiss = onCloseSetEditor,
+                        onSave = onSaveSetEdit,
+                    )
+                }
             }
         }
     }
@@ -398,7 +414,7 @@ private fun WorkoutSetList(
     onStopTimer: (String) -> Unit,
     onClearFocusRequest: () -> Unit,
     onDeleteRow: (Int, Int, Boolean) -> Unit,
-    onChangeDraft: (Int, SetInput) -> Unit,
+    onChangeDraft: (Int, SetInputField, String) -> Unit,
     onLogSet: (Int) -> Unit,
     onOpenSetEditor: (Int, LoggedSet) -> Unit,
     onAddSetRow: (Int) -> Unit,
@@ -467,14 +483,16 @@ private fun WorkoutSetList(
                 if (loggedSet == null) {
                     val active = position == activePosition
                     val measuring = timer?.let { it.matches(exercise) && it.position == position } == true
-                    DraftSetRow(
-                        number = number,
-                        input = rows.inputs[position] ?: SetInput(exercise.type),
-                        enabled = active && !measuring && !saving,
-                        onInput = { onChangeDraft(position, it) },
-                        onLog = { onLogSet(position) },
-                        firstFieldModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
-                    )
+                    key(rows.resetVersions[position]) {
+                        DraftSetRow(
+                            number = number,
+                            input = rows.inputs[position] ?: SetInput(exercise.type),
+                            enabled = active && !measuring && !saving,
+                            onInput = { field, text -> onChangeDraft(position, field, text) },
+                            onLog = { onLogSet(position) },
+                            firstFieldModifier = if (active) Modifier.focusRequester(focusRequester) else Modifier,
+                        )
+                    }
                     if (active && advanceFocus && !measuring && !saving) {
                         LaunchedEffect(position) {
                             withFrameNanos { }
@@ -612,8 +630,8 @@ private fun SetHeadings(type: ExerciseType, modifier: Modifier = Modifier) {
     ProvideTextStyle(MaterialTheme.typography.labelMedium) {
         Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("№", Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (type == ExerciseType.WEIGHT_AND_REPS) {
-                Text("Вес, кг", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (type.hasWeightField) {
+                Text(SET_WEIGHT_LABEL, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(type.measureLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("✓", Modifier.width(48.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -626,11 +644,11 @@ private fun DraftSetRow(
     number: Int,
     input: SetInput,
     enabled: Boolean,
-    onInput: (SetInput) -> Unit,
+    onInput: (SetInputField, String) -> Unit,
     onLog: () -> Unit,
     firstFieldModifier: Modifier,
 ) {
-    val hasWeight = input.type == ExerciseType.WEIGHT_AND_REPS
+    val hasWeight = input.type.hasWeightField
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -639,7 +657,7 @@ private fun DraftSetRow(
         Text(number.toString(), Modifier.width(30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         SetFields(
             input = input,
-            onInput = onInput,
+            onFieldChange = onInput,
             enabled = enabled,
             weightModifier = Modifier.weight(1f).then(firstFieldModifier).testTag("workout-weight-$number")
                 .semantics { contentDescription = "Вес, подход $number" },
@@ -687,7 +705,7 @@ private fun EditSetSheet(
     edit: WorkoutSetEdit,
     saving: Boolean,
     error: String?,
-    onInput: (SetInput) -> Unit,
+    onInput: (SetInputField, String) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
 ) {
@@ -698,7 +716,7 @@ private fun EditSetSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SetFields(
                     edit.input,
-                    onInput = onInput,
+                    onFieldChange = onInput,
                     enabled = !saving,
                     weightModifier = Modifier.weight(1f).testTag("workout-edit-weight"),
                     measureModifier = Modifier.weight(1f).testTag("workout-edit-${edit.input.type.measureTag}"),

@@ -1,6 +1,6 @@
 ---
 name: compose-ui-testing-patterns
-description: Use when writing or reviewing Jetpack Compose UI tests, screenshot tests or baseline-recording evidence, previews, semantics assertions, fake image loading, keyboard input, focus assertions, interaction state (hover/pressed/focused), or tests for plain state-driven UI composables.
+description: Use when writing or reviewing an Android Compose UI test that Fitty's test-layer rules already justify. Covers test mechanics such as semantics, input, and synchronization.
 ---
 
 # Compose: UI testing patterns
@@ -9,32 +9,19 @@ description: Use when writing or reviewing Jetpack Compose UI tests, screenshot 
 
 ## Core principle
 
-Test the smallest UI contract that proves the behavior. Prefer plain state-driven UI tests with callbacks. Add integration only when lifecycle, navigation, DI, or platform behavior is the thing under test.
+Apply [Fitty's test-layer rules](../../../docs/android-development.md#run-checks) first. Use this skill to implement or review the resulting UI test. Mount the smallest UI surface that exercises the behavior under test.
 
 ## Procedure
 
 1. State the behavior and test concern the task asks you to prove.
-2. Inspect the existing test against that concern and choose the smallest
-   sufficient seam from the table below.
+2. Confirm the test layer using Fitty's rules. Inspect any existing test for the same behavior.
 3. Keep focused edits within the requested test concern. Do not move test-only
    helpers into production or broaden production APIs unless that production
    boundary is itself under test.
 4. Drive controlled state or input, synchronize through Compose when needed,
-   and assert an observable semantic, visual, or callback result.
+   and assert an observable semantic or callback result.
 5. Finish with no edit when the existing test already uses the narrowest valid
    seam and proves the requested behavior.
-
-## Test target choice
-
-| What you need to prove | Test shape |
-|---|---|
-| Text, button, loading/error branch, conditional content | Plain UI Compose test |
-| Callback wiring from click/input | Plain UI Compose test |
-| Focus navigation or keyboard behavior | Compose test with key input |
-| Visual layout, clipping, elevation, typography, image composition | Screenshot test |
-| State holder updates UI correctly | State holder/unit test plus one wiring smoke test |
-| Hover, pressed, focused, dragged interaction state | Plain UI test with MutableInteractionSource |
-| Navigation, lifecycle, DI integration | Integration test |
 
 ## Prefer plain UI tests
 
@@ -105,46 +92,12 @@ state rather than fragile pointer simulation.
 
 ## Keyboard and focus
 
-For keyboard, TV, and desktop UI, drive navigation with the same input model users use (keys/D-pad), not clicks alone. Assert focused semantics, not colors or scale; reserve screenshots for visual focus treatment.
+For keyboard navigation, send key events and assert focused semantics.
 If the inspected composable exposes no input surface that can change the state,
 name the missing host or parent interaction seam before proposing a key-driven
 test; do not assume a selector or control exists in the supplied UI.
 
 Details—focus graph, `FocusRequester`, restoration, key handlers, and test patterns: [`compose-focus-navigation`](https://github.com/chrisbanes/skills/blob/44522c0030ca852f8f489bbd155311b20c00b12d/skills/compose-focus-navigation/SKILL.md).
-
-## Screenshot tests
-
-Use screenshots for visual contracts that semantics cannot prove:
-
-- Layout spacing/alignment.
-- Themed colors, typography, elevation, shadows.
-- Image composition, gradients, overlays.
-- Focus highlight appearance.
-- Loading skeletons or dense visual states.
-
-Keep screenshot state deterministic:
-
-- Use fixed state data.
-- Freeze clocks or animation progress when possible.
-- Replace network/image loading with fake or preview handlers.
-- Avoid asserting dynamic text such as current time unless controlled.
-
-### When screenshot defaults change
-
-- Keep an intentionally changed named preset or default in the test and update
-  its baseline. Do not substitute a raw value to retain the old image; preserve
-  assertions and tolerances unless independently justified.
-- Keep an explicit fixed value when that fixed resolution or geometry is the
-  contract.
-- Verify recording separately from comparison: inspect the expected artifact
-  paths and intentional baseline diff. Read the exact output path from the test,
-  confirm that artifact exists, and name that literal path in the verification
-  evidence. When a verification log reports a pass, state what passed and then
-  check recording independently; a passing comparison does not prove that
-  recording wrote the artifact. If the artifact or baseline diff is
-  unavailable, report that gap rather than claiming recording succeeded. Keep
-  tool-specific commands in the repository runbook. In a findings-only review,
-  state what evidence is missing; do not add remediation or rerun steps.
 
 ## Fake images and platform services
 

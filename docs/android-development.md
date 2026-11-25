@@ -2,24 +2,46 @@
 
 ## Run checks
 
-Set up JDK 17 and the Android SDK as described below. From the repository root, build the app and run Android lint.
+Choose the lightest test layer that catches the regression. Start with a targeted test and run the full JVM suite before handoff.
+
+- Use plain JVM tests by default for logic and state. Use a focused Robolectric test when the regression needs Android APIs or Compose behavior such as cursor selection. Use isolated Room tests for SQL and migrations.
+- Add an instrumented test only for a regression the lower layers cannot catch. Prefer extending an existing Smoke scenario. Keep Smoke within four minutes from job start to result with warm caches.
+- Check ordinary UI, copy, buttons, and layout manually. Fitty does not use screenshot tests.
+
+Once these rules justify a Compose test, use [Compose UI testing patterns](../.agents/skills/compose-ui-testing-patterns/SKILL.md) for mechanics such as semantics, input, and synchronization. Use the Fitty rules above to decide whether to automate and which layer to use.
+
+Set up JDK 21 and the Android SDK as described below. Gradle and the Kotlin toolchain use JDK 21 and target Java 17 bytecode for app code. If your Windows shell defaults to an older Java runtime, set `$env:JAVA_HOME` to your JDK 21 directory before invoking `.\gradlew.bat`.
+
+From the repository root, run one JVM class while you work. This example reruns the Robolectric cursor test on API 36. A targeted run should take at most 15 seconds once Gradle is warm.
 
 ```powershell
-.\gradlew.bat :app:assembleDebug :app:lintDebug
+.\gradlew.bat :app:testDebugUnitTest --tests com.delaynore.fitty.SetFieldsCursorTest --rerun
 ```
 
-Start a dedicated Android emulator and list connected devices to find its serial. Pass that serial to the test script. The tests use a separate Room database and temporarily toggle airplane mode.
+Before handoff, run the JVM suite, build the app, run Android lint, and verify `git status` has no forgotten ADR or doc edits. Running `:app:testDebugUnitTest` separately from `:app:assembleDebug :app:assembleRelease :app:lintDebug` avoids long combined runs. (On Windows, file-backed Room/Robolectric tests may fail with `SQLiteCantOpenDatabaseException`; CI runs the full JVM suite on Linux.)
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:lintDebug
+```
+
+Start a dedicated Android emulator with animations disabled. CI uses AOSP ATD API 36 on x86_64. Run the Smoke tests on the emulator by passing its serial to the script. The tests use a separate Room database and temporarily toggle airplane mode.
 
 ```powershell
 & "$env:ANDROID_HOME/platform-tools/adb.exe" devices
-.\scripts\test-android.ps1 -Serial emulator-5556
+.\scripts\test-android.ps1 -Serial emulator-5556 -Smoke
 ```
 
-The script prints the test log path under `build/reports/android-device/`. GitHub Actions runs build and lint on every pull request and runs the instrumented tests in a separate job on an Android 16 emulator.
+The script prints the test log path under `build/reports/android-device/`. It selects methods marked with `@SmokeTest` when you pass `-Smoke`. Omit the switch to run the full instrumented suite while investigating a failure.
+
+The [Android checks workflow](../.github/workflows/android.yml) runs JVM tests, the debug build, the unsigned release build, Android lint, and the isolated Room migration tests on each push to a pull request. The four fast checks run in parallel and should finish within two minutes of workflow creation with warm caches. The migration job uses its own AOSP ATD emulator and does not add migration coverage to Smoke.
+
+The [Android Smoke workflow](../.github/workflows/android-smoke.yml) checks whether a PR into the default branch changes the Android app or its build. Add the `android-smoke` label to run Smoke on the PR's current commit. With the label in place, a new commit gets its own run. The gate accepts a successful run for that same SHA and passes without Smoke for changes outside the Android app and build. For a release, run **Android Smoke** manually in Actions and select the release branch or tag. The emulator job should finish within four minutes of starting with warm caches. Its Gradle output and the `android-smoke-results` artifact contain the results.
+
+In GitHub, create the `android-smoke` label and require **Android Smoke gate** from GitHub Actions in the protection rule for the default branch. The gate handles the exemption for docs-only changes. The label and branch rule live in repository settings.
 
 ## Build and sign an APK
 
-Install JDK 17 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
+Install JDK 21 and Android SDK Platform 36, Build Tools 36.0.0, and Platform Tools. Set `JAVA_HOME` and `ANDROID_HOME` to the JDK and SDK directories. The commands below use PowerShell from the repository root.
 
 Create a signing key once, before the first installation. Keep the keystore and its password outside the repository. Back up the key so you can sign future updates with it.
 
@@ -47,6 +69,8 @@ if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed' }
 ```
 
 For an update, compare the `Signer #1 certificate SHA-256 digest` with the previous signed APK. Check that `aapt` reports `com.delaynore.fitty`, the new `versionCode`, and the chosen `versionName`. [Android signing and verification](https://developer.android.com/tools/apksigner)
+
+Install the signed release APK and check navigation between Home, History, Settings, program details, and workout screens. Create a custom exercise and open it again from the exercise catalog. Start a workout and check both the exercise timer and rest timer, including returning to the workout after leaving the app.
 
 ## Publish on GitHub
 

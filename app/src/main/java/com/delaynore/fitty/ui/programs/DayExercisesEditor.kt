@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -65,8 +64,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.delaynore.fitty.data.exercises.ExerciseType
+import com.delaynore.fitty.ui.DraftTextField
 import com.delaynore.fitty.ui.DeleteIconButton
-import com.delaynore.fitty.ui.formatRecommendation
+import com.delaynore.fitty.domain.formatRecommendation
 import com.delaynore.fitty.ui.measureLabel
 import com.delaynore.fitty.ui.measureTag
 import kotlinx.coroutines.delay
@@ -86,7 +86,7 @@ internal fun DayExercisesEditor(
     scrollState: ScrollState,
     viewport: () -> LayoutCoordinates?,
     onPickExercise: (Long?) -> Unit,
-    onChange: (ExerciseDraft) -> Unit,
+    onChange: (Long, (ExerciseDraft) -> ExerciseDraft) -> Unit,
     onDelete: (Long) -> Unit,
     onMove: (Long, Int) -> Unit,
 ) {
@@ -105,7 +105,7 @@ internal fun DayExercisesEditor(
                     focus.clearFocus()
                     expandedId = if (expandedId == exercise.id) null else exercise.id
                 },
-                onChange = onChange,
+                onChange = { change -> onChange(exercise.id, change) },
                 onReplace = {
                     focus.clearFocus()
                     onPickExercise(exercise.id)
@@ -128,13 +128,6 @@ internal fun DayExercisesEditor(
     }
 }
 
-private class ExerciseDrag(val id: Long, val height: Int, start: Float, index: Int) {
-    var top by mutableFloatStateOf(start)
-    var pointerY by mutableFloatStateOf(Float.NaN)
-    var destination by mutableIntStateOf(index)
-    var moving by mutableStateOf(true)
-}
-
 @Composable
 private fun ReorderableExerciseRows(
     exercises: List<ExerciseDraft>,
@@ -143,6 +136,13 @@ private fun ReorderableExerciseRows(
     onMove: (Long, Int) -> Unit,
     row: @Composable (ExerciseDraft, Int, Boolean, Modifier, Modifier) -> Unit,
 ) {
+    class ExerciseDrag(val id: Long, val height: Int, start: Float, index: Int) {
+        var top by mutableFloatStateOf(start)
+        var pointerY by mutableFloatStateOf(Float.NaN)
+        var destination by mutableIntStateOf(index)
+        var moving by mutableStateOf(true)
+    }
+
     val heights = remember { mutableStateMapOf<Long, Int>() }
     var drag by remember { mutableStateOf<ExerciseDrag?>(null) }
     val scope = rememberCoroutineScope()
@@ -313,7 +313,7 @@ private fun ExerciseEditor(
     lifted: Boolean,
     showErrors: Boolean,
     onToggle: () -> Unit,
-    onChange: (ExerciseDraft) -> Unit,
+    onChange: ((ExerciseDraft) -> ExerciseDraft) -> Unit,
     onReplace: () -> Unit,
     onDelete: () -> Unit,
     handle: Modifier,
@@ -366,14 +366,15 @@ private fun ExerciseEditor(
                         RecommendationInput(
                             label = "Подходы",
                             value = exercise.sets,
-                            onChange = { onChange(exercise.copy(sets = it)) },
+                            onChange = { text -> onChange { it.copy(sets = text) } },
                             isError = setsError,
                             modifier = Modifier.weight(1f).testTag("recommendation-sets$suffix"),
                         )
                         RecommendationInput(
                             label = exercise.type.measureLabel,
                             value = exercise.target,
-                            onChange = { onChange(exercise.copy(target = it)) },
+                            onChange = { text -> onChange { it.copy(target = text) } },
+                            resetKey = exercise.type,
                             isError = targetError,
                             modifier = Modifier.weight(1f).testTag("recommendation-${exercise.type.measureTag}$suffix"),
                             decimal = exercise.type == ExerciseType.DISTANCE,
@@ -409,8 +410,10 @@ private fun RecommendationInput(
     isError: Boolean,
     modifier: Modifier,
     decimal: Boolean = false,
+    resetKey: Any? = null,
 ) {
-    OutlinedTextField(
+    DraftTextField(
+        resetKey = resetKey,
         value = value,
         onValueChange = onChange,
         label = { Text(label) },

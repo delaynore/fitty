@@ -1,7 +1,7 @@
 package com.delaynore.fitty.data.updates
 
 import android.content.Context
-import android.content.Intent
+import com.delaynore.fitty.BuildConfig
 import java.io.EOFException
 import java.io.File
 import java.io.IOException
@@ -21,39 +21,35 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
 private const val LATEST_RELEASE_URL = "https://api.github.com/repos/delaynore/fitty/releases/latest"
+private const val RELEASES_LIST_URL = "https://api.github.com/repos/delaynore/fitty/releases?per_page=20"
 private const val RELEASE_DOWNLOAD_PATH = "/delaynore/fitty/releases/download/"
 private const val REQUEST_TIMEOUT_MILLIS = 10_000
 private const val MAX_DOWNLOAD_REDIRECTS = 5
-private val apkName = Regex("""fitty-([1-9][0-9]*)\.apk""")
+
+internal enum class UpdateChannel(val releaseUrl: String, val apkRegex: Regex) {
+    Stable(LATEST_RELEASE_URL, Regex("""fitty-([1-9][0-9]*)\.apk""")),
+    Prerelease(RELEASES_LIST_URL, Regex("""fitty-prerelease-([1-9][0-9]*)\.apk""")),
+}
 
 internal data class GitHubReleaseResponse(val status: Int, val body: String = "")
 
 internal class GitHubUpdateService(
     context: Context,
+    private val channel: UpdateChannel = if (BuildConfig.PRERELEASE_UPDATES) UpdateChannel.Prerelease else UpdateChannel.Stable,
     private val fetchApk: suspend (FittyUpdate, File, (Int) -> Unit) -> Unit = { update, file, progress ->
         downloadReleaseApk(update, file, progress)
     },
-    private val fetchLatestRelease: () -> GitHubReleaseResponse = ::requestLatestRelease,
 ) : UpdateService {
     private val cache = UpdateApkCache(context)
-    private val installer = AndroidUpdateInstaller(context)
 
     override suspend fun checkForUpdate(installedVersionCode: Long): UpdateCheckResult =
         withContext(Dispatchers.IO) {
-            val response = try {
-                fetchLatestRelease()
-            } catch (_: IOException) {
-                return@withContext UpdateCheckResult.Failed(UpdateCheckFailure.Network)
-            }
-            when (response.status) {
-                HttpURLConnection.HTTP_OK -> parseRelease(response.body, installedVersionCode)
-                HttpURLConnection.HTTP_NOT_FOUND -> UpdateCheckResult.NoStableRelease
-                else -> UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
-            }
+            checkLatestRelease(installedVersionCode, channel) { requestRelease(channel.releaseUrl) }
         }
 
     override suspend fun pruneAbandonedDownloads(pendingPermissionApk: File?) =
@@ -63,41 +59,74 @@ internal class GitHubUpdateService(
         update: FittyUpdate,
         installedVersionCode: Long,
         onProgress: (Int) -> Unit,
-    ): UpdateDownloadResult = try {
+    ): UpdateDownloadResult =
         cache.download(update, installedVersionCode) { apk -> fetchApk(update, apk, onProgress) }
-    } catch (failure: ApkDownloadException) {
-        UpdateDownloadResult.Failed(failure.reason)
-    } catch (failure: IOException) {
-        UpdateDownloadResult.Failed(transferFailure(failure))
-    }
 
-    override fun canRequestInstall() = installer.canRequestInstall()
-
-    override fun requestInstallPermission(launch: (Intent) -> Unit) =
-        installer.requestInstallPermission(launch)
-
-    override fun openInstaller(apk: File, launch: (Intent) -> Unit) = installer.openInstaller(apk, launch)
+    override suspend fun deleteApk(apk: File) = cache.deleteApk(apk)
 
 }
 
-private fun parseRelease(body: String, installedVersionCode: Long): UpdateCheckResult {
-    try {
+internal fun checkLatestRelease(
+    installedVersionCode: Long,
+    fetchLatestRelease: () -> GitHubReleaseResponse,
+): UpdateCheckResult = checkLatestRelease(installedVersionCode, UpdateChannel.Stable, fetchLatestRelease)
+
+internal fun checkLatestRelease(
+    installedVersionCode: Long,
+    channel: UpdateChannel,
+    fetchLatestRelease: () -> GitHubReleaseResponse,
+): UpdateCheckResult {
+    val response = try {
+        fetchLatestRelease()
+    } catch (_: IOException) {
+        return UpdateCheckResult.Failed(UpdateCheckFailure.Network)
+    }
+    return when (response.status) {
+        HttpURLConnection.HTTP_OK -> when (channel) {
+            UpdateChannel.Stable -> parseRelease(response.body, installedVersionCode, channel)
+            UpdateChannel.Prerelease -> parsePrereleaseList(response.body, installedVersionCode, channel)
+        }
+        HttpURLConnection.HTTP_NOT_FOUND -> UpdateCheckResult.NoStableRelease
+        else -> UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
+    }
+}
+
+private fun parsePrereleaseList(body: String, installedVersionCode: Long, channel: UpdateChannel): UpdateCheckResult {
+    return try {
+        val releases = JSONArray(body)
+        for (i in 0 until releases.length()) {
+            val release = releases.getJSONObject(i)
+            if (!release.getBoolean("draft") && release.getBoolean("prerelease")) {
+                return parseReleaseObject(release, installedVersionCode, channel)
+            }
+        }
+        UpdateCheckResult.NoStableRelease
+    } catch (_: JSONException) {
+        UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
+    }
+}
+
+private fun parseRelease(body: String, installedVersionCode: Long, channel: UpdateChannel): UpdateCheckResult {
+    return try {
         val release = JSONObject(body)
         if (release.getBoolean("draft") || release.getBoolean("prerelease")) {
             return UpdateCheckResult.NoStableRelease
         }
-
-        val assets = release.getJSONArray("assets")
-        val apk = (0 until assets.length()).mapNotNull { parseApk(assets.getJSONObject(it)) }.singleOrNull()
-            ?: return UpdateCheckResult.Failed(UpdateCheckFailure.MissingApk)
-        if (apk.versionCode <= installedVersionCode) return UpdateCheckResult.UpToDate
-
-        val versionName = (release.opt("name") as? String)?.takeIf { it.isNotBlank() }
-            ?: return UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
-        return UpdateCheckResult.Available(FittyUpdate(versionName, apk.versionCode, apk.url, apk.sizeBytes))
+        parseReleaseObject(release, installedVersionCode, channel)
     } catch (_: JSONException) {
-        return UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
+        UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
     }
+}
+
+private fun parseReleaseObject(release: JSONObject, installedVersionCode: Long, channel: UpdateChannel): UpdateCheckResult {
+    val assets = release.getJSONArray("assets")
+    val apk = (0 until assets.length()).mapNotNull { parseApk(assets.getJSONObject(it), channel.apkRegex) }.singleOrNull()
+        ?: return UpdateCheckResult.Failed(UpdateCheckFailure.MissingApk)
+    if (apk.versionCode <= installedVersionCode) return UpdateCheckResult.UpToDate
+
+    val versionName = (release.opt("name") as? String)?.takeIf { it.isNotBlank() }
+        ?: return UpdateCheckResult.Failed(UpdateCheckFailure.GitHub)
+    return UpdateCheckResult.Available(FittyUpdate(versionName, apk.versionCode, apk.url, apk.sizeBytes))
 }
 
 internal suspend fun downloadReleaseApk(
@@ -178,14 +207,14 @@ internal suspend fun downloadReleaseApk(
 
 internal class ApkDownloadException(val reason: UpdateDownloadFailure) : Exception()
 
-private fun transferFailure(failure: IOException): UpdateDownloadFailure = when (failure) {
+internal fun transferFailure(failure: IOException): UpdateDownloadFailure = when (failure) {
     is EOFException, is MalformedURLException, is ProtocolException -> UpdateDownloadFailure.Delivery
     else -> UpdateDownloadFailure.Network
 }
 
 private data class ReleaseApk(val versionCode: Long, val url: String, val sizeBytes: Long?)
 
-private fun parseApk(asset: JSONObject): ReleaseApk? {
+private fun parseApk(asset: JSONObject, apkName: Regex): ReleaseApk? {
     val name = asset.optString("name")
     val versionCode = apkName.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull() ?: return null
     if (asset.optString("state") != "uploaded") return null
@@ -207,8 +236,8 @@ private fun parseApk(asset: JSONObject): ReleaseApk? {
     return ReleaseApk(versionCode, apkUrl, sizeBytes)
 }
 
-private fun requestLatestRelease(): GitHubReleaseResponse {
-    val connection = URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection
+private fun requestRelease(url: String): GitHubReleaseResponse {
+    val connection = URL(url).openConnection() as HttpURLConnection
     try {
         connection.configureReleaseRequest()
         connection.setRequestProperty("Accept", "application/vnd.github+json")
