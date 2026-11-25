@@ -224,7 +224,7 @@ class RepositoryConsumerTest {
             assertEquals("Legs", savedDay.name)
             assertEquals(3, savedDay.exercises.single().recommendedSets)
             assertEquals("8", savedDay.exercises.single().goal?.inputText())
-            assertFalse(editor.uiState.value.editing)
+            assertTrue(editor.uiState.value.editing)
             assertEquals(ProgramEditorEvent.Saved, editor.uiState.value.pendingEvent)
             editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
             assertEquals(ProgramEditorEvent.Saved, editor.uiState.value.pendingEvent)

@@ -111,10 +111,6 @@ internal class ProgramEditorViewModel(
         }
     }
 
-    fun closeEditor() {
-        state.update { it.copy(editing = false, undoDeadlines = emptyMap()) }
-    }
-
     fun changeName(value: String) {
         state.update { it.copy(name = value, error = null) }
     }
@@ -238,7 +234,6 @@ internal class ProgramEditorViewModel(
             onFinish = { it.copy(saving = false) },
         ) {
             programs.saveProgram(program)
-            closeEditor()
             state.update { it.copy(pendingEvent = ProgramEditorEvent.Saved) }
             true
         }
