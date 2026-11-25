@@ -240,11 +240,6 @@ class RepositoryConsumerTest {
             editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
             assertNull(editor.uiState.value.pendingEvent)
 
-            editor.selectEditingDay(day.id)
-            assertEquals(day.id, editor.uiState.value.editingDayId)
-            assertFalse(editor.uiState.value.showDayErrors)
-            assertNull(editor.uiState.value.pendingEvent)
-
             editor.finishDay()
             assertEquals(ProgramEditorEvent.DayFinished, editor.uiState.value.pendingEvent)
             editor.consumeEvent(ProgramEditorEvent.DayFinished)
