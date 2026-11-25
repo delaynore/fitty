@@ -35,6 +35,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            resValue("string", "app_name", "Fitty")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "false")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -42,11 +46,21 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            resValue("string", "app_name", "Fitty")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "false")
+        }
+        create("prerelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prerelease"
+            matchingFallbacks += listOf("release")
+            resValue("string", "app_name", "Fitty Test")
+            buildConfigField("boolean", "PRERELEASE_UPDATES", "true")
         }
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions.unitTests.isIncludeAndroidResources = true

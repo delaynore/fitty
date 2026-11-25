@@ -10,7 +10,7 @@
         android:name=".FittyApplication"
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
-        android:label="Fitty"
+        android:label="@string/app_name"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <receiver
             android:name=".platform.updates.UpdateInstallReceiver"

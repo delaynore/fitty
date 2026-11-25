@@ -119,4 +119,43 @@ class GitHubReleaseTest {
 
         assertEquals(UpdateCheckResult.Failed(UpdateCheckFailure.GitHub), checkLatestRelease(7, fetchRelease))
     }
+
+    @Test
+    fun prereleaseChannelPicksTheFirstPublishedPrereleaseWithPrereleaseApk() {
+        val preUrl = "https://github.com/delaynore/fitty/releases/download/pre-build-105/fitty-prerelease-105.apk"
+        val listBody = """
+            [
+                {
+                    "tag_name": "v1.2.0-build-8",
+                    "name": "1.2.0",
+                    "draft": false,
+                    "prerelease": false,
+                    "assets": [{ "name": "fitty-108.apk", "state": "uploaded", "browser_download_url": "https://github.com/delaynore/fitty/releases/download/v1.2.0-build-8/fitty-108.apk" }]
+                },
+                {
+                    "tag_name": "pre-draft",
+                    "name": "1.2.0-draft",
+                    "draft": true,
+                    "prerelease": true,
+                    "assets": [{ "name": "fitty-prerelease-109.apk", "state": "uploaded", "browser_download_url": "https://github.com/delaynore/fitty/releases/download/pre-draft/fitty-prerelease-109.apk" }]
+                },
+                {
+                    "tag_name": "pre-build-105",
+                    "name": "1.2.0-test.105",
+                    "draft": false,
+                    "prerelease": true,
+                    "assets": [{ "name": "fitty-prerelease-105.apk", "state": "uploaded", "browser_download_url": "$preUrl" }]
+                }
+            ]
+        """.trimIndent()
+
+        assertEquals(
+            UpdateCheckResult.Available(FittyUpdate("1.2.0-test.105", 105, preUrl)),
+            checkLatestRelease(101, UpdateChannel.Prerelease) { GitHubReleaseResponse(200, listBody) },
+        )
+        assertEquals(
+            UpdateCheckResult.NoStableRelease,
+            checkLatestRelease(101, UpdateChannel.Prerelease) { GitHubReleaseResponse(200, "[]") },
+        )
+    }
 }

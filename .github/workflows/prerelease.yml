@@ -1,0 +1,95 @@
+name: Publish Test Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Display version name (defaults to <branch>-<run_number>)'
+        required: false
+        default: ''
+      version_code:
+        description: 'Android versionCode (positive integer, defaults to run_number + 100)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  publish-prerelease:
+    name: Build, sign, and publish test prerelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+
+      - name: Resolve version and validate signing secrets
+        id: meta
+        env:
+          KEYSTORE_B64: ${{ secrets.PRERELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.PRERELEASE_KEYSTORE_PASSWORD }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          if [[ -z "$KEYSTORE_B64" || -z "$KEYSTORE_PASS" ]]; then
+            echo "::error::Missing PRERELEASE_KEYSTORE_BASE64 or PRERELEASE_KEYSTORE_PASSWORD repository secrets."
+            exit 1
+          fi
+          version_code="${INPUT_VERSION_CODE:-$((GITHUB_RUN_NUMBER + 100))}"
+          if ! [[ "$version_code" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::version_code must be a positive integer, got: $version_code"
+            exit 1
+          fi
+          branch_slug="${GITHUB_REF_NAME//\//-}"
+          version_name="${INPUT_VERSION_NAME:-1.2.0-test.${version_code} (${branch_slug})}"
+          tag="pre-build-${version_code}-${GITHUB_RUN_ID}"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Build unsigned prerelease APK
+        run: |
+          bash ./gradlew :app:assemblePrerelease --build-cache \
+            "-PfittyVersionCode=${{ steps.meta.outputs.version_code }}" \
+            "-PfittyVersionName=${{ steps.meta.outputs.version_name }}"
+
+      - name: Sign and verify prerelease APK
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.PRERELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.PRERELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.PRERELEASE_KEY_ALIAS }}
+        run: |
+          keystore="$RUNNER_TEMP/prerelease.p12"
+          echo "$KEYSTORE_B64" | base64 --decode > "$keystore"
+          alias_arg=()
+          if [[ -n "$KEY_ALIAS" ]]; then
+            alias_arg=(--ks-key-alias "$KEY_ALIAS")
+          fi
+          apk="app/build/outputs/apk/prerelease/fitty-prerelease-${{ steps.meta.outputs.version_code }}.apk"
+          apksigner="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$apksigner" sign --ks "$keystore" --ks-pass "env:KEYSTORE_PASS" "${alias_arg[@]}" \
+            --out "$apk" app/build/outputs/apk/prerelease/app-prerelease-unsigned.apk
+          "$apksigner" verify --print-certs "$apk"
+          rm -f "$keystore"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" "${{ steps.sign.outputs.apk }}" \
+            --prerelease \
+            --title "${{ steps.meta.outputs.version_name }}" \
+            --notes "Test prerelease from \`$GITHUB_REF_NAME\` (\`${GITHUB_SHA::7}\`), build ${{ steps.meta.outputs.version_code }}."
