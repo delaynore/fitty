@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitty #82 — Финальный вариант (snackbar только при подстановке ориентира)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--background, #f6f6f4); color: var(--foreground, #171717);
+    font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    font-size: 14px; line-height: 1.45;
+  }
+  .shell { max-width: 1020px; margin: 0 auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .toolbar {
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--card, #ffffff); color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df); border-radius: var(--radius, 12px); padding: 12px 14px;
+  }
+  .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+  .toolbar-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .toolbar-label { font-size: 12px; font-weight: 600; color: var(--muted-foreground, #666660); margin-right: 2px; }
+  .ctrl-btn {
+    border: 1px solid var(--border, #d8d8d4); background: var(--secondary, #f0f0ec);
+    color: var(--secondary-foreground, #1f1f1d); border-radius: 8px;
+    padding: 5px 10px; font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer;
+  }
+  .ctrl-btn:hover { background: var(--accent, #e5e5e0); color: var(--accent-foreground, #171717); }
+  .ctrl-btn.active { background: var(--primary, #171717); color: var(--primary-foreground, #ffffff); border-color: var(--primary, #171717); }
+  .ctrl-select {
+    border: 1px solid var(--border, #d8d8d4); background: var(--secondary, #f0f0ec);
+    color: var(--secondary-foreground, #1f1f1d); border-radius: 8px;
+    padding: 4px 8px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .grid { display: grid; grid-template-columns: 390px minmax(280px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 790px) {
+    .grid { grid-template-columns: 1fr; justify-items: center; }
+    .side { width: 100%; max-width: 440px; }
+  }
+
+  /* ==================== FITTY PHONE ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-placeholder: #728070;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-warn: #F7D16B;
+    --f-warn-bg: #2E2613;
+    --f-disabled: #5A665A;
+
+    width: 390px; min-height: 760px;
+    background: var(--f-bg); color: var(--f-text);
+    border-radius: 30px; border: 4px solid #222822;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    padding: 36px 20px 84px; position: relative; overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .phone button { font-family: Inter, system-ui, sans-serif; cursor: pointer; }
+  .f-num-disp { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; letter-spacing: 0.4px; }
+  .f-title-ru { font-family: Inter, system-ui, sans-serif; font-weight: 700; letter-spacing: -0.2px; }
+
+  .f-status {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; font-weight: 600; z-index: 26;
+  }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px; border-radius: 12px;
+    background: var(--f-primary); color: var(--f-on-primary); font-size: 12px; font-weight: 600;
+  }
+  .f-status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--f-on-primary); }
+
+  /* Floating Bottom Snackbar (ONLY for estimate prefill) */
+  .f-bot-toast-wrap { position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 50; pointer-events: none; }
+  .f-bot-toast {
+    pointer-events: auto; position: relative; overflow: hidden;
+    border-radius: 16px; background: #1D2618; border: 1px solid #4E672B;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+    padding: 10px 10px 12px 12px; display: flex; align-items: center; gap: 10px;
+    color: var(--f-text); touch-action: none; user-select: none; cursor: grab;
+    transition: transform 180ms ease, opacity 180ms ease;
+    animation: toastUp 200ms cubic-bezier(.2, .9, .3, 1);
+  }
+  .f-bot-toast.dragging { transition: none; cursor: grabbing; }
+  .f-bot-toast.dismissing { transform: translateY(80px); opacity: 0; }
+  @keyframes toastUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .f-toast-ico {
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
+    background: var(--f-primary); color: var(--f-on-primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .f-toast-body { flex: 1; min-width: 0; }
+  .f-toast-msg { font-size: 12.5px; font-weight: 600; color: var(--f-text); line-height: 1.3; }
+  .f-toast-hint { font-size: 10.5px; color: var(--f-muted); margin-top: 2px; }
+  .f-toast-undo {
+    border: 1px solid #597530; background: var(--f-primary-container);
+    color: var(--f-on-primary-container); border-radius: 999px;
+    padding: 6px 11px; font-size: 12px; font-weight: 600; flex: none;
+  }
+  .f-toast-undo:hover { background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary); }
+  .f-toast-close {
+    width: 24px; height: 24px; border-radius: 50%; border: 0;
+    background: transparent; color: var(--f-muted);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-toast-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: rgba(197, 250, 85, 0.16); }
+  .f-toast-prog-bar { height: 100%; background: var(--f-primary); width: 100%; transform-origin: left center; }
+
+  .f-topbar { display: flex; align-items: center; justify-content: space-between; height: 38px; position: relative; z-index: 25; }
+  .f-topbar-l { display: flex; align-items: center; gap: 8px; }
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; position: relative; z-index: 25; }
+  .f-head h1 { margin: 0; font-size: 22px; line-height: 26px; flex: 1; }
+
+  .f-rest-ring {
+    position: relative; width: 74px; height: 74px; border: 0; border-radius: 50%;
+    background: transparent; flex: none; display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .f-rest-ring svg { position: absolute; inset: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+
+  .f-tags { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; position: relative; z-index: 5; }
+  .f-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px; border-radius: 999px; background: var(--f-chip);
+    font-size: 13px; font-weight: 500; color: var(--f-muted);
+  }
+  .f-tag-action {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--f-primary-container); border: 1px solid #4A6128;
+    font-size: 13px; font-weight: 600; color: var(--f-on-primary-container);
+  }
+  .f-tag-action:hover { background: #3B4D21; }
+
+  .f-col-head {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; font-size: 12px; font-weight: 600;
+    color: var(--f-muted); margin: 14px 0 6px; text-align: center;
+  }
+  .f-rows { display: flex; flex-direction: column; gap: 6px; }
+  .f-row {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px;
+    border-radius: 14px; text-align: center;
+  }
+  .f-row-active { min-height: 54px; }
+  .f-row-logged { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .f-row-logged.flash { box-shadow: inset 0 0 0 1.5px var(--f-primary); }
+  .f-row-future { opacity: 0.42; }
+
+  .f-num { width: 28px; height: 28px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: #81907D; }
+
+  .f-in {
+    width: 100%; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 24px;
+    text-align: center; outline: none; padding: 0 6px;
+  }
+  .f-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .f-in.is-sugg:placeholder-shown { border-style: dashed; border-color: var(--f-outline); background: #0F130F; }
+  .f-in.has-value { border-style: solid; border-color: var(--f-primary); color: var(--f-text); background: var(--f-bg); }
+  .f-in:focus { border-style: solid; border-color: var(--f-primary); background: var(--f-surface); }
+  .f-in-empty-future { height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg); }
+
+  .f-check-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .btn-disabled { background: var(--f-chip); border: 0; color: var(--f-disabled); cursor: not-allowed !important; }
+  .btn-tonal-sugg { background: var(--f-primary-container); border: 1.5px solid #4A6128; color: var(--f-primary); }
+  .btn-solid-save { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+  .done-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--f-badge-done); color: #9AD43D; display: flex; align-items: center; justify-content: center; justify-self: center; }
+
+  .f-pb {
+    background: var(--f-primary); color: var(--f-on-primary); border: 0; border-radius: 999px;
+    min-height: 46px; width: 100%; padding: 0 18px; font-weight: 700; font-size: 14.5px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-tonal-btn {
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border: 1px solid #4A6128; border-radius: 999px; min-height: 40px; width: 100%;
+    padding: 0 14px; font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-ob {
+    background: transparent; color: var(--f-text); border: 1.5px solid var(--f-outline);
+    border-radius: 999px; min-height: 44px; padding: 0 18px; font-weight: 600; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-ob-sm { min-height: 34px; padding: 0 12px; font-size: 12.5px; }
+  .f-icon-x { width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; color: var(--f-muted); display: flex; align-items: center; justify-content: center; flex: none; }
+  .f-icon-x:hover { background: var(--f-chip); color: var(--f-text); }
+  .f-actions-below { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 12px; }
+
+  /* ==================== BOTTOM SHEET ==================== */
+  .f-scrim { position: absolute; left: 0; right: 0; top: 152px; bottom: 0; background: rgba(5, 8, 5, 0.72); z-index: 20; }
+  .f-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 602px;
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--f-outline); padding: 10px 18px 18px;
+    display: flex; flex-direction: column; gap: 11px; z-index: 30;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+  }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline-hi); margin: 0 auto 2px; flex: none; }
+  .f-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .f-cal-title { font-size: 18px; line-height: 1.2; }
+  .f-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--f-bg); border-radius: 999px; padding: 4px; border: 1px solid var(--f-outline); }
+  .f-seg button {
+    border: 0; border-radius: 999px; min-height: 36px; padding: 4px 8px;
+    background: transparent; color: var(--f-muted); font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .f-seg button.active { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .f-rec-dot { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--f-primary); color: var(--f-on-primary); }
+
+  .f-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .f-field-lbl { display: block; font-size: 12px; color: var(--f-muted); margin-bottom: 4px; text-align: center; font-weight: 500; }
+  .f-note-line { font-size: 12.5px; color: var(--f-muted); line-height: 1.4; }
+
+  .f-feel-stack { display: flex; flex-direction: column; gap: 7px; }
+  .f-feel-card {
+    width: 100%; border-radius: 14px; padding: 9px 12px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; gap: 10px; text-align: left;
+  }
+  .f-feel-card.just-right { border-color: #4A6128; background: #162010; }
+  .f-feel-card.selected-light { border-color: var(--f-warn); background: var(--f-warn-bg); }
+  .f-feel-card.selected-heavy { border-color: var(--f-error); background: var(--f-error-bg); }
+  .f-feel-ico { width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 14px; }
+  .f-feel-card.just-right .f-feel-ico { background: var(--f-primary); color: var(--f-on-primary); }
+  .f-feel-card.selected-heavy .f-feel-ico { background: var(--f-error); color: #2B0F0D; }
+  .f-feel-card.selected-light .f-feel-ico { background: var(--f-warn); color: #241C06; }
+  .f-feel-title { font-size: 14px; font-weight: 600; display: block; }
+  .f-feel-sub { font-size: 11.5px; color: var(--f-muted); display: block; line-height: 1.28; }
+
+  .f-advice {
+    border-radius: 14px; padding: 11px 12px; background: var(--f-surface);
+    border: 1px solid var(--f-outline); font-size: 12.5px; line-height: 1.4;
+    color: var(--f-text); display: flex; flex-direction: column; gap: 8px;
+  }
+  .f-advice.is-heavy { background: var(--f-error-bg); border-color: var(--f-error-border); }
+  .f-advice.is-warn { background: var(--f-warn-bg); border-color: #5C4B1D; }
+  .f-advice.is-result { background: #151E0F; border-color: #4A6128; }
+  .f-advice-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .f-replace-btn { border: 1px solid var(--f-error); background: transparent; color: var(--f-error); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+
+  .f-formula-trigger {
+    width: 100%; border-radius: 12px; padding: 9px 12px;
+    border: 1px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left;
+  }
+  .f-formula-trigger:hover { border-color: var(--f-primary); background: #101510; }
+  .f-formula-name { font-size: 13px; font-weight: 600; color: var(--f-text); }
+  .f-formula-hint { font-size: 11.5px; color: var(--f-muted); margin-top: 1px; }
+  .f-formula-chg { font-size: 12px; font-weight: 600; color: var(--f-primary); display: inline-flex; align-items: center; gap: 3px; flex: none; }
+
+  .f-formula-list { display: flex; flex-direction: column; gap: 4px; max-height: 410px; overflow-y: auto; padding-right: 2px; }
+  .f-formula-opt {
+    width: 100%; border-radius: 12px; padding: 9px 10px; border: 1px solid transparent;
+    background: transparent; color: var(--f-text); display: flex; align-items: flex-start; gap: 10px; text-align: left;
+  }
+  .f-formula-opt.active { background: #182311; border-color: #4A6128; }
+  .f-radio { width: 18px; height: 18px; border-radius: 50%; margin-top: 2px; flex: none; border: 2px solid #81907D; display: flex; align-items: center; justify-content: center; }
+  .f-formula-opt.active .f-radio { border-color: var(--f-primary); }
+  .f-formula-opt.active .f-radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--f-primary); }
+  .f-opt-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .f-opt-title { font-size: 14px; font-weight: 600; }
+  .f-opt-def { font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--f-chip); color: var(--f-muted); }
+  .f-opt-val { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--f-primary); }
+  .f-opt-sub { font-size: 11.5px; color: var(--f-muted); line-height: 1.32; margin-top: 2px; }
+
+  .f-est-big { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .f-est-val-wrap { display: inline-flex; align-items: baseline; gap: 5px; color: var(--f-primary); }
+  .f-est-num { font-size: 32px; line-height: 1; }
+  .f-est-unit { font-size: 15px; font-weight: 600; color: var(--f-on-primary-container); }
+  .f-est-meta { font-size: 11.5px; color: var(--f-muted); font-weight: 500; }
+
+  .f-bottom-nav { position: absolute; left: 20px; right: 20px; bottom: 16px; display: flex; gap: 8px; align-items: center; z-index: 10; }
+  .f-nav-prev { width: 48px; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text); display: flex; align-items: center; justify-content: center; flex: none; }
+  .f-nav-all { flex: 1; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text); font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .f-nav-next { width: 104px; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary); display: flex; align-items: center; justify-content: center; flex: none; }
+
+  .side { display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: var(--card, #ffffff); color: var(--card-foreground, #171717); border: 1px solid var(--border, #e2e2df); border-radius: var(--radius, 12px); padding: 14px; }
+  .panel h3 { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; }
+  .kv-list { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12.5px; }
+  .kv-k { color: var(--muted-foreground, #666660); font-weight: 500; }
+  .kv-v { font-weight: 600; color: var(--card-foreground, #171717); }
+  .kv-badge { display: inline-block; padding: 1px 7px; border-radius: 6px; background: var(--secondary, #f0f0ec); font-size: 11.5px; font-weight: 600; }
+  .kv-badge.ok { background: #e4f5c7; color: #243809; }
+  .pros-cons { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted-foreground, #555550); }
+  .pros-cons li { margin-bottom: 4px; }
+  .pros-cons strong { color: var(--card-foreground, #171717); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Сценарий:</span>
+        <button class="ctrl-btn" data-step="empty">1. Вход (чип)</button>
+        <button class="ctrl-btn" data-step="feel">2. По ощущениям</button>
+        <button class="ctrl-btn" data-step="feel_heavy">3. Тяжело + замена</button>
+        <button class="ctrl-btn" data-step="feel_done">4. После «В самый раз» (без плашки)</button>
+        <button class="ctrl-btn" data-step="calc_ok">5. Расчёт (8 повт.)</button>
+        <button class="ctrl-btn" data-step="calc_applied">6. Ориентир в подходе 1 (со snackbar)</button>
+        <button class="ctrl-btn" data-step="formula_pick">7. Выбор из 7 формул</button>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Формула (Настройки):</span>
+        <select class="ctrl-select" id="host-formula-select" aria-label="Формула расчёта"></select>
+      </div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">План дня:</span>
+        <button class="ctrl-btn" data-plan="with">План 3 × 10</button>
+        <button class="ctrl-btn" data-plan="none">Без плана (8–12)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+
+    <aside class="side">
+      <div class="panel">
+        <h3>Правило уведомлений</h3>
+        <ul class="pros-cons">
+          <li><strong>Подстановка ориентира (1RM → строка 1):</strong> показываем нижний snackbar над навигацией («Ориентир ≈ 40,7 кг × 10 в подходе 1 · замер не записан») — автоскрытие 6 с, свайп вниз и кнопка <code>Сбросить</code>.</li>
+          <li><strong>Запись подхода (обычный ✓ или «В самый раз»):</strong> никаких плашек — экран сразу показывает зелёную строку <code>Logged set</code>, запуск отдыха и скрывает чип подбора.</li>
+        </ul>
+      </div>
+      <div class="panel" id="state-panel"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const FORMULAS = [
+    { id: 'epley', name: 'Эпли', isDefault: true, hint: 'По умолчанию · универсальная линейная для 2–12 повторений',
+      to1rm: (w, r) => r === 1 ? w : w * (1 + r / 30), from1rm: (rm, R) => rm / (1 + R / 30) },
+    { id: 'brzycki', name: 'Бжицки', hint: 'Строже на высоких повторениях, популярна для диапазона до 10',
+      to1rm: (w, r) => r === 1 ? w : w * (36 / (37 - r)), from1rm: (rm, R) => rm * ((37 - R) / 36) },
+    { id: 'oconner', name: 'О’Коннор', hint: 'Консервативная линейная — даёт более спокойный стартовый вес',
+      to1rm: (w, r) => r === 1 ? w : w * (1 + 0.025 * r), from1rm: (rm, R) => rm / (1 + 0.025 * R) },
+    { id: 'lombardi', name: 'Ломбарди', hint: 'Степенная модель, мягче реагирует на разброс повторений',
+      to1rm: (w, r) => r === 1 ? w : w * Math.pow(r, 0.10), from1rm: (rm, R) => rm / Math.pow(R, 0.10) },
+    { id: 'lander', name: 'Лэндер', hint: 'Классическая линейная оценка, близка к Бжицки на средних повторах',
+      to1rm: (w, r) => r === 1 ? w : (100 * w) / (101.3 - 2.67123 * r), from1rm: (rm, R) => rm * (101.3 - 2.67123 * R) / 100 },
+    { id: 'mayhew', name: 'Мэйхью', hint: 'Экспоненциальная модель, хорошо работает на жимовых движениях',
+      to1rm: (w, r) => r === 1 ? w : (100 * w) / (52.2 + 41.9 * Math.exp(-0.055 * r)), from1rm: (rm, R) => rm * (52.2 + 41.9 * Math.exp(-0.055 * R)) / 100 },
+    { id: 'wathan', name: 'Ватан', hint: 'Экспоненциальная, часто точнее на широком диапазоне повторений',
+      to1rm: (w, r) => r === 1 ? w : (100 * w) / (48.8 + 53.8 * Math.exp(-0.075 * r)), from1rm: (rm, R) => rm * (48.8 + 53.8 * Math.exp(-0.075 * R)) / 100 }
+  ];
+
+  const TOAST_MS = 6000;
+
+  const state = {
+    hasPlan: true,
+    formulaId: 'epley',
+    screen: 'suggestion_ready',
+    calTab: 'calc',
+    pickingFormula: false,
+    trialW: '25',
+    trialR: '10',
+    trialFeedback: null,
+    calcW: '45',
+    calcR: '8',
+    row1W: '',
+    row1R: '',
+    suggW: '40,7',
+    suggR: '10',
+    loggedSets: [],
+    restRunning: false,
+    restSec: 120,
+    toast: null,
+    toastProgress: 1,
+    toastPaused: false,
+    lastEvent: 'Ориентир подставлен в подход 1 — показан нижний snackbar'
+  };
+
+  let restInterval = null;
+  let toastTimer = null;
+  let toastStart = 0;
+  let toastRemaining = TOAST_MS;
+
+  function currentFormula() { return FORMULAS.find(f => f.id === state.formulaId) || FORMULAS[0]; }
+  function targetReps() { return 10; }
+  function targetLabel() { return state.hasPlan ? '10 повт. (по плану)' : '8–12 повт. (ориентир)'; }
+  function planTagText() { return state.hasPlan ? 'План: 3 × 10' : 'Без плана · 8–12 повт.'; }
+  function parseNum(str) { if (!str) return NaN; const n = parseFloat(String(str).replace(',', '.').trim()); return Number.isFinite(n) ? n : NaN; }
+  function fmtNum(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
+  function fmtSec(sec) { return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+
+  function computeWithFormula(formula, wStr, rStr) {
+    const w = parseNum(wStr);
+    const r = Math.floor(parseNum(rStr));
+    if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(r) || r < 1) return { status: 'incomplete' };
+    if (r > 15) return { status: 'too_many_reps', w, r };
+    const oneRm = formula.to1rm(w, r);
+    const estW = formula.from1rm(oneRm, targetReps() + 2);
+    return { status: 'ok', w, r, oneRm: fmtNum(oneRm), estW: fmtNum(estW), target: targetReps() };
+  }
+
+  function clearToastTimer() { if (toastTimer) { clearInterval(toastTimer); toastTimer = null; } }
+
+  function showEstimateSnackbar(estW, target, formulaName) {
+    clearToastTimer();
+    state.toast = { msg: `Ориентир ≈ ${estW} кг × ${target} (${formulaName})`, sub: 'Замер не записан · свайп вниз — скрыть' };
+    state.toastProgress = 1;
+    state.toastPaused = false;
+    toastRemaining = TOAST_MS;
+    toastStart = Date.now();
+    toastTimer = setInterval(() => {
+      if (!state.toast || state.toastPaused) return;
+      const left = Math.max(0, toastRemaining - (Date.now() - toastStart));
+      state.toastProgress = left / TOAST_MS;
+      const bar = document.getElementById('toast-prog-bar');
+      if (bar) bar.style.transform = `scaleX(${state.toastProgress})`;
+      if (left <= 0) dismissToast(false);
+    }, 50);
+  }
+
+  function dismissToast(animate) {
+    clearToastTimer();
+    const el = document.getElementById('bot-toast');
+    if (animate && el) {
+      el.classList.add('dismissing');
+      setTimeout(() => { state.toast = null; render(); }, 180);
+    } else {
+      state.toast = null; render();
+    }
+  }
+
+  function undoEstimatePrefill() {
+    clearToastTimer();
+    state.toast = null;
+    state.suggW = null; state.suggR = null;
+    state.row1W = ''; state.row1R = '';
+    state.screen = 'calibrating'; state.calTab = 'calc';
+    state.lastEvent = 'Подстановка ориентира сброшена, возврат к расчёту';
+    render();
+  }
+
+  function ensureRestTick() {
+    if (restInterval) return;
+    restInterval = setInterval(() => {
+      if (!state.restRunning) return;
+      state.restSec = Math.max(0, state.restSec - 1);
+      if (state.restSec === 0) state.restRunning = false;
+      const ringText = document.getElementById('rest-time-txt');
+      const pill = document.getElementById('status-rest-pill');
+      const arc = document.getElementById('rest-arc');
+      if (ringText) ringText.textContent = fmtSec(state.restSec);
+      if (pill) {
+        pill.style.display = state.restRunning ? 'inline-flex' : 'none';
+        const s = pill.querySelector('span'); if (s) s.textContent = `Отдых ${fmtSec(state.restSec)}`;
+      }
+      if (arc) arc.setAttribute('stroke-dasharray', `${Math.round((state.restRunning ? state.restSec / 120 : 0) * 207)} 207`);
+    }, 1000);
+  }
+
+  function startOrResetRest() {
+    if (state.restRunning) state.restSec = 120;
+    else { state.restRunning = true; state.restSec = 119; ensureRestTick(); }
+    render();
+  }
+
+  function checkSvg(size = 18) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>`; }
+  function closeSvg(size = 16) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>`; }
+  function scaleSvg(size = 15) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"></path></svg>`; }
+  function swapSvg(size = 14) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"></path></svg>`; }
+  function chevSvg(size = 14) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>`; }
+
+  function handleFeelChoice(choice) {
+    const w = state.trialW.trim() || '25';
+    const r = state.trialR.trim() || String(targetReps());
+    state.trialW = w; state.trialR = r;
+    if (choice === 'right') {
+      clearToastTimer(); state.toast = null;
+      state.loggedSets = [{ num: 1, w, r }];
+      state.suggW = w; state.suggR = r;
+      state.row1W = ''; state.row1R = '';
+      state.screen = 'logged'; state.trialFeedback = null; state.pickingFormula = false;
+      state.restRunning = true; state.restSec = 119; ensureRestTick();
+      state.lastEvent = `Подход 1 записан (${w} кг × ${r}) — без плашки`;
+      render(); return;
+    }
+    state.trialFeedback = choice;
+    render();
+  }
+
+  function applyEstimate() {
+    const f = currentFormula();
+    const est = computeWithFormula(f, state.calcW, state.calcR);
+    if (est.status !== 'ok') return;
+    state.suggW = est.estW; state.suggR = String(est.target);
+    state.row1W = ''; state.row1R = '';
+    state.screen = 'suggestion_ready'; state.pickingFormula = false;
+    showEstimateSnackbar(est.estW, est.target, f.name);
+    state.lastEvent = `Ориентир ≈ ${est.estW} кг × ${est.target} (${f.name}) в строке 1 — показан snackbar`;
+    render();
+  }
+
+  function commitSetRow() {
+    const nextNum = state.loggedSets.length + 1;
+    const w = state.row1W.trim() || state.suggW || '';
+    const r = state.row1R.trim() || state.suggR || '';
+    if (!w || !r) return;
+    clearToastTimer(); state.toast = null;
+    state.loggedSets.push({ num: nextNum, w, r });
+    state.suggW = w; state.suggR = r;
+    state.row1W = ''; state.row1R = '';
+    state.screen = 'logged';
+    state.restRunning = true; state.restSec = 119; ensureRestTick();
+    state.lastEvent = `Подход ${nextNum} записан (${w} кг × ${r}) — без плашки`;
+    render();
+  }
+
+  function jumpToScenario(step) {
+    clearToastTimer(); state.toast = null;
+    state.loggedSets = []; state.row1W = ''; state.row1R = '';
+    state.suggW = null; state.suggR = null;
+    state.trialFeedback = null; state.pickingFormula = false;
+
+    if (step === 'empty') {
+      state.screen = 'empty'; state.restRunning = false; state.restSec = 120;
+      state.lastEvent = 'Пустой экран — виден чип «Подобрать вес»';
+    } else if (step === 'feel') {
+      state.screen = 'calibrating'; state.calTab = 'feel'; state.trialW = '25'; state.trialR = '10';
+      state.lastEvent = 'Шторка: подбор по ощущениям';
+    } else if (step === 'feel_heavy') {
+      state.screen = 'calibrating'; state.calTab = 'feel'; state.trialW = '45'; state.trialR = '7'; state.trialFeedback = 'heavy';
+      state.lastEvent = '«Слишком тяжело» — совет полегче + кнопка замены';
+    } else if (step === 'feel_done') {
+      state.loggedSets = [{ num: 1, w: '35', r: '10' }]; state.suggW = '35'; state.suggR = '10';
+      state.screen = 'logged'; state.restRunning = true; state.restSec = 117; ensureRestTick();
+      state.lastEvent = 'После «В самый раз» — подход 1 записан, без лишней плашки';
+    } else if (step === 'calc_ok') {
+      state.screen = 'calibrating'; state.calTab = 'calc'; state.calcW = '45'; state.calcR = '8';
+      state.lastEvent = 'Расчёт ориентира по формуле 1RM';
+    } else if (step === 'calc_applied') {
+      const f = currentFormula();
+      const est = computeWithFormula(f, '45', '8');
+      state.calcW = '45'; state.calcR = '8';
+      state.suggW = est.estW; state.suggR = String(est.target);
+      state.screen = 'suggestion_ready'; state.restRunning = false; state.restSec = 120;
+      showEstimateSnackbar(est.estW, est.target, f.name);
+      state.lastEvent = 'Ориентир подставлен в подход 1 — показан нижний snackbar';
+    } else if (step === 'formula_pick') {
+      state.screen = 'calibrating'; state.calTab = 'calc'; state.calcW = '45'; state.calcR = '8'; state.pickingFormula = true;
+      state.lastEvent = 'Выбор из 7 формул (синхронизируется с Настройками)';
+    }
+    render();
+  }
+
+  function loggedRowHtml(s, flash) {
+    return `
+      <div class="f-row f-row-logged ${flash ? 'flash' : ''}">
+        <span class="f-num f-num-done f-num-disp">${s.num}</span>
+        <span class="f-num-disp" style="font-size:24px">${s.w}</span>
+        <span class="f-num-disp" style="font-size:24px">${s.r}</span>
+        <span class="done-badge">${checkSvg(17)}</span>
+      </div>`;
+  }
+
+  function activeSetRowHtml(num, suggW, suggR, typedW, typedR) {
+    const hasSugg = Boolean(suggW && suggR);
+    const edited = typedW.trim() !== '' || typedR.trim() !== '';
+    const canCommit = hasSugg || (typedW.trim() !== '' && typedR.trim() !== '');
+    const btnCls = !canCommit ? 'btn-disabled' : (edited || !hasSugg ? 'btn-solid-save' : 'btn-tonal-sugg');
+    const numCls = edited ? 'f-num-active' : 'f-num-sugg';
+    return `
+      <div class="f-row f-row-active">
+        <span class="f-num ${numCls} f-num-disp">${num}</span>
+        <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${typedW.trim() ? 'has-value' : ''}" id="row-inp-w"
+          value="${typedW}" placeholder="${hasSugg ? suggW : '—'}" inputmode="decimal" aria-label="Вес, кг">
+        <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${typedR.trim() ? 'has-value' : ''}" id="row-inp-r"
+          value="${typedR}" placeholder="${hasSugg ? suggR : '—'}" inputmode="numeric" aria-label="Повторения">
+        <button class="f-check-btn ${btnCls}" type="button" id="row-btn-commit" ${canCommit ? '' : 'disabled'} aria-label="Записать подход">
+          ${checkSvg(20)}
+        </button>
+      </div>`;
+  }
+
+  function futureRowHtml(num) {
+    return `<div class="f-row f-row-future"><span class="f-num f-num-future f-num-disp">${num}</span><div class="f-in-empty-future"></div><div class="f-in-empty-future"></div><span></span></div>`;
+  }
+
+  function renderSheetInner() {
+    const f = currentFormula();
+    if (state.pickingFormula) {
+      return `
+        <div class="f-cal-head">
+          <button type="button" class="f-icon-x" id="btn-formula-back" style="width:auto;padding:0 6px;gap:4px;font-size:12.5px">← Назад</button>
+          <div class="f-cal-title f-title-ru">Формула расчёта</div>
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Закрыть">${closeSvg(18)}</button>
+        </div>
+        <div class="f-note-line">Синхронизируется с Настройками. Справа — ориентир для замера ${state.calcW || '—'} кг × ${state.calcR || '—'}:</div>
+        <div class="f-formula-list" role="radiogroup">
+          ${FORMULAS.map(opt => {
+            const active = opt.id === state.formulaId;
+            const preview = computeWithFormula(opt, state.calcW, state.calcR);
+            return `
+              <button type="button" role="radio" aria-checked="${active}" class="f-formula-opt ${active ? 'active' : ''}" data-pick-formula="${opt.id}">
+                <span class="f-radio"></span>
+                <span style="flex:1;min-width:0">
+                  <span class="f-opt-top">
+                    <span class="f-opt-title">${opt.name}</span>
+                    ${opt.isDefault ? `<span class="f-opt-def">По умолч.</span>` : ''}
+                    ${preview.status === 'ok' ? `<span class="f-opt-val">≈ ${preview.estW} кг</span>` : ''}
+                  </span>
+                  <span class="f-opt-sub" style="display:block">${opt.hint}</span>
+                </span>
+              </button>`;
+          }).join('')}
+        </div>`;
+    }
+
+    const isFeel = state.calTab === 'feel';
+    const est = computeWithFormula(f, state.calcW, state.calcR);
+    let adviceHtml = '';
+    if (state.trialFeedback === 'light') {
+      adviceHtml = `<div class="f-advice is-warn"><div><strong>Слишком легко.</strong> Отдохните и возьмите следующий удобный шаг веса потяжелее. Проба не записана.</div><div class="f-advice-row"><button type="button" class="f-ob f-ob-sm" id="btn-next-trial">Новая проба</button><button type="button" class="f-ob f-ob-sm" id="btn-start-rest-inline">Отдых ${fmtSec(state.restSec)}</button></div></div>`;
+    } else if (state.trialFeedback === 'heavy') {
+      adviceHtml = `<div class="f-advice is-heavy"><div><strong>Слишком тяжело.</strong> Отдохните и возьмите шаг веса полегче. Если легче уже некуда — упражнение можно заменить.</div><div class="f-advice-row"><button type="button" class="f-replace-btn" id="btn-replace-ex">${swapSvg(14)} Заменить упражнение</button><button type="button" class="f-ob f-ob-sm" id="btn-next-trial">Новая проба</button></div></div>`;
+    }
+
+    let calcBody = '';
+    if (est.status === 'incomplete') {
+      calcBody = `<div class="f-note-line">Введите вес и максимум чистых повторений (остановитесь до слома техники). Замер не попадёт в историю.</div>`;
+    } else if (est.status === 'too_many_reps') {
+      calcBody = `<div class="f-advice is-warn"><div><strong>Больше 15 повторений (${est.r})</strong> — формульный расчёт неточный. Возьмите вес потяжелее или перейдите в «По ощущениям».</div><button type="button" class="f-tonal-btn" id="btn-switch-to-feel">Перейти в «По ощущениям»</button></div>`;
+    } else {
+      calcBody = `
+        <div class="f-advice is-result">
+          <div class="f-est-big">
+            <div>
+              <div style="font-size:11.5px;color:var(--f-muted);margin-bottom:3px">Ориентир для подхода 1</div>
+              <div class="f-est-val-wrap"><span class="f-est-num f-num-disp">≈ ${est.estW}</span><span class="f-est-unit">кг</span><span class="f-est-num f-num-disp" style="margin-left:2px">× ${est.target}</span></div>
+            </div>
+            <div style="text-align:right"><div class="f-est-meta">1RM ≈ ${est.oneRm} кг</div><div class="f-est-meta">запас ~2 повт.</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--f-muted)">Округлите вес до ближайшего шага на снаряде. Тестовый замер не сохранится.</div>
+          <button type="button" class="f-pb" id="btn-apply-est">Подставить в подход 1</button>
+        </div>`;
+    }
+
+    return `
+      <div class="f-cal-head"><div class="f-cal-title f-title-ru">Подбор рабочего веса</div><button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Закрыть">${closeSvg(18)}</button></div>
+      <div class="f-seg" role="tablist">
+        <button type="button" role="tab" aria-selected="${isFeel}" class="${isFeel ? 'active' : ''}" id="tab-feel">По ощущениям <span class="f-rec-dot">Рек.</span></button>
+        <button type="button" role="tab" aria-selected="${!isFeel}" class="${!isFeel ? 'active' : ''}" id="tab-calc">По повторениям</button>
+      </div>
+      ${isFeel ? `
+        <div class="f-note-line">Лёгкая проба на <strong>${targetLabel()}</strong> — спокойно для нового упражнения.</div>
+        <div class="f-inputs-2">
+          <div><label class="f-field-lbl" for="cal-w">Вес пробы, кг</label><input class="f-in ${state.trialW ? 'has-value' : ''}" id="cal-w" value="${state.trialW}" placeholder="25" inputmode="decimal"></div>
+          <div><label class="f-field-lbl" for="cal-r">Повторения</label><input class="f-in ${state.trialR ? 'has-value' : ''}" id="cal-r" value="${state.trialR}" placeholder="${targetReps()}" inputmode="numeric"></div>
+        </div>
+        <div class="f-feel-stack">
+          <button type="button" class="f-feel-card ${state.trialFeedback === 'light' ? 'selected-light' : ''}" data-feel="light"><span class="f-feel-ico">↑</span><span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Отдохну и возьму шаг потяжелее</span></span></button>
+          <button type="button" class="f-feel-card just-right" data-feel="right"><span class="f-feel-ico">✓</span><span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Записать эту пробу как подход 1</span></span></button>
+          <button type="button" class="f-feel-card ${state.trialFeedback === 'heavy' ? 'selected-heavy' : ''}" data-feel="heavy"><span class="f-feel-ico">↓</span><span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Возьму полегче или заменю упражнение</span></span></button>
+        </div>
+        ${adviceHtml}
+      ` : `
+        <div class="f-note-line">Один подход на максимум чистых повторений — остановитесь до слома техники.</div>
+        <div class="f-inputs-2">
+          <div><label class="f-field-lbl" for="calc-w">Вес замера, кг</label><input class="f-in ${state.calcW ? 'has-value' : ''}" id="calc-w" value="${state.calcW}" placeholder="45" inputmode="decimal"></div>
+          <div><label class="f-field-lbl" for="calc-r">Чистые повторения</label><input class="f-in ${state.calcR ? 'has-value' : ''}" id="calc-r" value="${state.calcR}" placeholder="8" inputmode="numeric"></div>
+        </div>
+        <button type="button" class="f-formula-trigger" id="btn-open-formulas">
+          <span style="min-width:0"><span class="f-formula-name" style="display:block">Формула: ${f.name}</span><span class="f-formula-hint" style="display:block">${f.hint}</span></span>
+          <span class="f-formula-chg">Сменить ${chevSvg(14)}</span>
+        </button>
+        ${calcBody}
+      `}`;
+  }
+
+  function render() {
+    const f = currentFormula();
+    document.querySelectorAll('[data-plan]').forEach(b => b.classList.toggle('active', (b.dataset.plan === 'with') === state.hasPlan));
+    const sel = document.getElementById('host-formula-select');
+    if (sel) {
+      if (!sel.options.length) {
+        for (const opt of FORMULAS) {
+          const o = document.createElement('option');
+          o.value = opt.id; o.textContent = opt.isDefault ? `${opt.name} (по умолч.)` : opt.name;
+          sel.appendChild(o);
+        }
+      }
+      sel.value = state.formulaId;
+    }
+
+    const pct = state.restRunning ? (state.restSec / 120) : 0;
+    const showEntry = state.loggedSets.length === 0;
+    const rows = [];
+    for (const s of state.loggedSets) rows.push(loggedRowHtml(s, s.num === state.loggedSets.length));
+    const activeNum = state.loggedSets.length + 1;
+    rows.push(activeSetRowHtml(activeNum, state.suggW, state.suggR, state.row1W, state.row1R));
+    for (let n = activeNum + 1; n <= Math.max(3, activeNum + 1); n++) rows.push(futureRowHtml(n));
+
+    document.getElementById('phone').innerHTML = `
+      <div class="f-status" aria-hidden="true">
+        <span>18:40</span>
+        <span class="f-status-pill" id="status-rest-pill" style="display:${state.restRunning ? 'inline-flex' : 'none'}"><i></i><span>Отдых ${fmtSec(state.restSec)}</span></span>
+        <span style="color:var(--f-muted);font-size:12px">5G · 82%</span>
+      </div>
+      <div class="f-topbar">
+        <div class="f-topbar-l">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+          <span style="font-size:13.5px;font-weight:600;color:var(--f-muted)">Упр. 2/4</span>
+        </div>
+        ${state.loggedSets.length === 0 ? `<span style="font-size:11.5px;color:var(--f-placeholder)">Впервые</span>` : ''}
+      </div>
+      <div class="f-head">
+        <h1 class="f-title-ru">Тяга верхнего блока</h1>
+        <button class="f-rest-ring" type="button" id="btn-rest-ring" title="Тап: старт / сброс таймера отдыха">
+          <svg width="74" height="74" viewBox="0 0 76 76" aria-hidden="true">
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#252D24" stroke-width="6"></circle>
+            <circle id="rest-arc" cx="38" cy="38" r="33" fill="none" stroke="#C5FA55" stroke-width="6" stroke-linecap="round" stroke-dasharray="${Math.round(pct * 207)} 207" transform="rotate(-90 38 38)"></circle>
+          </svg>
+          <span class="f-rest-ring-inner">
+            <span style="font-size:10px;font-weight:600;color:var(--f-muted)">Отдых</span>
+            <span class="f-num-disp" id="rest-time-txt" style="font-size:22px;color:${state.restRunning ? 'var(--f-primary)' : 'var(--f-text)'};margin-top:1px">${fmtSec(state.restSec)}</span>
+          </span>
+        </button>
+      </div>
+      <div class="f-tags">
+        <span class="f-tag">${planTagText()}</span>
+        ${showEntry ? `<button type="button" class="f-tag-action" id="btn-open-cal">${scaleSvg(14)} Подобрать вес</button>` : ''}
+      </div>
+      <div class="f-col-head"><span>№</span><span>Вес, кг</span><span>Повторения</span><span></span></div>
+      <div class="f-rows">${rows.join('')}</div>
+      <div class="f-actions-below"><button class="f-ob" type="button">+ Подход</button></div>
+
+      ${state.screen === 'calibrating' ? `
+        <div class="f-scrim" id="sheet-scrim"></div>
+        <div class="f-sheet" role="dialog" aria-label="Подбор рабочего веса"><div class="f-sheet-handle"></div>${renderSheetInner()}</div>` : ''}
+
+      ${state.toast ? `
+        <div class="f-bot-toast-wrap">
+          <div class="f-bot-toast" id="bot-toast" role="status">
+            <span class="f-toast-ico">${checkSvg(14)}</span>
+            <div class="f-toast-body">
+              <div class="f-toast-msg">${state.toast.msg}</div>
+              <div class="f-toast-hint">${state.toast.sub}</div>
+            </div>
+            <button type="button" class="f-toast-undo" id="btn-toast-undo">Сбросить</button>
+            <button type="button" class="f-toast-close" id="btn-toast-close" aria-label="Скрыть">${closeSvg(14)}</button>
+            <div class="f-toast-prog"><div class="f-toast-prog-bar" id="toast-prog-bar" style="transform:scaleX(${state.toastProgress})"></div></div>
+          </div>
+        </div>` : ''}
+
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" type="button" aria-label="Предыдущее"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <button class="f-nav-all" type="button">Упражнения</button>
+        <button class="f-nav-next" type="button" aria-label="Следующее"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+      </div>
+    `;
+
+    const loggedTxt = state.loggedSets.length ? state.loggedSets.map(s => `№${s.num}: ${s.w} кг × ${s.r}`).join(', ') : 'Нет';
+    document.getElementById('state-panel').innerHTML = `
+      <h3>Состояние экрана</h3>
+      <div class="kv-list">
+        <span class="kv-k">Событие:</span><span class="kv-v">${state.lastEvent}</span>
+        <span class="kv-k">Формула:</span><span class="kv-v"><span class="kv-badge ok">${f.name}</span></span>
+        <span class="kv-k">Logged sets:</span><span class="kv-v">${loggedTxt}</span>
+        <span class="kv-k">Set suggestion:</span><span class="kv-v">${state.suggW ? `${state.suggW} кг × ${state.suggR}` : 'Нет'}</span>
+      </div>`;
+
+    wireEvents();
+  }
+
+  function wireEvents() {
+    const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+    on('btn-rest-ring', 'click', startOrResetRest);
+    on('btn-start-rest-inline', 'click', startOrResetRest);
+    on('btn-open-cal', 'click', () => { state.screen = 'calibrating'; state.calTab = 'feel'; state.pickingFormula = false; state.trialFeedback = null; render(); });
+    const closeCal = () => { state.screen = state.suggW ? 'suggestion_ready' : 'empty'; state.pickingFormula = false; state.trialFeedback = null; render(); };
+    on('btn-exit-cal', 'click', closeCal);
+    on('sheet-scrim', 'click', closeCal);
+
+    const toastEl = document.getElementById('bot-toast');
+    if (toastEl) {
+      let startY = null, deltaY = 0;
+      toastEl.addEventListener('mouseenter', () => { if (!state.toastPaused) { toastRemaining = Math.max(0, toastRemaining - (Date.now() - toastStart)); state.toastPaused = true; } });
+      toastEl.addEventListener('mouseleave', () => { if (state.toastPaused) { toastStart = Date.now(); state.toastPaused = false; } });
+      toastEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) return; startY = e.clientY; deltaY = 0; toastEl.classList.add('dragging'); toastEl.setPointerCapture(e.pointerId); });
+      toastEl.addEventListener('pointermove', (e) => { if (startY === null) return; deltaY = Math.max(-10, e.clientY - startY); toastEl.style.transform = `translateY(${deltaY}px)`; toastEl.style.opacity = String(Math.max(0.25, 1 - deltaY / 80)); });
+      const endDrag = () => { if (startY === null) return; startY = null; toastEl.classList.remove('dragging'); if (deltaY > 24) dismissToast(true); else { toastEl.style.transform = ''; toastEl.style.opacity = ''; } };
+      toastEl.addEventListener('pointerup', endDrag);
+      toastEl.addEventListener('pointercancel', endDrag);
+    }
+    on('btn-toast-undo', 'click', undoEstimatePrefill);
+    on('btn-toast-close', 'click', () => dismissToast(true));
+
+    on('tab-feel', 'click', () => { state.calTab = 'feel'; state.pickingFormula = false; state.trialFeedback = null; render(); });
+    on('tab-calc', 'click', () => { state.calTab = 'calc'; state.pickingFormula = false; render(); });
+    on('btn-switch-to-feel', 'click', () => { state.calTab = 'feel'; state.trialW = state.calcW; state.trialR = ''; state.trialFeedback = null; render(); });
+    on('btn-open-formulas', 'click', () => { state.pickingFormula = true; render(); });
+    on('btn-formula-back', 'click', () => { state.pickingFormula = false; render(); });
+    document.querySelectorAll('[data-pick-formula]').forEach(b => b.addEventListener('click', () => { state.formulaId = b.dataset.pickFormula; state.pickingFormula = false; render(); }));
+
+    on('cal-w', 'input', (e) => { state.trialW = e.target.value; e.target.classList.toggle('has-value', state.trialW.trim() !== ''); });
+    on('cal-r', 'input', (e) => { state.trialR = e.target.value; e.target.classList.toggle('has-value', state.trialR.trim() !== ''); });
+    document.querySelectorAll('[data-feel]').forEach(b => b.addEventListener('click', () => handleFeelChoice(b.dataset.feel)));
+    on('btn-next-trial', 'click', () => { state.trialFeedback = null; state.trialW = ''; state.trialR = ''; render(); const inp = document.getElementById('cal-w'); if (inp) inp.focus(); });
+    on('btn-replace-ex', 'click', () => { state.lastEvent = 'Переход в замену упражнения (похожие / на ту же мышцу)'; render(); });
+
+    const bindCalc = (id, key) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.addEventListener('input', (e) => {
+        const pos = e.target.selectionStart; state[key] = e.target.value; render();
+        const next = document.getElementById(id); if (next) { next.focus(); try { next.setSelectionRange(pos, pos); } catch (_) {} }
+      });
+    };
+    bindCalc('calc-w', 'calcW'); bindCalc('calc-r', 'calcR');
+    on('btn-apply-est', 'click', applyEstimate);
+
+    const updateRowBtn = () => {
+      const btn = document.getElementById('row-btn-commit');
+      const hasSugg = Boolean(state.suggW && state.suggR);
+      const edited = state.row1W.trim() !== '' || state.row1R.trim() !== '';
+      const canCommit = hasSugg || (state.row1W.trim() !== '' && state.row1R.trim() !== '');
+      if (btn) { btn.disabled = !canCommit; btn.className = `f-check-btn ${!canCommit ? 'btn-disabled' : (edited || !hasSugg ? 'btn-solid-save' : 'btn-tonal-sugg')}`; }
+    };
+    on('row-inp-w', 'input', (e) => { state.row1W = e.target.value; e.target.classList.toggle('has-value', state.row1W.trim() !== ''); updateRowBtn(); });
+    on('row-inp-r', 'input', (e) => { state.row1R = e.target.value; e.target.classList.toggle('has-value', state.row1R.trim() !== ''); updateRowBtn(); });
+    on('row-btn-commit', 'click', commitSetRow);
+  }
+
+  document.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => { state.hasPlan = b.dataset.plan === 'with'; render(); }));
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => jumpToScenario(b.dataset.step)));
+  document.getElementById('host-formula-select').addEventListener('change', (e) => { state.formulaId = e.target.value; render(); });
+
+  showEstimateSnackbar('40,7', 10, 'Эпли');
+  render();
+})();
+</script>
+</body>
+</html>

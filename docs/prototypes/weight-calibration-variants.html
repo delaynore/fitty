@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitty #82 — Прототип подбора рабочего веса (варианты A / B / C)</title>
+<!-- Three structurally different UI variants (A: Inline Workspace, B: Bottom Sheet, C: Row-integrated Flow) for weight calibration on the empty workout exercise screen, switchable via ?variant= and the floating bottom bar. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--background, #f6f6f4);
+    color: var(--foreground, #171717);
+    font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .shell {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding: 14px 16px 84px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ==================== HOST TOOLBAR ==================== */
+  .toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 12px 14px;
+  }
+  .toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .toolbar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-foreground, #666660);
+    margin-right: 2px;
+  }
+  .ctrl-btn {
+    border: 1px solid var(--border, #d8d8d4);
+    background: var(--secondary, #f0f0ec);
+    color: var(--secondary-foreground, #1f1f1d);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 120ms, color 120ms, border-color 120ms;
+  }
+  .ctrl-btn:hover {
+    background: var(--accent, #e5e5e0);
+    color: var(--accent-foreground, #171717);
+  }
+  .ctrl-btn.active {
+    background: var(--primary, #171717);
+    color: var(--primary-foreground, #ffffff);
+    border-color: var(--primary, #171717);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 390px minmax(280px, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 790px) {
+    .grid { grid-template-columns: 1fr; justify-items: center; }
+    .side { width: 100%; max-width: 440px; }
+  }
+
+  /* ==================== FITTY PHONE FRAME ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-placeholder: #728070;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-warn: #F7D16B;
+    --f-warn-bg: #2E2613;
+    --f-disabled: #5A665A;
+
+    width: 390px;
+    min-height: 750px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 30px;
+    border: 4px solid #222822;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    padding: 36px 20px 84px;
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .phone button { font-family: Inter, system-ui, sans-serif; cursor: pointer; }
+  .f-d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .f-num-font {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+  }
+
+  /* Status bar */
+  .f-status {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; font-weight: 600;
+    z-index: 5;
+  }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px; border-radius: 12px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-size: 12px; font-weight: 600;
+  }
+  .f-status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--f-on-primary); }
+
+  /* Header */
+  .f-topbar { display: flex; align-items: center; justify-content: space-between; height: 38px; position: relative; z-index: 25; }
+  .f-topbar-l { display: flex; align-items: center; gap: 8px; }
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; position: relative; z-index: 25; }
+  .f-head h1 { margin: 0; font-size: 25px; line-height: 28px; flex: 1; }
+
+  /* Rest ring */
+  .f-rest-ring {
+    position: relative; width: 74px; height: 74px; border: 0; border-radius: 50%;
+    background: transparent; flex: none; display: flex; align-items: center; justify-content: center; padding: 0;
+    transition: transform 90ms;
+  }
+  .f-rest-ring:active { transform: scale(0.95); }
+  .f-rest-ring svg { position: absolute; inset: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+
+  /* Tags row */
+  .f-tags { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; position: relative; z-index: 5; }
+  .f-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px; border-radius: 999px;
+    background: var(--f-chip); font-size: 13px; font-weight: 500; color: var(--f-muted);
+  }
+  .f-tag-action {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--f-primary-container); border: 1px solid #4A6128;
+    font-size: 13px; font-weight: 600; color: var(--f-on-primary-container);
+    transition: background 120ms;
+  }
+  .f-tag-action:hover { background: #3B4D21; }
+
+  /* Table & set rows (#79 agreed styling) */
+  .f-col-head {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; font-size: 13px;
+    color: var(--f-muted); margin: 14px 0 6px; text-align: center;
+  }
+  .f-rows { display: flex; flex-direction: column; gap: 6px; }
+  .f-row {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px;
+    border-radius: 14px; text-align: center;
+  }
+  .f-row-active { min-height: 54px; }
+  .f-row-trial {
+    min-height: 58px;
+    background: var(--f-surface);
+    border: 1px solid #425328;
+    padding: 4px 6px 4px 8px;
+  }
+  .f-row-logged {
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+  }
+  .f-row-logged.flash { box-shadow: inset 0 0 0 1.5px var(--f-primary); }
+  .f-row-future { opacity: 0.42; }
+
+  .f-num {
+    width: 28px; height: 28px; border-radius: 50%; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-trial { background: var(--f-primary-container); color: var(--f-primary); box-shadow: inset 0 0 0 1.5px #5A7431; font-size: 13px; }
+  .f-num-future { background: var(--f-chip); color: #81907D; }
+
+  .f-in {
+    width: 100%; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text);
+    border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 22px; text-align: center;
+    outline: none; padding: 0 6px;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .f-in.is-sugg:placeholder-shown {
+    border-style: dashed;
+    border-color: var(--f-outline);
+    background: #0F130F;
+  }
+  .f-in.has-value {
+    border-style: solid;
+    border-color: var(--f-primary);
+    color: var(--f-text);
+    background: var(--f-bg);
+  }
+  .f-in:focus {
+    border-style: solid;
+    border-color: var(--f-primary);
+    background: var(--f-surface);
+  }
+  .f-in-empty-future {
+    height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg);
+  }
+
+  .f-check-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    justify-self: center; transition: background 140ms, border-color 140ms, color 140ms, transform 80ms;
+  }
+  .f-check-btn:active { transform: scale(0.94); }
+  .btn-disabled { background: var(--f-chip); border: 0; color: var(--f-disabled); cursor: not-allowed !important; }
+  .btn-tonal-sugg { background: var(--f-primary-container); border: 1.5px solid #4A6128; color: var(--f-primary); }
+  .btn-solid-save { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+  .done-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--f-badge-done); color: #9AD43D;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+
+  /* Standard Fitty buttons */
+  .f-pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 46px; width: 100%;
+    padding: 0 18px; font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-pb:disabled { background: var(--f-chip); color: var(--f-disabled); cursor: not-allowed; }
+  .f-tonal-btn {
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border: 1px solid #4A6128; border-radius: 999px; min-height: 44px; width: 100%;
+    padding: 0 16px; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px;
+    min-height: 44px; padding: 0 18px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-ob-sm {
+    min-height: 36px; padding: 0 14px; font-size: 13px;
+    font-family: Inter, sans-serif; text-transform: none; letter-spacing: 0; font-weight: 600;
+  }
+
+  .f-actions-below { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 12px; }
+
+  /* Entry Variant B button under table */
+  .f-entry-b-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    border: 1.5px solid var(--f-outline);
+    background: var(--f-surface);
+    color: var(--f-text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    text-align: left;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-entry-b-btn:hover { border-color: #4A6128; background: var(--f-surface-hi); }
+
+  /* Entry Variant C banner above table */
+  .f-entry-c-banner {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: var(--f-surface);
+    border: 1px solid var(--f-outline);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .f-entry-c-banner .c-text { flex: 1; min-width: 0; }
+  .f-entry-c-banner .c-title { font-size: 13px; font-weight: 600; color: var(--f-text); }
+  .f-entry-c-banner .c-sub { font-size: 11.5px; color: var(--f-muted); }
+  .f-entry-c-go {
+    height: 34px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid #4A6128; background: var(--f-primary-container);
+    color: var(--f-on-primary-container); font-size: 12.5px; font-weight: 600; flex: none;
+  }
+  .f-icon-x {
+    width: 28px; height: 28px; border-radius: 50%; border: 0;
+    background: transparent; color: var(--f-muted);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-icon-x:hover { background: var(--f-chip); color: var(--f-text); }
+
+  /* ==================== VARIANT A: INLINE WORKSPACE ==================== */
+  .f-cal-card {
+    margin-top: 12px;
+    background: var(--f-surface);
+    border: 1px solid var(--f-outline);
+    border-radius: 20px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .f-cal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .f-cal-title { font-size: 18px; line-height: 1.1; }
+  .f-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: var(--f-bg); border-radius: 999px; padding: 4px;
+    border: 1px solid var(--f-outline);
+  }
+  .f-seg button {
+    border: 0; border-radius: 999px; min-height: 36px; padding: 4px 8px;
+    background: transparent; color: var(--f-muted); font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: background 120ms, color 120ms;
+  }
+  .f-seg button.active {
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+  }
+  .f-rec-dot {
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    background: var(--f-primary); color: var(--f-on-primary);
+  }
+
+  .f-inputs-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .f-field-lbl {
+    display: block; font-size: 11.5px; color: var(--f-muted);
+    margin-bottom: 4px; text-align: center; font-weight: 500;
+  }
+
+  .f-feel-stack { display: flex; flex-direction: column; gap: 8px; }
+  .f-feel-card {
+    width: 100%; border-radius: 14px; padding: 10px 12px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-feel-card:hover { border-color: var(--f-outline-hi); background: #101510; }
+  .f-feel-card.just-right { border-color: #4A6128; background: #162010; }
+  .f-feel-card.just-right:hover { border-color: var(--f-primary); background: #1E2C13; }
+  .f-feel-card.selected-light { border-color: var(--f-warn); background: var(--f-warn-bg); }
+  .f-feel-card.selected-heavy { border-color: var(--f-error); background: var(--f-error-bg); }
+  .f-feel-ico {
+    width: 30px; height: 30px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 14px;
+  }
+  .f-feel-card.just-right .f-feel-ico { background: var(--f-primary); color: var(--f-on-primary); }
+  .f-feel-card.selected-heavy .f-feel-ico { background: var(--f-error); color: #2B0F0D; }
+  .f-feel-card.selected-light .f-feel-ico { background: var(--f-warn); color: #241C06; }
+  .f-feel-title { font-size: 14px; font-weight: 600; display: block; }
+  .f-feel-sub { font-size: 11.5px; color: var(--f-muted); display: block; line-height: 1.3; }
+
+  /* Advice / Result boxes */
+  .f-advice {
+    border-radius: 14px; padding: 11px 12px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline);
+    font-size: 12.5px; line-height: 1.4; color: var(--f-text);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .f-advice.is-heavy { background: var(--f-error-bg); border-color: var(--f-error-border); }
+  .f-advice.is-warn { background: var(--f-warn-bg); border-color: #5C4B1D; }
+  .f-advice.is-result { background: #172110; border-color: #4A6128; }
+  .f-advice-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .f-replace-btn {
+    border: 1px solid var(--f-error); background: transparent; color: var(--f-error);
+    border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  }
+  .f-replace-btn:hover { background: rgba(255, 180, 171, 0.12); }
+
+  .f-est-big {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  }
+  .f-est-val { font-size: 30px; line-height: 1; color: var(--f-primary); }
+  .f-est-meta { font-size: 11.5px; color: var(--f-muted); }
+
+  .f-note-line {
+    font-size: 12px; color: var(--f-muted); line-height: 1.38;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+
+  /* ==================== VARIANT B: BOTTOM SHEET ==================== */
+  .f-scrim {
+    position: absolute; left: 0; right: 0; top: 152px; bottom: 0;
+    background: rgba(5, 8, 5, 0.72);
+    z-index: 20;
+  }
+  .f-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    max-height: 590px;
+    background: var(--f-surface-hi);
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--f-outline);
+    padding: 10px 18px 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    z-index: 30;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+  }
+  .f-sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--f-outline-hi); margin: 0 auto 2px; flex: none;
+  }
+  .f-sheet-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .f-mode-card {
+    width: 100%; border-radius: 16px; padding: 14px;
+    border: 1.5px solid var(--f-outline); background: var(--f-surface); color: var(--f-text);
+    display: flex; flex-direction: column; gap: 6px; text-align: left;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-mode-card:hover { border-color: #4A6128; background: #192117; }
+  .f-mode-card.is-rec { border-color: #4A6128; background: #161F13; }
+  .f-mode-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .f-rec-badge {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border: 1px solid #4A6128;
+  }
+
+  /* ==================== VARIANT C: ROW-INTEGRATED ==================== */
+  .f-row-c-panel {
+    margin-top: 8px;
+    background: var(--f-surface);
+    border: 1px solid var(--f-outline);
+    border-radius: 18px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .f-c-topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    font-size: 12px;
+  }
+  .f-c-mode-link {
+    border: 0; background: transparent; color: var(--f-primary);
+    font-size: 12px; font-weight: 600; padding: 2px 4px;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .f-feel-pills {
+    display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 6px;
+  }
+  .f-feel-pill {
+    min-height: 46px; border-radius: 12px; padding: 6px 6px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 12px; font-weight: 600; text-align: center; line-height: 1.15;
+  }
+  .f-feel-pill:hover { border-color: var(--f-outline-hi); }
+  .f-feel-pill.just-right {
+    border-color: #4A6128; background: var(--f-primary-container); color: var(--f-on-primary-container);
+  }
+  .f-feel-pill.just-right:hover { border-color: var(--f-primary); }
+  .f-feel-pill.active-light { border-color: var(--f-warn); background: var(--f-warn-bg); color: var(--f-warn); }
+  .f-feel-pill.active-heavy { border-color: var(--f-error); background: var(--f-error-bg); color: var(--f-error); }
+  .f-feel-pill small { font-size: 10px; font-weight: 500; opacity: 0.85; }
+  .f-trial-log {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    font-size: 11px; color: var(--f-muted);
+  }
+  .f-trial-chip {
+    padding: 2px 8px; border-radius: 999px; background: var(--f-chip); color: var(--f-muted);
+  }
+
+  /* Toast & Undo */
+  .f-toast {
+    margin-top: 10px;
+    padding: 9px 12px; border-radius: 12px;
+    background: var(--f-surface-hi); border: 1px solid #4A6128;
+    font-size: 12px; color: var(--f-on-primary-container);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .f-toast button {
+    border: 0; background: transparent; color: var(--f-primary);
+    font-weight: 600; font-size: 12px; padding: 0; flex: none;
+  }
+
+  /* Bottom navigation */
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px; align-items: center; z-index: 10;
+  }
+  .f-nav-prev {
+    width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-nav-all {
+    flex: 1; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+  .f-nav-next {
+    width: 104px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* ==================== SIDE STATE & ANALYSIS PANEL ==================== */
+  .side { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 14px;
+  }
+  .panel h3 { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; }
+  .panel p { margin: 0 0 8px; font-size: 13px; color: var(--muted-foreground, #555550); }
+  .panel p:last-child { margin-bottom: 0; }
+
+  .kv-list { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12.5px; }
+  .kv-k { color: var(--muted-foreground, #666660); font-weight: 500; }
+  .kv-v { font-weight: 600; color: var(--card-foreground, #171717); }
+  .kv-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 6px;
+    background: var(--secondary, #f0f0ec); font-size: 11.5px; font-weight: 600;
+  }
+  .kv-badge.ok { background: #e4f5c7; color: #243809; }
+
+  .pros-cons { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted-foreground, #555550); }
+  .pros-cons li { margin-bottom: 4px; }
+  .pros-cons strong { color: var(--card-foreground, #171717); }
+
+  /* ==================== FLOATING PROTOTYPE SWITCHER (UI.md) ==================== */
+  .proto-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: #141714;
+    color: #F0F3EA;
+    border: 1px solid #3A4638;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .proto-bar button {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid #3A4638; background: #222922; color: #F0F3EA;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; font-family: inherit;
+  }
+  .proto-bar button:hover { background: #C5FA55; color: #1A2506; border-color: #C5FA55; }
+  .proto-bar-label { padding: 0 8px; white-space: nowrap; }
+  .proto-bar-key {
+    display: inline-block; padding: 1px 7px; border-radius: 999px;
+    background: #C5FA55; color: #1A2506; font-weight: 700; margin-right: 6px; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Вариант:</span>
+        <button class="ctrl-btn" data-var="A">A · Встроенная карточка</button>
+        <button class="ctrl-btn" data-var="B">B · Нижняя шторка (Sheet)</button>
+        <button class="ctrl-btn" data-var="C">C · Проба в строке 1</button>
+      </div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">План дня:</span>
+        <button class="ctrl-btn" data-plan="with">План 3 × 10</button>
+        <button class="ctrl-btn" data-plan="none">Без плана (8–12)</button>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Быстрый переход к шагу:</span>
+        <button class="ctrl-btn" data-step="empty">1. Вход (пусто)</button>
+        <button class="ctrl-btn" data-step="modes">2. Выбор режима</button>
+        <button class="ctrl-btn" data-step="feel_light">3. Легко</button>
+        <button class="ctrl-btn" data-step="feel_heavy">4. Тяжело + замена</button>
+        <button class="ctrl-btn" data-step="feel_done">5. В самый раз → Запись</button>
+        <button class="ctrl-btn" data-step="calc_ok">6. Расчёт (8 повт.)</button>
+        <button class="ctrl-btn" data-step="calc_over">7. Расчёт (&gt;15 повт.)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+
+    <aside class="side">
+      <div class="panel" id="variant-desc"></div>
+      <div class="panel" id="state-panel"></div>
+      <div class="panel">
+        <h3>Что проверить кликами</h3>
+        <ul class="pros-cons">
+          <li><strong>Ручной ввод без подбора:</strong> на шаге «1. Вход» введите вес и повторения прямо в строку 1 и нажмите ✓ — вход подбора сразу исчезнет.</li>
+          <li><strong>Таймер отдыха:</strong> нажмите на кольцо «Отдых 2:00» в шапке прямо во время подбора (повторный тап сбрасывает).</li>
+          <li><strong>Клавиши ← / →</strong> переключают варианты A / B / C (вне полей ввода).</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button type="button" id="proto-prev" aria-label="Предыдущий вариант">←</button>
+  <span class="proto-bar-label" id="proto-label"></span>
+  <button type="button" id="proto-next" aria-label="Следующий вариант">→</button>
+</div>
+
+<script>
+(() => {
+  const VARIANTS = [
+    {
+      key: 'A',
+      name: 'Встроенная карточка',
+      entry: 'Тональный чип «Подобрать вес» в строке тегов рядом с «План: 3 × 10».',
+      modes: 'Сегментированный переключатель вверху карточки (по умолчанию «По ощущениям» + метка «Рекомендуем»).',
+      flow: 'Карточка заменяет таблицу на время подбора; 3 крупные вертикальные карточки-ответа с пояснениями; таймер отдыха в шапке всегда открыт.',
+      pros: 'Таймер отдыха в 1 тап; минимум переходов (режим «По ощущениям» открыт сразу); все пояснения влезают без сжатия.',
+      risk: 'Таблица подходов временно скрыта, пока открыт подбор; на маленьком экране с клавиатурой карточку придётся чуть прокрутить.'
+    },
+    {
+      key: 'B',
+      name: 'Нижняя шторка (Sheet)',
+      entry: 'Спокойная кнопка-строка «Подобрать рабочий вес» под таблицей подходов — верх экрана и строка 1 не тронуты.',
+      modes: 'Отдельный первый шаг в шторке с 2 карточками выбора (паттерн bottom sheet из дизайн-системы Fitty).',
+      flow: 'Шторка (#1C231C) выезжает снизу, оставляя шапку и кольцо «Отдых» видимыми и кликабельными наверху. Чёткий фокус на одном шаге.',
+      pros: 'Самый чистый экран упражнения для тех, кто знает вес; привычный Fitty-паттерн шторки; явное объяснение двух режимов перед стартом.',
+      risk: 'На 1 тап длиннее до первой пробы (экран выбора режима); на низких экранах шторке нужно аккуратно делить место с клавиатурой.'
+    },
+    {
+      key: 'C',
+      name: 'Проба в строке 1',
+      entry: 'Компактный баннер «Впервые? Подобрать» над таблицей (с крестиком); строка 1 сразу ниже для ручного ввода.',
+      modes: 'Сразу запускается «По ощущениям» без экрана выбора; переключение на «Расчёт по повторениям» — ссылкой в шапке панели под строкой.',
+      flow: 'Сама строка 1 становится строкой пробы («П»), без дублирования инпутов; под ней 3 пилюли в ряд и лента прошлых проб. При «В самый раз» строка «П» на месте превращается в зелёный подход 1.',
+      pros: 'Нет дублирования полей ввода; минимум тапов; самая наглядная трансформация пробы в первый подход или подсказку.',
+      risk: 'Нужно чётко отличать строку пробы «П» от обычной строки «1», чтобы атлет понимал: проба не запишется, пока не нажато «В самый раз».'
+    }
+  ];
+
+  const getInitialVariant = () => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('variant');
+      if (v && ['A', 'B', 'C'].includes(v.toUpperCase())) return v.toUpperCase();
+    } catch (_) {}
+    return 'A';
+  };
+
+  const state = {
+    variant: getInitialVariant(),
+    hasPlan: true,
+    screen: 'empty', // 'empty' | 'calibrating' | 'suggestion_ready' | 'logged'
+    bannerDismissed: false,
+    // Calibration internal state (ephemeral)
+    calStep: 'feel', // 'pick_mode' (for B) | 'feel' | 'calc'
+    trialW: '',
+    trialR: '',
+    trialFeedback: null, // null | 'light' | 'heavy'
+    trialHistory: [], // ephemeral list of discarded trials [{w, r, verdict}]
+    calcW: '',
+    calcR: '',
+    // Set table state
+    row1W: '',
+    row1R: '',
+    suggW: null,
+    suggR: null,
+    loggedSets: [], // [{num, w, r, fromCal}]
+    // Rest timer state
+    restRunning: false,
+    restSec: 120,
+    // Toast notice
+    toast: null
+  };
+
+  let restInterval = null;
+
+  function targetReps() { return state.hasPlan ? 10 : 10; }
+  function targetLabel() { return state.hasPlan ? '10 повт. (по плану)' : '8–12 повт. (ориентир)'; }
+  function planTagText() { return state.hasPlan ? 'План: 3 × 10' : 'Без плана · 8–12 повт.'; }
+
+  function parseNum(str) {
+    if (!str) return NaN;
+    const n = parseFloat(String(str).replace(',', '.').trim());
+    return Number.isFinite(n) ? n : NaN;
+  }
+  function fmtNum(n) {
+    const rounded = Math.round(n * 10) / 10;
+    return String(rounded).replace('.', ',');
+  }
+  function fmtSec(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  // Epley 1RM & inverse for target + 2 reps (per #80)
+  function computeEstimate(wStr, rStr) {
+    const w = parseNum(wStr);
+    const r = Math.floor(parseNum(rStr));
+    if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(r) || r < 1) return { status: 'incomplete' };
+    if (r > 15) return { status: 'too_many_reps', w, r };
+    const oneRm = r === 1 ? w : w * (1 + r / 30);
+    const invReps = targetReps() + 2; // ~2 RIR
+    const estW = oneRm / (1 + invReps / 30);
+    return {
+      status: 'ok',
+      w, r,
+      oneRm: fmtNum(oneRm),
+      estW: fmtNum(estW),
+      target: targetReps(),
+      invReps
+    };
+  }
+
+  function syncUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('variant', state.variant);
+      window.history.replaceState(null, '', url.toString());
+    } catch (_) {}
+  }
+
+  function startOrResetRest() {
+    if (state.restRunning) {
+      state.restSec = 120;
+    } else {
+      state.restRunning = true;
+      state.restSec = 119;
+      if (!restInterval) {
+        restInterval = setInterval(() => {
+          if (!state.restRunning) return;
+          state.restSec = Math.max(0, state.restSec - 1);
+          if (state.restSec === 0) state.restRunning = false;
+          renderRestWidgets();
+        }, 1000);
+      }
+    }
+    render();
+  }
+
+  function renderRestWidgets() {
+    const ringText = document.getElementById('rest-time-txt');
+    const pill = document.getElementById('status-rest-pill');
+    const arc = document.getElementById('rest-arc');
+    if (ringText) ringText.textContent = fmtSec(state.restSec);
+    if (pill) {
+      pill.style.display = state.restRunning ? 'inline-flex' : 'none';
+      const span = pill.querySelector('span');
+      if (span) span.textContent = `Отдых ${fmtSec(state.restSec)}`;
+    }
+    if (arc) {
+      const pct = state.restRunning ? (state.restSec / 120) : 0;
+      arc.setAttribute('stroke-dasharray', `${Math.round(pct * 207)} 207`);
+    }
+  }
+
+  function checkSvg(size = 20) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>`;
+  }
+  function closeSvg(size = 18) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>`;
+  }
+  function scaleSvg(size = 15) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"></path></svg>`;
+  }
+  function swapSvg(size = 14) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"></path></svg>`;
+  }
+
+  function openCalibration(initialStep) {
+    state.screen = 'calibrating';
+    state.trialFeedback = null;
+    state.toast = null;
+    if (initialStep) {
+      state.calStep = initialStep;
+    } else {
+      state.calStep = state.variant === 'B' ? 'pick_mode' : 'feel';
+    }
+    render();
+  }
+
+  function exitCalibration() {
+    state.screen = state.suggW ? 'suggestion_ready' : 'empty';
+    state.trialFeedback = null;
+    state.toast = null;
+    render();
+  }
+
+  function handleFeelChoice(choice) {
+    const w = state.trialW.trim() || '25';
+    const r = state.trialR.trim() || String(targetReps());
+    state.trialW = w;
+    state.trialR = r;
+    if (choice === 'right') {
+      state.loggedSets = [{ num: 1, w, r, fromCal: true }];
+      state.suggW = w;
+      state.suggR = r;
+      state.row1W = '';
+      state.row1R = '';
+      state.screen = 'logged';
+      state.trialFeedback = null;
+      state.trialHistory = [];
+      state.restRunning = true;
+      state.restSec = 119;
+      state.toast = `Проба ${w} × ${r} записана как подход 1. Строка 2 получила подсказку.`;
+      render();
+      return;
+    }
+    state.trialFeedback = choice;
+    const label = choice === 'light' ? 'легко' : 'тяжело';
+    const last = state.trialHistory[state.trialHistory.length - 1];
+    if (!last || last.w !== w || last.r !== r || last.verdict !== label) {
+      state.trialHistory = [...state.trialHistory.slice(-2), { w, r, verdict: label }];
+    }
+    render();
+  }
+
+  function applyEstimateToRow1() {
+    const est = computeEstimate(state.calcW, state.calcR);
+    if (est.status !== 'ok') return;
+    state.suggW = est.estW;
+    state.suggR = String(est.target);
+    state.row1W = '';
+    state.row1R = '';
+    state.screen = 'suggestion_ready';
+    state.toast = `Ориентир ≈ ${est.estW} × ${est.target} подставлен в подход 1 (замер не записан).`;
+    render();
+  }
+
+  function commitSetRow() {
+    const nextNum = state.loggedSets.length + 1;
+    const w = state.row1W.trim() || state.suggW || '';
+    const r = state.row1R.trim() || state.suggR || '';
+    if (!w || !r) return;
+    state.loggedSets.push({ num: nextNum, w, r, fromCal: false });
+    state.suggW = w;
+    state.suggR = r;
+    state.row1W = '';
+    state.row1R = '';
+    state.screen = 'logged';
+    state.restRunning = true;
+    state.restSec = 119;
+    state.toast = `Подход ${nextNum} записан (${w} × ${r}). Вход подбора скрыт.`;
+    render();
+  }
+
+  function jumpToScenario(step) {
+    state.toast = null;
+    state.bannerDismissed = false;
+    state.loggedSets = [];
+    state.row1W = '';
+    state.row1R = '';
+    state.suggW = null;
+    state.suggR = null;
+    state.trialFeedback = null;
+    state.trialHistory = [];
+
+    if (step === 'empty') {
+      state.screen = 'empty';
+      state.restRunning = false;
+      state.restSec = 120;
+    } else if (step === 'modes') {
+      state.screen = 'calibrating';
+      state.calStep = state.variant === 'B' ? 'pick_mode' : 'feel';
+      state.trialW = '';
+      state.trialR = '';
+    } else if (step === 'feel_light') {
+      state.screen = 'calibrating';
+      state.calStep = 'feel';
+      state.trialW = '25';
+      state.trialR = '10';
+      state.trialFeedback = 'light';
+      state.trialHistory = [{ w: '25', r: '10', verdict: 'легко' }];
+    } else if (step === 'feel_heavy') {
+      state.screen = 'calibrating';
+      state.calStep = 'feel';
+      state.trialW = '45';
+      state.trialR = '7';
+      state.trialFeedback = 'heavy';
+      state.trialHistory = [{ w: '45', r: '7', verdict: 'тяжело' }];
+    } else if (step === 'feel_done') {
+      state.loggedSets = [{ num: 1, w: '35', r: '10', fromCal: true }];
+      state.suggW = '35';
+      state.suggR = '10';
+      state.screen = 'logged';
+      state.restRunning = true;
+      state.restSec = 116;
+      state.toast = 'Проба 35 × 10 стала подходом 1. Подбор завершён.';
+    } else if (step === 'calc_ok') {
+      state.screen = 'calibrating';
+      state.calStep = 'calc';
+      state.calcW = '45';
+      state.calcR = '8';
+    } else if (step === 'calc_over') {
+      state.screen = 'calibrating';
+      state.calStep = 'calc';
+      state.calcW = '20';
+      state.calcR = '18';
+    }
+    render();
+  }
+
+  /* ==================== SHARED FRAGMENTS ==================== */
+  function loggedRowHtml(s, flash) {
+    return `
+      <div class="f-row f-row-logged f-d ${flash ? 'flash' : ''}">
+        <span class="f-num f-num-done">${s.num}</span>
+        <span style="font-size:22px">${s.w}</span>
+        <span style="font-size:22px">${s.r}</span>
+        <span class="done-badge" aria-label="Подход ${s.num} записан">${checkSvg(18)}</span>
+      </div>`;
+  }
+
+  function activeSetRowHtml(num, suggW, suggR, typedW, typedR, interactive) {
+    const hasSugg = Boolean(suggW && suggR);
+    const edited = typedW.trim() !== '' || typedR.trim() !== '';
+    const canCommit = hasSugg || (typedW.trim() !== '' && typedR.trim() !== '');
+    const btnCls = !canCommit ? 'btn-disabled' : (edited || !hasSugg ? 'btn-solid-save' : 'btn-tonal-sugg');
+    const numCls = edited ? 'f-num-active' : 'f-num-sugg';
+    return `
+      <div class="f-row f-row-active">
+        <span class="f-num ${numCls} f-d">${num}</span>
+        <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${typedW.trim() ? 'has-value' : ''}"
+          ${interactive ? 'id="row-inp-w"' : 'readonly tabindex="-1"'}
+          value="${typedW}" placeholder="${hasSugg ? suggW : '—'}" inputmode="decimal" aria-label="Вес, кг">
+        <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${typedR.trim() ? 'has-value' : ''}"
+          ${interactive ? 'id="row-inp-r"' : 'readonly tabindex="-1"'}
+          value="${typedR}" placeholder="${hasSugg ? suggR : '—'}" inputmode="numeric" aria-label="Повторения">
+        <button class="f-check-btn ${btnCls}" type="button" ${interactive ? 'id="row-btn-commit"' : 'tabindex="-1"'} ${canCommit ? '' : 'disabled'} aria-label="Записать подход">
+          ${checkSvg(20)}
+        </button>
+      </div>`;
+  }
+
+  function futureRowHtml(num) {
+    return `
+      <div class="f-row f-row-future">
+        <span class="f-num f-num-future f-d">${num}</span>
+        <div class="f-in-empty-future"></div>
+        <div class="f-in-empty-future"></div>
+        <span></span>
+      </div>`;
+  }
+
+  function renderAdviceBlock(compact) {
+    if (state.trialFeedback === 'light') {
+      return `
+        <div class="f-advice is-warn">
+          <div><strong>Слишком легко.</strong> Отдохните и попробуйте следующий удобный шаг веса потяжелее. Проба не записана.</div>
+          <div class="f-advice-row">
+            <button type="button" class="f-ob f-ob-sm" id="btn-next-trial">Новая проба</button>
+            <button type="button" class="f-ob f-ob-sm" id="btn-start-rest-inline">Отдых ${fmtSec(state.restSec)}</button>
+          </div>
+        </div>`;
+    }
+    if (state.trialFeedback === 'heavy') {
+      return `
+        <div class="f-advice is-heavy">
+          <div><strong>Слишком тяжело.</strong> Отдохните и возьмите следующий удобный шаг веса полегче. Если легче уже некуда — упражнение можно заменить.</div>
+          <div class="f-advice-row">
+            <button type="button" class="f-replace-btn" id="btn-replace-ex">${swapSvg(14)} Заменить упражнение</button>
+            <button type="button" class="f-ob f-ob-sm" id="btn-next-trial">Новая проба</button>
+          </div>
+        </div>`;
+    }
+    return '';
+  }
+
+  function renderCalcResultBlock() {
+    const est = computeEstimate(state.calcW, state.calcR);
+    if (est.status === 'incomplete') {
+      return `
+        <div class="f-note-line">
+          <span>Сделайте один подход на максимум чистых повторений — остановитесь до слома техники. Замер не попадёт в историю.</span>
+        </div>`;
+    }
+    if (est.status === 'too_many_reps') {
+      return `
+        <div class="f-advice is-warn">
+          <div><strong>Больше 15 повторений (${est.r})</strong> — формульный расчёт неточный. Возьмите вес потяжелее или перейдите к подбору по ощущениям.</div>
+          <button type="button" class="f-tonal-btn" id="btn-switch-to-feel" style="min-height:38px;font-size:13px">Перейти в «По ощущениям»</button>
+        </div>`;
+    }
+    return `
+      <div class="f-advice is-result">
+        <div class="f-est-big">
+          <div>
+            <div style="font-size:11.5px;color:var(--f-muted)">Ориентир для подхода 1</div>
+            <div class="f-est-val f-d">≈ ${est.estW} кг × ${est.target}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="f-est-meta">Эпли (из Настроек)</div>
+            <div class="f-est-meta">1ПМ ≈ ${est.oneRm} кг · запас ~2</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--f-muted)">Округлите вес до ближайшего удобного шага на снаряде. Тестовый замер не сохранится.</div>
+        <button type="button" class="f-pb" id="btn-apply-est">Подставить в подход 1</button>
+      </div>`;
+  }
+
+  /* ==================== VARIANT RENDERERS ==================== */
+  function renderTableNormal() {
+    const rows = [];
+    for (const s of state.loggedSets) rows.push(loggedRowHtml(s, s.num === state.loggedSets.length));
+    const activeNum = state.loggedSets.length + 1;
+    rows.push(activeSetRowHtml(activeNum, state.suggW, state.suggR, state.row1W, state.row1R, true));
+    for (let n = activeNum + 1; n <= Math.max(3, activeNum + 1); n++) rows.push(futureRowHtml(n));
+
+    return `
+      <div class="f-col-head f-d">
+        <span>№</span><span>Вес, кг</span><span>Повторения</span><span></span>
+      </div>
+      <div class="f-rows">${rows.join('')}</div>`;
+  }
+
+  function renderVariantA() {
+    const showEntry = state.loggedSets.length === 0 && state.screen !== 'calibrating';
+    const tagsHtml = `
+      <div class="f-tags">
+        <span class="f-tag">${planTagText()}</span>
+        ${showEntry ? `<button type="button" class="f-tag-action" id="btn-open-cal">${scaleSvg(14)} Подобрать вес</button>` : ''}
+      </div>`;
+
+    if (state.screen !== 'calibrating') {
+      return `
+        ${tagsHtml}
+        ${renderTableNormal()}
+        <div class="f-actions-below">
+          <button class="f-ob" type="button">+ Подход</button>
+        </div>`;
+    }
+
+    const isFeel = state.calStep !== 'calc';
+    return `
+      ${tagsHtml}
+      <div class="f-cal-card">
+        <div class="f-cal-head">
+          <div class="f-cal-title f-d">Подбор рабочего веса</div>
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Выйти из подбора">${closeSvg(18)}</button>
+        </div>
+
+        <div class="f-seg" role="tablist">
+          <button type="button" role="tab" aria-selected="${isFeel}" class="${isFeel ? 'active' : ''}" id="tab-feel">
+            По ощущениям <span class="f-rec-dot">Рек.</span>
+          </button>
+          <button type="button" role="tab" aria-selected="${!isFeel}" class="${!isFeel ? 'active' : ''}" id="tab-calc">
+            По повторениям
+          </button>
+        </div>
+
+        ${isFeel ? `
+          <div class="f-note-line">
+            <span>Сделайте лёгкую пробу на <strong>${targetLabel()}</strong> и введите результат:</span>
+          </div>
+          <div class="f-inputs-2">
+            <div>
+              <label class="f-field-lbl" for="cal-w">Вес пробы, кг</label>
+              <input class="f-in ${state.trialW ? 'has-value' : ''}" id="cal-w" value="${state.trialW}" placeholder="25" inputmode="decimal">
+            </div>
+            <div>
+              <label class="f-field-lbl" for="cal-r">Повторения</label>
+              <input class="f-in ${state.trialR ? 'has-value' : ''}" id="cal-r" value="${state.trialR}" placeholder="${targetReps()}" inputmode="numeric">
+            </div>
+          </div>
+          <div class="f-feel-stack">
+            <button type="button" class="f-feel-card ${state.trialFeedback === 'light' ? 'selected-light' : ''}" data-feel="light">
+              <span class="f-feel-ico">↑</span>
+              <span>
+                <span class="f-feel-title">Слишком легко</span>
+                <span class="f-feel-sub">Можно ещё много — отдохну и прибавлю</span>
+              </span>
+            </button>
+            <button type="button" class="f-feel-card just-right" data-feel="right">
+              <span class="f-feel-ico">✓</span>
+              <span>
+                <span class="f-feel-title">В самый раз (~2–3 в запасе)</span>
+                <span class="f-feel-sub">Записать эту пробу как подход 1</span>
+              </span>
+            </button>
+            <button type="button" class="f-feel-card ${state.trialFeedback === 'heavy' ? 'selected-heavy' : ''}" data-feel="heavy">
+              <span class="f-feel-ico">↓</span>
+              <span>
+                <span class="f-feel-title">Слишком тяжело</span>
+                <span class="f-feel-sub">Снижу вес или заменю упражнение</span>
+              </span>
+            </button>
+          </div>
+          ${renderAdviceBlock(false)}
+        ` : `
+          <div class="f-inputs-2">
+            <div>
+              <label class="f-field-lbl" for="calc-w">Вес замера, кг</label>
+              <input class="f-in ${state.calcW ? 'has-value' : ''}" id="calc-w" value="${state.calcW}" placeholder="45" inputmode="decimal">
+            </div>
+            <div>
+              <label class="f-field-lbl" for="calc-r">Чистые повторения</label>
+              <input class="f-in ${state.calcR ? 'has-value' : ''}" id="calc-r" value="${state.calcR}" placeholder="8" inputmode="numeric">
+            </div>
+          </div>
+          ${renderCalcResultBlock()}
+        `}
+      </div>`;
+  }
+
+  function renderVariantB() {
+    const showEntry = state.loggedSets.length === 0;
+    const baseBody = `
+      <div class="f-tags">
+        <span class="f-tag">${planTagText()}</span>
+      </div>
+      ${renderTableNormal()}
+      <div class="f-actions-below">
+        <button class="f-ob" type="button">+ Подход</button>
+        ${showEntry ? `
+          <button type="button" class="f-entry-b-btn" id="btn-open-cal">
+            <span style="display:flex;align-items:center;gap:10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--f-primary-container);color:var(--f-primary);display:flex;align-items:center;justify-content:center;flex:none">${scaleSvg(16)}</span>
+              <span>
+                <span style="display:block;font-size:14px;font-weight:600">Подобрать рабочий вес</span>
+                <span style="display:block;font-size:11.5px;color:var(--f-muted)">Нет истории · проба или расчёт</span>
+              </span>
+            </span>
+            <span style="color:var(--f-primary);font-size:18px">→</span>
+          </button>` : ''}
+      </div>`;
+
+    if (state.screen !== 'calibrating') return baseBody;
+
+    let sheetBody = '';
+    if (state.calStep === 'pick_mode') {
+      sheetBody = `
+        <div class="f-sheet-head">
+          <div class="f-d" style="font-size:20px">Как подобрать вес?</div>
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Закрыть">${closeSvg(18)}</button>
+        </div>
+        <div style="font-size:12.5px;color:var(--f-muted);margin-top:-4px">Цель: ${targetLabel()}. Пробы не попадут в историю, пока вы не примете вес.</div>
+
+        <button type="button" class="f-mode-card is-rec" id="b-pick-feel">
+          <div class="f-mode-top">
+            <span style="font-size:15.5px;font-weight:600">По ощущениям</span>
+            <span class="f-rec-badge">Рекомендуем</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--f-muted)">Спокойные пробы с лёгкого веса до запаса 2–3 повторения. Безопасно для нового упражнения.</div>
+        </button>
+
+        <button type="button" class="f-mode-card" id="b-pick-calc">
+          <div class="f-mode-top">
+            <span style="font-size:15.5px;font-weight:600">Расчёт по повторениям</span>
+            <span style="font-size:11.5px;color:var(--f-muted)">1ПМ · Эпли</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--f-muted)">Один подход на максимум чистых повторений (не ломая технику) → ориентир в подход 1.</div>
+        </button>
+
+        <button type="button" class="f-ob" id="btn-exit-cal-2" style="width:100%;margin-top:2px">Введу вес вручную</button>`;
+    } else if (state.calStep === 'feel') {
+      sheetBody = `
+        <div class="f-sheet-head">
+          <button type="button" class="f-icon-x" id="b-back-modes" aria-label="К выбору режима" style="width:auto;padding:0 6px;gap:4px;font-size:12px">← Режимы</button>
+          <div class="f-d" style="font-size:18px">По ощущениям</div>
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Закрыть">${closeSvg(18)}</button>
+        </div>
+        <div class="f-note-line"><span>Сделайте лёгкую пробу (цель: <strong>${targetLabel()}</strong>). Таймер отдыха сверху доступен во время шторки.</span></div>
+        <div class="f-inputs-2">
+          <div>
+            <label class="f-field-lbl" for="cal-w">Вес пробы, кг</label>
+            <input class="f-in ${state.trialW ? 'has-value' : ''}" id="cal-w" value="${state.trialW}" placeholder="25" inputmode="decimal">
+          </div>
+          <div>
+            <label class="f-field-lbl" for="cal-r">Повторения</label>
+            <input class="f-in ${state.trialR ? 'has-value' : ''}" id="cal-r" value="${state.trialR}" placeholder="${targetReps()}" inputmode="numeric">
+          </div>
+        </div>
+        <div class="f-feel-stack">
+          <button type="button" class="f-feel-card ${state.trialFeedback === 'light' ? 'selected-light' : ''}" data-feel="light">
+            <span class="f-feel-ico">↑</span>
+            <span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Взять следующий шаг потяжелее</span></span>
+          </button>
+          <button type="button" class="f-feel-card just-right" data-feel="right">
+            <span class="f-feel-ico">✓</span>
+            <span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Записать как первый подход</span></span>
+          </button>
+          <button type="button" class="f-feel-card ${state.trialFeedback === 'heavy' ? 'selected-heavy' : ''}" data-feel="heavy">
+            <span class="f-feel-ico">↓</span>
+            <span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Взять полегче или заменить упражнение</span></span>
+          </button>
+        </div>
+        ${renderAdviceBlock(true)}`;
+    } else {
+      sheetBody = `
+        <div class="f-sheet-head">
+          <button type="button" class="f-icon-x" id="b-back-modes" aria-label="К выбору режима" style="width:auto;padding:0 6px;gap:4px;font-size:12px">← Режимы</button>
+          <div class="f-d" style="font-size:18px">Расчёт по повторениям</div>
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Закрыть">${closeSvg(18)}</button>
+        </div>
+        <div class="f-inputs-2">
+          <div>
+            <label class="f-field-lbl" for="calc-w">Вес замера, кг</label>
+            <input class="f-in ${state.calcW ? 'has-value' : ''}" id="calc-w" value="${state.calcW}" placeholder="45" inputmode="decimal">
+          </div>
+          <div>
+            <label class="f-field-lbl" for="calc-r">Чистые повторения</label>
+            <input class="f-in ${state.calcR ? 'has-value' : ''}" id="calc-r" value="${state.calcR}" placeholder="8" inputmode="numeric">
+          </div>
+        </div>
+        ${renderCalcResultBlock()}`;
+    }
+
+    return `
+      ${baseBody}
+      <div class="f-scrim" id="sheet-scrim"></div>
+      <div class="f-sheet" role="dialog" aria-label="Подбор рабочего веса">
+        <div class="f-sheet-handle"></div>
+        ${sheetBody}
+      </div>`;
+  }
+
+  function renderVariantC() {
+    const showEntry = state.loggedSets.length === 0 && state.screen !== 'calibrating' && !state.bannerDismissed;
+    const tagsHtml = `
+      <div class="f-tags">
+        <span class="f-tag">${planTagText()}</span>
+        ${state.loggedSets.length === 0 && state.bannerDismissed && state.screen !== 'calibrating'
+          ? `<button type="button" class="f-tag-action" id="btn-open-cal">${scaleSvg(14)} Подобрать вес</button>` : ''}
+      </div>`;
+
+    if (state.screen !== 'calibrating') {
+      return `
+        ${tagsHtml}
+        ${showEntry ? `
+          <div class="f-entry-c-banner">
+            <div class="c-text">
+              <div class="c-title">Новое упражнение без истории</div>
+              <div class="c-sub">Вводите вес в строку 1 или подберите пробой</div>
+            </div>
+            <button type="button" class="f-entry-c-go" id="btn-open-cal">Подобрать</button>
+            <button type="button" class="f-icon-x" id="btn-dismiss-c" aria-label="Скрыть">${closeSvg(15)}</button>
+          </div>` : ''}
+        ${renderTableNormal()}
+        <div class="f-actions-below">
+          <button class="f-ob" type="button">+ Подход</button>
+        </div>`;
+    }
+
+    const isFeel = state.calStep !== 'calc';
+    const curW = isFeel ? state.trialW : state.calcW;
+    const curR = isFeel ? state.trialR : state.calcR;
+    return `
+      ${tagsHtml}
+      <div class="f-col-head f-d">
+        <span>Проба</span><span>Вес, кг</span><span>Повторения</span><span></span>
+      </div>
+      <div class="f-rows">
+        <div class="f-row f-row-trial">
+          <span class="f-num f-num-trial f-d" title="Пробный подход — не записывается сам">П</span>
+          <input class="f-in ${curW ? 'has-value' : ''}" id="${isFeel ? 'cal-w' : 'calc-w'}"
+            value="${curW}" placeholder="${isFeel ? '25' : '45'}" inputmode="decimal" aria-label="Вес пробы">
+          <input class="f-in ${curR ? 'has-value' : ''}" id="${isFeel ? 'cal-r' : 'calc-r'}"
+            value="${curR}" placeholder="${isFeel ? targetReps() : '8'}" inputmode="numeric" aria-label="Повторения пробы">
+          <button type="button" class="f-icon-x" id="btn-exit-cal" aria-label="Выйти из подбора" style="justify-self:center;width:38px;height:38px;border:1px solid var(--f-outline)">${closeSvg(16)}</button>
+        </div>
+      </div>
+
+      <div class="f-row-c-panel">
+        <div class="f-c-topbar">
+          <span style="font-weight:600;color:var(--f-text)">${isFeel ? 'Подбор по ощущениям' : 'Расчёт по повторениям'}</span>
+          <button type="button" class="f-c-mode-link" id="c-toggle-mode">
+            ${isFeel ? 'Или расчёт по повторениям' : '← По ощущениям (рек.)'}
+          </button>
+        </div>
+
+        ${isFeel ? `
+          <div style="font-size:12px;color:var(--f-muted)">Сделайте лёгкую пробу (${targetLabel()}) и оцените — промежуточные пробы не сохранятся:</div>
+          <div class="f-feel-pills">
+            <button type="button" class="f-feel-pill ${state.trialFeedback === 'light' ? 'active-light' : ''}" data-feel="light">
+              <span>↑ Легко</span>
+              <small>прибавить</small>
+            </button>
+            <button type="button" class="f-feel-pill just-right" data-feel="right">
+              <span>✓ В самый раз</span>
+              <small>2–3 в запасе</small>
+            </button>
+            <button type="button" class="f-feel-pill ${state.trialFeedback === 'heavy' ? 'active-heavy' : ''}" data-feel="heavy">
+              <span>↓ Тяжело</span>
+              <small>убавить</small>
+            </button>
+          </div>
+          ${renderAdviceBlock(true)}
+          ${state.trialHistory.length ? `
+            <div class="f-trial-log">
+              <span>Не записаны:</span>
+              ${state.trialHistory.map((t, i) => `<span class="f-trial-chip">Проба ${i + 1}: ${t.w} × ${t.r} (${t.verdict})</span>`).join('')}
+            </div>` : ''}
+        ` : `
+          ${renderCalcResultBlock()}
+        `}
+      </div>
+
+      <div class="f-rows" style="margin-top:8px">
+        ${futureRowHtml(2)}
+        ${futureRowHtml(3)}
+      </div>`;
+  }
+
+  /* ==================== MAIN RENDER ==================== */
+  function render() {
+    syncUrl();
+    const vInfo = VARIANTS.find(v => v.key === state.variant);
+
+    // Update host toolbar active states
+    document.querySelectorAll('[data-var]').forEach(b => b.classList.toggle('active', b.dataset.var === state.variant));
+    document.querySelectorAll('[data-plan]').forEach(b => b.classList.toggle('active', (b.dataset.plan === 'with') === state.hasPlan));
+
+    const pct = state.restRunning ? (state.restSec / 120) : 0;
+    const variantBody = state.variant === 'A' ? renderVariantA()
+      : state.variant === 'B' ? renderVariantB()
+      : renderVariantC();
+
+    document.getElementById('phone').innerHTML = `
+      <div class="f-status" aria-hidden="true">
+        <span>18:40</span>
+        <span class="f-status-pill" id="status-rest-pill" style="display:${state.restRunning ? 'inline-flex' : 'none'}">
+          <i></i><span>Отдых ${fmtSec(state.restSec)}</span>
+        </span>
+        <span style="color:var(--f-muted);font-size:12px">5G · 82%</span>
+      </div>
+
+      <div class="f-topbar">
+        <div class="f-topbar-l">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+          <span class="f-d" style="font-size:15px;color:var(--f-muted)">Упр. 2/4</span>
+        </div>
+        ${state.loggedSets.length === 0 ? `<span style="font-size:11.5px;color:var(--f-placeholder)">Впервые</span>` : ''}
+      </div>
+
+      <div class="f-head">
+        <h1 class="f-d">Тяга верхнего блока</h1>
+        <button class="f-rest-ring" type="button" id="btn-rest-ring" title="Тап: старт / сброс таймера отдыха">
+          <svg width="74" height="74" viewBox="0 0 76 76" aria-hidden="true">
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#252D24" stroke-width="6"></circle>
+            <circle id="rest-arc" cx="38" cy="38" r="33" fill="none" stroke="#C5FA55" stroke-width="6" stroke-linecap="round" stroke-dasharray="${Math.round(pct * 207)} 207" transform="rotate(-90 38 38)"></circle>
+          </svg>
+          <span class="f-rest-ring-inner">
+            <span class="f-d" style="font-size:10px;color:var(--f-muted)">Отдых</span>
+            <span class="f-d" id="rest-time-txt" style="font-size:21px;color:${state.restRunning ? 'var(--f-primary)' : 'var(--f-text)'};margin-top:2px">${fmtSec(state.restSec)}</span>
+          </span>
+        </button>
+      </div>
+
+      ${variantBody}
+
+      ${state.toast ? `
+        <div class="f-toast">
+          <span>${state.toast}</span>
+          <button type="button" id="btn-reset-demo">Сбросить</button>
+        </div>` : ''}
+
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" type="button" aria-label="Предыдущее">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+        </button>
+        <button class="f-nav-all" type="button">Упражнения</button>
+        <button class="f-nav-next" type="button" aria-label="Следующее">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
+    `;
+
+    // Side panels
+    document.getElementById('variant-desc').innerHTML = `
+      <h3>Вариант ${vInfo.key}: ${vInfo.name}</h3>
+      <ul class="pros-cons">
+        <li><strong>Вход:</strong> ${vInfo.entry}</li>
+        <li><strong>Выбор режима:</strong> ${vInfo.modes}</li>
+        <li><strong>Шаги:</strong> ${vInfo.flow}</li>
+        <li><strong>Сильная сторона:</strong> ${vInfo.pros}</li>
+        <li><strong>Компромисс:</strong> ${vInfo.risk}</li>
+      </ul>`;
+
+    const loggedTxt = state.loggedSets.length
+      ? state.loggedSets.map(s => `№${s.num}: ${s.w} кг × ${s.r}`).join(', ')
+      : 'Нет (промежуточные пробы не пишутся)';
+    const suggTxt = state.suggW ? `${state.suggW} кг × ${state.suggR}` : 'Нет';
+    const screenLabels = {
+      empty: 'Пустой экран (вход виден)',
+      calibrating: `Подбор: ${state.calStep === 'pick_mode' ? 'выбор режима' : state.calStep === 'feel' ? 'по ощущениям' : 'расчёт по повторениям'}`,
+      suggestion_ready: 'Ориентир в строке 1 (Set suggestion)',
+      logged: 'Записан подход (вход подбора скрыт)'
+    };
+
+    document.getElementById('state-panel').innerHTML = `
+      <h3>Текущее состояние модели</h3>
+      <div class="kv-list">
+        <span class="kv-k">Экран:</span>
+        <span class="kv-v"><span class="kv-badge ${state.screen === 'logged' || state.screen === 'suggestion_ready' ? 'ok' : ''}">${screenLabels[state.screen]}</span></span>
+        <span class="kv-k">Цель:</span>
+        <span class="kv-v">${targetLabel()}</span>
+        <span class="kv-k">Logged sets:</span>
+        <span class="kv-v">${loggedTxt}</span>
+        <span class="kv-k">Set suggestion:</span>
+        <span class="kv-v">${suggTxt}</span>
+        <span class="kv-k">Таймер отдыха:</span>
+        <span class="kv-v">${state.restRunning ? `Идёт (${fmtSec(state.restSec)})` : `Готов (${fmtSec(state.restSec)})`}</span>
+      </div>`;
+
+    document.getElementById('proto-label').innerHTML =
+      `<span class="proto-bar-key">${vInfo.key}</span>${vInfo.name}`;
+
+    wirePhoneEvents();
+  }
+
+  function wirePhoneEvents() {
+    const on = (id, ev, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(ev, fn);
+    };
+
+    on('btn-rest-ring', 'click', startOrResetRest);
+    on('btn-start-rest-inline', 'click', startOrResetRest);
+    on('btn-open-cal', 'click', () => openCalibration());
+    on('btn-exit-cal', 'click', exitCalibration);
+    on('btn-exit-cal-2', 'click', exitCalibration);
+    on('sheet-scrim', 'click', exitCalibration);
+    on('btn-dismiss-c', 'click', () => { state.bannerDismissed = true; render(); });
+    on('btn-reset-demo', 'click', () => jumpToScenario('empty'));
+
+    // Mode switchers
+    on('tab-feel', 'click', () => { state.calStep = 'feel'; state.trialFeedback = null; render(); });
+    on('tab-calc', 'click', () => { state.calStep = 'calc'; render(); });
+    on('b-pick-feel', 'click', () => { state.calStep = 'feel'; state.trialFeedback = null; render(); });
+    on('b-pick-calc', 'click', () => { state.calStep = 'calc'; render(); });
+    on('b-back-modes', 'click', () => { state.calStep = 'pick_mode'; state.trialFeedback = null; render(); });
+    on('c-toggle-mode', 'click', () => {
+      state.calStep = state.calStep === 'calc' ? 'feel' : 'calc';
+      state.trialFeedback = null;
+      render();
+    });
+    on('btn-switch-to-feel', 'click', () => {
+      state.calStep = 'feel';
+      state.trialW = state.calcW;
+      state.trialR = '';
+      state.trialFeedback = null;
+      render();
+    });
+
+    // Trial inputs (keep focus smoothly)
+    on('cal-w', 'input', (e) => {
+      state.trialW = e.target.value;
+      e.target.classList.toggle('has-value', state.trialW.trim() !== '');
+    });
+    on('cal-r', 'input', (e) => {
+      state.trialR = e.target.value;
+      e.target.classList.toggle('has-value', state.trialR.trim() !== '');
+    });
+
+    // Feel buttons
+    document.querySelectorAll('[data-feel]').forEach(b => {
+      b.addEventListener('click', () => handleFeelChoice(b.dataset.feel));
+    });
+
+    on('btn-next-trial', 'click', () => {
+      state.trialFeedback = null;
+      state.trialW = '';
+      state.trialR = '';
+      render();
+      const inp = document.getElementById('cal-w');
+      if (inp) inp.focus();
+    });
+
+    on('btn-replace-ex', 'click', () => {
+      state.toast = 'Переход в замену: похожие упражнения и на ту же группу мышц.';
+      render();
+    });
+
+    // Calc inputs (re-render result live without losing cursor)
+    const bindCalcInput = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', (e) => {
+        const pos = e.target.selectionStart;
+        state[key] = e.target.value;
+        render();
+        const nextEl = document.getElementById(id);
+        if (nextEl) {
+          nextEl.focus();
+          try { nextEl.setSelectionRange(pos, pos); } catch (_) {}
+        }
+      });
+    };
+    bindCalcInput('calc-w', 'calcW');
+    bindCalcInput('calc-r', 'calcR');
+
+    on('btn-apply-est', 'click', applyEstimateToRow1);
+
+    // Normal set row inputs
+    const updateRowBtn = () => {
+      const btn = document.getElementById('row-btn-commit');
+      const hasSugg = Boolean(state.suggW && state.suggR);
+      const edited = state.row1W.trim() !== '' || state.row1R.trim() !== '';
+      const canCommit = hasSugg || (state.row1W.trim() !== '' && state.row1R.trim() !== '');
+      if (btn) {
+        btn.disabled = !canCommit;
+        btn.className = `f-check-btn ${!canCommit ? 'btn-disabled' : (edited || !hasSugg ? 'btn-solid-save' : 'btn-tonal-sugg')}`;
+      }
+    };
+    on('row-inp-w', 'input', (e) => {
+      state.row1W = e.target.value;
+      e.target.classList.toggle('has-value', state.row1W.trim() !== '');
+      updateRowBtn();
+    });
+    on('row-inp-r', 'input', (e) => {
+      state.row1R = e.target.value;
+      e.target.classList.toggle('has-value', state.row1R.trim() !== '');
+      updateRowBtn();
+    });
+    on('row-btn-commit', 'click', commitSetRow);
+  }
+
+  function cycleVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === state.variant);
+    const next = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length];
+    state.variant = next.key;
+    if (state.screen === 'calibrating' && state.variant !== 'B' && state.calStep === 'pick_mode') {
+      state.calStep = 'feel';
+    }
+    render();
+  }
+
+  document.querySelectorAll('[data-var]').forEach(b => b.addEventListener('click', () => {
+    state.variant = b.dataset.var;
+    if (state.screen === 'calibrating' && state.variant !== 'B' && state.calStep === 'pick_mode') {
+      state.calStep = 'feel';
+    }
+    render();
+  }));
+  document.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => {
+    state.hasPlan = b.dataset.plan === 'with';
+    render();
+  }));
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+    jumpToScenario(b.dataset.step);
+  }));
+  document.getElementById('proto-prev').addEventListener('click', () => cycleVariant(-1));
+  document.getElementById('proto-next').addEventListener('click', () => cycleVariant(1));
+
+  window.addEventListener('keydown', (e) => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cycleVariant(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); cycleVariant(1); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
