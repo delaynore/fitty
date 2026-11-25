@@ -16,6 +16,7 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyTheme
+import com.delaynore.fitty.domain.NoopWorkoutTimerStore
 import com.delaynore.fitty.domain.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
 import com.delaynore.fitty.ui.workout.WorkoutScreen
@@ -64,7 +65,7 @@ class WorkoutFinishTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         try {
             val active = ActiveWorkoutState(
-                delayedWorkouts, -1, { 0L }, NoTimerSignals, FakeExerciseCatalogRepository(), scope,
+                delayedWorkouts, -1, { 0L }, NoTimerSignals, FakeExerciseCatalogRepository(), scope, NoopWorkoutTimerStore,
             )
             val screen = mutableIntStateOf(1)
             val destinations = mutableListOf<String>()

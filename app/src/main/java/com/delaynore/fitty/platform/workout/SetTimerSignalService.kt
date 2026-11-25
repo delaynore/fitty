@@ -204,6 +204,8 @@ internal suspend fun playSetTimerCue(context: Context) {
         } else if (tone != null) {
             Log.w("SetTimerSignal", "ToneGenerator rejected the set timer tone")
         }
+    } catch (failure: CancellationException) {
+        throw failure
     } catch (failure: RuntimeException) {
         Log.w("SetTimerSignal", "Unable to play the set timer tone", failure)
     } finally {

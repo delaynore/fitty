@@ -7,6 +7,7 @@ import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
+import com.delaynore.fitty.domain.NoopWorkoutTimerStore
 import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.domain.SetTimerSignalScheduler
@@ -29,7 +30,9 @@ class WorkoutReplacementStateTest {
         val day = WorkoutSession(WorkoutSummary(0, "Strength", "Day A", null), listOf(bench))
         val workouts = FakeWorkoutsRepository(mapOf(1L to day))
         val catalog = FakeExerciseCatalogRepository().apply { allExercises.value = BuiltInExercises.all }
-        val active = ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        val active = ActiveWorkoutState(
+            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope, NoopWorkoutTimerStore,
+        )
         val id = requireNotNull(workouts.startWorkout(1L))
         active.open(id)
         runCurrent()
@@ -62,7 +65,9 @@ class WorkoutReplacementStateTest {
         val day = WorkoutSession(WorkoutSummary(0, "Core", "Day A", null), listOf(plank))
         val workouts = FakeWorkoutsRepository(mapOf(1L to day))
         val catalog = FakeExerciseCatalogRepository().apply { allExercises.value = BuiltInExercises.all }
-        val active = ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        val active = ActiveWorkoutState(
+            workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope, NoopWorkoutTimerStore,
+        )
         val id = requireNotNull(workouts.startWorkout(1L))
         active.open(id)
         runCurrent()
