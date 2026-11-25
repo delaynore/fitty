@@ -2,7 +2,7 @@ name: Android Smoke
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, edited]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, edited]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,7 @@ env:
 jobs:
   plan:
     name: Check Smoke requirement
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-24.04
     outputs:
       required: ${{ steps.plan.outputs.required }}
@@ -35,7 +35,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # The PR merge commit's first parent is the base commit.
-          paths=(app gradle build.gradle.kts settings.gradle.kts gradle.properties gradlew gradlew.bat .github/workflows/android.yml .github/workflows/android-smoke.yml)
+          paths=(app gradle build.gradle.kts settings.gradle.kts gradle.properties gradlew gradlew.bat .github/actions .github/workflows/android.yml .github/workflows/android-smoke.yml)
           if git diff --quiet HEAD^1 HEAD -- "${paths[@]}"; then
             echo 'No Android code or build changes.'
             echo 'required=false' >> "$GITHUB_OUTPUT"
@@ -68,7 +68,8 @@ jobs:
     needs: plan
     if: >-
       !cancelled() && (github.event_name == 'workflow_dispatch' ||
-      (needs.plan.outputs.required == 'true' && needs.plan.outputs.passed == 'false' &&
+      (!github.event.pull_request.draft && needs.plan.outputs.required == 'true' &&
+      needs.plan.outputs.passed == 'false' &&
       contains(github.event.pull_request.labels.*.name, 'android-smoke')))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -155,7 +156,7 @@ jobs:
   gate:
     name: Android Smoke gate
     needs: [plan, smoke]
-    if: always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == github.event.repository.default_branch
+    if: always() && github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-24.04
     steps:
       - name: Require successful Smoke for Android changes
