@@ -16,6 +16,10 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.SetTimer
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
+import com.delaynore.fitty.domain.restoreSetTimer
+import com.delaynore.fitty.domain.saved
 import com.delaynore.fitty.ui.launchPersistenceSave
 import com.delaynore.fitty.domain.toInput
 import com.delaynore.fitty.ui.consumePendingEvent
@@ -66,7 +70,6 @@ internal data class WorkoutUiState(
     val sessionId: Long? = null,
     val session: WorkoutSession? = null,
     val sessionLoaded: Boolean = false,
-    val finished: Boolean = false,
     val pendingEvent: WorkoutEvent? = null,
     val exerciseIndex: Int = 0,
     val rowsByExercise: Map<Long, WorkoutRowDrafts> = emptyMap(),
@@ -454,8 +457,6 @@ internal class ActiveWorkoutState(
                 sessionId,
                 WorkoutUiState(
                     sessionId = sessionId,
-                    sessionLoaded = true,
-                    finished = true,
                     pendingEvent = WorkoutEvent.Finished(sessionId),
                 ),
             )

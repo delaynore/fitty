@@ -14,9 +14,12 @@ import com.delaynore.fitty.data.programs.TrainingDay
 import com.delaynore.fitty.data.programs.TrainingExercise
 import com.delaynore.fitty.data.programs.TrainingProgram
 import com.delaynore.fitty.data.updates.FittyUpdate
+import com.delaynore.fitty.data.updates.UpdateAttempt
+import com.delaynore.fitty.data.updates.UpdateAttemptStore
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.data.updates.UpdateSessionManager
 import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult
@@ -45,7 +48,7 @@ import com.delaynore.fitty.ui.settings.InstalledApp
 import com.delaynore.fitty.ui.settings.UpdateCoordinator
 import com.delaynore.fitty.ui.settings.UpdateCheckState
 import com.delaynore.fitty.ui.settings.UpdateInstallState
-import com.delaynore.fitty.ui.workout.SetTimerSignalScheduler
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
@@ -229,6 +232,16 @@ class RepositoryConsumerTest {
             editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
             assertEquals(ProgramEditorEvent.Saved, editor.uiState.value.pendingEvent)
             editor.consumeEvent(ProgramEditorEvent.Saved)
+            assertNull(editor.uiState.value.pendingEvent)
+
+            editor.openDay(day.id)
+            assertEquals(ProgramEditorEvent.OpenDay(day.id), editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ProgramEditorEvent.OpenDay(day.id))
+            assertNull(editor.uiState.value.pendingEvent)
+
+            editor.finishDay()
+            assertEquals(ProgramEditorEvent.DayFinished, editor.uiState.value.pendingEvent)
+            editor.consumeEvent(ProgramEditorEvent.DayFinished)
             assertNull(editor.uiState.value.pendingEvent)
         }
     }
@@ -524,7 +537,9 @@ class RepositoryConsumerTest {
             override suspend fun download(update: FittyUpdate, installedVersionCode: Long, onProgress: (Int) -> Unit) =
                 UpdateDownloadResult.Downloaded(apk)
         }
-        val settings = UpdateCoordinator(installed, service, FakeWorkoutsRepository(), backgroundScope)
+        val settings = UpdateCoordinator(
+            installed, service, NoopSessionManager, NoopAttemptStore, FakeWorkoutsRepository(), backgroundScope,
+        )
         settings.checkForUpdate()
         assertEquals(UpdateCheckState.Checking, settings.uiState.value.updateCheck)
         runCurrent()
@@ -565,5 +580,19 @@ class RepositoryConsumerTest {
         override fun schedule(token: String, workoutId: Long, deadlineMillis: Long) = true
         override fun cancel(token: String) = Unit
         override fun cancelWorkout(workoutId: Long) = Unit
+    }
+
+    private object NoopSessionManager : UpdateSessionManager {
+        override fun canRequestInstall() = false
+        override suspend fun commitInstall(apk: File, expectedVersionCode: Long) = null
+        override suspend fun abandonSession(sessionId: Int) = Unit
+        override fun hasSession(sessionId: Int) = false
+        override fun hasConfirmation(sessionId: Int, requestId: Long) = false
+    }
+
+    private object NoopAttemptStore : UpdateAttemptStore {
+        override fun read() = null
+        override fun write(attempt: UpdateAttempt) = Unit
+        override fun clear() = Unit
     }
 }

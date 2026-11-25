@@ -7,20 +7,6 @@ import java.io.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-private object NoopSessionManager : UpdateSessionManager {
-    override fun canRequestInstall() = false
-    override suspend fun commitInstall(apk: File, expectedVersionCode: Long) = null
-    override suspend fun abandonSession(sessionId: Int) = Unit
-    override fun hasSession(sessionId: Int) = false
-    override fun hasConfirmation(sessionId: Int, requestId: Long) = false
-}
-
-private object NoopAttemptStore : UpdateAttemptStore {
-    override fun read() = null
-    override fun write(attempt: UpdateAttempt) = Unit
-    override fun clear() = Unit
-}
-
 internal data class InstalledApp(val versionName: String, val versionCode: Long)
 
 internal sealed interface UpdateCheckState {
@@ -34,7 +20,7 @@ internal sealed interface UpdateInstallState {
     data object CheckingWorkout : UpdateInstallState
     data object Warning : UpdateInstallState
     data class Downloading(val percent: Int? = null) : UpdateInstallState
-    data class Ready(val apk: File, val expectedVersionCode: Long = Long.MIN_VALUE) : UpdateInstallState
+    data class Ready(val apk: File, val expectedVersionCode: Long) : UpdateInstallState
     data class RequestingPermission(val apk: File, val expectedVersionCode: Long) : UpdateInstallState
     data class PermissionDenied(val apk: File, val expectedVersionCode: Long) : UpdateInstallState
     data object PreparingInstall : UpdateInstallState
@@ -69,14 +55,6 @@ internal class UpdateCoordinator(
     pendingPermissionPath: String? = null,
     pendingPermissionVersionCode: Long? = null,
 ) {
-    constructor(
-        installedApp: InstalledApp,
-        updateService: UpdateService,
-        workouts: WorkoutsRepository,
-        scope: CoroutineScope,
-        pendingPermissionPath: String? = null,
-    ) : this(installedApp, updateService, NoopSessionManager, NoopAttemptStore, workouts, scope, pendingPermissionPath)
-
     private val pendingPermissionApk = pendingPermissionPath?.let(::File)
     private val state = MutableStateFlow(SettingsUiState(installedApp, updateInstall =
         if (pendingPermissionApk != null && pendingPermissionVersionCode != null)
@@ -86,7 +64,10 @@ internal class UpdateCoordinator(
     private val pruneDownloads = scope.launch { updateService.pruneAbandonedDownloads(pendingPermissionApk) }
     private var downloadJob: Job? = null
 
-    init { reconcileInstall() }
+    init {
+        reconcileInstall()
+        installer.sessionUpdates.onEach { reconcileInstall() }.launchIn(scope)
+    }
 
     fun checkForUpdate() {
         if (state.value.updateCheck == UpdateCheckState.Checking || !state.value.updateInstall.canCheckForUpdates) return
@@ -146,7 +127,14 @@ internal class UpdateCoordinator(
             setInstall(UpdateInstallState.Installing(sessionId))
         }
     }
-    fun installerUnavailable() { setInstall(UpdateInstallState.InstallerUnavailable) }
+    fun installerUnavailable() {
+        val pending = state.value.updateInstall as? UpdateInstallState.PendingConfirmation
+        setInstall(UpdateInstallState.InstallerUnavailable)
+        if (pending != null) {
+            attempts.clear()
+            scope.launch { installer.abandonSession(pending.sessionId) }
+        }
+    }
 
     fun reconcileInstall() {
         scope.launch {

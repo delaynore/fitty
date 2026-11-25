@@ -108,15 +108,19 @@ internal class SetTimerSignalService : Service() {
                     if (signal == null) {
                         stopSelfResult(latestStartId)
                     } else {
+                        var cancelled = false
                         try {
                             signalAtDeadline(signal)
                         } catch (failure: CancellationException) {
+                            cancelled = true
                             throw failure
                         } catch (failure: Throwable) {
                             Log.w("SetTimerSignal", "Unable to signal set timer deadline", failure)
                         } finally {
-                            fitty.setTimerSignals.cancel(signal.token)
-                            stopSelfResult(latestStartId)
+                            if (!cancelled) {
+                                fitty.setTimerSignals.cancel(signal.token)
+                                stopSelfResult(latestStartId)
+                            }
                         }
                     }
                 }

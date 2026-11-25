@@ -16,8 +16,8 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.ui.FittyTheme
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.ActiveWorkoutState
-import com.delaynore.fitty.ui.workout.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.workout.WorkoutScreen
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

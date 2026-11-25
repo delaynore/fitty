@@ -73,6 +73,7 @@ import com.delaynore.fitty.ui.SET_WEIGHT_LABEL
 import com.delaynore.fitty.ui.SetFields
 import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.SetTimer
 import com.delaynore.fitty.ui.SwipeToRevealDelete
 import com.delaynore.fitty.domain.formatRecommendation
 import com.delaynore.fitty.domain.formatResult
@@ -93,7 +94,7 @@ internal fun WorkoutScreen(id: Long, activeWorkout: ActiveWorkoutState, onBack: 
     val current = state.takeIf { it.sessionId == id } ?: WorkoutUiState()
     val workout = current.session
     val finished = !current.saving && workout?.summary?.finishedAtMillis != null
-    val missing = current.sessionLoaded && !current.saving && !current.finished && workout == null
+    val missing = current.sessionLoaded && !current.saving && workout == null
     LaunchedEffect(id, finished, missing) {
         when {
             finished -> onFinished()

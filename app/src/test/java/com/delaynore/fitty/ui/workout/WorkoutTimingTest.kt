@@ -9,9 +9,13 @@ import com.delaynore.fitty.data.workouts.SetResult
 import com.delaynore.fitty.data.workouts.WorkoutExercise
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
+import com.delaynore.fitty.data.workouts.WorkoutsRepository
 import com.delaynore.fitty.domain.SetInputField
 import com.delaynore.fitty.domain.SavedRestTimer
 import com.delaynore.fitty.domain.SavedSetTimer
+import com.delaynore.fitty.domain.SetTimerSignal
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
+import com.delaynore.fitty.domain.StorageException
 import com.delaynore.fitty.domain.WorkoutTimerStore
 import com.delaynore.fitty.domain.WorkoutTimersSnapshot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -211,6 +215,142 @@ class WorkoutTimingTest {
         runCurrent()
         assertEquals(emptyList<RemovedWorkoutRow>(), workout.uiState.value.pendingRemovals)
         assertEquals(emptyList<LoggedSet>(), workout.exercise().sets)
+    }
+
+    @Test
+    fun invalidOrForeignOrExpiredStoredTimersAreClearedOnOpenAndClearBeforeOpen() = runTest {
+        val negativeBoot = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(1, 120_000, 7),
+                SavedSetTimer("t1", 1, 1, null, 1, 0, null, null, 7),
+            ),
+        )
+        val (wNeg, _) = openWorkout(bootCount = -1, timerStore = negativeBoot)
+        assertNull(wNeg.uiState.value.restDeadlineMillis)
+        assertNull(wNeg.uiState.value.setTimer)
+        assertEquals(WorkoutTimersSnapshot(), negativeBoot.snapshot)
+
+        val futureStart = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(1, 100, 7),
+                SavedSetTimer("t2", 1, 1, null, 1, 50_000, null, null, 7),
+            ),
+        )
+        advanceTimeBy(1_000)
+        val (wFuture, _) = openWorkout(bootCount = 7, timerStore = futureStart)
+        assertNull(wFuture.uiState.value.restDeadlineMillis)
+        assertNull(wFuture.uiState.value.setTimer)
+        assertEquals(WorkoutTimersSnapshot(), futureStart.snapshot)
+
+        val foreignStore = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(999, 120_000, 7),
+                SavedSetTimer("t3", 999, 1, null, 1, 0, null, null, 7),
+            ),
+        )
+        val (wForeign, id) = openWorkout(bootCount = 7, timerStore = foreignStore)
+        assertNull(wForeign.uiState.value.restDeadlineMillis)
+        assertNull(wForeign.uiState.value.setTimer)
+        assertEquals(WorkoutTimersSnapshot(), foreignStore.snapshot)
+
+        val clearBeforeOpen = FakeTimerStore(
+            WorkoutTimersSnapshot(
+                SavedRestTimer(id, 120_000, 7),
+                SavedSetTimer("t4", id, 1, null, 1, 0, null, null, 7),
+            ),
+        )
+        val session = WorkoutSession(
+            WorkoutSummary(0, "Strength", "A", null),
+            listOf(WorkoutExercise(1, "Plank", emptyList(), type = ExerciseType.DURATION)),
+        )
+        val repo = FakeWorkoutsRepository(mapOf(1L to session))
+        val active = ActiveWorkoutState(
+            repo, 7, { testScheduler.currentTime }, RecordingSignals(),
+            FakeExerciseCatalogRepository(), backgroundScope, clearBeforeOpen, { "fixed-token" },
+        )
+        active.clear(id)
+        assertEquals(WorkoutTimersSnapshot(), clearBeforeOpen.snapshot)
+    }
+
+    @Test
+    fun setTimerIsDiscardedWhenExerciseIsRemovedOrSetAlreadyLogged() = runTest {
+        val logged = LoggedSet(1, SetResult.Duration(10))
+        val storeLogged = FakeTimerStore(
+            WorkoutTimersSnapshot(setTimer = SavedSetTimer("t1", 1, 1, null, 1, 0, 40_000, null, 7)),
+        )
+        val signalsLogged = RecordingSignals()
+        val (wLogged, _) = openWorkout(sets = listOf(logged), signals = signalsLogged, bootCount = 7, timerStore = storeLogged)
+        assertNull(wLogged.uiState.value.setTimer)
+        assertNull(signalsLogged.pending)
+        assertNull(storeLogged.snapshot.setTimer)
+
+        val storeMissing = FakeTimerStore(
+            WorkoutTimersSnapshot(setTimer = SavedSetTimer("t2", 1, 999, null, 1, 0, 40_000, null, 7)),
+        )
+        val signalsMissing = RecordingSignals()
+        val (wMissing, _) = openWorkout(signals = signalsMissing, bootCount = 7, timerStore = storeMissing)
+        assertNull(wMissing.uiState.value.setTimer)
+        assertNull(signalsMissing.pending)
+        assertNull(storeMissing.snapshot.setTimer)
+    }
+
+    @Test
+    fun stoppingPreservesStoppedAtMillisAndAllowsRetryAfterStorageException() = runTest {
+        val session = WorkoutSession(
+            WorkoutSummary(0, "Strength", "A", null),
+            listOf(WorkoutExercise(1, "Plank", emptyList(), type = ExerciseType.DURATION)),
+        )
+        val base = FakeWorkoutsRepository(mapOf(1L to session))
+        var shouldFail = true
+        val failingRepo = object : WorkoutsRepository by base {
+            override suspend fun logSet(sessionId: Long, exercise: WorkoutExercise, set: LoggedSet): Boolean {
+                if (shouldFail) throw StorageException(IllegalStateException("db error"))
+                return base.logSet(sessionId, exercise, set)
+            }
+        }
+        val id = requireNotNull(base.startWorkout(1))
+        val store = FakeTimerStore()
+        val active = ActiveWorkoutState(
+            failingRepo, 7, { testScheduler.currentTime }, RecordingSignals(),
+            FakeExerciseCatalogRepository(), backgroundScope, store, { "fixed-token" },
+        )
+        active.open(id)
+        runCurrent()
+
+        active.startSetTimer(id, 1, 1)
+        advanceTimeBy(15_000)
+        active.stopSetTimer("fixed-token")
+        runCurrent()
+
+        assertEquals("Не удалось записать подход", active.uiState.value.error)
+        assertEquals(15_000L, active.uiState.value.setTimer?.stoppedAtMillis)
+        assertEquals(15_000L, store.snapshot.setTimer?.stoppedAtMillis)
+
+        shouldFail = false
+        advanceTimeBy(5_000)
+        active.stopSetTimer("fixed-token")
+        runCurrent()
+
+        assertNull(active.uiState.value.setTimer)
+        assertNull(store.snapshot.setTimer)
+        assertEquals(listOf(SetResult.Duration(15)), active.exercise().sets.map { it.result })
+    }
+
+    @Test
+    fun deletingUnrecordedRowWithDraftRestoresDraftOnUndo() = runTest {
+        val (workout, id) = openWorkout()
+        val exercise = workout.exercise()
+        workout.changeDraft(exercise, 1, SetInputField.Measure, "33")
+        workout.deleteRow(id, exercise, 1, 1, isRecorded = false)
+        runCurrent()
+
+        assertNull(workout.uiState.value.rows(exercise.id).inputs[1])
+        val removed = workout.uiState.value.pendingRemovals.single()
+        workout.restoreRow(id, removed)
+        runCurrent()
+
+        assertEquals("33", workout.uiState.value.rows(exercise.id).inputs[1]?.measure)
+        assertTrue(workout.uiState.value.pendingRemovals.isEmpty())
     }
 
     private suspend fun TestScope.openWorkout(

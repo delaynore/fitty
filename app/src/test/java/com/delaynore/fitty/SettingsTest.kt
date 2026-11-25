@@ -25,8 +25,8 @@ import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
 import com.delaynore.fitty.data.updates.InstallSession
-import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
+import com.delaynore.fitty.platform.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.platform.updates.getPackageInfoCompat
 import com.delaynore.fitty.data.workouts.LoggedSet
 import com.delaynore.fitty.data.workouts.SetResult

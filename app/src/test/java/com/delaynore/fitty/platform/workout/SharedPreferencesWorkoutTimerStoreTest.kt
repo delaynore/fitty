@@ -36,4 +36,19 @@ class SharedPreferencesWorkoutTimerStoreTest {
 
         assertEquals(WorkoutTimersSnapshot(), SharedPreferencesWorkoutTimerStore(context, "broken.db").read())
     }
+
+    @Test
+    fun clearRemovesPersistedTimersForDatabase() {
+        val snapshot = WorkoutTimersSnapshot(
+            SavedRestTimer(11, 12_000, 3),
+            SavedSetTimer("token", 11, 22, "plank", 2, 1_000, 5_000, 2_000, 3),
+        )
+        val store = SharedPreferencesWorkoutTimerStore(context, "clear.db")
+        store.save(snapshot)
+        assertEquals(snapshot, store.read())
+
+        SharedPreferencesWorkoutTimerStore.clear(context, "clear.db")
+
+        assertEquals(WorkoutTimersSnapshot(), SharedPreferencesWorkoutTimerStore(context, "clear.db").read())
+    }
 }

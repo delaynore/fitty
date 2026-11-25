@@ -1,8 +1,6 @@
 package com.delaynore.fitty.platform.updates
 
-import android.app.Activity
 import android.app.PendingIntent
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
@@ -17,6 +15,9 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 internal open class AndroidUpdateInstaller(
@@ -24,6 +25,7 @@ internal open class AndroidUpdateInstaller(
     private val attempts: UpdateAttemptStore,
 ) : UpdateSessionManager {
     private val packageInstaller get() = context.packageManager.packageInstaller
+    override val sessionUpdates: Flow<Unit> = updates.asSharedFlow()
 
     override fun canRequestInstall() = context.packageManager.canRequestPackageInstalls()
 
@@ -77,31 +79,20 @@ internal open class AndroidUpdateInstaller(
     fun permissionIntent() =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))
 
-    fun requestInstallPermission(activity: Activity): Boolean = launch(activity, permissionIntent())
-
-    fun launchConfirmation(activity: Activity, sessionId: Int, requestId: Long): Boolean {
-        val intent = takeConfirmation(sessionId, requestId) ?: return false
-        return launch(activity, intent)
-    }
-
     open fun takeConfirmation(sessionId: Int, requestId: Long): Intent? = confirmations.remove(Key(sessionId, requestId))
-
-    private fun launch(activity: Activity, intent: Intent) = try {
-        activity.startActivity(intent)
-        true
-    } catch (_: ActivityNotFoundException) {
-        false
-    } catch (_: SecurityException) {
-        false
-    }
 
     companion object {
         private data class Key(val sessionId: Int, val requestId: Long)
         private val nextRequestId = AtomicLong()
         private val confirmations = ConcurrentHashMap<Key, Intent>()
+        private val updates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
         internal fun rememberConfirmation(sessionId: Int, requestId: Long, intent: Intent) {
             confirmations[Key(sessionId, requestId)] = intent
+        }
+
+        internal fun notifySessionUpdated() {
+            updates.tryEmit(Unit)
         }
     }
 }

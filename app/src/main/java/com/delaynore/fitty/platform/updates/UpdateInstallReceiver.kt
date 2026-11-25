@@ -5,15 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
-import com.delaynore.fitty.data.updates.InstallOutcome
-import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.FittyApplication
+import com.delaynore.fitty.data.updates.InstallOutcome
 
 class UpdateInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
         if (sessionId < 0) return
-        val store = SharedPreferencesUpdateAttemptStore(context, FittyApplication.DATABASE_NAME)
+        val databaseName = (context.applicationContext as? FittyApplication)?.databaseName ?: FittyApplication.DATABASE_NAME
+        val store = SharedPreferencesUpdateAttemptStore(context, databaseName)
         val attempt = store.read()?.takeIf { it.sessionId == sessionId && it.outcome == null } ?: return
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -21,9 +21,18 @@ class UpdateInstallReceiver : BroadcastReceiver() {
                 val requestId = intent.getLongExtra(EXTRA_REQUEST_ID, sessionId.toLong())
                 AndroidUpdateInstaller.rememberConfirmation(sessionId, requestId, confirmation)
             }
-            PackageInstaller.STATUS_SUCCESS -> store.write(attempt.copy(outcome = InstallOutcome.Success))
-            PackageInstaller.STATUS_FAILURE_ABORTED -> store.write(attempt.copy(outcome = InstallOutcome.Aborted))
-            else -> store.write(attempt.copy(outcome = InstallOutcome.Failure))
+            PackageInstaller.STATUS_SUCCESS -> {
+                store.write(attempt.copy(outcome = InstallOutcome.Success))
+                AndroidUpdateInstaller.notifySessionUpdated()
+            }
+            PackageInstaller.STATUS_FAILURE_ABORTED -> {
+                store.write(attempt.copy(outcome = InstallOutcome.Aborted))
+                AndroidUpdateInstaller.notifySessionUpdated()
+            }
+            else -> {
+                store.write(attempt.copy(outcome = InstallOutcome.Failure))
+                AndroidUpdateInstaller.notifySessionUpdated()
+            }
         }
     }
 

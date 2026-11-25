@@ -51,7 +51,10 @@ internal fun ProgramEditorScreen(
     onSaved: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { event ->
+    UiEventEffect(
+        state.pendingEvent?.takeUnless { it is ProgramEditorEvent.DayFinished },
+        viewModel::consumeEvent,
+    ) { event ->
         when (event) {
             is ProgramEditorEvent.OpenDay -> onEditDay(event.id)
             ProgramEditorEvent.Saved -> onSaved()
@@ -195,9 +198,7 @@ internal fun TrainingDayEditorScreen(
     onPickExercise: (Long?) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    UiEventEffect(state.pendingEvent, viewModel::consumeEvent) { event ->
-        if (event == ProgramEditorEvent.DayFinished) onBack()
-    }
+    UiEventEffect(state.pendingEvent as? ProgramEditorEvent.DayFinished, viewModel::consumeEvent) { onBack() }
     val day = state.editingDay ?: return
     key(state.draftVersion, day.id) {
         TrainingDayEditorContent(

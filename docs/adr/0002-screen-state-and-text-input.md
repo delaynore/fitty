@@ -1,5 +1,7 @@
 # Keep screen state in StateFlow and the text cursor in Compose
 
-Each ViewModel exposes one immutable `UiState` through `StateFlow`. Starting a detail view or opening the workout replacement chooser selects the ID to observe. Closing it cancels the query and clears its result.
+Each ViewModel exposes one immutable `UiState` through `StateFlow`. Route-scoped detail ViewModels take their target ID in the constructor, and screen-scoped ViewModels share Room queries with `SharingStarted.WhileSubscribed(5_000)` so subscriptions pause off-screen while surviving configuration changes. Opening the workout replacement chooser selects the exercise to observe, and closing it cancels the query and clears its result.
 
 For drafts owned by a ViewModel, Compose updates its local `TextFieldValue` as soon as the keyboard reports an edit. The ViewModel synchronously records the raw text for that field, so a save immediately after typing reads the latest draft. Compose initializes the text buffer again when the draft identity changes or the editor explicitly resets it. This keeps cursor and selection stable while the screen receives state updates. The history set editor keeps its draft in the sheet.
+
+One-off navigation and external UI effects stay inside `UiState` as a nullable `pendingEvent` with explicit `consumeEvent(event)` acknowledgment rather than a separate `Channel` stream, so events survive Activity recreation without adding a second state stream. ViewModel methods do not accept UI navigation or dialog callbacks; modal open state closed by an async ViewModel write lives in `UiState` (with the history set editor still keeping its text draft in the sheet).

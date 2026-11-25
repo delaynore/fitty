@@ -9,6 +9,7 @@ import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
 import com.delaynore.fitty.domain.SetInput
 import com.delaynore.fitty.domain.SetInputField
+import com.delaynore.fitty.domain.SetTimerSignalScheduler
 import com.delaynore.fitty.ui.hasWeightField
 import com.delaynore.fitty.ui.measureLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +54,36 @@ class WorkoutReplacementStateTest {
         assertEquals(ExerciseType.REPS, replacement.type)
         assertFalse(replacement.type.hasWeightField)
         assertEquals("Повторения", replacement.type.measureLabel)
+    }
+
+    @Test
+    fun replacingDurationExerciseClearsPendingRemovalsAndActiveSetTimer() = runTest {
+        val plank = WorkoutExercise(1, "Планка", emptyList(), catalogExerciseId = "plank", type = ExerciseType.DURATION)
+        val day = WorkoutSession(WorkoutSummary(0, "Core", "Day A", null), listOf(plank))
+        val workouts = FakeWorkoutsRepository(mapOf(1L to day))
+        val catalog = FakeExerciseCatalogRepository().apply { allExercises.value = BuiltInExercises.all }
+        val active = ActiveWorkoutState(workouts, -1, { testScheduler.currentTime }, NoTimerSignals, catalog, backgroundScope)
+        val id = requireNotNull(workouts.startWorkout(1L))
+        active.open(id)
+        runCurrent()
+
+        active.changeDraft(plank, 1, SetInputField.Measure, "45")
+        active.deleteRow(id, plank, 1, 1, isRecorded = false)
+        runCurrent()
+        assertEquals(1, active.uiState.value.pendingRemovals.size)
+
+        active.startSetTimer(id, plank.id, 2)
+        assertTrue(active.uiState.value.setTimer != null)
+
+        active.openReplacement()
+        runCurrent()
+        val replacement = requireNotNull(active.uiState.value.replacement?.options?.sameMuscle?.first())
+        active.replaceExercise(replacement)
+        runCurrent()
+
+        assertNull(active.uiState.value.setTimer)
+        assertTrue(active.uiState.value.pendingRemovals.isEmpty())
+        assertTrue(active.uiState.value.rows(plank.id).inputs.isEmpty())
     }
 
     private object NoTimerSignals : SetTimerSignalScheduler {

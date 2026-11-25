@@ -1,7 +1,10 @@
-package com.delaynore.fitty.data.updates
+package com.delaynore.fitty.platform.updates
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.delaynore.fitty.data.updates.InstallOutcome
+import com.delaynore.fitty.data.updates.UpdateAttempt
+import com.delaynore.fitty.data.updates.UpdateAttemptPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

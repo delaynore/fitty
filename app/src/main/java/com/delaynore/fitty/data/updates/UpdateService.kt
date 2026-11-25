@@ -3,6 +3,8 @@ package com.delaynore.fitty.data.updates
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.withContext
 
 internal interface UpdateService {
@@ -17,6 +19,7 @@ internal interface UpdateService {
 }
 
 internal interface UpdateSessionManager {
+    val sessionUpdates: Flow<Unit> get() = emptyFlow()
     fun canRequestInstall(): Boolean
     suspend fun commitInstall(apk: File, expectedVersionCode: Long): InstallSession?
     suspend fun abandonSession(sessionId: Int)

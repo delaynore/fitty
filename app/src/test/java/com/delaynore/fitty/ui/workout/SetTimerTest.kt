@@ -2,6 +2,7 @@ package com.delaynore.fitty.ui.workout
 
 import com.delaynore.fitty.data.exercises.ExerciseType
 import com.delaynore.fitty.data.workouts.WorkoutExercise
+import com.delaynore.fitty.domain.SetTimer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

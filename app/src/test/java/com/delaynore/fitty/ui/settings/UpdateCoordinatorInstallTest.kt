@@ -4,6 +4,7 @@ import com.delaynore.fitty.data.updates.*
 import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -18,7 +19,7 @@ class UpdateCoordinatorInstallTest {
         val service = FakeService(apk)
         val installer = FakeInstaller(session = InstallSession(7, 11))
         val coordinator = UpdateCoordinator(
-            InstalledApp("1", 1), service, installer, MemoryAttemptStore(), FakeWorkoutsRepository(), this,
+            InstalledApp("1", 1), service, installer, MemoryAttemptStore(), FakeWorkoutsRepository(), backgroundScope,
         )
         coordinator.checkForUpdate(); runCurrent()
         coordinator.startUpdate(false); runCurrent()
@@ -38,7 +39,7 @@ class UpdateCoordinatorInstallTest {
         val service = FakeService(apk)
         val installer = FakeInstaller(canInstall = false)
         val coordinator = UpdateCoordinator(
-            InstalledApp("1", 1), service, installer, MemoryAttemptStore(), FakeWorkoutsRepository(), this,
+            InstalledApp("1", 1), service, installer, MemoryAttemptStore(), FakeWorkoutsRepository(), backgroundScope,
         )
         coordinator.checkForUpdate(); runCurrent(); coordinator.startUpdate(false); runCurrent()
         coordinator.beginInstallation(coordinator.uiState.value.updateInstall as UpdateInstallState.Ready)
@@ -59,7 +60,7 @@ class UpdateCoordinatorInstallTest {
             val store = MemoryAttemptStore(UpdateAttempt(3, 2, outcome))
             val coordinator = UpdateCoordinator(
                 InstalledApp("1", 1), FakeService(File("x")), FakeInstaller(), store,
-                FakeWorkoutsRepository(), this,
+                FakeWorkoutsRepository(), backgroundScope,
             )
             runCurrent()
             assertEquals(state, coordinator.uiState.value.updateInstall)
@@ -69,7 +70,7 @@ class UpdateCoordinatorInstallTest {
         val store = MemoryAttemptStore(UpdateAttempt(9, 2))
         val installer = FakeInstaller()
         val coordinator = UpdateCoordinator(
-            InstalledApp("1", 1), FakeService(File("x")), installer, store, FakeWorkoutsRepository(), this,
+            InstalledApp("1", 1), FakeService(File("x")), installer, store, FakeWorkoutsRepository(), backgroundScope,
         )
         runCurrent()
         assertEquals(UpdateInstallState.InstallFailed, coordinator.uiState.value.updateInstall)
@@ -82,7 +83,7 @@ class UpdateCoordinatorInstallTest {
         val store = MemoryAttemptStore(attempt)
         val coordinator = UpdateCoordinator(
             InstalledApp("1", 1), FakeService(File("x")),
-            FakeInstaller(hasConfirmation = true), store, FakeWorkoutsRepository(), this,
+            FakeInstaller(hasConfirmation = true), store, FakeWorkoutsRepository(), backgroundScope,
         )
 
         runCurrent()
@@ -98,7 +99,7 @@ class UpdateCoordinatorInstallTest {
         val installer = FakeInstaller(hasSession = true)
         val coordinator = UpdateCoordinator(
             InstalledApp("1", 1), FakeService(File("x")), installer, store,
-            FakeWorkoutsRepository(), this,
+            FakeWorkoutsRepository(), backgroundScope,
         )
 
         runCurrent()
@@ -114,7 +115,7 @@ class UpdateCoordinatorInstallTest {
         val store = MemoryAttemptStore(attempt)
         val coordinator = UpdateCoordinator(
             InstalledApp("1", 1), FakeService(File("x")),
-            FakeInstaller(hasSession = true), store, FakeWorkoutsRepository(), this,
+            FakeInstaller(hasSession = true), store, FakeWorkoutsRepository(), backgroundScope,
         )
 
         runCurrent()
@@ -129,7 +130,7 @@ class UpdateCoordinatorInstallTest {
         val store = MemoryAttemptStore(attempt)
         val coordinator = UpdateCoordinator(
             InstalledApp("1", 1), FakeService(File("x")), FakeInstaller(hasConfirmation = true),
-            store, FakeWorkoutsRepository(), this,
+            store, FakeWorkoutsRepository(), backgroundScope,
         )
         runCurrent()
 
@@ -137,6 +138,89 @@ class UpdateCoordinatorInstallTest {
 
         assertEquals(UpdateAttemptPhase.Installing, store.read()?.phase)
         assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
+    }
+
+    @Test
+    fun coldStartClearsAttemptWhenInstalledVersionAlreadyMeetsExpected() = runTest {
+        val store = MemoryAttemptStore(UpdateAttempt(9, 5, phase = UpdateAttemptPhase.Installing))
+        val coordinator = UpdateCoordinator(
+            InstalledApp("5", 5), FakeService(File("x")), FakeInstaller(hasSession = true),
+            store, FakeWorkoutsRepository(), backgroundScope,
+        )
+
+        runCurrent()
+
+        assertEquals(UpdateInstallState.Idle, coordinator.uiState.value.updateInstall)
+        assertEquals(null, store.read())
+    }
+
+    @Test
+    fun confirmationLaunchedIgnoresForeignSessionsAndDuplicateCalls() = runTest {
+        val attempt = UpdateAttempt(9, 2, requestId = 17)
+        val store = MemoryAttemptStore(attempt)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1", 1), FakeService(File("x")), FakeInstaller(hasConfirmation = true),
+            store, FakeWorkoutsRepository(), backgroundScope,
+        )
+        runCurrent()
+
+        coordinator.confirmationLaunched(99, 17)
+        coordinator.confirmationLaunched(9, 99)
+        assertEquals(UpdateAttemptPhase.PendingConfirmation, store.read()?.phase)
+        assertEquals(UpdateInstallState.PendingConfirmation(9, 17), coordinator.uiState.value.updateInstall)
+
+        coordinator.confirmationLaunched(9, 17)
+        assertEquals(UpdateAttemptPhase.Installing, store.read()?.phase)
+        assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
+
+        coordinator.confirmationLaunched(9, 17)
+        assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
+    }
+
+    @Test
+    fun failedCommitDeletesApkAndInstallerUnavailableAbandonsPendingSession() = runTest {
+        val apk = File("update.apk")
+        val service = FakeService(apk)
+        val failCommit = UpdateCoordinator(
+            InstalledApp("1", 1), service, FakeInstaller(session = null),
+            MemoryAttemptStore(), FakeWorkoutsRepository(), backgroundScope,
+        )
+        failCommit.checkForUpdate(); runCurrent()
+        failCommit.startUpdate(false); runCurrent()
+        failCommit.beginInstallation(failCommit.uiState.value.updateInstall as UpdateInstallState.Ready)
+        runCurrent()
+        assertEquals(UpdateInstallState.InstallerUnavailable, failCommit.uiState.value.updateInstall)
+        assertEquals(listOf(apk), service.deleted)
+
+        val store = MemoryAttemptStore(UpdateAttempt(12, 2, requestId = 3))
+        val installer = FakeInstaller(hasConfirmation = true)
+        val pending = UpdateCoordinator(
+            InstalledApp("1", 1), FakeService(apk), installer, store, FakeWorkoutsRepository(), backgroundScope,
+        )
+        runCurrent()
+        pending.installerUnavailable()
+        runCurrent()
+        assertEquals(UpdateInstallState.InstallerUnavailable, pending.uiState.value.updateInstall)
+        assertEquals(listOf(12), installer.abandoned)
+        assertEquals(null, store.read())
+    }
+
+    @Test
+    fun sessionUpdatesReconcileInstallingOutcomeAutomatically() = runTest {
+        val store = MemoryAttemptStore(UpdateAttempt(9, 2, requestId = 17, phase = UpdateAttemptPhase.Installing))
+        val installer = FakeInstaller(hasSession = true)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1", 1), FakeService(File("x")), installer, store, FakeWorkoutsRepository(), backgroundScope,
+        )
+        runCurrent()
+        assertEquals(UpdateInstallState.Installing(9), coordinator.uiState.value.updateInstall)
+
+        store.write(UpdateAttempt(9, 2, outcome = InstallOutcome.Aborted, requestId = 17, phase = UpdateAttemptPhase.Installing))
+        installer.sessionUpdates.tryEmit(Unit)
+        runCurrent()
+
+        assertEquals(UpdateInstallState.InstallCancelled, coordinator.uiState.value.updateInstall)
+        assertEquals(null, store.read())
     }
 
     private class FakeService(private val apk: File) : UpdateService {
@@ -156,6 +240,7 @@ class UpdateCoordinatorInstallTest {
         private val hasSession: Boolean = false,
         private val hasConfirmation: Boolean = false,
     ) : UpdateSessionManager {
+        override val sessionUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val abandoned = mutableListOf<Int>()
         override fun canRequestInstall() = canInstall
         override suspend fun commitInstall(apk: File, expectedVersionCode: Long) = session

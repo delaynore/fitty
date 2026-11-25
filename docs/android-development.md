@@ -10,7 +10,7 @@ Choose the lightest test layer that catches the regression. Start with a targete
 
 Once these rules justify a Compose test, use [Compose UI testing patterns](../.agents/skills/compose-ui-testing-patterns/SKILL.md) for mechanics such as semantics, input, and synchronization. Use the Fitty rules above to decide whether to automate and which layer to use.
 
-Set up JDK 21 and the Android SDK as described below. Gradle and the Kotlin toolchain use JDK 21 and target Java 17 bytecode for app code.
+Set up JDK 21 and the Android SDK as described below. Gradle and the Kotlin toolchain use JDK 21 and target Java 17 bytecode for app code. If your Windows shell defaults to an older Java runtime, set `$env:JAVA_HOME` to your JDK 21 directory before invoking `.\gradlew.bat`.
 
 From the repository root, run one JVM class while you work. This example reruns the Robolectric cursor test on API 36. A targeted run should take at most 15 seconds once Gradle is warm.
 
@@ -18,7 +18,7 @@ From the repository root, run one JVM class while you work. This example reruns 
 .\gradlew.bat :app:testDebugUnitTest --tests com.delaynore.fitty.SetFieldsCursorTest --rerun
 ```
 
-Before handoff, run the full JVM suite, build the app, and run Android lint.
+Before handoff, run the JVM suite, build the app, run Android lint, and verify `git status` has no forgotten ADR or doc edits. Running `:app:testDebugUnitTest` separately from `:app:assembleDebug :app:assembleRelease :app:lintDebug` avoids long combined runs. (On Windows, file-backed Room/Robolectric tests may fail with `SQLiteCantOpenDatabaseException`; CI runs the full JVM suite on Linux.)
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:lintDebug

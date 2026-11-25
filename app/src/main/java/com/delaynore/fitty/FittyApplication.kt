@@ -7,8 +7,8 @@ import androidx.room.Room
 import com.delaynore.fitty.data.local.FittyDatabase
 import com.delaynore.fitty.data.updates.GitHubUpdateService
 import com.delaynore.fitty.data.updates.UpdateService
-import com.delaynore.fitty.data.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.platform.updates.AndroidUpdateInstaller
+import com.delaynore.fitty.platform.updates.SharedPreferencesUpdateAttemptStore
 import com.delaynore.fitty.platform.workout.SetTimerSignals
 import com.delaynore.fitty.platform.workout.SharedPreferencesWorkoutTimerStore
 import com.delaynore.fitty.platform.workout.playSetTimerCue

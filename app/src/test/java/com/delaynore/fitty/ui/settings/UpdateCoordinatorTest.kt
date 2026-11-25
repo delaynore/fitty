@@ -1,11 +1,14 @@
 package com.delaynore.fitty.ui.settings
 
 import com.delaynore.fitty.data.updates.FittyUpdate
+import com.delaynore.fitty.data.updates.UpdateAttempt
+import com.delaynore.fitty.data.updates.UpdateAttemptStore
 import com.delaynore.fitty.data.updates.UpdateCheckFailure
 import com.delaynore.fitty.data.updates.UpdateCheckResult
 import com.delaynore.fitty.data.updates.UpdateDownloadFailure
 import com.delaynore.fitty.data.updates.UpdateDownloadResult
 import com.delaynore.fitty.data.updates.UpdateService
+import com.delaynore.fitty.data.updates.UpdateSessionManager
 import com.delaynore.fitty.data.workouts.FakeWorkoutsRepository
 import com.delaynore.fitty.data.workouts.WorkoutSession
 import com.delaynore.fitty.data.workouts.WorkoutSummary
@@ -36,7 +39,9 @@ class UpdateCoordinatorTest {
         val cancelledApk = folder.newFile("cancelled.apk")
         val retryApk = folder.newFile("retry.apk")
         val updates = DelayedDownloads()
-        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), updates, FakeWorkoutsRepository(), this)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1.0", 7), updates, NoopSessionManager, NoopAttemptStore, FakeWorkoutsRepository(), backgroundScope,
+        )
 
         try {
             coordinator.checkForUpdate()
@@ -76,7 +81,9 @@ class UpdateCoordinatorTest {
         val results = UpdateCheckFailure.entries.map { UpdateCheckResult.Failed(it) } + UpdateCheckResult.UpToDate
         val pendingResults = results.iterator()
         val updates = FakeUpdates(check = { pendingResults.next() })
-        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), updates, FakeWorkoutsRepository(), this)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1.0", 7), updates, NoopSessionManager, NoopAttemptStore, FakeWorkoutsRepository(), backgroundScope,
+        )
 
         for (result in results) {
             coordinator.checkForUpdate()
@@ -94,7 +101,9 @@ class UpdateCoordinatorTest {
         val updates = FakeUpdates(downloadResult = {
             if (failures.hasNext()) UpdateDownloadResult.Failed(failures.next()) else UpdateDownloadResult.Downloaded(apk)
         })
-        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), updates, FakeWorkoutsRepository(), this)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1.0", 7), updates, NoopSessionManager, NoopAttemptStore, FakeWorkoutsRepository(), backgroundScope,
+        )
         coordinator.checkForUpdate()
         runCurrent()
 
@@ -115,7 +124,9 @@ class UpdateCoordinatorTest {
         val session = WorkoutSession(WorkoutSummary(0, "Strength", "A", null), emptyList())
         val workouts = FakeWorkoutsRepository(mapOf(1L to session))
         val updates = FakeUpdates()
-        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), updates, workouts, this)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1.0", 7), updates, NoopSessionManager, NoopAttemptStore, workouts, backgroundScope,
+        )
         coordinator.checkForUpdate()
         runCurrent()
 
@@ -159,7 +170,9 @@ class UpdateCoordinatorTest {
             override suspend fun hasInProgressWorkout(): Boolean =
                 throw StorageException(IllegalStateException("storage failed"))
         }
-        val coordinator = UpdateCoordinator(InstalledApp("1.0", 7), FakeUpdates(), failing, this)
+        val coordinator = UpdateCoordinator(
+            InstalledApp("1.0", 7), FakeUpdates(), NoopSessionManager, NoopAttemptStore, failing, backgroundScope,
+        )
         coordinator.checkForUpdate()
         runCurrent()
 
@@ -202,6 +215,20 @@ class UpdateCoordinatorTest {
 
         override suspend fun deleteApk(apk: File) { apk.delete() }
 
+    }
+
+    private object NoopSessionManager : UpdateSessionManager {
+        override fun canRequestInstall() = false
+        override suspend fun commitInstall(apk: File, expectedVersionCode: Long) = null
+        override suspend fun abandonSession(sessionId: Int) = Unit
+        override fun hasSession(sessionId: Int) = false
+        override fun hasConfirmation(sessionId: Int, requestId: Long) = false
+    }
+
+    private object NoopAttemptStore : UpdateAttemptStore {
+        override fun read() = null
+        override fun write(attempt: UpdateAttempt) = Unit
+        override fun clear() = Unit
     }
 
     private class DelayedDownloads : FakeUpdates() {
