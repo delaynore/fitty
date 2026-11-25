@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitty #79 — Итоговый вариант строки подхода</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--background, #f6f6f4);
+    color: var(--foreground, #171717);
+    font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 14px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 10px 14px;
+  }
+  .toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .toolbar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-foreground, #666660);
+    margin-right: 4px;
+  }
+  .ctrl-btn {
+    border: 1px solid var(--border, #d8d8d4);
+    background: var(--secondary, #f0f0ec);
+    color: var(--secondary-foreground, #1f1f1d);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .ctrl-btn:hover {
+    background: var(--accent, #e5e5e0);
+    color: var(--accent-foreground, #171717);
+  }
+  .ctrl-btn.active {
+    background: var(--primary, #171717);
+    color: var(--primary-foreground, #ffffff);
+    border-color: var(--primary, #171717);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 390px minmax(260px, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 780px) {
+    .grid { grid-template-columns: 1fr; justify-items: center; }
+    .side { width: 100%; max-width: 440px; }
+  }
+
+  /* ==================== FITTY PHONE ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-placeholder: #728070;
+
+    width: 390px;
+    min-height: 700px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 30px;
+    border: 4px solid #222822;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    padding: 36px 20px 84px;
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .phone button { font-family: Inter, system-ui, sans-serif; cursor: pointer; }
+  /* Exact baseline font stack: Barlow Condensed for digits/latin, Inter/sans-serif for Cyrillic */
+  .f-d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .f-status {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; font-weight: 600;
+  }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px; border-radius: 12px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-size: 12px; font-weight: 600;
+  }
+  .f-status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--f-on-primary); }
+
+  .f-topbar { display: flex; align-items: center; gap: 8px; height: 42px; }
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; }
+  .f-head h1 { margin: 0; font-size: 24px; line-height: 28px; flex: 1; }
+
+  .f-rest-ring {
+    position: relative; width: 76px; height: 76px; border: 0; border-radius: 50%;
+    background: transparent; flex: none; display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .f-rest-ring svg { position: absolute; inset: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+
+  .f-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .f-tag {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    background: var(--f-chip); font-size: 13px; font-weight: 500; color: var(--f-muted);
+  }
+  .f-tag-subtle {
+    background: transparent; border: 1px solid var(--f-outline); color: var(--f-muted);
+  }
+
+  .f-col-head {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; font-size: 13px;
+    color: var(--f-muted); margin: 14px 0 6px; text-align: center;
+  }
+  .f-rows { display: flex; flex-direction: column; gap: 6px; }
+
+  .f-row {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px;
+    border-radius: 14px; text-align: center;
+  }
+  .f-row-active { min-height: 54px; }
+  .f-row-logged {
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+    cursor: pointer;
+    transition: background 120ms;
+  }
+  .f-row-logged:hover { background: #374720; }
+  .f-row-logged.flash { box-shadow: inset 0 0 0 1.5px var(--f-primary); }
+  .f-row-future { opacity: 0.45; }
+
+  .f-num {
+    width: 28px; height: 28px; border-radius: 50%; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: #81907D; }
+
+  /* Dashed placeholder (suggestion) -> Solid lime + bright white (user input) */
+  .f-in {
+    width: 100%; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text);
+    border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 22px; text-align: center;
+    outline: none; padding: 0 6px;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-in::placeholder {
+    color: var(--f-placeholder);
+    opacity: 1;
+  }
+  .f-in:placeholder-shown {
+    border-style: dashed;
+    border-color: var(--f-outline);
+    background: #0F130F;
+  }
+  .f-in.has-value {
+    border-style: solid;
+    border-color: var(--f-primary);
+    color: var(--f-text);
+    background: var(--f-bg);
+  }
+  .f-in:focus {
+    border-style: solid;
+    border-color: var(--f-primary);
+    background: var(--f-surface);
+  }
+  .f-in-empty-future {
+    height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg);
+  }
+
+  /* Tonal ✓ for suggestion -> Bright solid lime ✓ for user input */
+  .f-check-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    justify-self: center; transition: background 140ms, border-color 140ms, color 140ms, transform 80ms;
+  }
+  .f-check-btn:active { transform: scale(0.94); }
+
+  .btn-tonal-sugg {
+    background: var(--f-primary-container);
+    border: 1.5px solid #4A6128;
+    color: var(--f-primary);
+  }
+  .btn-tonal-sugg:hover { background: #3C4F20; }
+
+  .btn-solid-save {
+    background: var(--f-primary);
+    border: 0;
+    color: var(--f-on-primary);
+  }
+
+  /* Calm logged checkmark */
+  .done-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--f-badge-done); color: #9AD43D;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+
+  .f-undo-strip {
+    margin-top: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-radius: 12px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline);
+    font-size: 12px; color: var(--f-muted);
+  }
+  .f-undo-strip button {
+    border: 0; background: transparent; color: var(--f-primary);
+    font-weight: 600; font-size: 12px; padding: 0;
+  }
+
+  .f-add-set { display: flex; justify-content: center; margin-top: 10px; }
+  .f-ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px;
+    min-height: 44px; padding: 0 20px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .f-nav-prev {
+    width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-nav-all {
+    flex: 1; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+  .f-nav-next {
+    width: 104px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* ==================== SIDE PANEL ==================== */
+  .side { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 14px;
+  }
+  .panel h3 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+  .panel p { margin: 0; font-size: 13px; color: var(--muted-foreground, #555550); }
+  .mini-strip {
+    margin-top: 10px;
+    background: #0B0E0B;
+    border-radius: 14px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #F0F3EA;
+  }
+  .mini-cap { font-size: 11px; color: #8E9C8B; margin-bottom: 2px; font-weight: 500; }
+  .rules { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted-foreground, #555550); }
+  .rules li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="toolbar-label">Контекст:</span>
+      <button class="ctrl-btn" data-sc="prev_workout">Подход 1 (прошлое занятие)</button>
+      <button class="ctrl-btn" data-sc="prev_set">Подход 3 (прошлый подход)</button>
+    </div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">Чип «Прошлый раз» (подход 1):</span>
+      <button class="ctrl-btn" data-chip="on">Показывать</button>
+      <button class="ctrl-btn" data-chip="off">Без чипа</button>
+    </div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">Состояние:</span>
+      <button class="ctrl-btn" data-st="placeholder">1. Подсказка</button>
+      <button class="ctrl-btn" data-st="edited">2. Правка (7)</button>
+      <button class="ctrl-btn" data-st="logged">3. Записан</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+
+    <aside class="side">
+      <div class="panel">
+        <h3>Итоговая комбинация (пунктир + тональная → лаймовая ✓)</h3>
+        <div class="mini-strip phone" style="width:100%;min-height:auto;border:0;box-shadow:none">
+          <div>
+            <div class="mini-cap">1. До ввода — пунктир, серый placeholder, тональная ✓</div>
+            <div id="mini-1"></div>
+          </div>
+          <div>
+            <div class="mini-cap">2. Ввёл «7» — вес пунктиром, повт. белым с лайм-рамкой, яркая ✓</div>
+            <div id="mini-2"></div>
+          </div>
+          <div>
+            <div class="mini-cap">3. После нажатия ✓ — зелёная строка, спокойная ✓</div>
+            <div id="mini-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Правила поведения</h3>
+        <ul class="rules">
+          <li>Незатронутое поле показывает подсказку Fitty как серый placeholder в пунктирной рамке.</li>
+          <li>Ввод в поле сразу подменяет placeholder на белый текст, рамка становится сплошной лаймовой.</li>
+          <li>Нажатие на <strong>✓</strong> записывает введённые значения и подставляет placeholder для незатронутых полей (принятие подсказки целиком — 1 тап).</li>
+          <li>Для TalkBack и автотестов каждое состояние различается по <code>contentDescription</code>.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SC = {
+    prev_workout: {
+      setNum: 1,
+      prior: [],
+      suggW: '62,5',
+      suggR: '8',
+      chipText: 'Прошлый раз: 62,5 × 8'
+    },
+    prev_set: {
+      setNum: 3,
+      prior: [
+        { num: 1, w: '60', r: '8' },
+        { num: 2, w: '62,5', r: '8' }
+      ],
+      suggW: '62,5',
+      suggR: '8',
+      chipText: null
+    }
+  };
+
+  const state = {
+    scenario: 'prev_workout',
+    showChip: false,
+    typedW: '',
+    typedR: '',
+    logged: false,
+    loggedW: null,
+    loggedR: null
+  };
+
+  function checkSvg(size = 20) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>`;
+  }
+
+  function loggedRowHtml(num, w, r, flash) {
+    return `
+      <div class="f-row f-row-logged f-d ${flash ? 'flash' : ''}" data-logged-row="${num}">
+        <span class="f-num f-num-done">${num}</span>
+        <span style="font-size:22px">${w}</span>
+        <span style="font-size:22px">${r}</span>
+        <span class="done-badge" aria-label="Подход ${num} записан">${checkSvg(18)}</span>
+      </div>`;
+  }
+
+  function activeRowHtml(num, suggW, suggR, typedW, typedR, interactive) {
+    const edited = typedW.trim() !== '' || typedR.trim() !== '';
+    return `
+      <div class="f-row f-row-active">
+        <span class="f-num ${edited ? 'f-num-active' : 'f-num-sugg'} f-d" ${interactive ? 'id="active-num"' : ''}>${num}</span>
+        <input class="f-in ${typedW.trim() ? 'has-value' : ''}" ${interactive ? 'id="inp-w"' : 'readonly tabindex="-1"'}
+          value="${typedW}" placeholder="${suggW}" inputmode="decimal">
+        <input class="f-in ${typedR.trim() ? 'has-value' : ''}" ${interactive ? 'id="inp-r"' : 'readonly tabindex="-1"'}
+          value="${typedR}" placeholder="${suggR}" inputmode="numeric">
+        <button class="f-check-btn ${edited ? 'btn-solid-save' : 'btn-tonal-sugg'}" type="button" ${interactive ? 'id="btn-commit"' : 'tabindex="-1"'}>
+          ${checkSvg(20)}
+        </button>
+      </div>`;
+  }
+
+  function futureRowHtml(num) {
+    return `
+      <div class="f-row f-row-future">
+        <span class="f-num f-num-future f-d">${num}</span>
+        <div class="f-in-empty-future"></div>
+        <div class="f-in-empty-future"></div>
+        <span></span>
+      </div>`;
+  }
+
+  function stageNow() {
+    if (state.logged) return 'logged';
+    return (state.typedW.trim() || state.typedR.trim()) ? 'edited' : 'placeholder';
+  }
+
+  function render() {
+    const sc = SC[state.scenario];
+
+    document.querySelectorAll('[data-sc]').forEach(b => b.classList.toggle('active', b.dataset.sc === state.scenario));
+    document.querySelectorAll('[data-chip]').forEach(b => b.classList.toggle('active', (b.dataset.chip === 'on') === state.showChip));
+    const st = stageNow();
+    document.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('active', b.dataset.st === st));
+
+    const rows = [];
+    for (const r of sc.prior) rows.push(loggedRowHtml(r.num, r.w, r.r, false));
+
+    if (state.logged) {
+      rows.push(loggedRowHtml(sc.setNum, state.loggedW, state.loggedR, true));
+      rows.push(activeRowHtml(sc.setNum + 1, state.loggedW, state.loggedR, '', '', false));
+      if (sc.setNum === 1) rows.push(futureRowHtml(3));
+    } else {
+      rows.push(activeRowHtml(sc.setNum, sc.suggW, sc.suggR, state.typedW, state.typedR, true));
+      for (let n = sc.setNum + 1; n <= Math.max(3, sc.setNum + 1); n++) rows.push(futureRowHtml(n));
+    }
+
+    document.getElementById('phone').innerHTML = `
+      <div class="f-status" aria-hidden="true">
+        <span>18:40</span>
+        <span class="f-status-pill"><i></i>Отдых 1:42</span>
+        <span style="color:var(--f-muted);font-size:12px">5G · 82%</span>
+      </div>
+
+      <div class="f-topbar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+        <span class="f-d" style="font-size:15px;color:var(--f-muted)">Упр. 2/4</span>
+      </div>
+
+      <div class="f-head">
+        <h1 class="f-d">Жим штанги лёжа</h1>
+        <button class="f-rest-ring" type="button">
+          <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#252D24" stroke-width="6"></circle>
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#C5FA55" stroke-width="6" stroke-linecap="round" stroke-dasharray="135 207" transform="rotate(-90 38 38)"></circle>
+          </svg>
+          <span class="f-rest-ring-inner">
+            <span class="f-d" style="font-size:10px;color:var(--f-muted)">Отдых</span>
+            <span class="f-d" style="font-size:22px;color:var(--f-primary);margin-top:2px">1:42</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="f-tags">
+        <span class="f-tag">План: 3 × 8</span>
+        ${state.showChip && sc.chipText ? `<span class="f-tag f-tag-subtle">${sc.chipText}</span>` : ''}
+      </div>
+
+      <div class="f-col-head f-d">
+        <span>№</span><span>Вес, кг</span><span>Повторения</span><span></span>
+      </div>
+
+      <div class="f-rows">${rows.join('')}</div>
+
+      ${state.logged ? `
+        <div class="f-undo-strip">
+          <span>Подход ${sc.setNum} записан (${state.loggedW} × ${state.loggedR})</span>
+          <button type="button" id="btn-undo">Отменить</button>
+        </div>` : ''}
+
+      <div class="f-add-set"><button class="f-ob" type="button">+ Подход</button></div>
+
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" type="button" aria-label="Предыдущее">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+        </button>
+        <button class="f-nav-all" type="button">Упражнения</button>
+        <button class="f-nav-next" type="button" aria-label="Следующее">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
+    `;
+
+    document.getElementById('mini-1').innerHTML = activeRowHtml(sc.setNum, '62,5', '8', '', '', false);
+    document.getElementById('mini-2').innerHTML = activeRowHtml(sc.setNum, '62,5', '8', '', '7', false);
+    document.getElementById('mini-3').innerHTML = loggedRowHtml(sc.setNum, '62,5', '7', false);
+
+    const inpW = document.getElementById('inp-w');
+    const inpR = document.getElementById('inp-r');
+    const commitBtn = document.getElementById('btn-commit');
+    const undoBtn = document.getElementById('btn-undo');
+
+    const updateInPlace = () => {
+      const edited = state.typedW.trim() !== '' || state.typedR.trim() !== '';
+      if (inpW) inpW.classList.toggle('has-value', state.typedW.trim() !== '');
+      if (inpR) inpR.classList.toggle('has-value', state.typedR.trim() !== '');
+      if (commitBtn) commitBtn.className = `f-check-btn ${edited ? 'btn-solid-save' : 'btn-tonal-sugg'}`;
+      const numEl = document.getElementById('active-num');
+      if (numEl) numEl.className = `f-num ${edited ? 'f-num-active' : 'f-num-sugg'} f-d`;
+      const sNow = stageNow();
+      document.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('active', b.dataset.st === sNow));
+    };
+
+    if (inpW) inpW.addEventListener('input', () => { state.typedW = inpW.value; updateInPlace(); });
+    if (inpR) inpR.addEventListener('input', () => { state.typedR = inpR.value; updateInPlace(); });
+    if (commitBtn) commitBtn.addEventListener('click', () => {
+      state.logged = true;
+      state.loggedW = state.typedW.trim() || sc.suggW;
+      state.loggedR = state.typedR.trim() || sc.suggR;
+      render();
+    });
+    if (undoBtn) undoBtn.addEventListener('click', () => {
+      state.logged = false;
+      render();
+    });
+  }
+
+  document.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => {
+    state.scenario = b.dataset.sc;
+    state.typedW = ''; state.typedR = ''; state.logged = false;
+    render();
+  }));
+  document.querySelectorAll('[data-chip]').forEach(b => b.addEventListener('click', () => {
+    state.showChip = b.dataset.chip === 'on';
+    render();
+  }));
+  document.querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => {
+    const sc = SC[state.scenario];
+    if (b.dataset.st === 'placeholder') { state.typedW = ''; state.typedR = ''; state.logged = false; }
+    else if (b.dataset.st === 'edited') { state.typedW = ''; state.typedR = '7'; state.logged = false; }
+    else { state.loggedW = state.typedW.trim() || sc.suggW; state.loggedR = state.typedR.trim() || '7'; state.logged = true; }
+    render();
+  }));
+
+  render();
+})();
+</script>
+</body>
+</html>

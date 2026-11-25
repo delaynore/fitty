@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitty #79 — Варианты строки подхода: подсказка, правка, запись</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /*
+   * Prototype plan (#79):
+   * Three structurally different variants (A, B, C) of the workout set row inside
+   * Fitty's Workout screen, switchable via ?variant=A|B|C and the bottom pill bar.
+   */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--background, #f6f6f4);
+    color: var(--foreground, #171717);
+    font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .proto-shell {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 16px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Top scenario & stage toolbar (Orca-themed) */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 10px 14px;
+  }
+
+  .toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toolbar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-foreground, #666660);
+    margin-right: 4px;
+  }
+
+  .ctrl-btn {
+    border: 1px solid var(--border, #d8d8d4);
+    background: var(--secondary, #f0f0ec);
+    color: var(--secondary-foreground, #1f1f1d);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms, color 120ms;
+  }
+  .ctrl-btn:hover {
+    background: var(--accent, #e5e5e0);
+    color: var(--accent-foreground, #171717);
+  }
+  .ctrl-btn.active {
+    background: var(--primary, #171717);
+    color: var(--primary-foreground, #ffffff);
+    border-color: var(--primary, #171717);
+  }
+
+  /* Main split: Phone + State Inspector */
+  .stage-grid {
+    display: grid;
+    grid-template-columns: 390px minmax(260px, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 780px) {
+    .stage-grid {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+    .inspector {
+      width: 100%;
+      max-width: 440px;
+    }
+  }
+
+  /* ==================== FITTY PHONE MOCKUP (scoped palette) ==================== */
+  .phone-frame {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #7C8979;
+    --f-draft: #F6C86E;
+    --f-draft-bg: #2B2414;
+    --f-draft-border: #6E5827;
+
+    width: 390px;
+    min-height: 752px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 30px;
+    border: 4px solid #222822;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    padding: 36px 18px 82px;
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  .phone-frame button {
+    font-family: Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  .f-d {
+    font-family: "Barlow Condensed", Impact, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .f-status {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 22px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--f-text);
+  }
+  .f-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 12px;
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .f-status-pill i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--f-on-primary);
+    display: inline-block;
+  }
+
+  .f-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+  }
+
+  .f-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 2px 0 8px;
+  }
+  .f-head h1 {
+    margin: 0;
+    font-size: 25px;
+    line-height: 27px;
+    flex: 1;
+    color: var(--f-text);
+  }
+
+  .f-rest-ring {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    flex: none;
+    color: var(--f-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .f-rest-ring svg {
+    position: absolute;
+    inset: 0;
+  }
+  .f-rest-ring-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .f-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--f-chip);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--f-muted);
+  }
+
+  .f-col-head {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr 48px;
+    gap: 8px;
+    align-items: center;
+    padding: 0 6px 0 8px;
+    font-size: 12px;
+    color: var(--f-muted);
+    margin: 14px 0 6px;
+    text-align: center;
+  }
+  .f-col-head.wide-cta {
+    grid-template-columns: 28px 1fr 1fr 92px;
+  }
+
+  .f-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Logged row (shared baseline across variants, refined per variant) */
+  .f-row-logged {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr 78px;
+    gap: 8px;
+    align-items: center;
+    padding: 0 8px;
+    min-height: 48px;
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+    border-radius: 14px;
+    text-align: center;
+    transition: background 180ms;
+  }
+  .f-row-logged.just-logged {
+    box-shadow: inset 0 0 0 1.5px var(--f-primary);
+  }
+  .f-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+  }
+  .f-num-done {
+    background: var(--f-badge-done);
+    color: var(--f-primary);
+  }
+  .f-num-active {
+    box-shadow: inset 0 0 0 1.5px var(--f-primary);
+    color: var(--f-primary);
+  }
+  .f-num-draft {
+    box-shadow: inset 0 0 0 1.5px var(--f-draft);
+    color: var(--f-draft);
+  }
+  .f-num-future {
+    background: var(--f-chip);
+    color: var(--f-dim);
+  }
+
+  .f-done-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--f-badge-done);
+    color: var(--f-primary);
+    font-size: 11px;
+    font-weight: 600;
+    justify-self: end;
+    white-space: nowrap;
+  }
+
+  /* Future empty row */
+  .f-row-future {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr 78px;
+    gap: 8px;
+    align-items: center;
+    padding: 0 8px;
+    min-height: 46px;
+    opacity: 0.45;
+  }
+  .f-box-empty {
+    height: 42px;
+    border: 1.5px solid var(--f-chip);
+    border-radius: 12px;
+    background: var(--f-bg);
+  }
+
+  /* Shared editable input inside phone */
+  .f-val-input {
+    width: 100%;
+    height: 46px;
+    border-radius: 12px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    font-family: "Barlow Condensed", Impact, sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    text-align: center;
+    outline: none;
+    padding: 0 6px;
+    transition: border-color 140ms, color 140ms, background 140ms;
+  }
+  .f-val-input.suggested {
+    border: 1.5px dashed var(--f-outline);
+    color: var(--f-muted);
+    background: #101510;
+  }
+  .f-val-input.edited {
+    border: 1.5px solid var(--f-draft);
+    color: var(--f-text);
+    background: #15140E;
+  }
+  .f-val-input.ghost {
+    border: 1.5px solid var(--f-outline);
+    color: var(--f-text);
+    background: var(--f-bg);
+  }
+  .f-val-input.ghost::placeholder {
+    color: var(--f-dim);
+    opacity: 1;
+  }
+  .f-val-input:focus {
+    border-style: solid;
+    border-color: var(--f-primary);
+    color: var(--f-text);
+  }
+
+  .f-stepper-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .f-quick-step {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .f-mini-btn {
+    width: 22px;
+    height: 18px;
+    border: 0;
+    border-radius: 5px;
+    background: var(--f-chip);
+    color: var(--f-muted);
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .f-mini-btn:hover {
+    background: var(--f-outline);
+    color: var(--f-text);
+  }
+
+  /* ==================== VARIANT A: ACTIVE FOCUS CARD ==================== */
+  .va-card {
+    background: var(--f-surface);
+    border: 1.5px solid var(--f-outline);
+    border-radius: 18px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .va-card.is-draft {
+    border-color: var(--f-draft-border);
+    background: #171610;
+  }
+  .va-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .va-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .va-badge.sugg {
+    background: var(--f-chip);
+    color: var(--f-muted);
+  }
+  .va-badge.draft {
+    background: var(--f-draft-bg);
+    color: var(--f-draft);
+    border: 1px solid var(--f-draft-border);
+  }
+  .va-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .va-field-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--f-muted);
+    margin-bottom: 4px;
+  }
+  .va-origin {
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .va-origin.from-fitty { color: var(--f-dim); }
+  .va-origin.from-user { color: var(--f-draft); }
+
+  .va-cta-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .va-cta-accept {
+    flex: 1;
+    min-height: 44px;
+    border-radius: 999px;
+    border: 1.5px solid var(--f-primary);
+    background: var(--f-surface-hi);
+    color: var(--f-primary);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 0 14px;
+  }
+  .va-cta-accept:hover { background: var(--f-primary-container); }
+
+  .va-cta-save {
+    flex: 1;
+    min-height: 44px;
+    border-radius: 999px;
+    border: 0;
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 0 14px;
+  }
+  .va-reset-link {
+    border: 1px solid var(--f-outline);
+    background: transparent;
+    color: var(--f-muted);
+    border-radius: 999px;
+    height: 44px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* ==================== VARIANT B: COMPACT ROW + FOOTER STRIP ==================== */
+  .vb-wrap {
+    border-radius: 14px;
+    padding: 8px 8px 7px;
+    background: var(--f-surface);
+    border: 1.5px dashed var(--f-outline);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .vb-wrap.is-draft {
+    border-style: solid;
+    border-color: var(--f-draft-border);
+    background: #171610;
+  }
+  .vb-grid {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 92px;
+    gap: 7px;
+    align-items: center;
+  }
+  .vb-cell {
+    position: relative;
+  }
+  .vb-diff-tag {
+    position: absolute;
+    top: -6px;
+    right: 6px;
+    background: var(--f-draft-bg);
+    color: var(--f-draft);
+    border: 1px solid var(--f-draft-border);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 5px;
+    border-radius: 999px;
+    line-height: 15px;
+  }
+  .vb-btn-accept {
+    height: 46px;
+    border-radius: 12px;
+    border: 1.5px solid var(--f-primary);
+    background: var(--f-surface-hi);
+    color: var(--f-primary);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 0 8px;
+  }
+  .vb-btn-accept:hover { background: var(--f-primary-container); }
+
+  .vb-btn-save {
+    height: 46px;
+    border-radius: 12px;
+    border: 0;
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 0 8px;
+  }
+  .vb-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 2px 4px 0 34px;
+    font-size: 11px;
+    color: var(--f-muted);
+  }
+  .vb-footer.is-draft { color: var(--f-draft); }
+  .vb-undo {
+    border: 0;
+    background: transparent;
+    color: var(--f-muted);
+    text-decoration: underline;
+    font-size: 11px;
+    padding: 0;
+  }
+
+  /* ==================== VARIANT C: SEPARATED PROPOSAL BAND + GHOST ROW ==================== */
+  .vc-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1.5px solid var(--f-outline);
+    background: var(--f-surface);
+  }
+  .vc-stack.is-draft {
+    border-color: var(--f-draft-border);
+  }
+  .vc-banner {
+    background: var(--f-surface-hi);
+    padding: 9px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--f-outline);
+  }
+  .vc-banner.is-draft {
+    background: var(--f-draft-bg);
+    border-bottom-color: var(--f-draft-border);
+  }
+  .vc-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 11px;
+    color: var(--f-muted);
+  }
+  .vc-banner-text strong {
+    font-size: 12px;
+    color: var(--f-text);
+    font-weight: 600;
+  }
+  .vc-banner-pill {
+    border: 1.5px solid var(--f-primary);
+    background: var(--f-primary-container);
+    color: var(--f-primary);
+    border-radius: 999px;
+    height: 36px;
+    padding: 0 12px;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .vc-banner-pill:hover {
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+  }
+  .vc-row {
+    padding: 10px 8px;
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 90px;
+    gap: 7px;
+    align-items: start;
+  }
+  .vc-cell-note {
+    font-size: 10px;
+    text-align: center;
+    margin-top: 3px;
+    color: var(--f-dim);
+  }
+  .vc-cell-note.user { color: var(--f-draft); font-weight: 600; }
+  .vc-btn-disabled {
+    height: 46px;
+    border-radius: 12px;
+    border: 1px solid var(--f-chip);
+    background: transparent;
+    color: var(--f-dim);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 6px;
+    line-height: 1.15;
+  }
+  .vc-btn-save {
+    height: 46px;
+    border-radius: 12px;
+    border: 0;
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 0 8px;
+  }
+
+  /* Toast feedback for moment of recording */
+  .f-toast {
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: var(--f-badge-done);
+    border: 1px solid var(--f-primary);
+    color: var(--f-on-primary-container);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .f-toast button {
+    border: 0;
+    background: transparent;
+    color: var(--f-primary);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 2px 4px;
+  }
+
+  .f-add-set {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .f-ob {
+    background: transparent;
+    color: var(--f-text);
+    border: 1.5px solid var(--f-outline);
+    border-radius: 999px;
+    min-height: 40px;
+    padding: 0 18px;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .f-bottom-nav {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .f-nav-prev {
+    width: 46px;
+    height: 46px;
+    border-radius: 23px;
+    border: 1.5px solid var(--f-outline);
+    background: transparent;
+    color: var(--f-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+  .f-nav-all {
+    flex: 1;
+    height: 46px;
+    border-radius: 23px;
+    border: 1.5px solid var(--f-primary);
+    background: transparent;
+    color: var(--f-text);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .f-nav-next {
+    width: 96px;
+    height: 46px;
+    border-radius: 23px;
+    border: 1.5px solid var(--f-primary);
+    background: var(--f-primary-container);
+    color: var(--f-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+
+  /* ==================== INSPECTOR PANEL (Orca-themed) ==================== */
+  .inspector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel {
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #171717);
+    border: 1px solid var(--border, #e2e2df);
+    border-radius: var(--radius, 12px);
+    padding: 14px;
+  }
+
+  .panel h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  .panel p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted-foreground, #555550);
+  }
+
+  .kv-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
+  .kv-k {
+    color: var(--muted-foreground, #666660);
+    font-weight: 500;
+  }
+  .kv-v {
+    font-weight: 600;
+  }
+
+  .state-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .state-chip.sugg { background: var(--secondary, #ecece8); color: var(--secondary-foreground, #333); }
+  .state-chip.draft { background: #fef3c7; color: #92400e; }
+  .state-chip.logged { background: #dcfce7; color: #166534; }
+
+  .a11y-box {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--muted, #f3f3ef);
+    color: var(--foreground, #171717);
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .tradeoffs {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: var(--muted-foreground, #555550);
+  }
+  .tradeoffs li { margin-bottom: 4px; }
+
+  /* ==================== FLOATING BOTTOM VARIANT SWITCHER ==================== */
+  .switcher-dock {
+    position: sticky;
+    bottom: 10px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 40;
+    margin-top: 4px;
+  }
+  .switcher-pill {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #171717;
+    color: #fafafa;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px;
+    padding: 6px 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  }
+  .switcher-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(255,255,255,0.1);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .switcher-arrow:hover { background: rgba(255,255,255,0.22); }
+  .switcher-label {
+    min-width: 230px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 6px;
+  }
+  .switcher-dots {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .switcher-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.28);
+  }
+  .switcher-dot.active { background: #C5FA55; }
+</style>
+</head>
+<body>
+<div class="proto-shell">
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="toolbar-label">Источник подсказки:</span>
+      <button class="ctrl-btn" data-scenario="prev_workout" id="sc-prev-workout">Подход 1 · прошлое занятие</button>
+      <button class="ctrl-btn" data-scenario="prev_set" id="sc-prev-set">Подход 3 · прошлый подход</button>
+    </div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">Состояние строки (62,5 × 8):</span>
+      <button class="ctrl-btn" data-stage="suggested" id="st-suggested">1. До ввода</button>
+      <button class="ctrl-btn" data-stage="edited" id="st-edited">2. Правка (8 → 7)</button>
+      <button class="ctrl-btn" data-stage="logged" id="st-logged">3. Записан</button>
+    </div>
+  </div>
+
+  <div class="stage-grid">
+    <!-- FITTY PHONE MOCKUP -->
+    <div class="phone-frame" id="phone-root"></div>
+
+    <!-- STATE & ACCESSIBILITY INSPECTOR -->
+    <aside class="inspector">
+      <div class="panel" id="variant-meta-panel"></div>
+      <div class="panel" id="state-panel"></div>
+      <div class="panel" id="a11y-panel"></div>
+    </aside>
+  </div>
+
+  <!-- FLOATING VARIANT SWITCHER -->
+  <div class="switcher-dock">
+    <div class="switcher-pill" role="region" aria-label="Переключатель вариантов прототипа">
+      <button class="switcher-arrow" id="btn-prev-var" title="Предыдущий вариант (←)">←</button>
+      <div class="switcher-label">
+        <div id="switcher-text">A · Карточка подхода</div>
+        <div class="switcher-dots" id="switcher-dots"></div>
+      </div>
+      <button class="switcher-arrow" id="btn-next-var" title="Следующий вариант (→)">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const VARIANTS = [
+    {
+      key: 'A',
+      name: 'Карточка активного подхода',
+      summary: 'Активный подход раскрывается в отдельную карточку: сверху статус и источник, посередине поля с подписью авторства, снизу крупная кнопка на всю ширину («Принять 62,5 × 8» → «Записать 62,5 × 7»).',
+      pros: [
+        'Самый крупный и надёжный тап в зале: принять подсказку одним нажатием легко даже на ходу.',
+        'Максимально чёткое разделение: подсказка, правка и записанная зелёная строка отличаются и формой, и текстом.',
+        'Авторство видно на уровне каждого поля («подсказка» vs «изменено вами, было 8»).'
+      ],
+      cons: [
+        'Активный подход занимает больше высоты (~140 dp), на маленьком экране 4-й подход уходит ниже.'
+      ]
+    },
+    {
+      key: 'B',
+      name: 'Компактная строка с подвалом',
+      summary: 'Сохраняет табличный ритм базового макета, но вместо голой галочки справа ставит текстовую кнопку («Принять» → «Записать»), а под полями — тонкую строку статуса и источника.',
+      pros: [
+        'Все подходы упражнения помещаются на одном экране без прокрутки, как в исходном макете.',
+        'Текстовая кнопка справа сразу снимает двусмысленность с зелёной галочкой записанных строк.',
+        'Над полем повторений появляется микро-метка «8→7», показывающая, что именно изменено.'
+      ],
+      cons: [
+        'Текстовая кнопка справа («Принять» / «Записать») сужает ширину полей веса и повторений.'
+      ]
+    },
+    {
+      key: 'C',
+      name: 'Полоса подсказки + призрачный ввод',
+      summary: 'Разводит подсказку Fitty и поля ввода в два слоя: сверху полоса с источником и кнопкой в один тап («Записать 62,5 × 8»), ниже поля с призрачными placeholder-значениями до первого касания.',
+      pros: [
+        'Невозможно спутать подсказку с уже введёнными данными: поля выглядят пустыми, пока атлет их не тронет.',
+        'Принять подсказку целиком можно одним нажатием по кнопке на верхней полосе.',
+        'После правки верхняя полоса превращается в справку «Было в подсказке: 62,5 × 8» — легко сравнить.'
+      ],
+      cons: [
+        'Чтобы исправить только повторения, взгляд переходит от полосы подсказки к полям ниже (две зоны вместо одной).'
+      ]
+    }
+  ];
+
+  const SCENARIOS = {
+    prev_workout: {
+      id: 'prev_workout',
+      setNum: 1,
+      priorLogged: [],
+      sourceShort: 'из прошлого занятия',
+      sourceLong: 'Прошлое занятие · 21 ноя (подход 1)',
+      suggestedWeight: '62,5',
+      suggestedReps: '8',
+      plannedSets: 3
+    },
+    prev_set: {
+      id: 'prev_set',
+      setNum: 3,
+      priorLogged: [
+        { num: 1, weight: '60', reps: '8' },
+        { num: 2, weight: '62,5', reps: '8' }
+      ],
+      sourceShort: 'как в подходе 2',
+      sourceLong: 'Предыдущий подход · №2',
+      suggestedWeight: '62,5',
+      suggestedReps: '8',
+      plannedSets: 3
+    }
+  };
+
+  function getInitialVariant() {
+    try {
+      const p = new URLSearchParams(window.location.search).get('variant');
+      if (p && VARIANTS.some(v => v.key === p.toUpperCase())) return p.toUpperCase();
+    } catch (_) {}
+    return 'A';
+  }
+
+  const state = {
+    variant: getInitialVariant(),
+    scenario: 'prev_set',
+    // stage: 'suggested' | 'edited' | 'logged'
+    stage: 'suggested',
+    weight: '62,5',
+    reps: '8',
+    weightEdited: false,
+    repsEdited: false,
+    loggedAt: null,
+    loggedByOneTap: false
+  };
+
+  function syncUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('variant', state.variant);
+      window.history.replaceState(null, '', url.toString());
+    } catch (_) {}
+  }
+
+  function applyStage(stage) {
+    const sc = SCENARIOS[state.scenario];
+    state.stage = stage;
+    if (stage === 'suggested') {
+      state.weight = sc.suggestedWeight;
+      state.reps = sc.suggestedReps;
+      state.weightEdited = false;
+      state.repsEdited = false;
+      state.loggedAt = null;
+      state.loggedByOneTap = false;
+    } else if (stage === 'edited') {
+      state.weight = sc.suggestedWeight;
+      state.reps = '7';
+      state.weightEdited = false;
+      state.repsEdited = true;
+      state.loggedAt = null;
+      state.loggedByOneTap = false;
+    } else if (stage === 'logged') {
+      if (!state.weightEdited && !state.repsEdited) {
+        state.weight = sc.suggestedWeight;
+        state.reps = '7';
+        state.repsEdited = true;
+      }
+      state.loggedAt = '18:40';
+      state.loggedByOneTap = !state.weightEdited && !state.repsEdited;
+    }
+    render();
+  }
+
+  function acceptSuggestionOneTap() {
+    const sc = SCENARIOS[state.scenario];
+    state.weight = sc.suggestedWeight;
+    state.reps = sc.suggestedReps;
+    state.weightEdited = false;
+    state.repsEdited = false;
+    state.stage = 'logged';
+    state.loggedAt = '18:40';
+    state.loggedByOneTap = true;
+    render();
+  }
+
+  function saveDraft() {
+    if (!state.weight.trim() || !state.reps.trim()) return;
+    state.stage = 'logged';
+    state.loggedAt = '18:40';
+    state.loggedByOneTap = false;
+    render();
+  }
+
+  function updateField(field, value) {
+    const sc = SCENARIOS[state.scenario];
+    if (field === 'weight') {
+      state.weight = value;
+      state.weightEdited = value.trim() !== sc.suggestedWeight;
+    } else {
+      state.reps = value;
+      state.repsEdited = value.trim() !== sc.suggestedReps;
+    }
+    state.stage = (state.weightEdited || state.repsEdited) ? 'edited' : 'suggested';
+    state.loggedAt = null;
+    render();
+  }
+
+  function stepReps(delta) {
+    const cur = parseInt(state.reps, 10);
+    const next = isNaN(cur) ? 8 : Math.max(1, cur + delta);
+    updateField('reps', String(next));
+  }
+
+  function stepWeight(delta) {
+    const cur = parseFloat(state.weight.replace(',', '.'));
+    const next = isNaN(cur) ? 62.5 : Math.max(0, Math.round((cur + delta) * 10) / 10);
+    updateField('weight', String(next).replace('.', ','));
+  }
+
+  function checkIcon(size = 14) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>`;
+  }
+
+  function renderLoggedRow(num, weight, reps, isJustLogged) {
+    return `
+      <div class="f-row-logged f-d ${isJustLogged ? 'just-logged' : ''}">
+        <span class="f-num f-num-done">${num}</span>
+        <span style="font-size:22px">${weight}</span>
+        <span style="font-size:22px">${reps}</span>
+        <span class="f-done-pill" style="font-family:Inter,sans-serif;text-transform:none;letter-spacing:0">${checkIcon(13)} Записан</span>
+      </div>`;
+  }
+
+  function renderFutureRow(num) {
+    return `
+      <div class="f-row-future">
+        <span class="f-num f-num-future f-d">${num}</span>
+        <div class="f-box-empty"></div>
+        <div class="f-box-empty"></div>
+        <span style="font-size:11px;color:var(--f-dim);text-align:right">Ожидает</span>
+      </div>`;
+  }
+
+  function renderNextHintPreview(sc) {
+    const nextNum = sc.setNum + 1;
+    return `
+      <div style="border:1px dashed var(--f-outline);border-radius:14px;padding:9px 10px;background:#101410;display:flex;align-items:center;justify-content:space-between;gap:8px;opacity:.92">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="f-num f-num-active f-d">${nextNum}</span>
+          <div style="font-size:12px;color:var(--f-muted);line-height:1.25">
+            <div><strong style="color:var(--f-text)">Подсказка: ${state.weight} × ${state.reps}</strong></div>
+            <div style="font-size:11px;color:var(--f-dim)">как в подходе ${sc.setNum} · не записано</div>
+          </div>
+        </div>
+        <span style="font-size:11px;color:var(--f-primary);font-weight:600">Следующий</span>
+      </div>`;
+  }
+
+  function renderActiveVariantA(sc) {
+    const isDraft = state.stage === 'edited';
+    const wNote = state.weightEdited ? `изменено (было ${sc.suggestedWeight})` : 'подсказка Fitty';
+    const rNote = state.repsEdited ? `изменено (было ${sc.suggestedReps})` : 'подсказка Fitty';
+    return `
+      <div class="va-card ${isDraft ? 'is-draft' : ''}">
+        <div class="va-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="f-num ${isDraft ? 'f-num-draft' : 'f-num-active'} f-d">${sc.setNum}</span>
+            <span class="va-badge ${isDraft ? 'draft' : 'sugg'}">
+              ${isDraft ? 'Правка · не записано' : `Подсказка · ${sc.sourceShort}`}
+            </span>
+          </div>
+          ${!isDraft ? `<span style="font-size:11px;color:var(--f-dim)">Не записано</span>` : ''}
+        </div>
+
+        <div class="va-fields">
+          <div class="f-stepper-wrap">
+            <div class="va-field-label">
+              <span>Вес, кг</span>
+              <span class="va-origin ${state.weightEdited ? 'from-user' : 'from-fitty'}">${wNote}</span>
+            </div>
+            <div style="position:relative">
+              <input class="f-val-input ${state.weightEdited ? 'edited' : 'suggested'}" id="inp-weight" value="${state.weight}" aria-label="Вес, кг">
+              <div class="f-quick-step">
+                <button class="f-mini-btn" data-step="w+" title="+2,5 кг">+</button>
+                <button class="f-mini-btn" data-step="w-" title="−2,5 кг">−</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="f-stepper-wrap">
+            <div class="va-field-label">
+              <span>Повторения</span>
+              <span class="va-origin ${state.repsEdited ? 'from-user' : 'from-fitty'}">${rNote}</span>
+            </div>
+            <div style="position:relative">
+              <input class="f-val-input ${state.repsEdited ? 'edited' : 'suggested'}" id="inp-reps" value="${state.reps}" aria-label="Повторения">
+              <div class="f-quick-step">
+                <button class="f-mini-btn" data-step="r+" title="+1 повтор">+</button>
+                <button class="f-mini-btn" data-step="r-" title="−1 повтор">−</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="va-cta-row">
+          ${isDraft
+            ? `<button class="va-cta-save" id="btn-primary-act">Записать ${state.weight} × ${state.reps}</button>
+               <button class="va-reset-link" id="btn-reset-sugg">Сбросить</button>`
+            : `<button class="va-cta-accept" id="btn-primary-act">Принять ${sc.suggestedWeight} × ${sc.suggestedReps}</button>`
+          }
+        </div>
+      </div>`;
+  }
+
+  function renderActiveVariantB(sc) {
+    const isDraft = state.stage === 'edited';
+    const editedParts = [];
+    if (state.weightEdited) editedParts.push('вес');
+    if (state.repsEdited) editedParts.push('повторения');
+    const footerText = isDraft
+      ? `Изменено вами (${editedParts.join(' и ')}) · не записано`
+      : `Подсказка Fitty · ${sc.sourceShort} · не записано`;
+
+    return `
+      <div class="vb-wrap ${isDraft ? 'is-draft' : ''}">
+        <div class="vb-grid">
+          <span class="f-num ${isDraft ? 'f-num-draft' : 'f-num-active'} f-d">${sc.setNum}</span>
+          <div class="vb-cell">
+            ${state.weightEdited ? `<span class="vb-diff-tag">${sc.suggestedWeight}→${state.weight}</span>` : ''}
+            <input class="f-val-input ${state.weightEdited ? 'edited' : 'suggested'}" id="inp-weight" value="${state.weight}" aria-label="Вес, кг">
+            <div class="f-quick-step">
+              <button class="f-mini-btn" data-step="w+">+</button>
+              <button class="f-mini-btn" data-step="w-">−</button>
+            </div>
+          </div>
+          <div class="vb-cell">
+            ${state.repsEdited ? `<span class="vb-diff-tag">${sc.suggestedReps}→${state.reps}</span>` : ''}
+            <input class="f-val-input ${state.repsEdited ? 'edited' : 'suggested'}" id="inp-reps" value="${state.reps}" aria-label="Повторения">
+            <div class="f-quick-step">
+              <button class="f-mini-btn" data-step="r+">+</button>
+              <button class="f-mini-btn" data-step="r-">−</button>
+            </div>
+          </div>
+          ${isDraft
+            ? `<button class="vb-btn-save" id="btn-primary-act">Записать</button>`
+            : `<button class="vb-btn-accept" id="btn-primary-act">Принять</button>`
+          }
+        </div>
+        <div class="vb-footer ${isDraft ? 'is-draft' : ''}">
+          <span>${footerText}</span>
+          ${isDraft ? `<button class="vb-undo" id="btn-reset-sugg">Вернуть ${sc.suggestedWeight}×${sc.suggestedReps}</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderActiveVariantC(sc) {
+    const isDraft = state.stage === 'edited';
+    return `
+      <div class="vc-stack ${isDraft ? 'is-draft' : ''}">
+        <div class="vc-banner ${isDraft ? 'is-draft' : ''}">
+          ${isDraft
+            ? `<div class="vc-banner-text">
+                 <strong style="color:var(--f-draft)">Черновик · не записано</strong>
+                 <span>Подсказка была: ${sc.suggestedWeight} × ${sc.suggestedReps} (${sc.sourceShort})</span>
+               </div>
+               <button class="vb-undo" id="btn-reset-sugg" style="color:var(--f-text)">Сбросить</button>`
+            : `<div class="vc-banner-text">
+                 <strong>Подсказка Fitty: ${sc.suggestedWeight} кг × ${sc.suggestedReps}</strong>
+                 <span>Источник: ${sc.sourceShort}</span>
+               </div>
+               <button class="vc-banner-pill" id="btn-primary-act">Записать ${sc.suggestedWeight} × ${sc.suggestedReps}</button>`
+          }
+        </div>
+        <div class="vc-row">
+          <span class="f-num ${isDraft ? 'f-num-draft' : 'f-num-active'} f-d" style="margin-top:10px">${sc.setNum}</span>
+          <div>
+            <div style="position:relative">
+              <input class="f-val-input ${isDraft ? (state.weightEdited ? 'edited' : 'suggested') : 'ghost'}"
+                id="inp-weight"
+                value="${isDraft ? state.weight : ''}"
+                placeholder="${sc.suggestedWeight}"
+                aria-label="Вес, кг">
+              <div class="f-quick-step">
+                <button class="f-mini-btn" data-step="w+">+</button>
+                <button class="f-mini-btn" data-step="w-">−</button>
+              </div>
+            </div>
+            <div class="vc-cell-note ${state.weightEdited ? 'user' : ''}">
+              ${isDraft ? (state.weightEdited ? 'ваш ввод' : 'из подсказки') : 'призрак'}
+            </div>
+          </div>
+          <div>
+            <div style="position:relative">
+              <input class="f-val-input ${isDraft ? (state.repsEdited ? 'edited' : 'suggested') : 'ghost'}"
+                id="inp-reps"
+                value="${isDraft ? state.reps : ''}"
+                placeholder="${sc.suggestedReps}"
+                aria-label="Повторения">
+              <div class="f-quick-step">
+                <button class="f-mini-btn" data-step="r+">+</button>
+                <button class="f-mini-btn" data-step="r-">−</button>
+              </div>
+            </div>
+            <div class="vc-cell-note ${state.repsEdited ? 'user' : ''}">
+              ${isDraft ? (state.repsEdited ? 'ваш ввод' : 'из подсказки') : 'призрак'}
+            </div>
+          </div>
+          ${isDraft
+            ? `<button class="vc-btn-save" id="btn-primary-act">Записать</button>`
+            : `<button class="vc-btn-disabled" disabled>Или введите вручную</button>`
+          }
+        </div>
+      </div>`;
+  }
+
+  function buildA11yReadout(sc) {
+    const setPrefix = `Подход ${sc.setNum}`;
+    if (state.stage === 'logged') {
+      const how = state.loggedByOneTap ? 'принята подсказка в 1 нажатие' : 'записано после правки';
+      return `${setPrefix}: ${state.weight} кг × ${state.reps} повт. — ЗАПИСАН (${how}).\nТост: «Подход ${sc.setNum} записан (${state.weight} × ${state.reps}) · Отменить».\nСледующий подход ${sc.setNum + 1} получил подсказку: ${state.weight} × ${state.reps} (как в подходе ${sc.setNum}).`;
+    }
+    if (state.stage === 'edited') {
+      const wSrc = state.weightEdited ? `изменено вами (было ${sc.suggestedWeight})` : 'из подсказки Fitty';
+      const rSrc = state.repsEdited ? `изменено вами (было ${sc.suggestedReps})` : 'из подсказки Fitty';
+      const cta = state.variant === 'A' ? `«Записать ${state.weight} × ${state.reps}»` : '«Записать»';
+      return `${setPrefix}: ЧЕРНОВИК, НЕ ЗАПИСАНО.\n• Вес: ${state.weight} кг — ${wSrc}\n• Повторения: ${state.reps} — ${rSrc}\n• Кнопка: ${cta} (1 нажатие для записи).`;
+    }
+    const cta = state.variant === 'A'
+      ? `«Принять ${sc.suggestedWeight} × ${sc.suggestedReps}»`
+      : state.variant === 'B'
+        ? '«Принять»'
+        : `«Записать ${sc.suggestedWeight} × ${sc.suggestedReps}»`;
+    return `${setPrefix}: ПОДСКАЗКА FITTY (${sc.sourceShort}), НЕ ЗАПИСАНО.\n• Вес: ${sc.suggestedWeight} кг — предложено Fitty\n• Повторения: ${sc.suggestedReps} — предложено Fitty\n• Кнопка: ${cta} (принятие в 1 нажатие).`;
+  }
+
+  function renderPhone() {
+    const sc = SCENARIOS[state.scenario];
+    const rowsHtml = [];
+
+    for (const r of sc.priorLogged) {
+      rowsHtml.push(renderLoggedRow(r.num, r.weight, r.reps, false));
+    }
+
+    if (state.stage === 'logged') {
+      rowsHtml.push(renderLoggedRow(sc.setNum, state.weight, state.reps, true));
+      rowsHtml.push(renderNextHintPreview(sc));
+      if (sc.setNum === 1) rowsHtml.push(renderFutureRow(3));
+    } else {
+      if (state.variant === 'A') rowsHtml.push(renderActiveVariantA(sc));
+      else if (state.variant === 'B') rowsHtml.push(renderActiveVariantB(sc));
+      else rowsHtml.push(renderActiveVariantC(sc));
+
+      for (let n = sc.setNum + 1; n <= Math.max(sc.plannedSets, sc.setNum + 1); n++) {
+        rowsHtml.push(renderFutureRow(n));
+      }
+    }
+
+    const showColHead = state.variant !== 'A' || state.stage === 'logged';
+
+    document.getElementById('phone-root').innerHTML = `
+      <div class="f-status" aria-hidden="true">
+        <span>18:40</span>
+        <span class="f-status-pill"><i></i>Отдых 1:42</span>
+        <span style="color:var(--f-muted);font-size:11px">5G · 82%</span>
+      </div>
+
+      <div class="f-topbar">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+        <span class="f-d" style="font-size:14px;color:var(--f-muted)">Упр. 2/4 · Вариант ${state.variant}</span>
+      </div>
+
+      <div class="f-head">
+        <h1 class="f-d">Жим штанги лёжа</h1>
+        <button class="f-rest-ring" type="button" title="Таймер отдыха (макет)">
+          <svg width="70" height="70" viewBox="0 0 76 76" aria-hidden="true">
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#252D24" stroke-width="6"></circle>
+            <circle cx="38" cy="38" r="33" fill="none" stroke="#C5FA55" stroke-width="6" stroke-linecap="round" stroke-dasharray="135 207" transform="rotate(-90 38 38)"></circle>
+          </svg>
+          <span class="f-rest-ring-inner">
+            <span class="f-d" style="font-size:10px;color:var(--f-muted)">Отдых</span>
+            <span class="f-d" style="font-size:20px;color:var(--f-primary);margin-top:1px">1:42</span>
+          </span>
+        </button>
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="f-tag">План: 3 × 8</span>
+        <span class="f-tag">${sc.sourceLong}</span>
+      </div>
+
+      ${showColHead ? `
+        <div class="f-col-head f-d ${state.variant !== 'A' ? 'wide-cta' : ''}">
+          <span>№</span><span>Вес, кг</span><span>Повторения</span><span></span>
+        </div>` : `<div style="height:12px"></div>`}
+
+      <div class="f-rows">
+        ${rowsHtml.join('')}
+      </div>
+
+      ${state.stage === 'logged' ? `
+        <div class="f-toast" role="status">
+          <span>Подход ${sc.setNum} записан · <strong>${state.weight} × ${state.reps}</strong></span>
+          <button type="button" id="btn-undo-log">Отменить</button>
+        </div>` : ''}
+
+      <div class="f-add-set">
+        <button class="f-ob" type="button">+ Подход</button>
+      </div>
+
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" type="button" aria-label="Предыдущее упражнение">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+        </button>
+        <button class="f-nav-all" type="button">Упражнения</button>
+        <button class="f-nav-next" type="button" aria-label="Следующее упражнение">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
+    `;
+
+    // Wire interactive events inside phone
+    const actBtn = document.getElementById('btn-primary-act');
+    if (actBtn) {
+      actBtn.addEventListener('click', () => {
+        if (state.stage === 'suggested') acceptSuggestionOneTap();
+        else if (state.stage === 'edited') saveDraft();
+      });
+    }
+    const resetBtn = document.getElementById('btn-reset-sugg');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => applyStage('suggested'));
+    }
+    const undoLog = document.getElementById('btn-undo-log');
+    if (undoLog) {
+      undoLog.addEventListener('click', () => {
+        state.stage = (state.weightEdited || state.repsEdited) ? 'edited' : 'suggested';
+        state.loggedAt = null;
+        render();
+      });
+    }
+
+    const inpW = document.getElementById('inp-weight');
+    if (inpW) {
+      inpW.addEventListener('change', (e) => updateField('weight', e.target.value));
+      inpW.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); inpW.blur(); } });
+    }
+    const inpR = document.getElementById('inp-reps');
+    if (inpR) {
+      inpR.addEventListener('change', (e) => updateField('reps', e.target.value));
+      inpR.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); inpR.blur(); } });
+    }
+    document.querySelectorAll('[data-step]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const op = btn.getAttribute('data-step');
+        if (op === 'w+') stepWeight(2.5);
+        else if (op === 'w-') stepWeight(-2.5);
+        else if (op === 'r+') stepReps(1);
+        else if (op === 'r-') stepReps(-1);
+      });
+    });
+  }
+
+  function renderInspector() {
+    const v = VARIANTS.find(x => x.key === state.variant);
+    const sc = SCENARIOS[state.scenario];
+
+    document.getElementById('variant-meta-panel').innerHTML = `
+      <h3>Вариант ${v.key} · ${v.name}</h3>
+      <p>${v.summary}</p>
+      <ul class="tradeoffs">
+        ${v.pros.map(p => `<li><strong>+</strong> ${p}</li>`).join('')}
+        ${v.cons.map(c => `<li><strong>−</strong> ${c}</li>`).join('')}
+      </ul>
+    `;
+
+    const statusBadge = state.stage === 'logged'
+      ? `<span class="state-chip logged">Записан в историю</span>`
+      : state.stage === 'edited'
+        ? `<span class="state-chip draft">Черновик (не записано)</span>`
+        : `<span class="state-chip sugg">Подсказка Fitty (не записано)</span>`;
+
+    document.getElementById('state-panel').innerHTML = `
+      <h3>Состояние строки №${sc.setNum}</h3>
+      <div class="kv-list">
+        <span class="kv-k">Статус:</span><span class="kv-v">${statusBadge}</span>
+        <span class="kv-k">Источник:</span><span class="kv-v">${sc.sourceLong}</span>
+        <span class="kv-k">Вес:</span><span class="kv-v">${state.weight} кг · ${state.weightEdited ? 'изменено вами' : 'подсказка Fitty'}</span>
+        <span class="kv-k">Повторения:</span><span class="kv-v">${state.reps} · ${state.repsEdited ? `изменено вами (было ${sc.suggestedReps})` : 'подсказка Fitty'}</span>
+        <span class="kv-k">В истории:</span><span class="kv-v">${state.stage === 'logged' ? `Да (${state.loggedByOneTap ? 'принято в 1 тап' : 'после правки'})` : 'Нет (ожидает подтверждения)'}</span>
+      </div>
+    `;
+
+    document.getElementById('a11y-panel').innerHTML = `
+      <h3>Проверка различимости по тексту</h3>
+      <p>Что видит и слышит пользователь без опоры на цвет:</p>
+      <div class="a11y-box">${buildA11yReadout(sc)}</div>
+    `;
+  }
+
+  function renderChrome() {
+    document.querySelectorAll('[data-scenario]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-scenario') === state.scenario);
+    });
+    document.querySelectorAll('[data-stage]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-stage') === state.stage);
+    });
+
+    const v = VARIANTS.find(x => x.key === state.variant);
+    document.getElementById('switcher-text').textContent = `${v.key} · ${v.name}`;
+    document.getElementById('switcher-dots').innerHTML = VARIANTS.map(x =>
+      `<span class="switcher-dot ${x.key === state.variant ? 'active' : ''}"></span>`
+    ).join('');
+  }
+
+  function render() {
+    renderChrome();
+    renderPhone();
+    renderInspector();
+  }
+
+  function cycleVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === state.variant);
+    const next = (idx + dir + VARIANTS.length) % VARIANTS.length;
+    state.variant = VARIANTS[next].key;
+    syncUrl();
+    render();
+  }
+
+  document.getElementById('btn-prev-var').addEventListener('click', () => cycleVariant(-1));
+  document.getElementById('btn-next-var').addEventListener('click', () => cycleVariant(1));
+
+  document.querySelectorAll('[data-scenario]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.scenario = btn.getAttribute('data-scenario');
+      applyStage('suggested');
+    });
+  });
+
+  document.querySelectorAll('[data-stage]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyStage(btn.getAttribute('data-stage'));
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) {
+      return;
+    }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cycleVariant(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); cycleVariant(1); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
