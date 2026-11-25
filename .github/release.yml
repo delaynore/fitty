@@ -1,0 +1,15 @@
+changelog:
+  exclude:
+    authors:
+      - dependabot
+  categories:
+    - title: Новые функции
+      labels:
+        - enhancement
+        - feature
+    - title: Исправления
+      labels:
+        - bug
+    - title: Прочие изменения
+      labels:
+        - '*'
