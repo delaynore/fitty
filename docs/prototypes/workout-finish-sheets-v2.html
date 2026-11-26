@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #114 (v2): Средняя нижняя панель, анимация удержания и гибрид «Все упражнения» (M1 / M2 / M3)</title>
+<!--
+  Throwaway UI prototype iteration v2 for issue #114.
+  Locks in Daniil's v1 picks:
+    - Exercise card / technique sheet: Variant C (compact inline metadata + clean technique + "Заменить на сегодня" card).
+    - All exercises sheet: Hybrid C+B (vertical timeline rail + Barlow Condensed 3/3 counters from C, plus segmented workout progress bar & pinned plank banner from B).
+  Explores 3 middle-ground options (M1 / M2 / M3) for:
+    - Last exercise bottom bar sizing (middle ground between A's wide text button and B's tiny icon circle, with icons),
+    - Hold-to-finish (~1.2 s) animation & short-tap hint style,
+    - All exercises footer layout & safety warning sheets confirmation.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1340px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center; background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs { display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px; }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small { display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0); padding: 2px; border-radius: 9px; gap: 2px; }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage { display: grid; grid-template-columns: auto minmax(310px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 880px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 11px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 9px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px; font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .var-desc { font-size: 12.5px; color: var(--card-foreground, #2C352A); line-height: 1.48; }
+  .var-desc ul { margin: 6px 0 0; padding-left: 17px; }
+  .var-desc li { margin-bottom: 4px; }
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  .compare-toolbar {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 14px;
+    padding: 10px 13px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  }
+  .compare-grid { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; justify-content: flex-start; }
+  .compare-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .compare-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
+  .compare-title { font-size: 13px; font-weight: 700; color: var(--foreground, #1A2018); }
+  .compare-pick {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 8px; padding: 3px 9px; font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+  }
+  .compare-pick:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .compare-note { font-size: 11.5px; color: var(--muted-foreground, #5B6658); max-width: 390px; line-height: 1.38; }
+  .hidden { display: none !important; }
+
+  /* Floating Prototype Switcher (UI.md) */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+    background: #141914; color: #F0F3EA; border: 1.5px solid #4A6128; border-radius: 999px;
+    padding: 5px 7px; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 28px rgba(10, 14, 10, 0.36);
+  }
+  .proto-bar-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 0; background: #252D24; color: #F0F3EA;
+    font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-bar-arrow:hover { background: #303E1B; color: #C5FA55; }
+  .proto-bar-label { padding: 0 8px; font-size: 12.5px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
+  .proto-bar-key {
+    background: #C5FA55; color: #1A2506; border-radius: 999px; padding: 1px 7px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 14px; letter-spacing: 0.4px;
+  }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (SCOPED TO .phone) ==================== */
+  .phone {
+    --f-bg: #0B0E0B; --f-surface: #141914; --f-surface-hi: #1C231C; --f-chip: #252D24;
+    --f-outline: #343E33; --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55; --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B; --f-primary-border: #4A6128; --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA; --f-muted: #B6C1B3; --f-dim: #81907D; --f-placeholder: #728070;
+    --f-error: #FFB4AB; --f-error-bg: #361C1A; --f-error-border: #6E3631;
+    --load-heavy: #F59E42;
+    --f-amber: #F5C469; --f-amber-container: #2B2416; --f-amber-border: #554524; --f-on-amber-container: #FFE0A3;
+
+    width: 390px; height: 844px; background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822; box-shadow: 0 18px 44px rgba(14, 19, 13, 0.28);
+    position: relative; overflow: hidden; font-family: Inter, sans-serif;
+    display: flex; flex-direction: column; flex: none; user-select: none; -webkit-user-select: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .f-num-font { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; letter-spacing: 0.3px; font-variant-numeric: tabular-nums; }
+  .m { color: var(--f-muted); }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 0.7px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+    background: var(--f-chip); color: var(--f-muted); font-size: 12px; font-weight: 500; line-height: 1.2; white-space: nowrap;
+  }
+  .tag.accent { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .tag.amber { background: var(--f-amber-container); color: var(--f-on-amber-container); }
+  .tag.live-dot i { width: 6px; height: 6px; border-radius: 50%; background: var(--f-primary); box-shadow: 0 0 6px var(--f-primary); display: inline-block; }
+
+  .lamp-row { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+  .lamp { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .lamp.heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.75); }
+
+  .f-wstatus { height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 13px; font-weight: 600; flex: none; }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px;
+    border-radius: 11px; background: var(--f-primary); color: var(--f-on-primary);
+    font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .f-status-pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--f-on-primary); display: inline-block; }
+
+  .f-scroll-work { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 4px 20px 88px; }
+  .phone.w360 .f-scroll-work { padding: 4px 15px 86px; }
+  .f-scroll-work::-webkit-scrollbar { display: none; }
+
+  .f-topbar { display: flex; align-items: center; gap: 6px; height: 42px; flex: none; }
+  .f-back-btn { width: 30px; height: 30px; margin-left: -4px; border-radius: 50%; border: 0; background: transparent; color: var(--f-text); display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+  .f-top-week { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 500; color: var(--f-muted); }
+  .f-top-right { margin-left: auto; display: flex; align-items: center; gap: 7px; flex: none; }
+  .ease-top-btn {
+    height: 28px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--f-outline); background: var(--f-surface-hi);
+    color: var(--f-text); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+
+  .plank-other-banner {
+    margin: 4px 0 8px; padding: 8px 11px; border-radius: 14px; background: #1B2714; border: 1px solid var(--f-primary-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--f-on-primary-container);
+  }
+  .plank-other-left { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+  .plank-other-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plank-other-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); box-shadow: 0 0 8px var(--f-primary); flex: none; animation: livePulse 1.5s infinite; }
+  .plank-other-go { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--f-primary); color: var(--f-on-primary); font-size: 11.5px; font-weight: 700; flex: none; }
+  @keyframes livePulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.84); } }
+
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; }
+  .f-title-btn {
+    flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; text-align: left; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .f-title-btn.sz-lg { font-size: 26px; line-height: 28px; }
+  .f-title-btn.sz-md { font-size: 21px; line-height: 24px; }
+  .f-title-btn.sz-sm { font-size: 18px; line-height: 21px; }
+
+  .f-rest-ring { position: relative; width: 76px; height: 76px; border: 0; border-radius: 50%; background: transparent; flex: none; color: var(--f-text); display: flex; align-items: center; justify-content: center; padding: 0; }
+  .f-rest-ring svg { position: absolute; left: 0; top: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+
+  .f-col-head { display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px; align-items: center; padding: 0 6px 0 8px; font-size: 13px; color: var(--f-muted); margin: 12px 0 4px; text-align: center; }
+  .f-rows { display: grid; gap: 6px; }
+  .f-row { display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px; align-items: center; padding: 0 6px 0 8px; min-height: 48px; border-radius: 14px; text-align: center; }
+  .f-row-active { min-height: 54px; padding: 3px 6px 3px 8px; }
+  .f-row-logged { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .f-row-future { opacity: 0.48; }
+  .f-num { width: 28px; height: 28px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: var(--f-dim); }
+  .done-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--f-badge-done); color: #9AD43D; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .f-in {
+    width: 100%; min-width: 0; height: 46px; border-radius: 14px; background: var(--f-bg); color: var(--f-text);
+    border: 1.5px solid var(--f-outline); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 22px;
+    text-align: center; display: flex; align-items: center; justify-content: center;
+  }
+  .f-in.is-sugg { border-style: dashed; border-color: var(--f-outline); background: #0F130F; color: var(--f-placeholder); }
+  .f-in.has-value { border-style: solid; border-color: var(--f-primary); color: var(--f-text); background: var(--f-bg); }
+  .f-in-empty-future { height: 46px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg); }
+  .f-check-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; justify-self: center; padding: 0; }
+  .btn-tonal-sugg { background: var(--f-primary-container); border: 1.5px solid var(--f-primary-border); color: var(--f-primary); }
+  .btn-solid-save { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+
+  /* ==================== REFINED BOTTOM BAR & HOLD ANIMATIONS (M1 / M2 / M3) ==================== */
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px; align-items: center; z-index: 8;
+  }
+  .phone.w360 .f-bottom-nav { left: 15px; right: 15px; gap: 7px; }
+  .f-nav-prev {
+    width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* Middle-ground "List / Exercises" buttons */
+  .f-nav-mid-m1 {
+    height: 48px; padding: 0 13px; border-radius: 24px; flex: none;
+    border: 1.5px solid var(--f-outline-hi); background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  }
+  .phone.w360 .f-nav-mid-m1 { padding: 0 11px; gap: 6px; }
+
+  .f-nav-mid-m2 {
+    height: 48px; padding: 0 14px; border-radius: 24px; flex: none;
+    border: 1.5px solid var(--f-primary-border); background: #141B11; color: var(--f-text);
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  }
+  .phone.w360 .f-nav-mid-m2 { padding: 0 11px; gap: 5px; }
+  .nav-count-pill {
+    padding: 2px 7px; border-radius: 999px; background: var(--f-primary-container); color: var(--f-primary);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 14px; line-height: 1.1;
+  }
+
+  .f-nav-mid-m3 {
+    flex: 1; min-width: 0; height: 48px; padding: 0 12px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline-hi); background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap;
+  }
+
+  /* Shared Hold Button Base */
+  .hold-btn {
+    position: relative; overflow: hidden; height: 48px; border-radius: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    touch-action: none; transition: transform 140ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  }
+  .hold-btn.is-holding { transform: scale(0.985); }
+  .hold-btn .hold-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+    transform-origin: left center; transform: scaleX(var(--hp, 0)); pointer-events: none;
+  }
+  .hold-btn .hold-layer {
+    position: relative; z-index: 2; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; height: 100%; padding: 0 14px; white-space: nowrap;
+  }
+  .hold-btn .hold-layer-top {
+    position: absolute; inset: 0; z-index: 3;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 14px;
+    clip-path: inset(0 calc((1 - var(--hp, 0)) * 100%) 0 0);
+    pointer-events: none; white-space: nowrap;
+  }
+
+  /* M1 Hold: Crisp A-style linear lime fill + icon + inverted text sweep */
+  .hold-m1 {
+    flex: 1; min-width: 0;
+    background: var(--f-primary-container); border: 1.5px solid var(--f-primary); color: var(--f-on-primary-container);
+  }
+  .hold-m1.full { width: 100%; flex: none; }
+  .hold-m1 .hold-fill { background: var(--f-primary); }
+  .hold-m1 .hold-layer-top { color: var(--f-on-primary); }
+  .hold-m1.is-holding { box-shadow: 0 0 16px rgba(197, 250, 85, 0.25); }
+  .hold-m1.is-zero { background: var(--f-surface-hi); border: 1.5px dashed var(--f-outline-hi); color: var(--f-dim); }
+  .hold-m1.is-zero .hold-fill { display: none; }
+
+  /* M2 Hold: Winding hold-ring (C) + full linear lime fill (A) dual feedback! */
+  .hold-m2 {
+    flex: 1; min-width: 0;
+    background: #1C2713; border: 1.5px solid var(--f-primary); color: var(--f-on-primary-container);
+  }
+  .hold-m2.full { width: 100%; flex: none; }
+  .hold-m2 .hold-fill { background: var(--f-primary); }
+  .hold-m2 .hold-layer-top { color: var(--f-on-primary); }
+  .hold-m2.is-holding { box-shadow: 0 0 18px rgba(197, 250, 85, 0.3); }
+  .hold-m2.is-zero { background: var(--f-surface-hi); border: 1.5px solid var(--f-outline); color: var(--f-dim); }
+  .hold-m2.is-zero .hold-fill { display: none; }
+  .hold-ring-ico { width: 20px; height: 20px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* M3 Hold: Crisp linear sweep + subtle sub-label + in-place amber hint morph */
+  .hold-m3 {
+    flex: 1.15; min-width: 0;
+    background: #222F14; border: 1.5px solid #7CA23B; color: var(--f-on-primary-container);
+  }
+  .hold-m3.full { width: 100%; flex: none; }
+  .hold-m3 .hold-fill { background: var(--f-primary); }
+  .hold-m3 .hold-layer-top { color: var(--f-on-primary); }
+  .hold-m3.is-hint {
+    background: var(--f-amber-container); border-color: var(--f-amber); color: var(--f-on-amber-container);
+    animation: gentleShake 320ms ease;
+  }
+  .hold-m3.is-zero { background: var(--f-surface-hi); border: 1.5px solid var(--f-outline); color: var(--f-dim); }
+  .hold-m3.is-zero .hold-fill { display: none; }
+  .hold-sub-stack { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; text-align: left; }
+  .hold-sub-stack.center { align-items: center; text-align: center; }
+  .hold-sub-caption { font-family: Inter, sans-serif; font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 1px; }
+
+  @keyframes gentleShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    60% { transform: translateX(4px); }
+    85% { transform: translateX(-2px); }
+  }
+
+  /* Hint callout above bar (M1 & M2) */
+  .hint-callout {
+    position: absolute; right: 20px; bottom: 74px; z-index: 14;
+    background: #212D17; border: 1px solid var(--f-primary); color: var(--f-on-primary-container);
+    padding: 7px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.52); pointer-events: none;
+  }
+  .phone.w360 .hint-callout { right: 15px; }
+  .hint-callout::after {
+    content: ""; position: absolute; right: 56px; bottom: -6px;
+    width: 10px; height: 10px; background: #212D17;
+    border-right: 1px solid var(--f-primary); border-bottom: 1px solid var(--f-primary);
+    transform: rotate(45deg);
+  }
+  .hint-pill {
+    position: absolute; left: 20px; right: 20px; bottom: 72px; z-index: 14;
+    display: flex; justify-content: flex-end; pointer-events: none;
+  }
+  .phone.w360 .hint-pill { left: 15px; right: 15px; }
+  .hint-pill span {
+    background: #1D2618; border: 1px solid #55722F; color: var(--f-on-primary-container);
+    padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ==================== BOTTOM SHEETS ==================== */
+  .f-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64); z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 18px; display: flex; flex-direction: column; gap: 10px; max-height: 86%; overflow: hidden;
+  }
+  .phone.w360 .f-sheet { padding: 10px 15px 16px; }
+  .f-sheet-scroll { overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .f-sheet-scroll::-webkit-scrollbar { display: none; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; margin-bottom: 2px; }
+  .f-sheet h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.42; }
+
+  .f-calm-cancel {
+    border: 0; background: transparent; color: var(--f-error);
+    font-size: 13.5px; font-weight: 600; min-height: 36px; border-radius: 999px;
+    padding: 4px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; opacity: 0.9; width: 100%;
+  }
+  .f-calm-cancel:hover { background: rgba(255, 180, 171, 0.08); opacity: 1; }
+  .f-calm-cancel-pill {
+    border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.52); color: var(--f-error);
+    font-size: 13px; font-weight: 600; height: 48px; border-radius: 24px;
+    padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-sheet-danger {
+    width: 100%; min-height: 46px; border-radius: 999px; border: 1px solid var(--f-error-border);
+    background: var(--f-error-bg); color: var(--f-error);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+  .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-sheet-warn-btn { border: 1.5px solid var(--f-amber-border); border-radius: 999px; min-height: 44px; font-size: 13.5px; font-weight: 600; background: var(--f-amber-container); color: var(--f-on-amber-container); width: 100%; }
+
+  /* ==================== HYBRID ALL EXERCISES (C TIMELINE + B PROGRESS BAR & PINNED PLANK) ==================== */
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .allex-segbar { display: flex; gap: 4px; height: 4px; margin: 0 2px; flex: none; }
+  .allex-segbar span { flex: 1; border-radius: 2px; background: var(--f-chip); }
+  .allex-segbar span.done { background: var(--f-primary); }
+  .allex-segbar span.cur { background: linear-gradient(90deg, var(--f-primary) 55%, var(--f-primary-container) 55%); }
+  .allex-pinned {
+    background: #1B2714; border: 1px solid var(--f-primary-border); border-radius: 14px;
+    padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none;
+  }
+  .allex-c-list { display: flex; flex-direction: column; }
+  .allex-c-item {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: stretch; gap: 11px; padding: 0 4px; text-align: left;
+  }
+  .allex-c-rail { width: 22px; display: flex; flex-direction: column; align-items: center; flex: none; }
+  .allex-c-line { width: 2px; flex: 1; background: var(--f-outline); min-height: 10px; }
+  .allex-c-line.done { background: var(--f-primary-border); }
+  .allex-c-line.hide { background: transparent; }
+  .allex-c-node {
+    width: 20px; height: 20px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--f-surface); border: 2px solid var(--f-outline-hi); color: var(--f-dim); font-size: 11px; font-weight: 700;
+  }
+  .allex-c-node.done { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+  .allex-c-node.cur { background: var(--f-primary-container); border-color: var(--f-primary); color: var(--f-primary); box-shadow: 0 0 0 4px rgba(197, 250, 85, 0.14); }
+  .allex-c-body {
+    flex: 1; min-width: 0; padding: 8px 10px; margin: 2px 0; border-radius: 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .allex-c-item.cur .allex-c-body { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .allex-c-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--f-muted); }
+  .allex-c-count {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; line-height: 1;
+    color: var(--f-dim); flex: none; text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .allex-c-count.done, .allex-c-count.cur { color: var(--f-primary); }
+  .allex-dock {
+    background: var(--f-surface); border-radius: 18px; padding: 10px 12px 6px;
+    display: flex; flex-direction: column; gap: 7px; flex: none;
+  }
+  .allex-footer-split {
+    border-top: 1px solid var(--f-outline); padding-top: 10px;
+    display: flex; gap: 8px; align-items: center; flex: none;
+  }
+
+  /* ==================== LOCKED-IN TECHNIQUE SHEET (VARIANT C) ==================== */
+  .diff-bars { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .diff-bars i { width: 15px; height: 5px; border-radius: 3px; background: var(--f-outline); display: inline-block; }
+  .diff-bars i.on { background: var(--f-primary); }
+  .tech-card { background: var(--f-surface); border-radius: 16px; padding: 11px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .tech-step { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.44; color: var(--f-text); }
+  .tech-step-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; color: var(--f-primary); width: 16px; flex: none; line-height: 1.25; }
+  .tech-prose { font-size: 13.5px; line-height: 1.48; color: var(--f-text); overflow-wrap: anywhere; }
+  .tech-empty { background: var(--f-surface); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: var(--f-dim); }
+  .replace-card-c {
+    width: 100%; border: 1px solid var(--f-outline); border-radius: 16px; background: var(--f-surface); color: var(--f-text);
+    padding: 11px 13px; display: flex; align-items: center; gap: 11px; text-align: left;
+  }
+  .replace-card-c-ico {
+    width: 36px; height: 36px; border-radius: 12px; background: var(--f-primary-container); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* ==================== SAFETY & CANCEL SHEETS ==================== */
+  .safety-split { border-radius: 16px; overflow: hidden; border: 1px solid var(--f-outline); background: var(--f-surface); }
+  .safety-split-row { padding: 10px 12px; display: flex; align-items: flex-start; gap: 9px; font-size: 13px; }
+  .safety-split-row + .safety-split-row { border-top: 1px solid var(--f-outline); }
+  .safety-split-row.loss { background: rgba(43, 36, 22, 0.75); }
+  .safety-card { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+  .safety-ico { width: 34px; height: 34px; border-radius: 11px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--f-amber-container); color: var(--f-amber); }
+
+  .f-sheet-summary { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--f-text); }
+  .f-sheet-warn { background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error); border-radius: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.38; }
+  .sheet-hint-bar { background: #232F19; border: 1px solid var(--f-primary); color: var(--f-on-primary-container); border-radius: 11px; padding: 6px 10px; font-size: 12px; font-weight: 600; text-align: center; }
+
+  .sum-scroll { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 20px 20px 88px; }
+  .sum-scroll::-webkit-scrollbar { display: none; }
+  .sum-hero { margin-top: 12px; background: linear-gradient(135deg, #1E2813 0%, #141914 70%); border-radius: 20px; padding: 14px 16px; }
+  .mix-card { background: var(--f-surface); border-radius: 18px; padding: 12px 14px; margin-top: 8px; }
+  .mix-card.is-up { background: #161E13; box-shadow: inset 0 0 0 1px #2A381D; }
+  .mix-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .mix-pill { padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--f-chip); color: var(--f-text); }
+  .mix-pill.grew { background: var(--f-primary); color: var(--f-on-primary); }
+  .mix-pill.tonal { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #114 · v2</span>
+      <div>
+        <h1 class="host-title">Уточняем нижнюю панель, анимацию удержания и гибрид «Все упражнения»</h1>
+        <div class="host-sub">Карточка техники = Трековый минимализм (C) · «Все упражнения» = таймлайн C + прогресс-бар B · сравниваем 3 средних варианта нижней панели (M1 / M2 / M3)</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" id="mode-tabs">
+        <button type="button" data-mode="interactive" class="active">Интерактив</button>
+        <button type="button" data-mode="compare">Сравнение M1 / M2 / M3</button>
+      </div>
+      <div class="seg-small" id="width-tabs">
+        <button type="button" data-width="390" class="active">390 dp</button>
+        <button type="button" data-width="360">360 dp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE STAGE -->
+  <div class="interactive-stage" id="interactive-stage">
+    <div class="phone-slot">
+      <div class="phone" id="live-phone"></div>
+      <div class="phone-caption" id="live-caption"></div>
+    </div>
+
+    <div class="inspector">
+      <div class="panel">
+        <h2>1. Экран и сценарии</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Что смотрим</span>
+          <div class="btn-wrap" id="view-btns">
+            <button type="button" class="cbtn active" data-view="last">Последнее упр. (панель)</button>
+            <button type="button" class="cbtn" data-view="all_ex">«Все упражнения» (C+B)</button>
+            <button type="button" class="cbtn" data-view="tech">Карточка техники (C)</button>
+            <button type="button" class="cbtn" data-view="zero">Защита: 0 подходов</button>
+            <button type="button" class="cbtn" data-view="warn">Защита: планка / черновик</button>
+            <button type="button" class="cbtn" data-view="cancel">Отмена (#105)</button>
+            <button type="button" class="cbtn" data-view="summary">Итоги («Готово»)</button>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Состояние тренировки</span>
+          <div class="btn-wrap" id="scenario-btns">
+            <button type="button" class="cbtn active" data-scen="normal">Обычное (8 подх.)</button>
+            <button type="button" class="cbtn" data-scen="zero">0 подходов</button>
+            <button type="button" class="cbtn" data-scen="plank">Идёт планка (0:44)</button>
+            <button type="button" class="cbtn" data-scen="draft">Ручной черновик</button>
+            <button type="button" class="cbtn" data-scen="both">Планка + черновик</button>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Проверка анимации удержания (можно и зажимать вручную!)</span>
+          <div class="btn-wrap" id="hold-preview-btns">
+            <button type="button" class="cbtn active" data-hp="live">Интерактив (зажми ~1,2 с)</button>
+            <button type="button" class="cbtn" data-hp="mid">Процесс 65%</button>
+            <button type="button" class="cbtn" data-hp="hint">Подсказка (короткий тап)</button>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Стресс-тест текстов (#94)</span>
+          <div class="btn-wrap" id="text-btns">
+            <button type="button" class="cbtn active" data-long="0">Обычные</button>
+            <button type="button" class="cbtn" data-long="1">Длинные (60 / 500 симв.)</button>
+            <button type="button" class="cbtn" id="btn-notech">Техника: есть</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 id="var-panel-title">M1 — Иконка + «Список» и линейная заливка</h2>
+        <div class="var-desc" id="var-desc"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние и журнал жестов</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE STAGE -->
+  <div id="compare-stage" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+    <div class="compare-toolbar">
+      <div class="btn-wrap" id="cmp-view-btns">
+        <button type="button" class="cbtn active" data-view="last">Последнее упр.</button>
+        <button type="button" class="cbtn" data-view="all_ex">«Все упражнения»</button>
+        <button type="button" class="cbtn" data-view="warn">Защита: планка / черновик</button>
+        <button type="button" class="cbtn" data-view="zero">Защита: 0 подходов</button>
+      </div>
+      <div class="btn-wrap" id="cmp-extra-btns">
+        <button type="button" class="cbtn" data-hp="mid">Удержание 65%</button>
+        <button type="button" class="cbtn" data-hp="hint">Короткий тап</button>
+        <button type="button" class="cbtn" data-scen="zero">0 подходов</button>
+        <button type="button" class="cbtn" data-scen="both">Планка + черновик</button>
+      </div>
+    </div>
+    <div class="compare-grid" id="compare-grid"></div>
+  </div>
+</div>
+
+<!-- Floating Switcher -->
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button type="button" class="proto-bar-arrow" id="bar-prev" aria-label="Предыдущий вариант">←</button>
+  <span class="proto-bar-label">
+    <span class="proto-bar-key" id="bar-key">M1</span>
+    <span id="bar-name">Список + линейная заливка</span>
+  </span>
+  <button type="button" class="proto-bar-arrow" id="bar-next" aria-label="Следующий вариант">→</button>
+</div>
+
+<script>
+(function () {
+  const HOLD_MS = 1200;
+
+  const VARIANTS = [
+    {
+      key: 'M1',
+      short: 'Список + линейная заливка',
+      title: 'M1 — «≡ Список» + широкая «Завершить» с чистой линейной заливкой',
+      compareNote: 'Золотая середина по кнопкам: компактная кнопка «≡ Список» с текстом + просторная «Завершить» с иконкой флага и чистой линейной заливкой A (инверсия текста). Во «Всех упражнениях» — док C, в защите — карточка «Сохранится / Не сохранится».',
+      bullets: [
+        '<strong>Нижняя панель:</strong> <code>←</code> (48 dp) · <strong><code>≡ Список</code></strong> (средняя капсула с иконкой, не свёрнута в кружок) · <strong><code>🏁 Завершить</code></strong> (занимает всё оставшееся место).',
+        '<strong>Анимация удержания (от A):</strong> плавная линейная заливка ярким лаймом слева направо с чёткой инверсией цвета иконки и текста; короткий тап показывает аккуратную плашку над кнопкой.',
+        '<strong>«Все упражнения» (C + B):</strong> сегментный прогресс-бар в шапке + закреплённый баннер планки + таймлайн C с крупными счётчиками <code>3/3</code>; внизу док с полноширинной кнопкой удержания и спокойной «Отменить тренировку».',
+        '<strong>Защитные шторки (от C):</strong> компактная двухчастная карточка «Сохранится в историю / Не сохранится при завершении».'
+      ]
+    },
+    {
+      key: 'M2',
+      short: '≡ 4/4 + кольцо и заливка',
+      title: 'M2 — «≡ 4/4» + двойная анимация (кольцо C + линейная заливка A)',
+      compareNote: 'Кнопка списка показывает иконку и счётчик «≡ 4/4», оставляя максимум места для «Завершить». При удержании одновременно наматывается мини-кольцо и заливается вся кнопка; короткий тап даёт бабл со стрелкой.',
+      bullets: [
+        '<strong>Нижняя панель:</strong> <code>←</code> (48 dp) · <strong><code>≡ 4/4</code></strong> (компактный пилл с иконкой списка и лаймовым бейджем прогресса) · <strong><code>○ Завершить</code></strong> (широкая капсула).',
+        '<strong>Анимация удержания (C + A):</strong> мини-кольцо слева наматывается 0→360° синхронно с линейной лаймовой заливкой всей кнопки — понятно и до касания, и в процессе; короткий тап показывает бабл со стрелкой прямо на кнопку.',
+        '<strong>«Все упражнения» (C + B):</strong> тот же гибрид таймлайна C и прогресс-бара B, а внизу компактный однострочный футер <code>Отменить</code> | <code>Завершить</code> (экономит высоту экрана).',
+        '<strong>Защитные шторки (от C):</strong> двухчастная карточка «Сохранится / Не сохранится».'
+      ]
+    },
+    {
+      key: 'M3',
+      short: 'Равные иконки + морфинг',
+      title: 'M3 — «≡ План» + «Завершить · держи» с морфингом подсказки на месте',
+      compareNote: 'Равномерная пара «≡ План» и «Завершить (удерживайте)». При удержании — линейная заливка A с процентом/подписью, при коротком тапе — мягкое встряхивание и подсказка «Удерживайте 1,2 с» прямо внутри кнопки без всплывающих тостов.',
+      bullets: [
+        '<strong>Нижняя панель:</strong> <code>←</code> (48 dp) · <strong><code>≡ План</code></strong> (средняя капсула с иконкой, <code>flex: 1</code>) · <strong><code>Завершить / удерживайте</code></strong> (<code>flex: 1.15</code>) — обе кнопки визуально сбалансированы.',
+        '<strong>Анимация удержания (A + B):</strong> линейная лаймовая заливка слева направо с мягким морфингом подписи в <code>Завершаем…</code>; на короткий тап — лёгкое встряхивание и смена текста прямо на кнопке (<code>Удерживайте 1,2 с</code>) без лишних всплывающих плашек.',
+        '<strong>«Все упражнения» (C + B):</strong> таймлайн C + сегментная полоса B + док внизу (полноширинная кнопка удержания + спокойная «Отменить тренировку»).',
+        '<strong>Защитные шторки (от A):</strong> классические карточки <code>#141914</code> в духе шторки отмены #105 (для сравнения с двухчастной карточкой C из M1/M2).'
+      ]
+    }
+  ];
+
+  const ICO = {
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    checkSm: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    feather: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
+    list: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
+    flag: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4.5L16 13H5"/></svg>',
+    swap: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    info: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="10" x2="12" y2="16"/><circle cx="12" cy="7" r="0.7" fill="currentColor"/></svg>',
+    warn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    timer: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M9 2h6"/></svg>',
+    edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+    chevR: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+  };
+
+  const LONG_EX_NAME = 'Жим штанги лёжа на наклонной скамье узким хватом с паузой 2с';
+  const LONG_TECH_500 = '1. Ляг на скамью, сведи лопатки и плотно прижми их к опоре, стопы поставь устойчиво на пол без отрыва пяток. 2. Возьмись за гриф хватом чуть шире плеч, сними штангу со стоек и выведи её строго над грудью. 3. На вдохе плавно опусти гриф к нижней части груди под контролем, сохраняя предплечья вертикальными и не проваливая локти. 4. Сделай короткую паузу внизу без отбива и на выдохе мощно выжми штангу вверх, не отрывая таз от скамьи. 5. Используй страховочные упоры либо попроси друга подстраховать.';
+
+  const EXERCISES = [
+    { id: 'squat', name: 'Присед со штангой на груди', longName: 'Присед со штангой на груди с паузой в нижней точке 2 секунды', planLabel: '3 × 8', plannedSets: 3, loggedNormal: 3, muscle: 'Квадрицепсы', assisting: 'Ягодицы, кор', equip: 'Штанга, стойки', diff: 3, diffLabel: 'Продвинутая', steps: ['Положите гриф на передние дельты, локти высоко вперёд.', 'Опуститесь в глубокий присед с прямой спиной.', 'Мощно встаньте вверх, сохраняя опору на всю стопу.'] },
+    { id: 'bench', name: 'Жим штанги лёжа', longName: LONG_EX_NAME, planLabel: '3 × 8–12', plannedSets: 3, loggedNormal: 2, muscle: 'Грудные', assisting: 'Трицепс, передние дельты', equip: 'Штанга, скамья', diff: 2, diffLabel: 'Средняя', steps: ['Лягте на скамью, сведите и прижмите лопатки, стопы плотно на полу.', 'Плавно опустите гриф к нижней части груди под контролем.', 'Выжмите вверх без отрыва таза от скамьи.'] },
+    { id: 'plank', name: 'Планка на предплечьях', longName: 'Планка на предплечьях с удержанием нейтрального таза и пресса', planLabel: '3 × 1:00', plannedSets: 3, loggedNormal: 0, isDuration: true, muscle: 'Пресс и кор', assisting: 'Плечи, ягодицы', equip: 'Без оборудования', diff: 1, diffLabel: 'Начальная', steps: ['Поставьте локти строго под плечами, тело — одна прямая линия.', 'Подкрутите таз и держите пресс в напряжении без прогиба в пояснице.'] },
+    { id: 'row', name: 'Тяга штанги в наклоне', longName: LONG_EX_NAME, planLabel: '4 × 8', plannedSets: 4, loggedNormal: 3, muscle: 'Широчайшие спины', assisting: 'Бицепс, задние дельты, ромбовидные', equip: 'Штанга', diff: 2, diffLabel: 'Средняя', steps: ['Наклоните корпус примерно на 45°, спина нейтральная, колени мягкие.', 'Тяните гриф к низу живота, сводя лопатки в верхней точке.', 'Опускайте штангу под контролем без рывков поясницей.'] }
+  ];
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const initVar = ['M1', 'M2', 'M3'].includes((urlParams.get('variant') || '').toUpperCase())
+    ? urlParams.get('variant').toUpperCase() : 'M1';
+
+  const state = {
+    variant: initVar,
+    mode: 'interactive',
+    width: 390,
+    view: 'last',
+    scenario: 'normal',
+    holdPreview: 'live',
+    longNames: false,
+    noTech: false,
+    exIndex: 3,
+    hintUntil: 0,
+    hintScope: null,
+    replaceFlash: false,
+    lastEvent: 'Зажмите «Завершить» ~1,2 с, отпустите рано для проверки отката или сделайте короткий тап.'
+  };
+
+  let holdAnim = null;
+
+  function syncUrl() {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('variant', state.variant);
+      window.history.replaceState({}, '', u.toString());
+    } catch (e) {}
+  }
+
+  function getTotalLogged(scen) { return scen === 'zero' ? 0 : EXERCISES.reduce((s, e) => s + e.loggedNormal, 0); }
+  function hasPlankRunning(scen) { return scen === 'plank' || scen === 'both'; }
+  function hasManualDraft(scen) { return scen === 'draft' || scen === 'both'; }
+  function exName(ex) { return state.longNames ? ex.longName : ex.name; }
+  function titleSizeClass(name) { return name.length > 36 ? 'sz-sm' : name.length > 22 ? 'sz-md' : 'sz-lg'; }
+
+  function renderRestRingSvg() {
+    const r = 34, c = 2 * Math.PI * r;
+    return `<svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="#252D24" stroke-width="4.5"/>
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="#C5FA55" stroke-width="4.5" stroke-linecap="round"
+        stroke-dasharray="${(0.72 * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 38 38)"/>
+    </svg>`;
+  }
+
+  function renderHoldRing(pct, inverted) {
+    const r = 7.5, c = 2 * Math.PI * r;
+    const dash = (Math.max(0.08, pct) * c).toFixed(1);
+    const track = inverted ? 'rgba(26,37,6,0.28)' : 'rgba(197,250,85,0.28)';
+    const stroke = inverted ? '#1A2506' : '#C5FA55';
+    return `<span class="hold-ring-ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="${r}" fill="none" stroke="${track}" stroke-width="2.2"/>
+      <circle class="ring-arc" cx="10" cy="10" r="${r}" fill="none" stroke="${stroke}" stroke-width="2.4" stroke-linecap="round"
+        stroke-dasharray="${dash} ${c.toFixed(1)}" transform="rotate(-90 10 10)"/>
+    </svg></span>`;
+  }
+
+  function renderHoldButton(vKey, opts) {
+    const { full, scope, isZero, hp, showHint } = opts;
+    const label = full ? 'Завершить тренировку' : 'Завершить';
+    const holdingCls = hp > 0 && !isZero ? 'is-holding' : '';
+    const zeroCls = isZero ? 'is-zero' : '';
+    const style = `--hp:${isZero ? 0 : hp.toFixed(3)}`;
+
+    if (vKey === 'M1') {
+      const inner = `${isZero ? ICO.info : ICO.flag}<span class="d" style="font-size:15.5px">${label}</span>`;
+      return `
+        <button type="button" class="hold-btn hold-m1 ${full ? 'full' : ''} ${holdingCls} ${zeroCls}"
+          style="${style}" data-hold-btn="1" data-scope="${scope}">
+          <span class="hold-fill"></span>
+          <span class="hold-layer">${inner}</span>
+          ${!isZero ? `<span class="hold-layer-top">${inner}</span>` : ''}
+        </button>`;
+    }
+
+    if (vKey === 'M2') {
+      const baseInner = `${isZero ? ICO.info : renderHoldRing(hp, false)}<span class="d" style="font-size:15.5px">${label}</span>`;
+      const topInner = `${renderHoldRing(hp, true)}<span class="d" style="font-size:15.5px">${label}</span>`;
+      return `
+        <button type="button" class="hold-btn hold-m2 ${full ? 'full' : ''} ${holdingCls} ${zeroCls}"
+          style="${style}" data-hold-btn="1" data-scope="${scope}">
+          <span class="hold-fill"></span>
+          <span class="hold-layer">${baseInner}</span>
+          ${!isZero ? `<span class="hold-layer-top">${topInner}</span>` : ''}
+        </button>`;
+    }
+
+    // M3
+    const isHintMorph = showHint && !isZero;
+    const stackBase = isZero
+      ? `${ICO.info}<span class="hold-sub-stack"><span class="d" style="font-size:15px">${label}</span><span class="hold-sub-caption">нет подходов</span></span>`
+      : isHintMorph
+        ? `<span class="hold-sub-stack center"><span class="d" style="font-size:15px">Удерживайте 1,2 с</span><span class="hold-sub-caption">защита от нажатий</span></span>`
+        : `${ICO.flag}<span class="hold-sub-stack"><span class="d" style="font-size:15px">${hp > 0.05 ? 'Завершаем…' : label}</span><span class="hold-sub-caption">${hp > 0.05 ? Math.round(hp * 100) + '%' : 'удерживайте'}</span></span>`;
+    return `
+      <button type="button" class="hold-btn hold-m3 ${full ? 'full' : ''} ${holdingCls} ${zeroCls} ${isHintMorph ? 'is-hint' : ''}"
+        style="${style}" data-hold-btn="1" data-scope="${scope}">
+        <span class="hold-fill"></span>
+        <span class="hold-layer">${stackBase}</span>
+        ${!isZero && !isHintMorph ? `<span class="hold-layer-top">${stackBase}</span>` : ''}
+      </button>`;
+  }
+
+  function renderWorkoutBase(vKey, opts) {
+    const scen = opts.scenario;
+    const isZero = scen === 'zero';
+    const plankOn = hasPlankRunning(scen);
+    const draftOn = hasManualDraft(scen);
+    const ex = EXERCISES[state.exIndex];
+    const name = exName(ex);
+    const loggedCount = isZero ? 0 : ex.loggedNormal;
+    const hp = opts.holdPct;
+    const showHintBar = opts.showHintBar;
+
+    const statusPill = plankOn
+      ? `<span class="f-status-pill"><i></i>Планка 0:44</span>`
+      : (!isZero ? `<span class="f-status-pill"><i></i>Отдых 1:42</span>` : '');
+
+    const plankBanner = plankOn ? `
+      <div class="plank-other-banner">
+        <span class="plank-other-left">
+          <span class="plank-other-dot"></span>
+          <span class="plank-other-txt"><strong>Планка на предплечьях</strong> · 0:44</span>
+        </span>
+        <button type="button" class="plank-other-go" data-act="open-view" data-v="all_ex">К планке</button>
+      </div>` : '';
+
+    const sampleLogged = [{ w: '70', r: '8' }, { w: '70', r: '8' }, { w: '72,5', r: '7' }];
+    let rowsHtml = '';
+    for (let i = 0; i < 4; i++) {
+      if (i < loggedCount) {
+        const s = sampleLogged[i];
+        rowsHtml += `
+          <div class="d f-row f-row-logged">
+            <span class="d f-num f-num-done">${i + 1}</span>
+            <span style="font-size:21px">${s.w}</span>
+            <span style="font-size:21px">${s.r}</span>
+            <span class="done-badge">${ICO.check}</span>
+          </div>`;
+      } else if (i === loggedCount) {
+        const isManual = draftOn;
+        rowsHtml += `
+          <div class="f-row f-row-active">
+            <span class="d f-num ${isManual ? 'f-num-active' : 'f-num-sugg'}">${i + 1}</span>
+            <div class="f-in ${isManual ? 'has-value' : 'is-sugg'}">${isManual ? '75' : (isZero ? '65' : '72,5')}</div>
+            <div class="f-in ${isManual ? 'has-value' : 'is-sugg'}">${isManual ? '6' : '8'}</div>
+            <button type="button" class="f-check-btn ${isManual ? 'btn-solid-save' : 'btn-tonal-sugg'}" aria-label="Записать">${ICO.check}</button>
+          </div>`;
+      } else {
+        rowsHtml += `<div class="f-row f-row-future"><span class="d f-num f-num-future">${i + 1}</span><div class="f-in-empty-future"></div><div class="f-in-empty-future"></div><span></span></div>`;
+      }
+    }
+
+    let midBtn = '';
+    if (vKey === 'M1') {
+      midBtn = `<button type="button" class="f-nav-mid-m1" data-act="open-view" data-v="all_ex">${ICO.list}<span class="d" style="font-size:15px">Список</span></button>`;
+    } else if (vKey === 'M2') {
+      midBtn = `<button type="button" class="f-nav-mid-m2" data-act="open-view" data-v="all_ex">${ICO.list}<span class="nav-count-pill">4/4</span></button>`;
+    } else {
+      midBtn = `<button type="button" class="f-nav-mid-m3" data-act="open-view" data-v="all_ex">${ICO.list}<span class="d" style="font-size:15px">План</span></button>`;
+    }
+
+    let barHintHtml = '';
+    if (showHintBar && !isZero) {
+      if (vKey === 'M1') barHintHtml = `<div class="hint-pill"><span>Удерживайте, чтобы завершить</span></div>`;
+      else if (vKey === 'M2') barHintHtml = `<div class="hint-callout">Удерживайте, чтобы завершить</div>`;
+    }
+
+    return `
+      <div class="f-wstatus"><span>18:40</span>${statusPill}<span class="m" style="font-size:12px">5G · 82%</span></div>
+      <div class="f-scroll-work">
+        <div class="f-topbar">
+          <button type="button" class="f-back-btn" aria-label="Назад">${ICO.back}</button>
+          <div class="f-top-week"><span class="lamp-row"><span class="lamp heavy"></span></span><span>Тяжёлая неделя</span></div>
+          <div class="f-top-right">
+            <button type="button" class="ease-top-btn">${ICO.feather}<span>Облегчить</span></button>
+            <span class="m d" style="font-size:14.5px">Упр. 4/4</span>
+          </div>
+        </div>
+        ${plankBanner}
+        <div class="f-head">
+          <button type="button" class="f-title-btn ${titleSizeClass(name)}" data-act="open-view" data-v="tech" title="Открыть карточку техники">${name}</button>
+          <button type="button" class="f-rest-ring" aria-label="Таймер отдыха">
+            ${renderRestRingSvg()}
+            <span class="f-rest-ring-inner">
+              <span class="d" style="font-size:10px;color:var(--f-muted)">${isZero ? 'Старт' : 'Отдых'}</span>
+              <span class="d" style="font-size:21px;color:${isZero ? 'var(--f-text)' : 'var(--f-primary)'};margin-top:2px">${isZero ? '2:00' : '1:42'}</span>
+            </span>
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span class="tag">План: ${ex.planLabel}</span>
+          ${draftOn ? '<span class="tag amber">Черновик подхода 4 не записан</span>' : ''}
+        </div>
+        <div class="m d f-col-head"><span>№</span><span>Вес, кг</span><span>Повторения</span><span></span></div>
+        <div class="f-rows">${rowsHtml}</div>
+        <div style="display:flex;justify-content:center;margin-top:10px">
+          <button type="button" class="ob" style="width:auto;min-height:42px;padding:0 18px;font-size:14.5px">+ Подход</button>
+        </div>
+      </div>
+      ${barHintHtml}
+      <div class="f-bottom-nav">
+        <button type="button" class="f-nav-prev" aria-label="Предыдущее">${ICO.back}</button>
+        ${midBtn}
+        ${renderHoldButton(vKey, { full: false, scope: 'bar', isZero, hp, showHint: showHintBar })}
+      </div>`;
+  }
+
+  function renderAllExercisesHybrid(vKey, opts) {
+    const scen = opts.scenario;
+    const isZero = scen === 'zero';
+    const plankOn = hasPlankRunning(scen);
+    const totalLogged = getTotalLogged(scen);
+    const hp = opts.holdPct;
+    const showHintSheet = opts.showHintSheet;
+    const getExCount = (ex) => isZero ? 0 : ex.loggedNormal;
+    const doneExCount = EXERCISES.filter(e => getExCount(e) >= e.plannedSets).length;
+
+    const segs = EXERCISES.map((item, idx) => {
+      const cnt = getExCount(item);
+      const cls = cnt >= item.plannedSets ? 'done' : idx === state.exIndex ? 'cur' : '';
+      return `<span class="${cls}"></span>`;
+    }).join('');
+
+    const pinnedPlank = plankOn ? `
+      <div class="allex-pinned">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span class="plank-other-dot"></span>
+          <div style="min-width:0">
+            <div style="font-size:12.5px;font-weight:700;color:var(--f-on-primary-container)">Планка на предплечьях · идёт</div>
+            <div class="f-num-font" style="font-size:15px;color:var(--f-primary)">0:44 из 1:00</div>
+          </div>
+        </div>
+        <button type="button" class="plank-other-go" data-act="open-view" data-v="last">Открыть</button>
+      </div>` : '';
+
+    const items = EXERCISES.map((item, idx) => {
+      const cnt = getExCount(item);
+      const isCur = idx === state.exIndex;
+      const isDone = cnt >= item.plannedSets;
+      const isPlankLive = plankOn && item.isDuration;
+      const topLineCls = idx === 0 ? 'hide' : (getExCount(EXERCISES[idx - 1]) >= EXERCISES[idx - 1].plannedSets ? 'done' : '');
+      const botLineCls = idx === EXERCISES.length - 1 ? 'hide' : (isDone ? 'done' : '');
+      const nodeCls = isDone ? 'done' : isCur ? 'cur' : '';
+      return `
+        <button type="button" class="allex-c-item ${isCur ? 'cur' : ''}" data-act="jump-ex" data-v="${idx}">
+          <span class="allex-c-rail">
+            <span class="allex-c-line ${topLineCls}"></span>
+            <span class="allex-c-node ${nodeCls}">${isDone ? ICO.checkSm : (idx + 1)}</span>
+            <span class="allex-c-line ${botLineCls}"></span>
+          </span>
+          <span class="allex-c-body">
+            <span style="min-width:0;flex:1">
+              <span class="clamp-2" style="font-size:14.5px;font-weight:500;line-height:19px">${exName(item)}</span>
+              <span class="allex-c-meta">
+                <span>План ${item.planLabel}</span>
+                ${isCur ? '<span style="color:var(--f-primary);font-weight:600">· сейчас</span>' : ''}
+                ${isPlankLive ? '<span class="tag accent live-dot" style="padding:2px 7px;font-size:11px"><i></i>0:44</span>' : ''}
+              </span>
+            </span>
+            <span class="allex-c-count ${isDone ? 'done' : isCur ? 'cur' : ''}">${cnt}/${item.plannedSets}</span>
+          </span>
+        </button>`;
+    }).join('');
+
+    const sheetHintInline = (showHintSheet && !isZero && vKey !== 'M3')
+      ? `<div class="sheet-hint-bar">Удерживайте кнопку ~1,2 с, чтобы завершить тренировку</div>` : '';
+
+    const footer = vKey === 'M2'
+      ? `${sheetHintInline}<div class="allex-footer-split">
+           <button type="button" class="f-calm-cancel-pill" data-act="open-view" data-v="cancel">Отменить</button>
+           ${renderHoldButton('M2', { full: false, scope: 'sheet', isZero, hp, showHint: showHintSheet })}
+         </div>`
+      : `<div class="allex-dock">
+           ${sheetHintInline}
+           ${renderHoldButton(vKey, { full: true, scope: 'sheet', isZero, hp, showHint: showHintSheet })}
+           <button type="button" class="f-calm-cancel" data-act="open-view" data-v="cancel">Отменить тренировку</button>
+         </div>`;
+
+    return `
+      <div class="f-scrim" data-act="open-view" data-v="last">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 2px">
+            <span class="d" style="font-size:20px">Все упражнения</span>
+            <span class="m" style="font-size:12px">${doneExCount} из ${EXERCISES.length} выполн. · ${totalLogged} подх.</span>
+          </div>
+          <div class="allex-segbar">${segs}</div>
+          ${pinnedPlank}
+          <div class="f-sheet-scroll"><div class="allex-c-list">${items}</div></div>
+          ${footer}
+        </div>
+      </div>`;
+  }
+
+  function renderTechSheetC() {
+    const ex = EXERCISES[1];
+    const name = exName(ex);
+    const diffBars = `<span class="diff-bars">${[1, 2, 3].map(n => `<i class="${n <= ex.diff ? 'on' : ''}"></i>`).join('')}</span>`;
+    const techBlock = state.noTech
+      ? `<div class="tech-empty">Описание техники не указано. Его можно добавить в карточке упражнения в каталоге.</div>`
+      : state.longNames
+        ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
+        : `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${st}</span></div>`).join('')}</div>`;
+    const replaceToast = state.replaceFlash
+      ? `<div class="sheet-hint-bar">Откроется выбор замены упражнения на сегодняшнюю тренировку (#110)</div>` : '';
+
+    return `
+      <div class="f-scrim" data-act="open-view" data-v="last">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-scroll">
+            <div class="m d" style="font-size:12px">Упражнение 2 из 4 · План ${ex.planLabel}</div>
+            <h2 class="d" style="margin:0;font-size:25px;line-height:27px;overflow-wrap:anywhere">${name}</h2>
+            <div style="font-size:12.5px;color:var(--f-muted);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+              <strong style="color:var(--f-on-primary-container)">${ex.muscle}</strong>
+              <span>· ${ex.assisting}</span>
+              <span>· ${ex.equip}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px">· ${diffBars} ${ex.diffLabel}</span>
+            </div>
+            <div class="m d" style="font-size:12px;margin-top:4px">Техника выполнения</div>
+            ${techBlock}
+            ${replaceToast}
+            <button type="button" class="replace-card-c" data-act="flash-replace">
+              <span class="replace-card-c-ico">${ICO.swap}</span>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+                <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · по тем же мышцам</span>
+              </span>
+              <span class="m">${ICO.chevR}</span>
+            </button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderZeroSheet(vKey) {
+    if (vKey === 'M3') {
+      return `
+        <div class="f-scrim" data-act="open-view" data-v="last">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="safety-ico" style="color:var(--f-primary);background:var(--f-primary-container)">${ICO.info}</span>
+              <h3>Запишите хотя бы один подход</h3>
+            </div>
+            <p>Чтобы сохранить тренировку в историю и закрыть день недели, нужен минимум один записанный подход. Если тренировка не состоялась, её можно отменить.</p>
+            <button type="button" class="pb" data-act="open-view" data-v="last">Вернуться к тренировке</button>
+            <button type="button" class="f-calm-cancel" data-act="open-view" data-v="cancel">Отменить тренировку</button>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="f-scrim" data-act="open-view" data-v="last">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="safety-split">
+            <div class="safety-split-row">
+              <span class="safety-ico" style="color:var(--f-primary);background:var(--f-primary-container)">${ICO.info}</span>
+              <div>
+                <div style="font-weight:700;font-size:15.5px">Запишите хотя бы один подход</div>
+                <div class="m" style="font-size:12.5px;margin-top:3px;line-height:1.4">В историю сохраняются тренировки минимум с одним записанным подходом. Если сегодня не получилось — тренировку можно отменить.</div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="pb" data-act="open-view" data-v="last">Вернуться к тренировке</button>
+          <button type="button" class="f-calm-cancel" data-act="open-view" data-v="cancel">Отменить тренировку</button>
+        </div>
+      </div>`;
+  }
+
+  function renderWarnSheet(vKey, opts) {
+    const scen = opts.scenario;
+    const plankOn = scen === 'plank' || scen === 'both' || (scen !== 'draft');
+    const draftOn = scen === 'draft' || scen === 'both';
+    const both = plankOn && draftOn;
+    const secLabel = both ? 'Завершить без этих подходов' : 'Завершить без этого подхода';
+    const exFullName = state.longNames ? LONG_EX_NAME : 'Тяга штанги в наклоне';
+
+    if (vKey === 'M3') {
+      const items = [];
+      if (plankOn) items.push(`<div class="safety-card"><span class="safety-ico">${ICO.timer}</span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">Планка на предплечьях · 0:44</div><div class="m" style="font-size:12px">Таймер упражнения ещё идёт и остановится без записи</div></div></div>`);
+      if (draftOn) items.push(`<div class="safety-card"><span class="safety-ico">${ICO.edit}</span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600;overflow-wrap:anywhere">${exFullName}</div><div class="m" style="font-size:12px">Введён подход 4 (75 кг × 6), но не нажата ✓</div></div></div>`);
+      return `
+        <div class="f-scrim" data-act="open-view" data-v="last">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div style="display:flex;align-items:center;gap:9px"><span class="safety-ico">${ICO.warn}</span><h3>${both ? 'Незаписанные данные подхода' : plankOn ? 'Таймер упражнения ещё идёт' : 'Подход не записан'}</h3></div>
+            <p>Автоматически этот подход не сохранится. Вернитесь, чтобы записать его, или завершите без него.</p>
+            ${items.join('')}
+            <button type="button" class="pb" data-act="open-view" data-v="last">Вернуться к тренировке</button>
+            <button type="button" class="f-sheet-cancel" data-act="open-view" data-v="summary">${secLabel}</button>
+          </div>
+        </div>`;
+    }
+
+    const lossLines = [];
+    if (plankOn) lossLines.push('<strong>Планка на предплечьях</strong> · идёт таймер <span class="f-num-font" style="color:var(--f-amber)">0:44</span> (не сохранится)');
+    if (draftOn) lossLines.push(`<strong>${exFullName}</strong> · черновик <span class="f-num-font" style="color:var(--f-amber)">75 кг × 6</span> не записан`);
+    return `
+      <div class="f-scrim" data-act="open-view" data-v="last">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <h3>Есть незавершённый подход</h3>
+          <div class="safety-split">
+            <div class="safety-split-row">
+              <span style="color:var(--f-primary);margin-top:1px">${ICO.check}</span>
+              <div>
+                <div style="font-weight:600;color:var(--f-on-primary-container)">Сохранится в историю</div>
+                <div class="m" style="font-size:12px">8 подходов · 3 упражнения (пропущенные с 0 не попадут)</div>
+              </div>
+            </div>
+            <div class="safety-split-row loss">
+              <span style="color:var(--f-amber);margin-top:1px">${ICO.warn}</span>
+              <div>
+                <div style="font-weight:600;color:var(--f-on-amber-container)">Не сохранится при завершении</div>
+                ${lossLines.map(l => `<div style="font-size:12.5px;margin-top:3px;line-height:1.35">${l}</div>`).join('')}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="pb" data-act="open-view" data-v="last">Вернуться к тренировке</button>
+          <button type="button" class="f-sheet-warn-btn" data-act="open-view" data-v="summary">${secLabel}</button>
+        </div>
+      </div>`;
+  }
+
+  function renderCancelSheet105(scen) {
+    const total = getTotalLogged(scen);
+    const hasTimer = scen === 'plank' || scen === 'both' || total > 0;
+    return `
+      <div class="f-scrim" data-act="open-view" data-v="last">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <h3>Отменить тренировку?</h3>
+          <div class="f-sheet-summary">
+            <strong style="display:flex;align-items:center;gap:7px">День B: Спина и грудь <span class="lamp-row"><span class="lamp heavy"></span></span></strong>
+            <span class="m" style="font-size:12px">${total === 0 ? 'Записанных подходов пока нет' : `Записано подходов: ${total} · они удалятся без сохранения в историю`}</span>
+          </div>
+          ${hasTimer ? `<div class="f-sheet-warn">${hasPlankRunning(scen) ? 'Идущий таймер планки будет остановлен без записи подхода.' : 'Идущий таймер отдыха будет остановлен.'}</div>` : ''}
+          <button type="button" class="f-sheet-danger" data-act="confirm-cancel">Отменить тренировку</button>
+          <button type="button" class="f-sheet-cancel" data-act="open-view" data-v="last">Оставить тренировку</button>
+        </div>
+      </div>`;
+  }
+
+  function renderSummaryScreen() {
+    return `
+      <div class="sum-scroll">
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--f-primary)">
+          <span>Тренировка завершена</span><span class="m" style="font-weight:500">44 мин</span>
+        </div>
+        <h2 class="d" style="margin:4px 0 0;font-size:26px;line-height:1.1">День B: Спина и грудь</h2>
+        <div style="margin-top:5px;font-size:13px;color:var(--f-muted);display:flex;align-items:center;gap:6px">
+          <span class="lamp-row"><span class="lamp heavy"></span></span><span>Тяжёлая неделя · сохранено 3 из 4 упр.</span>
+        </div>
+        <div class="sum-hero">
+          <div class="m" style="font-size:11.5px;font-weight:600;margin-bottom:4px">К прошлой тяжёлой тренировке</div>
+          <div style="display:flex;align-items:baseline;gap:12px">
+            <div class="f-num-font" style="font-size:30px;color:var(--f-primary)">+4 <small style="font-family:Inter;font-size:12.5px;color:var(--f-on-primary-container)">повт.</small></div>
+            <div class="f-num-font" style="font-size:24px;color:var(--f-primary)">+2,5 <small style="font-family:Inter;font-size:12.5px;color:var(--f-on-primary-container)">кг в тяге</small></div>
+          </div>
+        </div>
+        <div class="m d" style="font-size:12px;margin:14px 0 2px 2px">Упражнения с записанными подходами</div>
+        <div class="mix-card is-up"><div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:14.5px">Присед со штангой на груди</strong><span class="tag accent">+3 повт.</span></div><div class="mix-pills"><span class="mix-pill">80 кг</span><span class="mix-pill grew">8</span><span class="mix-pill grew">8</span><span class="mix-pill tonal">8</span></div></div>
+        <div class="mix-card is-up"><div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:14.5px">Тяга штанги в наклоне</strong><span class="tag accent">+2,5 кг</span></div><div class="mix-pills"><span class="mix-pill grew">72,5 кг</span><span class="mix-pill tonal">8</span><span class="mix-pill tonal">8</span><span class="mix-pill grew">7</span></div></div>
+        <div class="mix-card"><div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:14.5px">Жим штанги лёжа</strong><span class="tag">2 подх.</span></div><div class="mix-pills"><span class="mix-pill">60 кг</span><span class="mix-pill">10</span><span class="mix-pill">9</span></div></div>
+        <div class="m" style="font-size:11.5px;margin-top:10px;text-align:center">Планка (0 подходов) не попала в историю и итоги (#112)</div>
+      </div>
+      <div class="f-bottom-nav"><button type="button" class="pb" data-act="open-view" data-v="last">Готово</button></div>`;
+  }
+
+  function renderPhoneHTML(vKey, opts) {
+    if (opts.view === 'summary') return renderSummaryScreen();
+    const base = renderWorkoutBase(vKey, opts);
+    let sheet = '';
+    if (opts.view === 'all_ex') sheet = renderAllExercisesHybrid(vKey, opts);
+    else if (opts.view === 'tech') sheet = renderTechSheetC();
+    else if (opts.view === 'zero') sheet = renderZeroSheet(vKey);
+    else if (opts.view === 'warn') sheet = renderWarnSheet(vKey, opts);
+    else if (opts.view === 'cancel') sheet = renderCancelSheet105(opts.scenario);
+    return base + sheet;
+  }
+
+  function getRenderOpts(isCompare) {
+    const now = Date.now();
+    const holdPct = state.holdPreview === 'mid' ? 0.65 : 0;
+    const isHintLive = !isCompare && now < state.hintUntil;
+    const showHintBar = state.holdPreview === 'hint' || (isHintLive && state.hintScope === 'bar');
+    const showHintSheet = state.holdPreview === 'hint' || (isHintLive && state.hintScope === 'sheet');
+    const scen = state.view === 'zero' ? 'zero' : (state.view === 'warn' && !hasPlankRunning(state.scenario) && !hasManualDraft(state.scenario) ? 'both' : state.scenario);
+    return { view: state.view, scenario: scen, holdPct, showHintBar, showHintSheet };
+  }
+
+  function render() {
+    const vObj = VARIANTS.find(v => v.key === state.variant) || VARIANTS[0];
+    document.getElementById('bar-key').textContent = vObj.key;
+    document.getElementById('bar-name').textContent = vObj.short;
+    document.querySelectorAll('#mode-tabs button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+    document.querySelectorAll('#width-tabs button').forEach(b => b.classList.toggle('active', Number(b.dataset.width) === state.width));
+
+    const isInteractive = state.mode === 'interactive';
+    document.getElementById('interactive-stage').classList.toggle('hidden', !isInteractive);
+    document.getElementById('compare-stage').classList.toggle('hidden', isInteractive);
+
+    if (isInteractive) {
+      const phone = document.getElementById('live-phone');
+      phone.className = 'phone' + (state.width === 360 ? ' w360' : '');
+      const opts = getRenderOpts(false);
+      phone.innerHTML = renderPhoneHTML(state.variant, opts);
+
+      document.getElementById('live-caption').textContent = `${vObj.key} (${vObj.short}) · ${state.width} dp`;
+      document.getElementById('var-panel-title').textContent = vObj.title;
+      document.getElementById('var-desc').innerHTML = `<ul>${vObj.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+
+      document.querySelectorAll('#view-btns .cbtn').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+      document.querySelectorAll('#scenario-btns .cbtn').forEach(b => b.classList.toggle('active', b.dataset.scen === state.scenario));
+      document.querySelectorAll('#hold-preview-btns .cbtn').forEach(b => b.classList.toggle('active', b.dataset.hp === state.holdPreview));
+      document.querySelectorAll('#text-btns [data-long]').forEach(b => b.classList.toggle('active', (b.dataset.long === '1') === state.longNames));
+      const noTechBtn = document.getElementById('btn-notech');
+      noTechBtn.textContent = state.noTech ? 'Техника: нет описания' : 'Техника: есть';
+      noTechBtn.classList.toggle('active', state.noTech);
+
+      const scenLabels = { normal: 'Обычная (8 подходов)', zero: '0 подходов', plank: 'Идёт планка 0:44', draft: 'Ручной черновик 75 × 6', both: 'Планка 0:44 + черновик 75 × 6' };
+      document.getElementById('state-tbl').innerHTML = `
+        <tr><td>Вариант</td><td>${vObj.key} — ${vObj.short} (?variant=${vObj.key})</td></tr>
+        <tr><td>Активный экран</td><td>${state.view}</td></tr>
+        <tr><td>Сценарий</td><td>${scenLabels[opts.scenario]}</td></tr>
+        <tr><td>Последнее действие</td><td>${state.lastEvent}</td></tr>`;
+    } else {
+      const cmpOpts = getRenderOpts(true);
+      document.querySelectorAll('#cmp-view-btns .cbtn').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+      document.querySelectorAll('#cmp-extra-btns .cbtn').forEach(b => {
+        if (b.dataset.hp) b.classList.toggle('active', state.holdPreview === b.dataset.hp);
+        if (b.dataset.scen) b.classList.toggle('active', state.scenario === b.dataset.scen);
+      });
+      document.getElementById('compare-grid').innerHTML = VARIANTS.map(v => `
+        <div class="compare-col">
+          <div class="compare-head">
+            <span class="compare-title">${v.key} · ${v.short}</span>
+            <button type="button" class="compare-pick" data-pick-var="${v.key}">Открыть интерактивно</button>
+          </div>
+          <div class="phone ${state.width === 360 ? 'w360' : ''}">${renderPhoneHTML(v.key, cmpOpts)}</div>
+          <div class="compare-note">${v.compareNote}</div>
+        </div>`).join('');
+    }
+  }
+
+  function triggerFinishAfterHold(scen) {
+    if (scen === 'zero') { state.view = 'zero'; state.lastEvent = '0 подходов → шторка про минимум 1 подход.'; }
+    else if (hasPlankRunning(scen) || hasManualDraft(scen)) { state.view = 'warn'; state.lastEvent = 'Удержание 1,2 с → открыта защитная шторка (планка / черновик).'; }
+    else { state.view = 'summary'; state.lastEvent = 'Удержание 1,2 с → сохранено в историю, переход на «Итоги» («Готово» → Главная).'; }
+    state.holdPreview = 'live';
+    render();
+  }
+
+  function cancelHoldAnim() { if (holdAnim) { cancelAnimationFrame(holdAnim.raf); holdAnim = null; } }
+
+  function updateHoldVisuals(btn, pct) {
+    btn.style.setProperty('--hp', pct.toFixed(3));
+    const c = 2 * Math.PI * 7.5;
+    const dash = `${(Math.max(0.08, pct) * c).toFixed(1)} ${c.toFixed(1)}`;
+    btn.querySelectorAll('.ring-arc').forEach(el => el.setAttribute('stroke-dasharray', dash));
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('[data-hold-btn]');
+    if (!btn || state.mode !== 'interactive') return;
+    e.preventDefault();
+    cancelHoldAnim();
+    const scope = btn.dataset.scope;
+    const scen = getRenderOpts(false).scenario;
+    if (scen === 'zero') {
+      state.view = 'zero';
+      state.lastEvent = 'Короткий тап при 0 подходах → сразу открыта шторка «Запишите хотя бы один подход».';
+      render(); return;
+    }
+    const startTs = performance.now();
+    btn.classList.add('is-holding');
+    const step = (now) => {
+      if (!holdAnim) return;
+      const pct = Math.min(1, (now - startTs) / HOLD_MS);
+      updateHoldVisuals(btn, pct);
+      if (pct >= 1) { cancelHoldAnim(); triggerFinishAfterHold(scen); return; }
+      holdAnim.raf = requestAnimationFrame(step);
+    };
+    holdAnim = { btn, startTs, scope, scen, raf: requestAnimationFrame(step) };
+  });
+
+  function handlePointerRelease() {
+    if (!holdAnim) return;
+    const { btn, startTs, scope } = holdAnim;
+    const elapsed = performance.now() - startTs;
+    cancelHoldAnim();
+    btn.classList.remove('is-holding');
+
+    if (elapsed < 360) {
+      updateHoldVisuals(btn, 0);
+      state.hintUntil = Date.now() + 2300;
+      state.hintScope = scope;
+      state.holdPreview = 'live';
+      state.lastEvent = 'Короткий тап → тренировка не завершена, показана подсказка «Удерживайте, чтобы завершить».';
+      render();
+      setTimeout(() => { if (Date.now() >= state.hintUntil - 50) render(); }, 2350);
+    } else {
+      const current = parseFloat(btn.style.getPropertyValue('--hp') || '0');
+      const rollStart = performance.now();
+      const roll = (t) => {
+        const k = Math.max(0, 1 - (t - rollStart) / 240);
+        updateHoldVisuals(btn, current * k);
+        if (k > 0) requestAnimationFrame(roll);
+      };
+      requestAnimationFrame(roll);
+      state.lastEvent = `Отпущено рано (${Math.round(elapsed)} мс из 1200 мс) → плавный откат заливки.`;
+      const tbl = document.getElementById('state-tbl');
+      if (tbl) tbl.lastElementChild.lastElementChild.textContent = state.lastEvent;
+    }
+  }
+  window.addEventListener('pointerup', handlePointerRelease);
+  window.addEventListener('pointercancel', handlePointerRelease);
+
+  document.addEventListener('click', (e) => {
+    const modeBtn = e.target.closest('#mode-tabs button');
+    if (modeBtn) { state.mode = modeBtn.dataset.mode; render(); return; }
+    const widthBtn = e.target.closest('#width-tabs button');
+    if (widthBtn) { state.width = Number(widthBtn.dataset.width); render(); return; }
+    const pickBtn = e.target.closest('[data-pick-var]');
+    if (pickBtn) { state.variant = pickBtn.dataset.pickVar; state.mode = 'interactive'; syncUrl(); render(); return; }
+    const viewBtn = e.target.closest('[data-view]');
+    if (viewBtn) { state.view = viewBtn.dataset.view; state.replaceFlash = false; render(); return; }
+    const scenBtn = e.target.closest('[data-scen]');
+    if (scenBtn) {
+      const next = scenBtn.dataset.scen;
+      state.scenario = (state.mode === 'compare' && state.scenario === next) ? 'normal' : next;
+      render(); return;
+    }
+    const hpBtn = e.target.closest('[data-hp]');
+    if (hpBtn) {
+      const next = hpBtn.dataset.hp;
+      state.holdPreview = (state.mode === 'compare' && state.holdPreview === next) ? 'live' : next;
+      render(); return;
+    }
+    const longBtn = e.target.closest('[data-long]');
+    if (longBtn) { state.longNames = longBtn.dataset.long === '1'; render(); return; }
+    if (e.target.closest('#btn-notech')) { state.noTech = !state.noTech; render(); return; }
+
+    const actEl = e.target.closest('[data-act]');
+    if (actEl) {
+      const act = actEl.dataset.act, val = actEl.dataset.v;
+      if (act === 'open-view') { state.view = val; state.replaceFlash = false; render(); return; }
+      if (act === 'jump-ex') { state.exIndex = Number(val); state.view = 'last'; state.lastEvent = `Переход к упражнению #${state.exIndex + 1}.`; render(); return; }
+      if (act === 'flash-replace') { state.replaceFlash = true; render(); return; }
+      if (act === 'confirm-cancel') { state.view = 'last'; state.lastEvent = 'Тренировка отменена через шторку #105.'; render(); return; }
+    }
+  });
+
+  function cycleVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === state.variant);
+    state.variant = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length].key;
+    syncUrl(); render();
+  }
+  document.getElementById('bar-prev').addEventListener('click', () => cycleVariant(-1));
+  document.getElementById('bar-next').addEventListener('click', () => cycleVariant(1));
+  document.addEventListener('keydown', (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cycleVariant(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); cycleVariant(1); }
+  });
+
+  syncUrl();
+  render();
+})();
+</script>
+</body>
+</html>
