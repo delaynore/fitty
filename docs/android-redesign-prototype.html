@@ -744,37 +744,71 @@
   }
   .plank-stop-btn.overtime { background: #1E2C16; box-shadow: inset 0 0 0 2px var(--f-primary); }
 
-  /* Exact baseline workout bottom bar (board 03 & 07) */
+  /* Workout bottom bar + hold-to-finish (#112 + #114) */
   .f-bottom-nav {
     position: absolute; left: 20px; right: 20px; bottom: 16px;
     display: flex; gap: 8px; align-items: center; z-index: 8;
   }
-  .phone.w360 .f-bottom-nav { left: 15px; right: 15px; }
+  .phone.w360 .f-bottom-nav { left: 15px; right: 15px; gap: 7px; }
   .f-nav-prev {
     width: 48px; height: 48px; border-radius: 24px;
-    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
     display: flex; align-items: center; justify-content: center; flex: none;
   }
-  .f-nav-all {
-    flex: 1; min-height: 48px; border-radius: 24px;
-    border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text);
-    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
-    font-size: 17px; letter-spacing: 0.6px; text-transform: uppercase; padding: 0 6px;
+  .f-nav-plan {
+    flex: 1; min-width: 0; height: 48px; padding: 0 12px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline-hi); background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap;
   }
   .f-nav-next {
     width: 104px; height: 48px; border-radius: 24px;
     border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary);
     display: flex; align-items: center; justify-content: center; flex: none;
   }
-  .f-nav-finish {
-    width: 104px; height: 48px; border-radius: 24px; border: 0;
-    background: var(--f-primary); color: var(--f-on-primary);
-    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
-    font-size: 15px; letter-spacing: 0.2px; text-transform: uppercase;
-    display: flex; align-items: center; justify-content: center; flex: none;
+  .f-hold-finish {
+    flex: 1.15; min-width: 0; height: 48px; border-radius: 24px;
+    position: relative; overflow: hidden;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--f-primary-container); border: 1.5px solid var(--f-primary); color: var(--f-on-primary-container);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    transition: transform 140ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
   }
+  .f-hold-finish.is-holding { transform: scale(0.985); box-shadow: 0 0 16px rgba(197, 250, 85, 0.28); }
+  .f-hold-finish.is-hint {
+    background: var(--f-amber-container); border-color: var(--f-amber); color: var(--f-on-amber-container);
+    animation: holdHintShake 320ms ease;
+  }
+  .f-hold-finish.is-zero { background: var(--f-surface-hi); border: 1.5px solid var(--f-outline); color: var(--f-dim); }
+  .f-hold-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+    background: var(--f-primary); transform-origin: left center; transform: scaleX(var(--hp, 0)); pointer-events: none;
+  }
+  .f-hold-finish.is-zero .f-hold-fill, .f-hold-finish.is-hint .f-hold-fill { display: none; }
+  .f-hold-layer {
+    position: relative; z-index: 2; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; height: 100%; padding: 0 12px; white-space: nowrap;
+  }
+  .f-hold-layer-top {
+    position: absolute; inset: 0; z-index: 3; color: var(--f-on-primary);
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px;
+    clip-path: inset(0 calc((1 - var(--hp, 0)) * 100%) 0 0); pointer-events: none; white-space: nowrap;
+  }
+  @keyframes holdHintShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    60% { transform: translateX(4px); }
+    85% { transform: translateX(-2px); }
+  }
+  .plank-other-banner {
+    margin: 2px 0 8px; padding: 8px 11px; border-radius: 14px; background: #1B2714; border: 1px solid var(--f-primary-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--f-on-primary-container);
+  }
+  .plank-other-left { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+  .plank-other-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plank-other-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); box-shadow: 0 0 8px var(--f-primary); flex: none; }
+  .plank-other-go { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--f-primary); color: var(--f-on-primary); font-size: 11.5px; font-weight: 700; flex: none; }
 
-  /* ==================== BOTTOM SHEETS (Baseline boards 20/21 + #82/#83/#98/#101) ==================== */
+  /* ==================== BOTTOM SHEETS (Baseline boards 20/21 + #82/#83/#98/#101/#105/#114) ==================== */
   .f-scrim {
     position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62);
     z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
@@ -783,7 +817,7 @@
   .f-sheet {
     background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
     padding: 10px 20px 20px; display: flex; flex-direction: column; gap: 10px;
-    max-height: 82%; overflow-y: auto;
+    max-height: 85%; overflow-y: auto;
   }
   .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
   .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
@@ -795,23 +829,53 @@
   .f-sheet-confirm { border: 0; border-radius: 999px; min-height: 46px; font-size: 14.5px; font-weight: 700; background: var(--f-warn); color: #231B04; width: 100%; }
   .f-sheet-tonal { border: 0; border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: var(--f-primary-container); color: var(--f-on-primary-container); width: 100%; }
   .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-sheet-warn-btn { border: 1.5px solid var(--f-amber-border); border-radius: 999px; min-height: 44px; font-size: 13.5px; font-weight: 600; background: var(--f-amber-container); color: var(--f-on-amber-container); width: 100%; }
   .f-sheet-summary { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--f-text); }
   .f-sheet-summary-sub { font-size: 12px; color: var(--f-muted); }
   .f-sheet-warn { background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error); border-radius: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.38; }
   .f-sheet-danger { width: 100%; min-height: 46px; border-radius: 999px; border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase; }
+  .f-calm-cancel { border: 0; background: transparent; color: var(--f-error); font-size: 13.5px; font-weight: 600; min-height: 36px; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+  .f-calm-cancel-pill { border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.52); color: var(--f-error); font-size: 13.5px; font-weight: 600; height: 48px; border-radius: 24px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 
-  /* Exact baseline All Exercises sheet row (board 21) */
-  .allex-row {
-    width: 100%; border: 0; border-radius: 14px;
-    display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-    text-align: left; min-height: 56px; background: transparent; color: var(--f-text);
-  }
-  .allex-row.cur { background: var(--f-primary-container); color: var(--f-on-primary-container); }
-  .allex-num {
-    width: 28px; height: 28px; border-radius: 50%; background: var(--f-chip); color: var(--f-muted);
-    font-size: 15px; display: flex; align-items: center; justify-content: center; flex: none;
-  }
-  .allex-row.cur .allex-num { color: var(--f-primary); }
+  /* Approved All Exercises sheet (Hybrid C+B · #114) */
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .allex-segbar { display: flex; gap: 4px; height: 4px; margin: 0 2px; flex: none; }
+  .allex-segbar span { flex: 1; border-radius: 2px; background: var(--f-chip); }
+  .allex-segbar span.done { background: var(--f-primary); }
+  .allex-segbar span.cur { background: linear-gradient(90deg, var(--f-primary) 55%, var(--f-primary-container) 55%); }
+  .allex-pinned { background: #1B2714; border: 1px solid var(--f-primary-border); border-radius: 14px; padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .allex-c-list { display: flex; flex-direction: column; }
+  .allex-c-item { width: 100%; border: 0; background: transparent; color: var(--f-text); display: flex; align-items: stretch; gap: 11px; padding: 0 4px; text-align: left; }
+  .allex-c-rail { width: 22px; display: flex; flex-direction: column; align-items: center; flex: none; }
+  .allex-c-line { width: 2px; flex: 1; background: var(--f-outline); min-height: 10px; }
+  .allex-c-line.done { background: var(--f-primary-border); }
+  .allex-c-line.hide { background: transparent; }
+  .allex-c-node { width: 20px; height: 20px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: var(--f-surface); border: 2px solid var(--f-outline-hi); color: var(--f-dim); font-size: 11px; font-weight: 700; }
+  .allex-c-node.done { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+  .allex-c-node.cur { background: var(--f-primary-container); border-color: var(--f-primary); color: var(--f-primary); box-shadow: 0 0 0 4px rgba(197, 250, 85, 0.14); }
+  .allex-c-body { flex: 1; min-width: 0; padding: 8px 10px; margin: 2px 0; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .allex-c-item.cur .allex-c-body { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .allex-c-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--f-muted); }
+  .allex-c-count { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; line-height: 1; color: var(--f-dim); flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .allex-c-count.done, .allex-c-count.cur { color: var(--f-primary); }
+  .allex-footer-split { border-top: 1px solid var(--f-outline); padding-top: 10px; display: flex; gap: 8px; align-items: center; flex: none; }
+
+  /* Approved Exercise Technique Card & Safety Sheets (Variant C · #114) */
+  .diff-bars { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .diff-bars i { width: 15px; height: 5px; border-radius: 3px; background: var(--f-outline); display: inline-block; }
+  .diff-bars i.on { background: var(--f-primary); }
+  .tech-card { background: var(--f-surface); border-radius: 16px; padding: 11px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .tech-step { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.44; color: var(--f-text); }
+  .tech-step-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; color: var(--f-primary); width: 16px; flex: none; line-height: 1.25; }
+  .tech-prose { font-size: 13.5px; line-height: 1.48; color: var(--f-text); overflow-wrap: anywhere; }
+  .tech-empty { background: var(--f-surface); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: var(--f-dim); }
+  .replace-card-c { width: 100%; border: 1px solid var(--f-outline); border-radius: 16px; background: var(--f-surface); color: var(--f-text); padding: 11px 13px; display: flex; align-items: center; gap: 11px; text-align: left; }
+  .replace-card-c-ico { width: 36px; height: 36px; border-radius: 12px; background: var(--f-primary-container); color: var(--f-primary); display: flex; align-items: center; justify-content: center; flex: none; }
+  .safety-split { border-radius: 16px; overflow: hidden; border: 1px solid var(--f-outline); background: var(--f-surface); }
+  .safety-split-row { padding: 10px 12px; display: flex; align-items: flex-start; gap: 9px; font-size: 13px; }
+  .safety-split-row + .safety-split-row { border-top: 1px solid var(--f-outline); }
+  .safety-split-row.loss { background: rgba(43, 36, 22, 0.75); }
+  .safety-ico { width: 34px; height: 34px; border-radius: 11px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--f-primary-container); color: var(--f-primary); }
 
   /* Weight calibration (#82) — Cyrillic titles in Inter per #82 decision */
   .f-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--f-bg); border-radius: 999px; padding: 3px; border: 1px solid var(--f-outline); }
@@ -1193,7 +1257,7 @@
           <li><strong>База возвращена 1-в-1:</strong> <code>.d</code> UPPERCASE-типографика, карточки <code>#141914</code> без рамок, нижний бар <code>64px</code>, Планка с кругом <code>280px</code>, История с лаймовой датой, Экран блокировки <code>#0B0E0B</code> + часы <code>96px</code> + <code>Fitty · сейчас</code>, шторки досок 20 и 21.</li>
           <li><strong>Цвет лёгкой недели (#98 → #101):</strong> сквозной голубой <code>#5CC8FA</code> вместо мятного <code>#7CE2D0</code>.</li>
           <li><strong>Высота Главной:</strong> карточка программы с <code>Training week</code> + раскрытый <code>Readiness check-in</code> + чипы дней <code>44px</code> + упражнения на <code>390 / 360 dp</code>.</li>
-          <li><strong>Топ-бар тренировки:</strong> <code>←</code> + лампа(ы) + <code>Тяжёлая неделя</code> + <code>Облегчить</code> + <code>УПР. 1/4</code> на <code>360 dp</code>.</li>
+          <li><strong>Топ-бар и низ тренировки (#114):</strong> чистая шапка без счётчика <code>Упр. X/N</code> (<code>←</code> + лампа недели + <code>Облегчить</code>), нижняя панель <code>← · ≡ План · → / 🏁 Завершить</code> (удержание 1,2 с с линейной заливкой и морфингом подсказки), гибрид «Все упражнения» и карточка техники C.</li>
           <li><strong>Два янтаря рядом:</strong> в упражнении 2 — лампа тяжёлой недели <code>#F59E42</code> и полоса совета «снизить вес» <code>#F5C469</code>.</li>
         </ul>
       </div>
@@ -1245,6 +1309,9 @@
     volOff: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
     playSm: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>',
     info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+    list: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
+    swap: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     fittyIcon: '<svg viewBox="0 0 108 108" aria-hidden="true"><defs><radialGradient id="fgBgProto" cx="50%" cy="46%" r="58%"><stop offset="0%" stop-color="#1D2619"/><stop offset="100%" stop-color="#0E110E"/></radialGradient></defs><rect x="0" y="0" width="108" height="108" fill="url(#fgBgProto)"/><polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65"/><circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55"/><path fill="#C5FA55" d="M38.5,31H75.5L73.2,41H48.5L47.4,49.5H68.5L66.3,59H46.2L43.8,77H32.5Z"/><circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA"/></svg>'
   };
 
@@ -1267,14 +1334,17 @@
     { id: 'wathan',   name: 'Уотан',    def: false, hint: 'Близка к Эпли в среднем диапазоне',      calc: (w, r) => r === 1 ? w : (100 * w) / (48.8 + 53.8 * Math.exp(-0.075 * r)), inv: (rm, t) => rm * (48.8 + 53.8 * Math.exp(-0.075 * t)) / 100 }
   ];
 
+  const LONG_TECH_500 = '1. Ляг на скамью, сведи лопатки и плотно прижми их к опоре, стопы поставь устойчиво на пол без отрыва пяток. 2. Возьмись за гриф хватом чуть шире плеч, сними штангу со стоек и выведи её строго над грудью. 3. На вдохе плавно опусти гриф к нижней части груди под контролем, сохраняя предплечья вертикальными и не проваливая локти. 4. Сделай короткую паузу внизу без отбива и на выдохе мощно выжми штангу вверх, не отрывая таз от скамьи. 5. Используй страховочные упоры либо попроси друга подстраховать.';
+
   const DAYS = [
     {
       id: 'A', name: 'День A', longName: 'День A: Верх тела — грудь, спина и стабилизация корпуса',
       exercises: [
         {
-          id: 'bench', type: 'weight_reps', muscle: 'Грудь', equip: 'Штанга, скамья', recordLabel: 'Вес × повторения',
+          id: 'bench', type: 'weight_reps', muscle: 'Грудные', assisting: 'Трицепс, передние дельты', equip: 'Штанга, скамья', recordLabel: 'Вес × повторения', diff: 2, diffLabel: 'Средняя',
+          steps: ['Лягте на скамью, сведите и прижмите лопатки, стопы плотно на полу.', 'Плавно опустите гриф к нижней части груди под контролем.', 'Выжмите вверх без отрыва таза от скамьи.'],
           name: 'Жим штанги лёжа',
-          longName: 'Жим штанги лёжа на наклонной скамье узким хватом',
+          longName: 'Жим штанги лёжа на наклонной скамье узким хватом с паузой 2с',
           heavy: { sets: 3, repsMin: 8, repsMax: 12, lastW: 60, lastR: 12 },
           light: { sets: 3, repsMin: 6, repsMax: 10, lastW: 52.5, lastR: 10 },
           regular: { sets: 3, repsMin: 8, repsMax: 12, lastW: 60, lastR: 12 },
@@ -1282,7 +1352,8 @@
           prompt: { dir: 'up', title: 'Можно попробовать вес потяжелее', sub: 'В прошлый раз все 3 подхода на 60 кг закрыты по верхней границе 12 повт.' }
         },
         {
-          id: 'row', type: 'weight_reps', muscle: 'Спина', equip: 'Штанга', recordLabel: 'Вес × повторения',
+          id: 'row', type: 'weight_reps', muscle: 'Широчайшие спины', assisting: 'Бицепс, задние дельты', equip: 'Штанга', recordLabel: 'Вес × повторения', diff: 2, diffLabel: 'Средняя',
+          steps: ['Наклоните корпус примерно на 45°, спина нейтральная, колени мягкие.', 'Тяните гриф к низу живота, сводя лопатки в верхней точке.', 'Опускайте штангу под контролем без рывков поясницей.'],
           name: 'Тяга штанги в наклоне',
           longName: 'Тяга штанги в наклоне к поясу обратным хватом с паузой вверху',
           heavy: { sets: 3, repsMin: 8, repsMax: 12, lastW: 70, lastR: 7 },
@@ -1292,7 +1363,8 @@
           prompt: { dir: 'down', title: 'Возможно, вес сейчас тяжеловат', sub: 'Две тренировки подряд все подходы ниже цели 8–12 повт. без роста суммы.' }
         },
         {
-          id: 'incline', type: 'weight_reps', muscle: 'Грудь', equip: 'Гантели, скамья', recordLabel: 'Вес × повторения',
+          id: 'incline', type: 'weight_reps', muscle: 'Верх груди', assisting: 'Трицепс, передние дельты', equip: 'Гантели, скамья', recordLabel: 'Вес × повторения', diff: 2, diffLabel: 'Средняя',
+          steps: ['Установите спинку скамьи под углом 30°, сведите лопатки.', 'Опускайте гантели по дуге к верхней части груди, локти чуть вперёд.', 'Выжмите вверх до мягкой фиксации без соударения гантелей.'],
           name: 'Жим гантелей на наклонной скамье',
           longName: 'Жим гантелей на наклонной скамье 30° с нейтральным хватом',
           heavy: { sets: 3, repsMin: 10, repsMax: 10, lastW: null, lastR: null },
@@ -1301,7 +1373,8 @@
           hasHistory: false, prompt: null
         },
         {
-          id: 'plank', type: 'duration', muscle: 'Кор', equip: 'Без оборудования', recordLabel: 'Время',
+          id: 'plank', type: 'duration', muscle: 'Пресс и кор', assisting: 'Плечи, ягодицы', equip: 'Без оборудования', recordLabel: 'Время', diff: 1, diffLabel: 'Начальная',
+          steps: ['Поставьте локти строго под плечами, тело — одна прямая линия.', 'Подкрутите таз и держите пресс в напряжении без прогиба в пояснице.'],
           name: 'Планка',
           longName: 'Планка на предплечьях с удержанием нейтрального таза',
           heavy: { sets: 3, sec: 60 },
@@ -1445,6 +1518,7 @@
       formulaId: 'epley', calTab: 'feel', calFormulaPicker: false,
       calFeelW: '18', calFeelR: '10', calFeelAnswer: null, calCalcW: '26', calCalcR: '8',
       sheet: null, snack: null, undoSnap: null,
+      finishHintUntil: 0, finishHintScope: null, holdPreviewPct: 0, finishHintStatic: false,
       history: INITIAL_HISTORY.slice(), lockPlankState: 'overtime',
       installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0
     };
@@ -2095,6 +2169,54 @@
       </div>`;
 
     const isLast = s.exIndex === day.exercises.length - 1;
+    const totalLogged = day.exercises.reduce((sum, item) => sum + (s.logged[item.id] || []).length, 0);
+    const doneExCount = day.exercises.filter(item => (s.logged[item.id] || []).length >= effectivePlan(item, wk, s.easeMode, s.distUnit).sets).length;
+    const loggedExCount = day.exercises.filter(item => (s.logged[item.id] || []).length > 0).length;
+
+    const findManualDrafts = () => {
+      const list = [];
+      day.exercises.forEach(item => {
+        const d = s.drafts[item.id];
+        if (!d) return;
+        if (item.type === 'distance' || item.type === 'reps') {
+          if (String(d.val || '').trim() !== '') {
+            const pl = effectivePlan(item, wk, s.easeMode, s.distUnit);
+            const suffix = item.type === 'distance' ? (pl.unit === 'km' ? ' км' : ' м') : ' повт.';
+            list.push({ ex: item, text: `${String(d.val).trim()}${suffix}` });
+          }
+        } else if (item.type === 'weight_reps') {
+          const dw = String(d.w || '').trim(), dr = String(d.r || '').trim();
+          if (dw !== '' || dr !== '') {
+            list.push({ ex: item, text: `${dw || '…'} кг × ${dr || '…'}` });
+          }
+        }
+      });
+      return list;
+    };
+
+    const renderHoldFinishBtn = (scope) => {
+      const isZero = totalLogged === 0;
+      const isHint = !isZero && (s.finishHintStatic || (Date.now() < (s.finishHintUntil || 0) && s.finishHintScope === scope));
+      const hp = isZero || isHint ? 0 : (s.holdPreviewPct || 0);
+      const cls = `f-hold-finish ${hp > 0 ? 'is-holding' : ''} ${isZero ? 'is-zero' : ''} ${isHint ? 'is-hint' : ''}`;
+      const content = isHint
+        ? `<span class="d" style="font-size:14.5px">Удерживайте 1,2 с</span>`
+        : `${isZero ? ICO.info : ICO.flag}<span class="d" style="font-size:15.5px">Завершить</span>`;
+      return `
+        <button type="button" class="${cls}" style="--hp:${hp.toFixed(3)}" data-hold-finish="1" data-scope="${scope}">
+          <span class="f-hold-fill"></span>
+          <span class="f-hold-layer">${content}</span>
+          ${!isZero && !isHint ? `<span class="f-hold-layer-top">${content}</span>` : ''}
+        </button>`;
+    };
+
+    // Running plank jump-back banner on other exercises (#81)
+    const plankExIdx = day.exercises.findIndex(item => item.type === 'duration');
+    const plankOtherBanner = (s.plankRunning && ex.type !== 'duration' && plankExIdx >= 0) ? `
+      <div class="plank-other-banner">
+        <span class="plank-other-left"><span class="plank-other-dot"></span><span class="plank-other-txt"><strong>${exDisplayName(day.exercises[plankExIdx], s)}</strong> · ${fmtSec(s.plankElapsed)}</span></span>
+        <button type="button" class="plank-other-go" data-act="jump-ex" data-v="${plankExIdx}">К планке</button>
+      </div>` : '';
 
     // Sheets on Workout
     let sheetHtml = '';
@@ -2117,44 +2239,152 @@
       }
       sheetHtml = `<div class="f-scrim keep-header" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div>${!s.calFormulaPicker ? `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Подобрать рабочий вес</h3><button class="prog-strip-x" data-act="close-sheet">${ICO.x}</button></div><div class="f-seg"><button class="${s.calTab === 'feel' ? 'active' : ''}" data-act="cal-tab" data-v="feel">По ощущениям <span class="f-rec-dot">Рек.</span></button><button class="${s.calTab === 'calc' ? 'active' : ''}" data-act="cal-tab" data-v="calc">По повторениям</button></div>` : ''}${calBody}</div></div>`;
     } else if (s.sheet === 'ex_detail') {
-      // EXACT BASELINE BOARD 20 ("Название упражнения целиком")
+      // Approved Exercise Card / Technique sheet (Variant C · #114 + #94)
+      const diff = ex.diff || 2, diffLbl = ex.diffLabel || 'Средняя';
+      const diffBars = `<span class="diff-bars">${[1, 2, 3].map(n => `<i class="${n <= diff ? 'on' : ''}"></i>`).join('')}</span>`;
+      const techBlock = s.longNames
+        ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
+        : (ex.steps && ex.steps.length)
+          ? `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${st}</span></div>`).join('')}</div>`
+          : `<div class="tech-empty">Описание техники не указано. Его можно добавить в карточке упражнения в каталоге.</div>`;
       sheetHtml = `
         <div class="f-scrim" data-act="close-sheet">
           <div class="f-sheet" onclick="event.stopPropagation()">
             <div class="f-sheet-handle"></div>
-            <div class="m d" style="font-size:13px">Упражнение ${s.exIndex + 1} из ${day.exercises.length}</div>
-            <h2 class="d" style="margin:0;font-size:26px;line-height:28px">${exDisplayName(ex, s)}</h2>
-            <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag">${ex.muscle}</span><span class="tag">${ex.equip.split(',')[0]}</span><span class="tag">План: ${plan.label}</span></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-              <div style="background:var(--f-surface);border-radius:14px;padding:10px 12px"><div class="m" style="font-size:12px">Тип записи</div><div style="font-size:15px;font-weight:500;margin-top:2px">${ex.recordLabel}</div></div>
-              <div style="background:var(--f-surface);border-radius:14px;padding:10px 12px"><div class="m" style="font-size:12px">Оборудование</div><div style="font-size:15px;font-weight:500;margin-top:2px">${ex.equip}</div></div>
+            <div class="m d" style="font-size:12px">Упражнение ${s.exIndex + 1} из ${day.exercises.length} · План ${plan.label}</div>
+            <h2 class="d" style="margin:0;font-size:25px;line-height:27px;overflow-wrap:anywhere">${exDisplayName(ex, s)}</h2>
+            <div style="font-size:12.5px;color:var(--f-muted);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+              <strong style="color:var(--f-on-primary-container)">${ex.muscle}</strong>
+              ${ex.assisting ? `<span>· ${ex.assisting}</span>` : ''}
+              <span>· ${ex.equip}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px">· ${diffBars} ${diffLbl}</span>
             </div>
-            <button class="ob" style="margin-top:4px;font-size:15px" data-act="close-sheet">Открыть в каталоге</button>
+            <div class="m d" style="font-size:12px;margin-top:2px">Техника выполнения</div>
+            ${techBlock}
+            <button class="replace-card-c" data-act="open-replace" type="button">
+              <span class="replace-card-c-ico">${ICO.swap}</span>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+                <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · по тем же мышцам</span>
+              </span>
+              <span class="m">${ICO.chevR}</span>
+            </button>
           </div>
         </div>`;
     } else if (s.sheet === 'all_ex') {
-      // EXACT BASELINE BOARD 21 ("Список всех упражнений")
-      const totalLogged = day.exercises.reduce((sum, item) => sum + (s.logged[item.id] || []).length, 0);
+      // Approved All Exercises sheet (Hybrid C+B · #114)
+      const segs = day.exercises.map((item, idx) => {
+        const cnt = (s.logged[item.id] || []).length, pl = effectivePlan(item, wk, s.easeMode, s.distUnit);
+        return `<span class="${cnt >= pl.sets ? 'done' : idx === s.exIndex ? 'cur' : ''}"></span>`;
+      }).join('');
+      const pinned = (s.plankRunning && plankExIdx >= 0) ? `
+        <div class="allex-pinned">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span class="plank-other-dot"></span>
+            <div style="min-width:0"><div style="font-size:12.5px;font-weight:700;color:var(--f-on-primary-container)">${exDisplayName(day.exercises[plankExIdx], s)} · идёт</div><div class="f-num-font" style="font-size:15px;color:var(--f-primary)">${fmtSec(s.plankElapsed)}</div></div>
+          </div>
+          <button type="button" class="plank-other-go" data-act="jump-ex" data-v="${plankExIdx}">Открыть</button>
+        </div>` : '';
+      const items = day.exercises.map((item, idx) => {
+        const cnt = (s.logged[item.id] || []).length, pl = effectivePlan(item, wk, s.easeMode, s.distUnit);
+        const isCur = idx === s.exIndex, isDone = cnt >= pl.sets, isLive = s.plankRunning && item.type === 'duration';
+        const prevDone = idx > 0 && (s.logged[day.exercises[idx - 1].id] || []).length >= effectivePlan(day.exercises[idx - 1], wk, s.easeMode, s.distUnit).sets;
+        const topCls = idx === 0 ? 'hide' : (prevDone ? 'done' : '');
+        const botCls = idx === day.exercises.length - 1 ? 'hide' : (isDone ? 'done' : '');
+        const nodeCls = isDone ? 'done' : isCur ? 'cur' : '';
+        return `
+          <button type="button" class="allex-c-item ${isCur ? 'cur' : ''}" data-act="jump-ex" data-v="${idx}">
+            <span class="allex-c-rail">
+              <span class="allex-c-line ${topCls}"></span>
+              <span class="allex-c-node ${nodeCls}">${isDone ? ICO.checkSm : (idx + 1)}</span>
+              <span class="allex-c-line ${botCls}"></span>
+            </span>
+            <span class="allex-c-body">
+              <span style="min-width:0;flex:1">
+                <span class="clamp-2" style="font-size:14.5px;font-weight:500;line-height:19px">${exDisplayName(item, s)}</span>
+                <span class="allex-c-meta">
+                  <span>План ${pl.label}</span>
+                  ${isCur ? '<span style="color:var(--f-primary);font-weight:600">· сейчас</span>' : ''}
+                  ${isLive ? `<span class="tag" style="background:var(--f-primary-container);color:var(--f-primary);padding:2px 7px;font-size:11px">● ${fmtSec(s.plankElapsed)}</span>` : ''}
+                </span>
+              </span>
+              <span class="allex-c-count ${isDone ? 'done' : isCur ? 'cur' : ''}">${cnt}/${pl.sets}</span>
+            </span>
+          </button>`;
+      }).join('');
       sheetHtml = `
         <div class="f-scrim" data-act="close-sheet">
           <div class="f-sheet" onclick="event.stopPropagation()">
             <div class="f-sheet-handle"></div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 4px 2px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 2px">
               <span class="d" style="font-size:20px">Все упражнения</span>
-              <span class="m" style="font-size:13px">Записано ${totalLogged} подходов</span>
+              <span class="m" style="font-size:12px">${doneExCount} из ${day.exercises.length} выполн. · ${totalLogged} подх.</span>
             </div>
-            <div style="display:grid;gap:2px">
-              ${day.exercises.map((item, idx) => {
-                const cnt = (s.logged[item.id] || []).length, pl = effectivePlan(item, wk, s.easeMode);
-                return `<button class="allex-row ${idx === s.exIndex ? 'cur' : ''}" data-act="jump-ex" data-v="${idx}">
-                  <span class="d allex-num">${idx + 1}</span>
-                  <span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:500;line-height:20px">${exDisplayName(item, s)}</span><span class="m" style="font-size:12px">План ${pl.label}</span></span>
-                  <span class="tag">${cnt > 0 ? cnt + ' подх.' : '0'}</span>
-                </button>`;
-              }).join('')}
+            <div class="allex-segbar">${segs}</div>
+            ${pinned}
+            <div class="allex-c-list">${items}</div>
+            <div class="allex-footer-split">
+              <button type="button" class="f-calm-cancel-pill" data-act="open-sheet" data-v="cancel_workout">Отменить</button>
+              ${renderHoldFinishBtn('sheet')}
             </div>
           </div>
         </div>`;
+    } else if (s.sheet === 'finish_zero') {
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div class="safety-split">
+              <div class="safety-split-row">
+                <span class="safety-ico">${ICO.info}</span>
+                <div>
+                  <div style="font-weight:700;font-size:15.5px">Запишите хотя бы один подход</div>
+                  <div class="m" style="font-size:12.5px;margin-top:3px;line-height:1.4">В историю сохраняются тренировки минимум с одним записанным подходом. Если сегодня не получилось — тренировку можно отменить.</div>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="pb" data-act="close-sheet">Вернуться к тренировке</button>
+            <button type="button" class="f-calm-cancel" data-act="open-sheet" data-v="cancel_workout">Отменить тренировку</button>
+          </div>
+        </div>`;
+    } else if (s.sheet === 'finish_warn') {
+      const drafts = findManualDrafts();
+      const lossLines = [];
+      if (s.plankRunning && plankExIdx >= 0) {
+        lossLines.push(`<strong>${exDisplayName(day.exercises[plankExIdx], s)}</strong> · идёт таймер <span class="f-num-font" style="color:var(--f-amber)">${fmtSec(s.plankElapsed)}</span> (не сохранится)`);
+      }
+      drafts.forEach(d => {
+        lossLines.push(`<strong>${exDisplayName(d.ex, s)}</strong> · черновик <span class="f-num-font" style="color:var(--f-amber)">${d.text}</span> не записан`);
+      });
+      const plural = lossLines.length > 1;
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Есть незавершённый подход</h3>
+            <div class="safety-split">
+              <div class="safety-split-row">
+                <span style="color:var(--f-primary);margin-top:1px">${ICO.check}</span>
+                <div>
+                  <div style="font-weight:600;color:var(--f-on-primary-container)">Сохранится в историю</div>
+                  <div class="m" style="font-size:12px">${totalLogged} подходов · ${loggedExCount} упр. (пропущенные с 0 не попадут)</div>
+                </div>
+              </div>
+              <div class="safety-split-row loss">
+                <span style="color:var(--f-amber);margin-top:1px">${ICO.warn}</span>
+                <div>
+                  <div style="font-weight:600;color:var(--f-on-amber-container)">Не сохранится при завершении</div>
+                  ${lossLines.map(l => `<div style="font-size:12.5px;margin-top:3px;line-height:1.35;overflow-wrap:anywhere">${l}</div>`).join('')}
+                </div>
+              </div>
+            </div>
+            <button type="button" class="pb" data-act="close-sheet">Вернуться к тренировке</button>
+            <button type="button" class="f-sheet-warn-btn" data-act="finish-workout">${plural ? 'Завершить без этих подходов' : 'Завершить без этого подхода'}</button>
+          </div>
+        </div>`;
+    } else if (s.sheet === 'cancel_workout') {
+      const hasTimer = s.restRunning || s.plankRunning;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Отменить тренировку?</h3><div class="f-sheet-summary"><strong style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${dayDisplayName(day, s)} ${renderLamps(s.alternating ? wk : null, isEased)}</strong><span class="f-sheet-summary-sub">${totalLogged === 0 ? 'Записанных подходов пока нет' : `Записано подходов: ${totalLogged} · они удалятся без сохранения в историю`}</span></div>${hasTimer ? `<div class="f-sheet-warn">${s.plankRunning ? 'Идущий таймер планки будет остановлен без записи подхода.' : 'Идущий таймер отдыха будет остановлен.'}</div>` : ''}<button class="f-sheet-danger" data-act="confirm-cancel-workout">Отменить тренировку</button><button class="f-sheet-cancel" data-act="close-sheet">Оставить тренировку</button></div></div>`;
     }
 
     const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span>${s.snack.undoType === 'cal' ? '<button class="f-snack-undo" data-act="undo-cal">Сбросить</button>' : ''}</div>` : '';
@@ -2167,9 +2397,9 @@
           ${weekPart}
           <div class="f-top-right">
             <button class="ease-top-btn ${isEased ? 'on' : ''}" data-act="open-sheet" data-v="lighten">${isEased ? renderLamps(null, true) : ICO.feather}<span>${easeBtnLabel}</span></button>
-            <span class="m d" style="font-size:15px">Упр. ${s.exIndex + 1}/${day.exercises.length}</span>
           </div>
         </div>
+        ${plankOtherBanner}
         <div class="f-head">
           <button class="f-title-btn ${titleSizeClass(exName)}" data-act="open-sheet" data-v="ex_detail">${exName}</button>
           ${restRingHtml}
@@ -2181,9 +2411,9 @@
       ${snackHtml}
       <div class="f-bottom-nav">
         <button class="f-nav-prev" data-act="prev-ex" ${s.exIndex === 0 ? 'disabled style="opacity:0.4"' : ''}>${ICO.back}</button>
-        <button class="f-nav-all" data-act="open-sheet" data-v="all_ex">Упражнения</button>
+        <button class="f-nav-plan" data-act="open-sheet" data-v="all_ex">${ICO.list}<span class="d" style="font-size:15.5px">План</span></button>
         ${isLast
-          ? '<button class="f-nav-finish" data-act="finish-workout">Завершить</button>'
+          ? renderHoldFinishBtn('bar')
           : `<button class="f-nav-next" data-act="next-ex">${ICO.arrowR}</button>`}
       </div>
       ${sheetHtml}`;
@@ -2231,7 +2461,7 @@
         ${heroHtml}
         ${cardsHtml}
       </div>
-      <div class="f-bottom-nav"><button class="pb" data-act="save-to-history">Готово · в историю</button></div>`;
+      <div class="f-bottom-nav"><button class="pb" data-act="save-to-history">Готово</button></div>`;
   }
 
   /* ==================== EXACT BASELINE HISTORY SCREEN (Board 04 + #101 lamps & ribbon + #94 + #113 details) ==================== */
@@ -2590,11 +2820,13 @@
         else if (act === 'start-workout') { st.activeWorkoutDayId = st.selectedDay; st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.restGuardArmed = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
         else if (act === 'resume-workout' && st.activeWorkoutDayId) { st.selectedDay = st.activeWorkoutDayId; st.screen = 'workout'; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
         else if (act === 'confirm-cancel-workout') {
-          st.activeWorkoutDayId = null; st.sheet = null; st.restRunning = false; st.plankRunning = false;
+          st.activeWorkoutDayId = null; st.screen = 'home'; st.sheet = null; st.restRunning = false; st.plankRunning = false;
           st.restGuardArmed = null; st.easeMode = 'none'; st.sessionMarkedLightened = false; st.checkinAnswer = 'none';
-          st.logged = { bench: [], row: [], incline: [], plank: [] };
+          st.logged = { bench: [], row: [], incline: [], plank: [], pullup: [], walk: [], run: [] };
+          st.drafts = { bench: { w: '', r: '' }, row: { w: '', r: '' }, incline: { w: '', r: '' }, pullup: { val: '' }, walk: { val: '' }, run: { val: '' } };
           st.snack = { text: 'Тренировка отменена' }; st.undoSnap = null;
         }
+        else if (act === 'open-replace') { st.sheet = null; st.snack = { text: 'Выбор замены упражнения на сегодня (#110)' }; }
         else if (act === 'dismiss-prompt') { st.dismissedPrompts[v] = true; }
         else if (act === 'open-hist-detail') { st.historyDetailIdx = parseInt(v, 10); }
         else if (act === 'close-hist-detail') { st.historyDetailIdx = null; }
@@ -2703,13 +2935,16 @@
         else if (act === 'prev-ex') { st.exIndex = Math.max(0, st.exIndex - 1); st.snack = null; st.restGuardArmed = null; }
         else if (act === 'next-ex') { st.exIndex = Math.min(getDay().exercises.length - 1, st.exIndex + 1); st.snack = null; st.restGuardArmed = null; }
         else if (act === 'jump-ex') { st.exIndex = parseInt(v, 10); st.sheet = null; st.restGuardArmed = null; }
-        else if (act === 'finish-workout') { st.screen = 'summary'; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
+        else if (act === 'finish-workout') {
+          st.screen = 'summary'; st.sheet = null; st.snack = null; st.restGuardArmed = null;
+          st.restRunning = false; st.plankRunning = false; st.holdPreviewPct = 0; st.finishHintStatic = false;
+        }
         else if (act === 'save-to-history') {
           const day = getDay();
           st.history.unshift({ date: '26 ноября 2026', time: '19:24', day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(), lightened: st.easeMode !== 'none' || st.sessionMarkedLightened });
           if (st.alternating) st.dayStatus[day.id] = 'done';
           st.activeWorkoutDayId = null;
-          st.screen = 'history';
+          st.screen = 'home';
         }
         else if (act === 'lock-cycle-plank') { const order = ['overtime', 'countdown', 'countup']; st.lockPlankState = order[(order.indexOf(st.lockPlankState) + 1) % order.length]; }
         else if (act === 'lock-reset-rest') { st.restLeft = st.restDefault; }
@@ -2753,6 +2988,81 @@
       ring.addEventListener('pointerup', () => clearTimeout(holdTimer));
       ring.addEventListener('pointerleave', () => clearTimeout(holdTimer));
     }
+
+    // Hold-to-finish (~1.2 s) gesture on last exercise bar & All Exercises sheet (#112 + #114)
+    phone.querySelectorAll('[data-hold-finish]').forEach(btn => {
+      let anim = null;
+      const cancelAnim = () => { if (anim) { cancelAnimationFrame(anim.raf); anim = null; } };
+      const onFinishTrigger = () => {
+        const day = getDay();
+        const total = day.exercises.reduce((sum, item) => sum + (st.logged[item.id] || []).length, 0);
+        if (total === 0) { st.sheet = 'finish_zero'; renderLive(); return; }
+        const hasDraft = day.exercises.some(item => {
+          const d = st.drafts[item.id];
+          if (!d) return false;
+          if (item.type === 'distance' || item.type === 'reps') return String(d.val || '').trim() !== '';
+          return String(d.w || '').trim() !== '' || String(d.r || '').trim() !== '';
+        });
+        if (st.plankRunning || hasDraft) {
+          st.sheet = 'finish_warn';
+        } else {
+          st.screen = 'summary'; st.sheet = null; st.snack = null; st.restGuardArmed = null;
+          st.restRunning = false; st.plankRunning = false;
+        }
+        renderLive();
+      };
+      const release = () => {
+        if (!anim) return;
+        const { startTs, scope } = anim;
+        const elapsed = performance.now() - startTs;
+        cancelAnim();
+        btn.classList.remove('is-holding');
+        window.removeEventListener('pointerup', release);
+        window.removeEventListener('pointercancel', release);
+        if (elapsed < 360) {
+          btn.style.setProperty('--hp', '0');
+          st.finishHintUntil = Date.now() + 2200;
+          st.finishHintScope = scope;
+          st.finishHintStatic = false;
+          renderLive();
+          setTimeout(() => { if (Date.now() >= st.finishHintUntil - 50) renderLive(); }, 2250);
+        } else {
+          const cur = parseFloat(btn.style.getPropertyValue('--hp') || '0');
+          const rs = performance.now();
+          const roll = (t) => {
+            const k = Math.max(0, 1 - (t - rs) / 240);
+            btn.style.setProperty('--hp', (cur * k).toFixed(3));
+            if (k > 0) requestAnimationFrame(roll);
+          };
+          requestAnimationFrame(roll);
+        }
+      };
+      btn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        const day = getDay();
+        const total = day.exercises.reduce((sum, item) => sum + (st.logged[item.id] || []).length, 0);
+        if (total === 0) { st.sheet = 'finish_zero'; renderLive(); return; }
+        cancelAnim();
+        const startTs = performance.now(), scope = btn.dataset.scope;
+        btn.classList.add('is-holding');
+        window.addEventListener('pointerup', release);
+        window.addEventListener('pointercancel', release);
+        const step = (now) => {
+          if (!anim) return;
+          const pct = Math.min(1, (now - startTs) / 1200);
+          btn.style.setProperty('--hp', pct.toFixed(3));
+          if (pct >= 1) {
+            cancelAnim();
+            window.removeEventListener('pointerup', release);
+            window.removeEventListener('pointercancel', release);
+            onFinishTrigger();
+            return;
+          }
+          anim.raf = requestAnimationFrame(step);
+        };
+        anim = { startTs, scope, raf: requestAnimationFrame(step) };
+      });
+    });
 
     phone.querySelectorAll('[data-focus-box]').forEach(box => {
       box.addEventListener('click', () => { const inp = box.querySelector('input'); if (inp) inp.focus(); });
@@ -2830,15 +3140,18 @@
         ]
       },
       {
-        title: '2. Тренировка — база досок 03/16/17/19 + 7 принятых решений (#79, #82, #83, #89, #99, #101, #102)',
-        sub: 'Круг 76×76, адаптивный UPPERCASE-заголовок, полоса совета, мягкая защита отдыха (#102), Планка 280px и все шторки',
+        title: '2. Тренировка — база досок 03/07/16/17/19/20/21 + согласованные решения (#79–#114)',
+        sub: 'Чистая шапка без «Упр. X/N», круг 76×76, панель «← · ≡ План · → / 🏁 Завершить» (удержание 1,2 с), Планка 280px, Дистанция/Повторения и все шторки',
         cards: [
-          { title: 'Тренировка · Совет «Потяжелее» + Подсказка (#79 + #99)', note: 'Без отдыха: пунктирная подсказка с тональной ✓, лаймовая полоса совета, «+ ПОДХОД» и «УПРАЖНЕНИЯ».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, restRunning: false, logged: { bench: [] }, drafts: { bench: { w: '', r: '' } } }) },
+          { title: 'Тренировка · Совет «Потяжелее» + Подсказка (#79 + #99)', note: 'Чистая шапка без «Упр. X/N», пунктирная подсказка с тональной ✓, лаймовая полоса совета и панель «← · ≡ План · →».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, restRunning: false, logged: { bench: [] }, drafts: { bench: { w: '', r: '' } } }) },
           { title: 'Тренировка · Мягкая защита во время отдыха (#86 + #102)', note: 'Во время отдыха в строке графитовая ⏳; по 1-му тапу — лаймовая ✓ с кольцом 4 с, встроенная плашка под строкой и волна у кольца 76×76.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, restRunning: true, restLeft: 102, restOwnerExId: 'bench', logged: { bench: [{ w: '60', r: '12' }] }, drafts: { bench: { w: '', r: '' } }, restGuardArmed: { exId: 'bench', rowIdx: 1, staticPct: 0.72 } }) },
           { title: 'Тренировка · Янтарь лампы + Янтарь «Снизить» + Длинное имя', note: 'Проверка контраста #101 (#F59E42) и #99 (#F5C469) + 3-строчный заголовок рядом с кругом 76×76.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 1, longNames: true, logged: { row: [] }, drafts: { row: { w: '65', r: '' } } }) },
           { title: 'Тренировка · Шторка «Подобрать вес» (1RM)', note: 'Стык #82 + #83 + #101: шапка и круг отдыха видимы наверху, формула Эпли в Inter.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 2, sheet: 'calibrate', calTab: 'calc', logged: { incline: [] } }) },
-          { title: 'Планка · Старт (база доски 16 + облегчение)', note: 'Чипы подходов, степпер «Цель сегодня» и круглый СТАРТ 280px (облегчённая цель 0:50).', state: snap({ screen: 'workout', currentWeek: 'heavy', easeMode: 'easier', exIndex: 3, plankRunning: false, plankOffset: 0 }) },
+          { title: 'Планка · Старт + удержание «Завершить» 65% (#114)', note: 'Последнее упражнение: чистая кнопка «🏁 Завершить» с линейной лаймовой заливкой (65%) вместо →.', state: snap({ screen: 'workout', currentWeek: 'heavy', easeMode: 'easier', exIndex: 3, plankRunning: false, plankOffset: 0, holdPreviewPct: 0.65 }) },
           { title: 'Планка · Идёт замер / переработка (база доски 17 + #81)', note: 'Круг 280px, переработка +0:12 с бейджем «Цель ✓», пилюля «Планка +0:12» в статус-баре.', state: snap({ screen: 'workout', currentWeek: 'heavy', easeMode: 'none', exIndex: 3, plankRunning: true, plankOffset: -15, plankElapsed: 57, restRunning: false }) },
+          { title: 'Тренировка · Шторка «Все упражнения» (C+B · #114)', note: 'Сегментный прогресс-бар, закреплённый баннер активной планки, вертикальный таймлайн со счётчиками 3/3 и однострочный низ «Отменить | Завершить».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 1, sheet: 'all_ex', plankRunning: true, plankElapsed: 44, logged: { bench: [{ w: '60', r: '12' }, { w: '60', r: '12' }, { w: '60', r: '12' }], row: [{ w: '70', r: '8' }], incline: [], plank: [] } }) },
+          { title: 'Тренировка · Карточка техники (C · #114 + #94)', note: 'Полное название без обрезки, компактная строка метаданных с 3-полосной сложностью, техника (500 симв.) и карточка «Заменить упражнение».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, sheet: 'ex_detail', longNames: true }) },
+          { title: 'Тренировка · Защита завершения: планка + черновик (#112 + #114)', note: 'Двухчастная карточка «Сохранится в историю / Не сохранится при завершении» с кнопками «Вернуться к тренировке» и «Завершить без этих подходов».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 1, sheet: 'finish_warn', plankRunning: true, plankElapsed: 44, logged: { bench: [{ w: '60', r: '12' }, { w: '60', r: '12' }], row: [{ w: '70', r: '8' }], incline: [], plank: [] }, drafts: { row: { w: '72,5', r: '6' } } }) },
           { title: 'Тренировка · Дистанция (M3 · #113)', note: 'Единая сетка 32 | 1fr | 52, ДИСТАНЦИЯ по центру, м|км у правого края, слитные «40 м» по одной оси и 4 шортката строго под полем.', state: snap({ screen: 'workout', selectedDay: 'C', currentWeek: 'heavy', exIndex: 2, restRunning: false }) },
           { title: 'Тренировка · Повторения без веса (M3 · #113)', note: 'Слитные «12 повт.» / «10 повт.» по центру, 4 шортката −2/−1/+1/+2 под полем, колонка ✓ чистая.', state: snap({ screen: 'workout', selectedDay: 'C', currentWeek: 'heavy', exIndex: 1, restRunning: false }) },
           { title: 'Тренировка · Шторка долгого нажатия на отдых (#83)', note: '«Сейчас идёт 1:42» с +15/+30 с, фокус на времени по умолчанию (±15 с + пресеты) и автозапуск.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, sheet: 'rest_menu', restRunning: true, restLeft: 102 }) }
