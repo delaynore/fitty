@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #105 (финальная полировка A2): карточка активной тренировки на Главной</title>
+<!--
+  Polished A2 candidate for issue #105 ("Как выглядит карточка запущенной тренировки на Главной и как она сочетается с неделей и самочувствием?").
+  Fixes alignment from v2:
+    - Top row: clean live-dot + "ИДЁТ ТРЕНИРОВКА" on left, "Отменить" aligned on same centerline on right (no floating lamps in kicker).
+    - Header row: Day title + load lamps 8dp paired directly with their text ("Тяжёлая · Облегчена") on a centered 16px flex line; tabular-nums live timer tile on the right (hidden cleanly when no timer is running, zero layout shift).
+    - Progress row: full-width current exercise ("2/4 · Тяга штанги в наклоне") + right-aligned set count above 4px segmented progress strip.
+    - Full-width primary "ПРОДОЛЖИТЬ ТРЕНИРОВКУ" button below.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 28px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(300px, 1fr); gap: 18px; align-items: start;
+  }
+  @media (max-width: 860px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 460px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 11px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 9px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F4F6F1); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 9px;
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #E8EDE4); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+  .cbtn.danger { color: var(--destructive, #B42318); border-color: var(--border, #E2BEBA); background: transparent; }
+  .cbtn-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  .fix-list { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--card-foreground, #333C31); line-height: 1.48; }
+  .fix-list li { margin-bottom: 5px; }
+  .fix-list li:last-child { margin-bottom: 0; }
+
+  .board-grid { display: flex; flex-wrap: wrap; gap: 20px 18px; align-items: flex-start; justify-content: center; }
+  .board-card { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .board-card-cap { width: 390px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .board-card-cap.w360 { width: 360px; }
+  .board-card-title { font-size: 13px; font-weight: 700; color: var(--foreground, #1B2219); }
+  .board-card-note { font-size: 11.5px; color: var(--muted-foreground, #5C6759); line-height: 1.35; }
+  .hidden { display: none !important; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-border: #2A526B;
+    --load-light-text: #BFE9FF;
+    --load-ease: #C09BFF;
+    --load-ease-bg: #221933;
+    --load-ease-border: #55407D;
+    --load-ease-text: #E5D6FF;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.24);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .m { color: var(--f-muted); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 46px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 7px; line-height: 1;
+  }
+  .pb:hover { filter: brightness(1.04); }
+  .pb.theme-light { background: var(--load-light); color: #07202D; }
+
+  .tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--f-chip); font-size: 13px; font-weight: 500; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .tag.light-target { background: var(--load-light-bg); color: var(--load-light-text); box-shadow: inset 0 0 0 1px var(--load-light-border); }
+  .tag.eased-target { background: var(--load-ease-bg); color: var(--load-ease-text); box-shadow: inset 0 0 0 1px var(--load-ease-border); }
+  .ex-pill-done { background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+  .ex-pill-cur { background: rgba(197, 250, 85, 0.14); color: var(--f-primary); border: 1px solid var(--f-primary-border); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+
+  .f-nav { position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px; background: var(--f-surface-hi); border-radius: 32px; display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 12; }
+  .f-nav-btn { border: 0; background: transparent; display: flex; align-items: center; gap: 6px; height: 48px; min-width: 48px; justify-content: center; border-radius: 24px; color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px; }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  .f-scroll-home { flex: 1; overflow-y: auto; padding: 14px 20px 94px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-home::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-home { padding: 12px 16px 90px; }
+
+  /* Approved 8dp lamps (#101) — exact vertical centering */
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-ease  { background: var(--load-ease);  box-shadow: 0 0 9px rgba(192, 155, 255, 0.88); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+
+  .live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); flex: none;
+    box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); animation: livePulse 2s ease-out infinite;
+  }
+  @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); } 70% { box-shadow: 0 0 0 5px rgba(197, 250, 85, 0); } 100% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0); } }
+
+  .home-h1 { margin: 6px 0 12px; font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ==================== POLISHED A2 HERO CARD ==================== */
+  .hero-a2 {
+    background: linear-gradient(155deg, #192415 0%, #141914 72%);
+    border: 1.5px solid var(--f-primary-border);
+    border-radius: 20px;
+    padding: 13px 15px 14px;
+    margin-bottom: 12px;
+  }
+  .hero-a2.accent-light {
+    background: linear-gradient(155deg, #132531 0%, #141914 72%);
+    border-color: var(--load-light-border);
+  }
+  .hero-a2.accent-ease {
+    background: linear-gradient(155deg, #211932 0%, #141914 72%);
+    border-color: var(--load-ease-border);
+  }
+
+  /* Row 1: Kicker + Cancel cleanly on one horizontal centerline */
+  .a2-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 20px;
+  }
+  .a2-kicker {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: 0.55px;
+    color: var(--f-on-primary-container);
+  }
+  .a2-cancel-btn {
+    border: 0; background: transparent;
+    padding: 5px 8px; margin: -5px -8px -5px 0; border-radius: 8px;
+    color: var(--f-error); font-size: 12px; font-weight: 600; line-height: 1;
+    display: inline-flex; align-items: center; opacity: 0.9;
+  }
+  .a2-cancel-btn:hover { background: rgba(255, 180, 171, 0.1); opacity: 1; }
+
+  /* Row 2: Identity (Day + Lamps paired with load text) on left, live timer tile on right */
+  .a2-head {
+    margin-top: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .a2-id { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .a2-day {
+    font-size: 23px; line-height: 1.06; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .a2-load-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-size: 12px; line-height: 16px; color: var(--f-muted);
+  }
+  .a2-load-row .lamp-group { height: 16px; }
+  .a2-load-txt { line-height: 16px; }
+
+  /* Live timer tile (tabular-nums, appears when Rest timer or Exercise timer is active) */
+  .a2-timer-tile {
+    flex: none; min-width: 84px; padding: 7px 11px; border-radius: 13px;
+    background: rgba(11, 14, 11, 0.56);
+    border: 1px solid rgba(197, 250, 85, 0.24);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  }
+  .a2-timer-tile.is-ex {
+    background: rgba(197, 250, 85, 0.14);
+    border-color: var(--f-primary);
+  }
+  .a2-timer-lbl {
+    font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: 0.45px; text-transform: uppercase;
+    color: var(--f-muted);
+  }
+  .a2-timer-tile.is-ex .a2-timer-lbl { color: var(--f-on-primary-container); }
+  .a2-timer-num {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 26px; line-height: 0.96; color: var(--f-primary);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
+  }
+
+  /* Row 3: Full-width current exercise + set count + segmented bar */
+  .a2-prog-wrap {
+    margin-top: 10px; padding-top: 9px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .a2-prog-row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  }
+  .a2-ex-cur {
+    min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 6px;
+    font-size: 13px; line-height: 1.25; color: var(--f-text); font-weight: 500;
+  }
+  .a2-ex-step {
+    flex: none; font-size: 12px; font-weight: 600; color: var(--f-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .a2-ex-name {
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .a2-sets-count {
+    flex: none; white-space: nowrap; font-size: 12px; font-weight: 600;
+    color: var(--f-on-primary-container); font-variant-numeric: tabular-nums;
+  }
+  .h-segs { display: flex; gap: 4px; margin-top: 7px; }
+  .h-seg { flex: 1; height: 3.5px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); }
+  .h-seg.done { background: var(--f-primary); }
+  .h-seg.cur { background: rgba(197, 250, 85, 0.45); }
+
+  /* Row 4: Full-width Resume CTA */
+  .a2-cta { margin-top: 12px; }
+
+  /* ==================== PROGRAM CARD & DAYS BELOW ==================== */
+  .home-prog { background: var(--f-primary-container); border-radius: 18px; padding: 13px 16px; color: var(--f-on-primary-container); }
+  .home-prog-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .home-prog-name { font-size: 21px; line-height: 1.15; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .prog-week-divider { margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(221, 255, 152, 0.16); }
+  .prog-week-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: rgba(221, 255, 152, 0.8); margin-bottom: 6px; }
+  .prog-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(11, 14, 11, 0.42); border: 1px solid rgba(221, 255, 152, 0.14); border-radius: 12px; padding: 3px; }
+  .prog-seg-btn { border: 0; border-radius: 9px; min-height: 34px; font-size: 12.5px; font-weight: 600; background: transparent; color: rgba(240, 243, 234, 0.74); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; }
+  .prog-seg-btn.active-heavy { background: var(--f-primary); color: var(--f-on-primary); }
+  .prog-seg-btn.active-light { background: var(--load-light); color: #07202D; }
+  .prog-locked-row { width: 100%; border: 0; background: transparent; padding: 0; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .prog-locked-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(11, 14, 11, 0.34); border: 1px solid rgba(221, 255, 152, 0.22); color: #EEFFCA; }
+  .prog-locked-pill.is-light { background: rgba(19, 37, 49, 0.88); border-color: rgba(92, 200, 250, 0.46); color: var(--load-light-text); }
+  .prog-dots { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(221, 255, 152, 0.88); }
+  .prog-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(221, 255, 152, 0.48); }
+  .prog-dot.done { background: var(--load-heavy); border-color: var(--load-heavy); }
+  .prog-dot.done.light { background: var(--load-light); border-color: var(--load-light); }
+  .prog-dot.active-run { border-color: var(--f-primary); background: rgba(197, 250, 85, 0.35); }
+
+  .rc-card { margin-top: 12px; background: linear-gradient(135deg, #1B231A 0%, #1C1929 100%); border: 1.5px solid #4A5A3E; border-radius: 20px; padding: 12px 13px; }
+  .rc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .rc-ico { width: 28px; height: 28px; border-radius: 10px; flex: none; background: rgba(197, 250, 85, 0.14); color: var(--f-primary); display: flex; align-items: center; justify-content: center; }
+  .rc-title { font-size: 13.5px; font-weight: 700; color: var(--f-text); line-height: 1.2; }
+  .rc-sub { font-size: 11.5px; color: var(--f-muted); line-height: 1.25; margin-top: 1px; }
+  .rc-btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rc-choice { min-height: 38px; padding: 0 10px; border-radius: 12px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .rc-choice-ok { background: #1C2716; border: 1.5px solid #445B26; color: #DCFA9F; }
+  .rc-choice-tired { background: #231B34; border: 1.5px solid #594483; color: #E4D4FF; }
+
+  .home-sec-title { font-size: 13.5px; margin: 14px 0 7px; }
+  .sc { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-right: -20px; padding-right: 20px; }
+  .phone.w360 .sc { margin-right: -16px; padding-right: 16px; }
+  .sc::-webkit-scrollbar { display: none; }
+  .f-day-chip { flex: none; min-height: 42px; max-width: 220px; padding: 0 15px; border-radius: 13px; font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17.5px; text-transform: uppercase; letter-spacing: 0.6px; border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text); display: inline-flex; align-items: center; gap: 7px; line-height: 1; }
+  .f-day-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .f-day-chip.selected { border: 0; background: var(--f-primary); color: var(--f-on-primary); }
+  .f-day-chip.selected.theme-light { background: var(--load-light); color: #07202D; }
+  .f-day-chip.selected.browse-muted { background: var(--f-surface-hi); color: var(--f-text); border: 1.5px solid var(--f-outline-hi); }
+  .f-day-chip.done:not(.selected) { background: #172115; border-color: #2E4222; color: #C7DBAE; }
+  .f-day-chip.running:not(.selected) { background: #172213; border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
+  .chip-mark { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 17px; height: 17px; border-radius: 50%; font-family: Inter, sans-serif; font-size: 11px; font-weight: 700; }
+  .chip-mark-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .selected .chip-mark-done { background: rgba(15, 25, 10, 0.16); color: inherit; }
+
+  .home-ex-card { margin-top: 10px; padding: 0 15px; }
+  .f-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 11px 0 9px; }
+  .f-card-head-title { font-size: 14px; font-weight: 600; color: var(--f-text); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .f-card-head-meta { font-size: 12px; color: var(--f-dim); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .home-ex-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-top: 1px solid var(--f-chip); }
+  .home-ex-idx { font-size: 16px; color: var(--f-dim); width: 22px; flex: none; }
+  .home-ex-name { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 500; line-height: 18px; color: var(--f-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .home-ex-row.is-done .home-ex-name { color: var(--f-muted); }
+  .home-ex-row.is-cur .home-ex-name { color: var(--f-on-primary-container); font-weight: 600; }
+  .browse-lock-note { margin-top: 9px; padding: 9px 12px; border-radius: 13px; background: var(--f-surface); color: var(--f-dim); font-size: 11.5px; line-height: 1.35; text-align: center; }
+
+  /* Sheets & Toast */
+  .f-scrim { position: absolute; inset: 0; z-index: 30; background: rgba(5, 8, 5, 0.72); display: flex; align-items: flex-end; }
+  .f-sheet { width: 100%; background: var(--f-surface-hi); border-radius: 24px 24px 0 0; padding: 10px 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .f-sheet-handle { width: 38px; height: 4px; border-radius: 99px; background: var(--f-outline); align-self: center; margin-bottom: 4px; }
+  .f-sheet h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 13.5px; color: var(--f-muted); line-height: 1.45; }
+  .f-sheet-summary { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--f-text); }
+  .f-sheet-summary-sub { font-size: 12px; color: var(--f-muted); }
+  .f-sheet-warn { background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error); border-radius: 12px; padding: 9px 11px; font-size: 12.5px; line-height: 1.38; }
+  .f-sheet-danger { width: 100%; min-height: 46px; border-radius: 999px; border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase; }
+  .f-sheet-cancel { width: 100%; min-height: 44px; border-radius: 999px; border: 0; background: var(--f-chip); color: var(--f-text); font-size: 14px; font-weight: 600; }
+  .f-toast { position: absolute; left: 16px; right: 16px; bottom: 86px; z-index: 25; background: #232D22; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container); border-radius: 14px; padding: 10px 14px; font-size: 12.5px; font-weight: 500; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #105 · Финал A2</span>
+      <div>
+        <h1 class="host-title">Выровненная компактная Hero-карточка (A2)</h1>
+        <div class="host-sub">Лампы 8 dp рядом со своей подписью, чистая шапка «Идёт тренировка / Отменить», таймер с tabular-nums и упражнение на всю ширину</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="tab-interactive" class="active" type="button">Интерактив</button>
+        <button id="tab-board" type="button">4 состояния рядом</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="view-interactive" class="interactive-stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone" aria-label="Интерактивный макет Главной Fitty"></main>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Что выровнял в A2</h2>
+        <ul class="fix-list">
+          <li><strong>Убрал конфликт точек в шапке:</strong> наверху слева только <code>● ИДЁТ ТРЕНИРОВКА</code>, справа на той же центральной линии — кнопка <code>Отменить</code> (выровнена по правому краю плитки таймера).</li>
+          <li><strong>Лампы 8 dp рядом со своим текстом:</strong> цветные лампы переехали в строку нагрузки прямо под названием дня (<code>● ● Тяжёлая · Облегчена</code>, строгий центр по высоте строки <code>16px</code>).</li>
+          <li><strong>Упражнение на всю ширину:</strong> текущее упражнение (<code>2/4 · Тяга штанги в наклоне</code>) и счётчик подходов (<code>5 подходов</code>) вынесены под лёгкий разделитель над сегментами — длинное название больше не зажимается плиткой таймера на <code>360 dp</code>.</li>
+          <li><strong>Стабильный таймер:</strong> в плитке справа включён <code>tabular-nums</code> (цифры не дёргаются при тике), а без таймера плитка аккуратно исчезает без лишней дублирующей коробки.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Проверка состояний</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Активный таймер</span>
+          <div class="btn-wrap" id="ctrl-timer"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Прогресс тренировки</span>
+          <div class="btn-wrap" id="ctrl-progress"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Неделя и облегчение (лампы 8 dp)</span>
+          <div class="btn-wrap" id="ctrl-load"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Список дней ниже и стресс-тесты</span>
+          <div class="btn-wrap" id="ctrl-edge"></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="view-board" class="hidden">
+    <div class="board-grid" id="board-grid"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+    history: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    chevR: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13l11-6.5z"/></svg>',
+    lock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    pulse: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg>'
+  };
+
+  const DAYS = [
+    {
+      id: 'A', name: 'День A', longName: 'День A: Верх тела — грудь, спина и кор',
+      exercises: [
+        { id: 'bench', name: 'Жим штанги лёжа', longName: 'Жим штанги лёжа на горизонтальной скамье с паузой', sets: 3, plan: '3 × 8–12', lightPlan: '3 × 6–10', easePlan: '2 × 8–12' },
+        { id: 'row', name: 'Тяга штанги в наклоне', longName: 'Тяга штанги в наклоне к поясу обратным хватом', sets: 4, plan: '4 × 8–10', lightPlan: '4 × 6–8', easePlan: '3 × 8–10' },
+        { id: 'incline', name: 'Жим гантелей на наклонной', longName: 'Жим гантелей лёжа на наклонной скамье 30 градусов', sets: 3, plan: '3 × 10–12', lightPlan: '3 × 8–10', easePlan: '2 × 10–12' },
+        { id: 'plank', name: 'Планка', longName: 'Классическая планка на предплечьях с удержанием', sets: 3, plan: '3 × 1:00', lightPlan: '3 × 0:50', easePlan: '2 × 1:00' }
+      ]
+    },
+    {
+      id: 'B', name: 'День B', longName: 'День B: Ноги, ягодицы и стабилизация',
+      exercises: [
+        { id: 'squat', name: 'Приседания со штангой', longName: 'Приседания со штангой на плечах в полную амплитуду', sets: 4, plan: '4 × 6–8', lightPlan: '4 × 5–6', easePlan: '3 × 6–8' },
+        { id: 'rdl', name: 'Румынская тяга', longName: 'Румынская тяга со штангой на прямых ногах', sets: 3, plan: '3 × 8–10', lightPlan: '3 × 6–8', easePlan: '2 × 8–10' },
+        { id: 'lunge', name: 'Выпады с гантелями', longName: 'Болгарские выпады с гантелями на заднюю скамью', sets: 3, plan: '3 × 10', lightPlan: '3 × 8', easePlan: '2 × 10' }
+      ]
+    },
+    {
+      id: 'C', name: 'День C', longName: 'День C: Плечи, руки и подтягивания',
+      exercises: [
+        { id: 'ohp', name: 'Жим стоя', longName: 'Армейский жим штанги стоя с груди', sets: 3, plan: '3 × 6–8', lightPlan: '3 × 5–6', easePlan: '2 × 6–8' },
+        { id: 'pullup', name: 'Подтягивания', longName: 'Подтягивания на перекладине широким хватом', sets: 3, plan: '3 × 8–10', lightPlan: '3 × 6–8', easePlan: '2 × 8–10' },
+        { id: 'curl', name: 'Подъём гантелей на бицепс', longName: 'Попеременный подъём гантелей на бицепс с супинацией', sets: 3, plan: '3 × 10–12', lightPlan: '3 × 8–10', easePlan: '2 × 10–12' }
+      ]
+    }
+  ];
+
+  const PROGRESS_PRESETS = {
+    zero: { label: '0 подх. (старт)', curIdx: 0, doneSets: [0, 0, 0, 0], totalSets: 0, doneEx: 0 },
+    mid:  { label: 'В процессе (5 подх.)', curIdx: 1, doneSets: [3, 2, 0, 0], totalSets: 5, doneEx: 1 },
+    late: { label: 'Финиш (Планка, 11 подх.)', curIdx: 3, doneSets: [3, 4, 3, 1], totalSets: 11, doneEx: 3 }
+  };
+
+  const LOAD_PRESETS = {
+    regular:   { label: 'Обычная', alt: false, week: 'regular', passDone: 0, eased: false },
+    heavy0:    { label: 'Тяжёлая · 0/3', alt: true, week: 'heavy', passDone: 0, eased: false },
+    heavy1:    { label: 'Тяжёлая · 1/3', alt: true, week: 'heavy', passDone: 1, eased: false },
+    light1:    { label: 'Лёгкая · 1/3', alt: true, week: 'light', passDone: 1, eased: false },
+    heavyEase: { label: 'Тяжёлая + Облегчена', alt: true, week: 'heavy', passDone: 1, eased: true },
+    lightEase: { label: 'Лёгкая + Облегчена', alt: true, week: 'light', passDone: 1, eased: true },
+    regEase:   { label: 'Обычная + Облегчена', alt: false, week: 'regular', passDone: 0, eased: true }
+  };
+
+  const st = {
+    hostMode: 'interactive',
+    width: 390,
+    hasActive: true,
+    timerMode: 'rest',
+    restSec: 84,
+    plankLeft: 38,
+    plankOver: 12,
+    progressKey: 'mid',
+    loadKey: 'heavyEase',
+    selectedDay: 'A',
+    liveListProgress: true,
+    longNames: false,
+    otherProgram: false,
+    sheet: null,
+    toast: null
+  };
+
+  const fmtSec = s => `${Math.floor(s / 60)}:${s % 60 < 10 ? '0' : ''}${s % 60}`;
+  const setWord = n => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'подход';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'подхода';
+    return 'подходов';
+  };
+
+  function renderLamps(week, eased) {
+    const parts = [];
+    if (week === 'heavy') parts.push('<span class="lamp lamp-heavy" title="Тяжёлая неделя"></span>');
+    if (week === 'light') parts.push('<span class="lamp lamp-light" title="Лёгкая неделя"></span>');
+    if (eased) parts.push('<span class="lamp lamp-ease" title="Облегчённая тренировка"></span>');
+    return parts.length ? `<span class="lamp-group">${parts.join('')}</span>` : '';
+  }
+
+  function loadShort(lp) {
+    const parts = [];
+    if (lp.alt) parts.push(lp.week === 'heavy' ? 'Тяжёлая неделя' : 'Лёгкая неделя');
+    if (lp.eased) parts.push('Облегчена');
+    return parts.join(' · ');
+  }
+
+  function activeAccentClass(lp) {
+    if (lp.eased) return 'accent-ease';
+    if (lp.alt && lp.week === 'light') return 'accent-light';
+    return '';
+  }
+
+  function renderHeroA2(s) {
+    const lp = LOAD_PRESETS[s.loadKey], pr = PROGRESS_PRESETS[s.progressKey];
+    const activeDay = DAYS[0];
+    const dayName = s.otherProgram
+      ? (s.longNames ? 'Фулбоди: Тренировка 1 — база и мобильность' : 'Тренировка 1 (Фулбоди)')
+      : (s.longNames ? activeDay.longName : activeDay.name);
+    const curEx = activeDay.exercises[pr.curIdx];
+    const curExName = s.longNames ? curEx.longName : curEx.name;
+    const lTxt = loadShort(lp);
+    const lamps = renderLamps(lp.alt ? lp.week : null, lp.eased);
+
+    let timerTile = '';
+    if (s.timerMode === 'rest') {
+      timerTile = `<div class="a2-timer-tile"><span class="a2-timer-lbl">Отдых</span><span class="a2-timer-num">${fmtSec(s.restSec)}</span></div>`;
+    } else if (s.timerMode === 'plank') {
+      timerTile = `<div class="a2-timer-tile is-ex"><span class="a2-timer-lbl">Планка</span><span class="a2-timer-num">${fmtSec(s.plankLeft)}</span></div>`;
+    } else if (s.timerMode === 'plank_over') {
+      timerTile = `<div class="a2-timer-tile is-ex"><span class="a2-timer-lbl">Цель ✓</span><span class="a2-timer-num">+${fmtSec(s.plankOver)}</span></div>`;
+    }
+
+    const loadParts = [];
+    if (lTxt) loadParts.push(lTxt);
+    if (s.otherProgram) loadParts.push('Другая программа');
+    const loadLine = (lamps || loadParts.length)
+      ? `<div class="a2-load-row">${lamps}${loadParts.length ? `<span class="a2-load-txt">${loadParts.join(' · ')}</span>` : ''}</div>`
+      : '';
+
+    const segs = activeDay.exercises.map((_, idx) => {
+      const cls = idx < pr.doneEx ? 'done' : (idx === pr.curIdx ? 'cur' : '');
+      return `<span class="h-seg ${cls}"></span>`;
+    }).join('');
+
+    return `
+      <div class="hero-a2 ${activeAccentClass(lp)}">
+        <div class="a2-top">
+          <span class="a2-kicker"><span class="live-dot"></span><span>Идёт тренировка</span></span>
+          <button class="a2-cancel-btn" data-act="open-sheet" data-v="cancel" type="button">Отменить</button>
+        </div>
+
+        <div class="a2-head">
+          <div class="a2-id">
+            <div class="d a2-day">${dayName}</div>
+            ${loadLine}
+          </div>
+          ${timerTile}
+        </div>
+
+        <div class="a2-prog-wrap">
+          <div class="a2-prog-row">
+            <div class="a2-ex-cur">
+              <span class="a2-ex-step">${pr.curIdx + 1}/${activeDay.exercises.length}</span>
+              <span class="a2-ex-name">${curExName}</span>
+            </div>
+            <span class="a2-sets-count">${pr.totalSets === 0 ? '0 подходов' : `${pr.totalSets} ${setWord(pr.totalSets)}`}</span>
+          </div>
+          <div class="h-segs">${segs}</div>
+        </div>
+
+        <button class="pb a2-cta" data-act="resume" type="button">${ICO.play}<span>Продолжить тренировку</span></button>
+      </div>`;
+  }
+
+  function renderProgramCard(s) {
+    const lp = LOAD_PRESETS[s.loadKey];
+    const progName = s.longNames ? 'Базовая силовая программа на 3 дня с чередованием нагрузки' : 'Базовая силовая';
+    const isLight = lp.alt && lp.week === 'light';
+
+    let footer = '';
+    if (lp.alt) {
+      if (lp.passDone === 0 && !s.hasActive) {
+        footer = `
+          <div class="prog-week-divider">
+            <div class="prog-week-meta"><span>Новый проход · 3 дн.</span><span>Смена до старта</span></div>
+            <div class="prog-seg">
+              <button class="prog-seg-btn ${!isLight ? 'active-heavy' : ''}" type="button"><span class="lamp lamp-heavy"></span><span>Тяжёлая · план</span></button>
+              <button class="prog-seg-btn ${isLight ? 'active-light' : ''}" type="button"><span class="lamp lamp-light"></span><span>Лёгкая</span></button>
+            </div>
+          </div>`;
+      } else {
+        const dotStates = lp.passDone === 0 ? ['active-run', 'todo', 'todo'] : ['active-run', 'done', 'todo'];
+        const dots = dotStates.map(ds => `<span class="prog-dot ${ds} ${isLight ? 'light' : ''}"></span>`).join('');
+        const lockText = lp.passDone === 0 && s.hasActive
+          ? `${lp.week === 'heavy' ? 'Тяжёлая' : 'Лёгкая'} · идёт 1-й день`
+          : (lp.week === 'heavy' ? 'Тяжёлая неделя' : 'Лёгкая неделя');
+        footer = `
+          <div class="prog-week-divider">
+            <button class="prog-locked-row" data-act="open-sheet" data-v="locked" type="button">
+              <span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICO.lock}${renderLamps(lp.week, false)}<span>${lockText}</span></span>
+              <span class="prog-dots">${dots}<span style="margin-left:3px;font-weight:700">${lp.passDone}/3</span></span>
+            </button>
+          </div>`;
+      }
+    }
+
+    return `
+      <div class="home-prog">
+        <div class="home-prog-top" data-act="toast-prog" style="cursor:pointer">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:12px">Мои программы</div>
+            <div class="d home-prog-name">${progName}</div>
+          </div>
+          ${ICO.chevR}
+        </div>
+        ${footer}
+      </div>`;
+  }
+
+  function renderDayBrowse(s) {
+    const lp = LOAD_PRESETS[s.loadKey], pr = PROGRESS_PRESETS[s.progressKey];
+    const isLight = lp.alt && lp.week === 'light';
+    const day = DAYS.find(d => d.id === s.selectedDay) || DAYS[0];
+    const activeDayId = s.otherProgram ? null : 'A';
+    const isViewingActive = s.hasActive && day.id === activeDayId;
+
+    const chips = DAYS.map(d => {
+      const sel = d.id === day.id;
+      const isDone = lp.alt && lp.passDone > 0 && d.id === 'B';
+      const isRunning = s.hasActive && d.id === activeDayId;
+      const nm = s.longNames ? d.longName : d.name;
+      const mark = isRunning ? '<span class="live-dot"></span>' : isDone ? '<span class="chip-mark chip-mark-done">✓</span>' : '';
+      const selCls = sel
+        ? (s.hasActive ? 'selected browse-muted' : `selected ${isLight ? 'theme-light' : ''}`)
+        : (isRunning ? 'running' : isDone ? 'done' : '');
+      return `<button class="f-day-chip ${selCls}" data-act="select-day" data-v="${d.id}" type="button"><span class="chip-name">${nm}</span>${mark}</button>`;
+    }).join('');
+
+    const rows = day.exercises.map((ex, i) => {
+      const exName = s.longNames ? ex.longName : ex.name;
+      const planLabel = lp.eased && isViewingActive ? ex.easePlan : (isLight ? ex.lightPlan : ex.plan);
+      if (isViewingActive && s.liveListProgress) {
+        const logged = pr.doneSets[i] || 0;
+        const targetSets = lp.eased ? Math.max(1, ex.sets - 1) : ex.sets;
+        const isDone = logged >= targetSets;
+        const isCur = i === pr.curIdx && !isDone;
+        const badge = isDone
+          ? `<span class="ex-pill-done">${logged}/${targetSets} ✓</span>`
+          : isCur
+            ? `<span class="ex-pill-cur">${logged}/${targetSets} · сейчас</span>`
+            : `<span class="tag ${lp.eased ? 'eased-target' : isLight ? 'light-target' : ''}">${planLabel}</span>`;
+        return `<div class="home-ex-row ${isDone ? 'is-done' : ''} ${isCur ? 'is-cur' : ''}"><span class="d home-ex-idx">0${i + 1}</span><span class="home-ex-name">${exName}</span>${badge}</div>`;
+      }
+      const tagCls = (lp.eased && isViewingActive) ? 'eased-target' : isLight ? 'light-target' : '';
+      return `<div class="home-ex-row"><span class="d home-ex-idx">0${i + 1}</span><span class="home-ex-name">${exName}</span><span class="tag ${tagCls}">${planLabel}</span></div>`;
+    }).join('');
+
+    const cardHead = `
+      <div class="f-card-head">
+        <div style="min-width:0;flex:1">
+          <div class="f-card-head-title">${s.longNames ? day.longName : day.name}</div>
+          <div class="f-card-head-meta">
+            <span>${day.exercises.length} упр.</span>
+            ${isViewingActive ? '<span style="color:var(--f-primary);font-weight:600">· идёт сейчас</span>' : (lp.alt ? renderLamps(lp.week, false) : '')}
+          </div>
+        </div>
+        ${lp.alt && lp.passDone > 0 && day.id === 'B' ? '<span style="font-size:12px;color:#A7CF64;font-weight:600">Выполнен</span>' : ''}
+      </div>`;
+
+    const bottomNote = !s.hasActive
+      ? `<button class="pb ${isLight ? 'theme-light' : ''}" style="margin-top:12px" data-act="restore-workout" type="button">Начать тренировку</button>`
+      : (!isViewingActive ? `<div class="browse-lock-note">Режим просмотра · чтобы начать ${day.name}, завершите или отмените текущую тренировку</div>` : '');
+
+    return `
+      <div class="m d home-sec-title">${s.hasActive ? 'Дни программы · просмотр' : (lp.alt ? `Тренировочный день · ${3 - lp.passDone} осталось` : 'Тренировочный день · 3')}</div>
+      <div class="sc">${chips}</div>
+      <div class="cd home-ex-card">${cardHead}${rows}</div>
+      ${bottomNote}`;
+  }
+
+  function renderPhoneHTML(s, interactive) {
+    let topBlock = '';
+    if (!s.hasActive) {
+      topBlock = `
+        ${renderProgramCard(s)}
+        <div class="rc-card">
+          <div class="rc-head"><div class="rc-ico">${ICO.pulse}</div><div><div class="rc-title">Как самочувствие сегодня?</div><div class="rc-sub">Вернулся после отмены · можно сразу жать «Начать»</div></div></div>
+          <div class="rc-btn-pair"><button class="rc-choice rc-choice-ok" type="button">Бодро</button><button class="rc-choice rc-choice-tired" type="button">Устал · облегчить</button></div>
+        </div>`;
+    } else {
+      topBlock = `${renderHeroA2(s)}${renderProgramCard(s)}`;
+    }
+
+    let sheetHtml = '';
+    if (interactive && s.sheet === 'cancel') {
+      const lp = LOAD_PRESETS[s.loadKey], pr = PROGRESS_PRESETS[s.progressKey];
+      const dayName = s.otherProgram ? 'Тренировка 1 (Фулбоди)' : (s.longNames ? DAYS[0].longName : DAYS[0].name);
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Отменить тренировку?</h3>
+            <div class="f-sheet-summary">
+              <strong style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${dayName} ${renderLamps(lp.alt ? lp.week : null, lp.eased)}</strong>
+              <span class="f-sheet-summary-sub">${pr.totalSets === 0 ? 'Записанных подходов пока нет' : `Записано подходов: ${pr.totalSets} · они удалятся без сохранения в историю`}</span>
+            </div>
+            ${s.timerMode !== 'none' ? `<div class="f-sheet-warn">${s.timerMode === 'rest' ? 'Идущий таймер отдыха будет остановлен.' : 'Идущий таймер планки будет остановлен без записи подхода.'}</div>` : ''}
+            <button class="f-sheet-danger" data-act="confirm-cancel" type="button">Отменить тренировку</button>
+            <button class="f-sheet-cancel" data-act="close-sheet" type="button">Оставить тренировку</button>
+          </div>
+        </div>`;
+    } else if (interactive && s.sheet === 'locked') {
+      const lp = LOAD_PRESETS[s.loadKey];
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>${lp.week === 'heavy' ? 'Тяжёлая неделя' : 'Лёгкая неделя'} уже идёт</h3>
+            <p>${lp.passDone === 0 ? 'Сейчас запущена первая тренировка прохода — сменить вариант недели можно после её отмены.' : 'Завершить неделю досрочно можно после того, как текущая тренировка будет завершена или отменена.'}</p>
+            <button class="f-sheet-cancel" data-act="close-sheet" type="button">Понятно</button>
+          </div>
+        </div>`;
+    }
+
+    const toastHtml = interactive && s.toast ? `<div class="f-toast">${s.toast}</div>` : '';
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1"><span>Fitty</span></h1>
+        ${topBlock}
+        ${renderDayBrowse(s)}
+      </div>
+      <nav class="f-nav" aria-label="Нижняя навигация">
+        <button class="f-nav-btn active" type="button">${ICO.home}<span>Главная</span></button>
+        <button class="f-nav-btn" type="button" title="История">${ICO.history}</button>
+        <button class="f-nav-btn" type="button" title="Настройки">${ICO.settings}</button>
+      </nav>
+      ${toastHtml}${sheetHtml}`;
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    st.toast = msg; clearTimeout(toastTimer); renderLive();
+    toastTimer = setTimeout(() => { st.toast = null; renderLive(); }, 2400);
+  }
+
+  function renderLive() {
+    const phone = document.getElementById('phone-live');
+    phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+    phone.innerHTML = renderPhoneHTML(st, true);
+    document.getElementById('phone-caption').textContent = st.hasActive
+      ? 'Финальный A2 · нажми «Отменить», переключи таймеры, нагрузку и 360 dp'
+      : 'После отмены вернулась обычная Главная с Readiness check-in и кнопкой «Начать»';
+  }
+
+  function renderControls() {
+    const timerOpts = [['none', 'Нет таймера'], ['rest', 'Отдых 1:24'], ['plank', 'Планка 0:38'], ['plank_over', 'Планка +0:12 ✓']];
+    document.getElementById('ctrl-timer').innerHTML = timerOpts.map(([k, lbl]) =>
+      `<button type="button" class="cbtn ${st.timerMode === k ? 'active' : ''}" data-set="timerMode" data-v="${k}">${lbl}</button>`
+    ).join('');
+    document.getElementById('ctrl-progress').innerHTML = Object.entries(PROGRESS_PRESETS).map(([k, p]) =>
+      `<button type="button" class="cbtn ${st.progressKey === k ? 'active' : ''}" data-set="progressKey" data-v="${k}">${p.label}</button>`
+    ).join('');
+    const dots = { regular: '', heavy0: '<span class="cbtn-dot" style="background:#F59E42"></span>', heavy1: '<span class="cbtn-dot" style="background:#F59E42"></span>', light1: '<span class="cbtn-dot" style="background:#5CC8FA"></span>', heavyEase: '<span class="cbtn-dot" style="background:#F59E42"></span><span class="cbtn-dot" style="background:#C09BFF"></span>', lightEase: '<span class="cbtn-dot" style="background:#5CC8FA"></span><span class="cbtn-dot" style="background:#C09BFF"></span>', regEase: '<span class="cbtn-dot" style="background:#C09BFF"></span>' };
+    document.getElementById('ctrl-load').innerHTML = Object.entries(LOAD_PRESETS).map(([k, p]) =>
+      `<button type="button" class="cbtn ${st.loadKey === k ? 'active' : ''}" data-set="loadKey" data-v="${k}">${dots[k]}${p.label}</button>`
+    ).join('');
+    document.getElementById('ctrl-edge').innerHTML = `
+      <button type="button" class="cbtn ${st.liveListProgress ? 'active' : ''}" data-toggle="liveListProgress">Живой прогресс в списке дня</button>
+      <button type="button" class="cbtn ${st.longNames ? 'active' : ''}" data-toggle="longNames">Длинные названия</button>
+      <button type="button" class="cbtn ${st.otherProgram ? 'active' : ''}" data-toggle="otherProgram">Другая программа</button>
+      <button type="button" class="cbtn ${!st.hasActive ? 'active' : 'danger'}" data-toggle="hasActive">${st.hasActive ? 'После отмены' : 'Вернуть активную'}</button>`;
+  }
+
+  function renderBoard() {
+    const cases = [
+      { title: '1 · Тяжёлая + Облегчена · Отдых', note: 'Две лампы рядом с подписью, плитка отдыха справа, 5 подходов', w: 390, state: { ...st, hasActive: true, loadKey: 'heavyEase', timerMode: 'rest', progressKey: 'mid', longNames: false, otherProgram: false, selectedDay: 'A', sheet: null, toast: null } },
+      { title: '2 · Обычная · Планка (+переработка)', note: 'Без чередования недель, активный таймер упражнения «Цель ✓ +0:12»', w: 390, state: { ...st, hasActive: true, loadKey: 'regular', timerMode: 'plank_over', progressKey: 'late', longNames: false, otherProgram: false, selectedDay: 'A', sheet: null, toast: null } },
+      { title: '3 · Лёгкая · Без таймера · 0 подх.', note: 'Только начали, плитка таймера скрыта без пустой заглушки', w: 390, state: { ...st, hasActive: true, loadKey: 'light1', timerMode: 'none', progressKey: 'zero', longNames: false, otherProgram: false, selectedDay: 'A', sheet: null, toast: null } },
+      { title: '4 · 360 dp · Длинные названия', note: 'Стресс-тест 40/60 символов, 2 лампы и таймер на узком экране', w: 360, state: { ...st, hasActive: true, loadKey: 'lightEase', timerMode: 'rest', progressKey: 'mid', longNames: true, otherProgram: false, selectedDay: 'A', sheet: null, toast: null } }
+    ];
+    document.getElementById('board-grid').innerHTML = cases.map(c => `
+      <div class="board-card">
+        <div class="board-card-cap ${c.w === 360 ? 'w360' : ''}">
+          <div class="board-card-title">${c.title}</div>
+          <div class="board-card-note">${c.note}</div>
+        </div>
+        <div class="phone ${c.w === 360 ? 'w360' : ''}">${renderPhoneHTML(c.state, false)}</div>
+      </div>`).join('');
+  }
+
+  function renderAll() {
+    document.getElementById('tab-interactive').classList.toggle('active', st.hostMode === 'interactive');
+    document.getElementById('tab-board').classList.toggle('active', st.hostMode === 'board');
+    document.getElementById('view-interactive').classList.toggle('hidden', st.hostMode !== 'interactive');
+    document.getElementById('view-board').classList.toggle('hidden', st.hostMode !== 'board');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+    renderControls();
+    renderLive();
+    if (st.hostMode === 'board') renderBoard();
+  }
+
+  setInterval(() => {
+    if (!st.hasActive) return;
+    let dirty = false;
+    if (st.timerMode === 'rest') { st.restSec = st.restSec > 1 ? st.restSec - 1 : 120; dirty = true; }
+    else if (st.timerMode === 'plank') { st.plankLeft = st.plankLeft > 1 ? st.plankLeft - 1 : 60; dirty = true; }
+    else if (st.timerMode === 'plank_over') { st.plankOver = st.plankOver < 59 ? st.plankOver + 1 : 1; dirty = true; }
+    if (dirty && !st.sheet && st.hostMode === 'interactive') renderLive();
+  }, 1000);
+
+  document.getElementById('tab-interactive').onclick = () => { st.hostMode = 'interactive'; renderAll(); };
+  document.getElementById('tab-board').onclick = () => { st.hostMode = 'board'; renderAll(); };
+  document.getElementById('w-390').onclick = () => { st.width = 390; renderAll(); };
+  document.getElementById('w-360').onclick = () => { st.width = 360; renderAll(); };
+
+  document.addEventListener('click', e => {
+    const setBtn = e.target.closest('[data-set]');
+    if (setBtn) {
+      st[setBtn.dataset.set] = setBtn.dataset.v; st.hasActive = true; st.sheet = null;
+      if (setBtn.dataset.set === 'timerMode') { st.restSec = 84; st.plankLeft = 38; st.plankOver = 12; }
+      renderAll(); return;
+    }
+    const togBtn = e.target.closest('[data-toggle]');
+    if (togBtn) { st[togBtn.dataset.toggle] = !st[togBtn.dataset.toggle]; st.sheet = null; renderAll(); return; }
+    const actEl = e.target.closest('[data-act]');
+    if (!actEl) return;
+    const act = actEl.dataset.act, val = actEl.dataset.v;
+    if (act === 'select-day') { st.selectedDay = val; renderLive(); }
+    else if (act === 'resume') showToast('→ Возврат в активную тренировку на текущее упражнение');
+    else if (act === 'toast-prog') showToast('→ Открыт экран «Мои программы»');
+    else if (act === 'open-sheet') { st.sheet = val; renderLive(); }
+    else if (act === 'close-sheet') { st.sheet = null; renderLive(); }
+    else if (act === 'confirm-cancel') { st.sheet = null; st.hasActive = false; showToast('Тренировка отменена · вернулась обычная Главная'); renderAll(); }
+    else if (act === 'restore-workout') { st.hasActive = true; renderAll(); }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
