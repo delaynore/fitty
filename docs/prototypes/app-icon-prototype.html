@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitty · Прототип иконки приложения Android</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!--
+    PROTOTYPE (throwaway): 5 structurally different Android Adaptive Icon concepts for Fitty,
+    switchable via ?variant=A..E and a floating bottom bar.
+    Question (#104): Как выглядит новая иконка приложения Fitty для Android?
+  -->
+  <style>
+    :root {
+      --bg: #0E110E;
+      --surface-dim: #141914;
+      --surface: #1C231C;
+      --surface-hi: #252D24;
+      --border: #343E33;
+      --border-soft: #283127;
+      --primary: #C5FA55;
+      --primary-container: #303E1B;
+      --on-primary: #1A2506;
+      --on-primary-container: #DDFF98;
+      --text: #F0F3EA;
+      --text-muted: #B6C1B3;
+      --text-dim: #7C897A;
+      --amber: #F59E42;
+      --sky: #5CC8FA;
+      --lavender: #C09BFF;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      padding: 24px 20px 108px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Prototype banner */
+    .proto-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+
+    .proto-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .proto-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 8px var(--primary);
+    }
+
+    .proto-title {
+      font-family: 'Barlow Condensed', 'Inter', sans-serif;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+    }
+
+    .proto-title .accent { color: var(--primary); }
+
+    .proto-sub {
+      color: var(--text-muted);
+      margin-top: 6px;
+      max-width: 680px;
+      font-size: 13.5px;
+    }
+
+    /* Quick all-variants strip */
+    .strip-card {
+      background: var(--surface-dim);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .strip-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .strip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .strip-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px 7px 8px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1.5px solid var(--border-soft);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.12s;
+      font: inherit;
+      text-align: left;
+    }
+
+    .strip-item:hover {
+      border-color: #54664E;
+      background: var(--surface-hi);
+    }
+
+    .strip-item.active {
+      border-color: var(--primary);
+      background: #232F1A;
+      box-shadow: 0 0 0 1px rgba(197, 250, 85, 0.25);
+    }
+
+    .strip-item.current-ref {
+      cursor: default;
+      border-style: dashed;
+      border-color: #445042;
+      background: rgba(28, 35, 28, 0.5);
+    }
+
+    .strip-item .meta {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+    }
+
+    .strip-item .k {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .strip-item.current-ref .k { color: var(--text-dim); }
+
+    .strip-item .n {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    /* Section cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 960px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Hero variant card */
+    .hero-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    @media (max-width: 720px) {
+      .hero-card { grid-template-columns: 1fr; justify-items: start; }
+    }
+
+    .hero-icon-wrap {
+      position: relative;
+      width: 148px;
+      height: 148px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #222B21 0%, #141914 70%);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .hero-icon-hint {
+      position: absolute;
+      bottom: 8px;
+      font-size: 10px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .variant-key-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: var(--on-primary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .hero-name {
+      font-family: 'Barlow Condensed', 'Inter', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.05;
+      margin-top: 6px;
+    }
+
+    .hero-desc {
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-size: 13.5px;
+      max-width: 680px;
+    }
+
+    .state-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .token-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 10px;
+      background: var(--surface-hi);
+      border: 1px solid var(--border-soft);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .token-chip strong { color: var(--text); font-weight: 600; }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Controls / pills */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-hi);
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .ctrl-btn:hover { color: var(--text); border-color: #556650; }
+
+    .ctrl-btn.active {
+      background: var(--primary-container);
+      border-color: var(--primary);
+      color: var(--on-primary-container);
+      font-weight: 600;
+    }
+
+    .segmented {
+      display: inline-flex;
+      background: var(--surface-dim);
+      border: 1px solid var(--border-soft);
+      border-radius: 11px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .segmented button {
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .segmented button.active {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      font-weight: 600;
+    }
+
+    /* Adaptive Icon Layers */
+    .layers-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .layers-row { grid-template-columns: 1fr; }
+    }
+
+    .layer-box {
+      background: var(--surface-dim);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .layer-canvas {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .checkerboard {
+      background-color: #1A201A;
+      background-image:
+        linear-gradient(45deg, #252E24 25%, transparent 25%),
+        linear-gradient(-45deg, #252E24 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #252E24 75%),
+        linear-gradient(-45deg, transparent 75%, #252E24 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+
+    .layer-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .layer-note {
+      font-size: 11.5px;
+      color: var(--text-dim);
+    }
+
+    /* Masks Grid */
+    .masks-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .masks-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .mask-tile {
+      background: var(--surface-dim);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 16px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .mask-tile .m-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .mask-tile .m-oem {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: -6px;
+    }
+
+    .legacy-note {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: #161C16;
+      border: 1px dashed var(--border);
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    /* Material You Monochrome Section */
+    .my-layout {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 720px) {
+      .my-layout { grid-template-columns: 1fr; }
+    }
+
+    .my-themes-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .my-themes-grid { grid-template-columns: 1fr; }
+    }
+
+    .my-theme-card {
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      border: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .my-theme-card.light-surface {
+      background: #EEF2EB;
+      color: #191D18;
+      border-color: #D2DACD;
+    }
+
+    .my-theme-card.dark-surface {
+      background: #131713;
+      color: #F0F3EA;
+      border-color: #2B332A;
+    }
+
+    .my-theme-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.75;
+    }
+
+    .my-palette-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      justify-items: center;
+    }
+
+    .my-swatch-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    /* Home screen & small sizes */
+    .homescreen-layout {
+      display: grid;
+      grid-template-columns: 356px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    @media (max-width: 920px) {
+      .homescreen-layout { grid-template-columns: 1fr; }
+    }
+
+    .phone-shell {
+      width: 100%;
+      max-width: 356px;
+      margin: 0 auto;
+      border-radius: 38px;
+      padding: 10px;
+      background: #070907;
+      border: 2px solid #30392F;
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    .phone-screen {
+      border-radius: 29px;
+      overflow: hidden;
+      min-height: 540px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 18px 18px;
+      position: relative;
+      transition: background 0.25s;
+    }
+
+    /* Wallpapers */
+    .phone-screen.wp-dark {
+      background:
+        radial-gradient(circle at 22% 18%, rgba(69, 98, 38, 0.42), transparent 52%),
+        radial-gradient(circle at 82% 76%, rgba(44, 72, 92, 0.35), transparent 50%),
+        linear-gradient(165deg, #0D120F 0%, #141B17 50%, #090C0A 100%);
+      color: #F4F7F0;
+    }
+
+    .phone-screen.wp-light {
+      background:
+        radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.9), transparent 55%),
+        radial-gradient(circle at 85% 78%, rgba(188, 214, 198, 0.7), transparent 55%),
+        linear-gradient(165deg, #E8EFE9 0%, #F4F6F0 48%, #DCE6DC 100%);
+      color: #171D17;
+    }
+
+    .phone-screen.wp-busy {
+      background:
+        radial-gradient(circle at 15% 25%, #FF6B4A 0%, transparent 42%),
+        radial-gradient(circle at 82% 22%, #3B82F6 0%, transparent 45%),
+        radial-gradient(circle at 75% 72%, #EAB308 0%, transparent 44%),
+        radial-gradient(circle at 28% 82%, #A855F7 0%, transparent 46%),
+        repeating-linear-gradient(35deg, rgba(255,255,255,0.14) 0 12px, rgba(0,0,0,0.12) 12px 24px),
+        linear-gradient(135deg, #1E293B 0%, #4C1D95 50%, #0F766E 100%);
+      color: #FFFFFF;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .clock-widget {
+      margin: 4px 4px 20px;
+    }
+
+    .clock-time {
+      font-family: 'Barlow Condensed', 'Inter', sans-serif;
+      font-size: 46px;
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: 0.01em;
+    }
+
+    .clock-date {
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0.85;
+      margin-top: 3px;
+    }
+
+    .phone-screen.wp-busy .clock-time,
+    .phone-screen.wp-busy .clock-date,
+    .phone-screen.wp-busy .status-bar {
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px 10px;
+      margin-bottom: 24px;
+    }
+
+    .app-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-slot-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.15;
+      max-width: 72px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .phone-screen.wp-dark .app-slot-label,
+    .phone-screen.wp-busy .app-slot-label {
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.72);
+    }
+
+    .app-slot.highlight-new .app-slot-label {
+      font-weight: 700;
+    }
+
+    .app-slot.highlight-old .app-slot-label {
+      opacity: 0.82;
+    }
+
+    .search-pill {
+      height: 40px;
+      border-radius: 999px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    .phone-screen.wp-dark .search-pill {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .phone-screen.wp-light .search-pill {
+      background: rgba(255, 255, 255, 0.78);
+      color: #495249;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    .phone-screen.wp-busy .search-pill {
+      background: rgba(15, 20, 15, 0.45);
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .dock-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      justify-items: center;
+      padding-top: 4px;
+    }
+
+    .nav-pill {
+      width: 96px;
+      height: 4px;
+      border-radius: 999px;
+      margin: 14px auto 0;
+      background: currentColor;
+      opacity: 0.35;
+    }
+
+    /* Small sizes & surfaces panel */
+    .sizes-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .size-card {
+      background: var(--surface-dim);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .size-card h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .size-table {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 520px) {
+      .size-table { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .size-cell {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .size-pair {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+    }
+
+    .size-dp {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .size-use {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: -5px;
+    }
+
+    /* Notification & Settings preview */
+    .notif-card {
+      background: #181E18;
+      border: 1px solid #323D31;
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .notif-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .notif-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .notif-timer {
+      font-family: 'Barlow Condensed', 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .notif-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .notif-btn {
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: var(--surface-hi);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .notif-btn.accent {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+    }
+
+    .about-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: #181E18;
+      border: 1px solid #323D31;
+      border-radius: 16px;
+      padding: 12px 14px;
+    }
+
+    .about-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Icon rendering helpers */
+    .icon-svg {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .parallax-active .fg-layer {
+      animation: fgOrbit 3.6s ease-in-out infinite;
+    }
+
+    .parallax-active .bg-layer {
+      animation: bgOrbit 3.6s ease-in-out infinite;
+    }
+
+    @keyframes fgOrbit {
+      0%   { transform: translate(0px, 0px); }
+      25%  { transform: translate(4.5px, -3.5px); }
+      50%  { transform: translate(-4px, -2px); }
+      75%  { transform: translate(-3px, 4px); }
+      100% { transform: translate(0px, 0px); }
+    }
+
+    @keyframes bgOrbit {
+      0%   { transform: translate(0px, 0px); }
+      25%  { transform: translate(-1.5px, 1.2px); }
+      50%  { transform: translate(1.4px, 0.8px); }
+      75%  { transform: translate(1px, -1.4px); }
+      100% { transform: translate(0px, 0px); }
+    }
+
+    /* Floating Prototype Switcher (prototype/UI.md) */
+    .proto-switcher {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #F0F3EA;
+      color: #0E110E;
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(14, 17, 14, 0.14);
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .proto-switcher .sw-arrow {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 0;
+      background: #0E110E;
+      color: #C5FA55;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s, background 0.15s;
+    }
+
+    .proto-switcher .sw-arrow:hover {
+      background: #232E18;
+      transform: scale(1.06);
+    }
+
+    .proto-switcher .sw-label {
+      min-width: 210px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.18;
+      padding: 0 6px;
+    }
+
+    .proto-switcher .sw-main {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0E110E;
+    }
+
+    .proto-switcher .sw-hint {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: #4D584A;
+    }
+
+    @media (max-width: 520px) {
+      .proto-switcher {
+        width: calc(100% - 24px);
+        justify-content: space-between;
+      }
+      .proto-switcher .sw-label { min-width: 0; flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Global SVG mask / clipPath definitions -->
+  <svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+    <defs>
+      <!-- Adaptive icon visible viewport is 72x72 centered inside 108x108 (coords 18..90) -->
+      <clipPath id="clip-circle">
+        <circle cx="54" cy="54" r="36" />
+      </clipPath>
+      <clipPath id="clip-squircle">
+        <!-- True Samsung-style superellipse inside 18..90 (size 72x72) -->
+        <path d="M54,18 C79.5,18 90,28.5 90,54 C90,79.5 79.5,90 54,90 C28.5,90 18,79.5 18,54 C18,28.5 28.5,18 54,18 Z" />
+      </clipPath>
+      <clipPath id="clip-rounded">
+        <rect x="18" y="18" width="72" height="72" rx="16.5" ry="16.5" />
+      </clipPath>
+      <clipPath id="clip-teardrop">
+        <!-- Android Teardrop mask inside 18..90 -->
+        <path d="M54,18 C73.88,18 90,34.12 90,54 L90,82.5 C90,86.64 86.64,90 82.5,90 L54,90 C34.12,90 18,73.88 18,54 C18,34.12 34.12,18 54,18 Z" />
+      </clipPath>
+    </defs>
+  </svg>
+
+  <main class="container">
+    <!-- Prototype Header -->
+    <header class="proto-header">
+      <div>
+        <div class="proto-badge"><span class="dot"></span> Одноразовый UI-прототип · Wayfinder</div>
+        <h1 class="proto-title">Fitty<span class="accent">.</span> Новая иконка приложения Android</h1>
+        <p class="proto-sub">
+          Сравнение 5 заметно разных векторных концептов Android Adaptive Icon (`foreground` + `background` + `monochrome` для Material You) в палитре редизайна против текущей иконки `ic_launcher.xml`.
+          Переключайте варианты стрелками <strong>← / →</strong> или параметром <code>?variant=A..E</code>.
+        </p>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" id="btn-safezone" type="button">Safe zone 66/108 dp</button>
+        <button class="ctrl-btn" id="btn-parallax" type="button">Тест параллакса</button>
+      </div>
+    </header>
+
+    <!-- Quick Comparison Strip -->
+    <section class="strip-card" aria-label="Быстрое сравнение вариантов">
+      <div class="strip-label">Все концепты</div>
+      <div class="strip-list" id="quick-strip"></div>
+    </section>
+
+    <!-- Hero / State Readout -->
+    <section class="card hero-card" id="hero-section"></section>
+
+    <!-- Row 1: Adaptive Layers + Launcher Masks -->
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Слои Android Adaptive Icon (108×108 dp)</h2>
+            <p class="card-subtitle">Полный холст 108 dp, видимая область 72 dp, безопасная зона 66 dp — ни один элемент знака не обрезается при параллаксе.</p>
+          </div>
+        </div>
+        <div class="layers-row" id="layers-container"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Типовые маски лаунчера Android</h2>
+            <p class="card-subtitle">Проверка силуэта, отступов и баланса в четырёх системных масках.</p>
+          </div>
+        </div>
+        <div class="masks-grid" id="masks-container"></div>
+        <div class="legacy-note" id="legacy-comparison"></div>
+      </section>
+    </div>
+
+    <!-- Row 2: Material You Monochrome -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Monochrome-слой и тематические иконки Material You</h2>
+          <p class="card-subtitle">Выделенный одноцветный вектор `monochrome` для Android 13+ на светлых и тёмных системных палитрах.</p>
+        </div>
+      </div>
+      <div class="my-layout" id="material-you-container"></div>
+    </section>
+
+    <!-- Row 3: Real Home Screen + Small Sizes -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Рабочий стол телефона и мелкие размеры</h2>
+          <p class="card-subtitle">Новая иконка рядом с текущей иконкой Fitty и соседними приложениями на разных обоях, плюс уведомления и статус-бар.</p>
+        </div>
+        <div class="controls">
+          <div class="segmented" id="wp-switcher" aria-label="Обои рабочего стола">
+            <button type="button" data-wp="dark" class="active">Тёмные обои</button>
+            <button type="button" data-wp="light">Светлые обои</button>
+            <button type="button" data-wp="busy">Пёстрые обои</button>
+          </div>
+          <div class="segmented" id="home-mask-switcher" aria-label="Маска на рабочем столе">
+            <button type="button" data-mask="circle" class="active">Круг</button>
+            <button type="button" data-mask="squircle">Сквиркл</button>
+            <button type="button" data-mask="rounded">Квадрат</button>
+            <button type="button" data-mask="teardrop">Капля</button>
+          </div>
+          <div class="segmented" id="home-mode-switcher" aria-label="Режим иконок">
+            <button type="button" data-mode="color" class="active">Цветные</button>
+            <button type="button" data-mode="my-dark">MY Тёмная</button>
+            <button type="button" data-mode="my-light">MY Светлая</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="homescreen-layout">
+        <div id="phone-container"></div>
+        <div class="sizes-stack" id="sizes-container"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Bottom Switcher Bar (prototype/UI.md) -->
+  <nav class="proto-switcher" aria-label="Переключатель вариантов прототипа">
+    <button class="sw-arrow" id="sw-prev" type="button" aria-label="Предыдущий вариант">←</button>
+    <div class="sw-label">
+      <span class="sw-main" id="sw-title">A · Кинетическая F.</span>
+      <span class="sw-hint" id="sw-meta">Вариант 1 из 5 · клавиши ← / →</span>
+    </div>
+    <button class="sw-arrow" id="sw-next" type="button" aria-label="Следующий вариант">→</button>
+  </nav>
+
+  <script>
+    // =========================================================================
+    // Current Legacy Icon (exact reproduction of app/src/main/res/drawable/ic_launcher.xml)
+    // =========================================================================
+    function renderCurrentLegacySvg(size, maskId = 'circle', showLegacyPlate = true) {
+      if (!showLegacyPlate) {
+        return `
+          <svg class="icon-svg" width="${size}" height="${size}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#1C231C" d="M12,2H36Q46,2 46,12V36Q46,46 36,46H12Q2,46 2,36V12Q2,2 12,2Z" />
+            <path fill="#C5FA55" d="M14,12H35V18H21V23H32V29H21V36H14Z" />
+          </svg>
+        `;
+      }
+      // On Android 8+, a non-adaptive 48dp vector is scaled down onto a white system plate inside the launcher mask
+      return `
+        <svg class="icon-svg" width="${size}" height="${size}" viewBox="18 18 72 72" xmlns="http://www.w3.org/2000/svg">
+          <g clip-path="url(#clip-${maskId})">
+            <rect x="0" y="0" width="108" height="108" fill="#F2F4F0" />
+            <g transform="translate(30, 30) scale(1.0)">
+              <path fill="#1C231C" d="M12,2H36Q46,2 46,12V36Q46,46 36,46H12Q2,46 2,36V12Q2,2 12,2Z" />
+              <path fill="#C5FA55" d="M14,12H35V18H21V23H32V29H21V36H14Z" />
+            </g>
+          </g>
+        </svg>
+      `;
+    }
+
+    // =========================================================================
+    // 5 Radically Different Vector Concepts (108x108 Adaptive Icon coordinates)
+    // Safe zone: circle centered at (54, 54), radius 33 (diameter 66 dp)
+    // =========================================================================
+    const VARIANTS = [
+      {
+        key: 'A',
+        name: 'Кинетическая F.',
+        shortName: 'Кинетическая F.',
+        tagline: 'Спортивная типографика в духе Fitty. (Barlow Condensed)',
+        description:
+          'Скошенная на 7,5° индустриальная монограмма F со срезанными концами штрихов и фирменной точкой в правом нижнем углу — прямое продолжение логотипа «Fitty.» из дизайн-системы. Точка оптически уравновешивает асимметрию буквы F в плотный квадрат внутри круглой маски.',
+        palette: [
+          { label: 'Фон', hex: '#0E110E' },
+          { label: 'Луч фона', hex: '#1B2516' },
+          { label: 'Знак F', hex: '#C5FA55' },
+          { label: 'Точка', hex: '#F0F3EA' },
+        ],
+        strengths: 'Мгновенная привязка к бренду Fitty, чистейший силуэт даже на 18 dp, сильный контраст на светлых и пёстрых обоях.',
+        tradeoff: 'Типографический знак — без прямой визуальной отсылки к штанге или таймеру.',
+        safeRadius: '31.5 / 33 dp',
+        bgSvg: (uid) => `
+          <defs>
+            <radialGradient id="bg-a-${uid}" cx="50%" cy="46%" r="58%">
+              <stop offset="0%" stop-color="#1D2619" />
+              <stop offset="100%" stop-color="#0E110E" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="108" height="108" fill="url(#bg-a-${uid})" />
+          <polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65" />
+          <circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55" />
+        `,
+        fgSvg: () => `
+          <path fill="#C5FA55" d="M38.5,31 H75.5 L73.2,41 H48.5 L47.4,49.5 H68.5 L66.3,59 H46.2 L43.8,77 H32.5 Z" />
+          <circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA" />
+        `,
+        monoSvg: (color) => `
+          <path fill="${color}" d="M38.5,31 H75.5 L73.2,41 H48.5 L47.4,49.5 H68.5 L66.3,59 H46.2 L43.8,77 H32.5 Z" />
+          <circle cx="64.5" cy="70.5" r="6.5" fill="${color}" />
+        `,
+      },
+      {
+        key: 'B',
+        name: 'Олимпийская штанга',
+        shortName: 'Штанга −45°',
+        tagline: 'Архитектурный силовой символ с динамикой вверх',
+        description:
+          'Геометрическая олимпийская штанга под углом −45° с раздельными бамперными блинами и чистым стальным грифом. Диагональ плотно заполняет круглую safe zone, передаёт вектор роста и мгновенно объясняет назначение приложения на экране телефона.',
+        palette: [
+          { label: 'Фон', hex: '#121712' },
+          { label: 'Кольцо фона', hex: '#202B1B' },
+          { label: 'Блины', hex: '#C5FA55' },
+          { label: 'Гриф', hex: '#F0F3EA' },
+        ],
+        strengths: 'Без слов считывается «силовые тренировки», эффектно работает с параллаксом на фоне концентрического диска.',
+        tradeoff: 'Не содержит букву F; в ряду других фитнес-приложений метафора штанги более привычна.',
+        safeRadius: '31.6 / 33 dp',
+        bgSvg: (uid) => `
+          <defs>
+            <radialGradient id="bg-b-${uid}" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stop-color="#1D261A" />
+              <stop offset="100%" stop-color="#0E110E" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="108" height="108" fill="url(#bg-b-${uid})" />
+          <circle cx="54" cy="54" r="38" fill="none" stroke="#1F2B19" stroke-width="10" />
+          <circle cx="54" cy="54" r="24" fill="none" stroke="#283521" stroke-width="1.5" opacity="0.6" />
+        `,
+        fgSvg: () => `
+          <g transform="rotate(-45 54 54)">
+            <rect x="22.5" y="51" width="63" height="6" rx="3" fill="#F0F3EA" />
+            <rect x="33.5" y="36.5" width="8.5" height="35" rx="3.2" fill="#C5FA55" />
+            <rect x="66" y="36.5" width="8.5" height="35" rx="3.2" fill="#C5FA55" />
+            <rect x="25.5" y="42.5" width="6" height="23" rx="2.5" fill="#9ED639" />
+            <rect x="76.5" y="42.5" width="6" height="23" rx="2.5" fill="#9ED639" />
+          </g>
+        `,
+        monoSvg: (color) => `
+          <g transform="rotate(-45 54 54)">
+            <rect x="22.5" y="51" width="63" height="6" rx="3" fill="${color}" />
+            <rect x="33.5" y="36.5" width="8.5" height="35" rx="3.2" fill="${color}" />
+            <rect x="66" y="36.5" width="8.5" height="35" rx="3.2" fill="${color}" />
+            <rect x="25.5" y="42.5" width="6" height="23" rx="2.5" fill="${color}" />
+            <rect x="76.5" y="42.5" width="6" height="23" rx="2.5" fill="${color}" />
+          </g>
+        `,
+      },
+      {
+        key: 'C',
+        name: 'Кольцо и подход',
+        shortName: 'Кольцо + ✓',
+        tagline: 'Фирменный Rest timer 76×76 + галочка Logged set',
+        description:
+          'Знак, собранный из двух главных визуальных якорей нового Fitty: незамкнутого кольцевого таймера отдыха и уверенной галочки записанного подхода. При параллаксе активная лаймовая дуга и галочка слегка сдвигаются над тёмным треком циферблата.',
+        palette: [
+          { label: 'Фон', hex: '#0E110E' },
+          { label: 'Трек кольца', hex: '#303E1B' },
+          { label: 'Дуга таймера', hex: '#C5FA55' },
+          { label: 'Галочка ✓', hex: '#F0F3EA' },
+        ],
+        strengths: 'Уникальная связь с интерфейсом зала Fitty (ритм подходов и отдыха), идеальная вписанность в круг и сквиркл.',
+        tradeoff: 'На первый взгляд без контекста может напоминать трекер привычек или задачник.',
+        safeRadius: '29.8 / 33 dp',
+        bgSvg: (uid) => `
+          <defs>
+            <radialGradient id="bg-c-${uid}" cx="50%" cy="50%" r="58%">
+              <stop offset="0%" stop-color="#1C241B" />
+              <stop offset="100%" stop-color="#0E110E" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="108" height="108" fill="url(#bg-c-${uid})" />
+          <circle cx="54" cy="54" r="26.5" fill="#151C14" stroke="#303E1B" stroke-width="6.5" />
+        `,
+        fgSvg: () => `
+          <path d="M54,27.5 A26.5,26.5 0 1,1 27.9,58.6" fill="none" stroke="#C5FA55" stroke-width="6.5" stroke-linecap="round" />
+          <path d="M42.5,55 L50.5,63 L66.5,46" fill="none" stroke="#F0F3EA" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
+        `,
+        monoSvg: (color) => `
+          <path d="M54,27.5 A26.5,26.5 0 1,1 27.9,58.6" fill="none" stroke="${color}" stroke-width="6.5" stroke-linecap="round" />
+          <path d="M42.5,55 L50.5,63 L66.5,46" fill="none" stroke="${color}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
+        `,
+      },
+      {
+        key: 'D',
+        name: 'Лаймовый импульс',
+        shortName: 'Лайм + прогресс F',
+        tagline: 'Инверсия палитры: яркий лайм + модульная F-прогрессия',
+        description:
+          'Смелый светлый/кислотный вариант, переворачивающий привычную тёмную иконку: фон залит фирменным лаймом #C5FA55 (как кнопка «Начать»), а тёмно-хвойный знак #141D06 собран из вертикальной опоры и трёх растущих капсул-подходов, складывающихся в модульную букву F.',
+        palette: [
+          { label: 'Фон лайм', hex: '#C5FA55' },
+          { label: 'Градиент', hex: '#B4EE3E' },
+          { label: 'Знак F', hex: '#141D06' },
+          { label: 'Подход 1', hex: '#354819' },
+        ],
+        strengths: 'Самая высокая заметность на тёмном рабочем столе (не сливается с десятком тёмных иконок), совмещает букву F и рост подходов.',
+        tradeoff: 'Яркая акцентная плитка сильнее выделяется на экране — кому-то ближе более спокойные тёмные иконки.',
+        safeRadius: '29.0 / 33 dp',
+        bgSvg: (uid) => `
+          <defs>
+            <linearGradient id="bg-d-${uid}" x1="12%" y1="10%" x2="88%" y2="92%">
+              <stop offset="0%" stop-color="#D0FF6B" />
+              <stop offset="52%" stop-color="#C5FA55" />
+              <stop offset="100%" stop-color="#B0EB3A" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="108" height="108" fill="url(#bg-d-${uid})" />
+          <circle cx="54" cy="54" r="46" fill="none" stroke="#A6DF34" stroke-width="1.5" opacity="0.45" />
+        `,
+        fgSvg: () => `
+          <rect x="32.75" y="31" width="11.5" height="46" rx="5.75" fill="#141D06" />
+          <rect x="48.25" y="31" width="27" height="11.5" rx="5.75" fill="#141D06" />
+          <rect x="48.25" y="48.25" width="19.5" height="11.5" rx="5.75" fill="#141D06" />
+          <circle cx="53.5" cy="71.25" r="5.25" fill="#354819" />
+        `,
+        monoSvg: (color) => `
+          <rect x="32.75" y="31" width="11.5" height="46" rx="5.75" fill="${color}" />
+          <rect x="48.25" y="31" width="27" height="11.5" rx="5.75" fill="${color}" />
+          <rect x="48.25" y="48.25" width="19.5" height="11.5" rx="5.75" fill="${color}" />
+          <circle cx="53.5" cy="71.25" r="4.8" fill="${color}" />
+        `,
+      },
+      {
+        key: 'E',
+        name: 'Тональный щит',
+        shortName: 'Олива + обод F',
+        tagline: 'Фирменный оливковый #303E1B карточки программы + эмблема диска',
+        description:
+          'Сбалансированный по яркости вариант в тональном оливковом #303E1B (главный цвет карточки программы и записанных подходов). Мощная прямая монограмма F обрамлена двумя симметричными дугами-блинами, образуя цельный атлетический герб.',
+        palette: [
+          { label: 'Фон олива', hex: '#303E1B' },
+          { label: 'Край фона', hex: '#1D2710' },
+          { label: 'Дуги диска', hex: '#8FBF3D' },
+          { label: 'Знак F', hex: '#C5FA55' },
+        ],
+        strengths: 'Одинаково уверенно держит контур и на чисто чёрных AMOLED-обоях, и на белом фоне; прямой мостик к зелёной карточке Главной.',
+        tradeoff: 'Более сдержанный контраст внутри знака по сравнению с #0E110E или чистым лаймом.',
+        safeRadius: '31.2 / 33 dp',
+        bgSvg: (uid) => `
+          <defs>
+            <radialGradient id="bg-e-${uid}" cx="50%" cy="42%" r="62%">
+              <stop offset="0%" stop-color="#3C4E22" />
+              <stop offset="68%" stop-color="#303E1B" />
+              <stop offset="100%" stop-color="#1D2710" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="108" height="108" fill="url(#bg-e-${uid})" />
+          <circle cx="54" cy="54" r="31" fill="#232E13" opacity="0.55" />
+        `,
+        fgSvg: () => `
+          <path d="M34.2,34.2 A28,28 0 0,0 34.2,73.8" fill="none" stroke="#8FBF3D" stroke-width="5.6" stroke-linecap="round" />
+          <path d="M73.8,34.2 A28,28 0 0,1 73.8,73.8" fill="none" stroke="#8FBF3D" stroke-width="5.6" stroke-linecap="round" />
+          <path fill="#C5FA55" d="M43.5,35 H66.5 V43.2 H52.2 V50.6 H63.8 V58.4 H52.2 V73 H43.5 Z" />
+        `,
+        monoSvg: (color) => `
+          <path d="M34.2,34.2 A28,28 0 0,0 34.2,73.8" fill="none" stroke="${color}" stroke-width="5.4" stroke-linecap="round" />
+          <path d="M73.8,34.2 A28,28 0 0,1 73.8,73.8" fill="none" stroke="${color}" stroke-width="5.4" stroke-linecap="round" />
+          <path fill="${color}" d="M43.5,35 H66.5 V43.2 H52.2 V50.6 H63.8 V58.4 H52.2 V73 H43.5 Z" />
+        `,
+      },
+    ];
+
+    // Material You system palettes (Android 13+ themed icons: surfaceContainer / primary)
+    const MATERIAL_YOU_PALETTES = [
+      { id: 'olive',    name: 'Олива',   lightBg: '#DCEAC8', lightFg: '#283814', darkBg: '#2F3B1F', darkFg: '#C9F08A' },
+      { id: 'blue',     name: 'Небо',    lightBg: '#D4E4FA', lightFg: '#173A66', darkBg: '#22334A', darkFg: '#A8CCFF' },
+      { id: 'sand',     name: 'Песок',   lightBg: '#F4DFC8', lightFg: '#543514', darkBg: '#41301F', darkFg: '#FFCB94' },
+      { id: 'lavender', name: 'Лаванда', lightBg: '#E6DCFA', lightFg: '#392666', darkBg: '#32284A', darkFg: '#D1BCFF' },
+    ];
+
+    // Neighbor apps for realistic Android Home Screen mockup
+    const NEIGHBOR_APPS = [
+      { name: 'Telegram',  bg: '#27A7E7', fg: '#FFFFFF', path: 'M72,34 L34,49 C32,50 32,52 34,53 L43,56 L64,43 L48,58 L48,68 C48,70 50,70 51,69 L56,64 L64,70 C66,71 68,70 68,68 L74,37 C75,34 73,33 72,34 Z' },
+      { name: 'Spotify',   bg: '#161B16', fg: '#1ED760', custom: '<circle cx="54" cy="54" r="24" fill="#1ED760"/><path d="M42,47 Q54,43 66,48 M44,54 Q54,51 64,55 M46,61 Q54,59 62,62" fill="none" stroke="#161B16" stroke-width="3.4" stroke-linecap="round"/>' },
+      { name: 'Календарь', bg: '#FFFFFF', fg: '#1A73E8', custom: '<rect x="33" y="34" width="42" height="40" rx="8" fill="#E8F0FE" stroke="#1A73E8" stroke-width="3.5"/><path d="M33,44 H75" stroke="#1A73E8" stroke-width="3.5"/><text x="54" y="65" text-anchor="middle" font-size="20" font-weight="800" fill="#1A73E8" font-family="Inter,sans-serif">26</text>' },
+      { name: 'Часы',      bg: '#1E242E', fg: '#8AB4F8', custom: '<circle cx="54" cy="54" r="22" fill="none" stroke="#8AB4F8" stroke-width="4.5"/><path d="M54,41 V54 L63,60" fill="none" stroke="#E8EAED" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>' },
+      { name: 'Заметки',   bg: '#FDE68A', fg: '#78350F', custom: '<rect x="37" y="34" width="34" height="40" rx="6" fill="#FFFBEB"/><path d="M43,45 H65 M43,53 H65 M43,61 H57" stroke="#92400E" stroke-width="3.6" stroke-linecap="round"/>' },
+      { name: 'Настройки', bg: '#374151', fg: '#E5E7EB', custom: '<circle cx="54" cy="54" r="14" fill="none" stroke="#E5E7EB" stroke-width="6" stroke-dasharray="6 4.5"/><circle cx="54" cy="54" r="6" fill="#9CA3AF"/>' },
+    ];
+
+    const DOCK_APPS = [
+      { name: 'Телефон', bg: '#22C55E', fg: '#FFFFFF', custom: '<path d="M42,38 C40,40 39,46 44,54 C49,62 56,68 62,69 C66,70 69,67 70,65 L64,59 C63,58 61,59 59,60 C56,59 50,53 49,49 C50,47 51,45 50,44 Z" fill="#FFFFFF"/>' },
+      { name: 'Chrome',  bg: '#FFFFFF', fg: '#4285F4', custom: '<circle cx="54" cy="54" r="22" fill="#EA4335"/><path d="M54,54 L76,54 A22,22 0 0,1 43,73 Z" fill="#FBBC05"/><path d="M54,54 L43,73 A22,22 0 0,1 35,43 Z" fill="#34A853"/><circle cx="54" cy="54" r="11" fill="#FFFFFF"/><circle cx="54" cy="54" r="8" fill="#4285F4"/>' },
+      { name: 'Камера',  bg: '#262A30', fg: '#F3F4F6', custom: '<rect x="34" y="42" width="40" height="28" rx="6" fill="#4B5563"/><path d="M44,42 L47,36 H61 L64,42 Z" fill="#4B5563"/><circle cx="54" cy="56" r="8" fill="#111827" stroke="#E5E7EB" stroke-width="2.5"/>' },
+      { name: 'Музыка',  bg: '#E11D48', fg: '#FFFFFF', custom: '<path d="M48,65 V42 L68,38 V61" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="65" r="5" fill="#FFFFFF"/><circle cx="64" cy="61" r="5" fill="#FFFFFF"/>' },
+    ];
+
+    // =========================================================================
+    // Application State
+    // =========================================================================
+    const state = {
+      variant: 'A',
+      showSafeZone: false,
+      parallax: false,
+      wallpaper: 'dark',
+      homeMask: 'circle',
+      homeMode: 'color', // 'color' | 'my-dark' | 'my-light'
+    };
+
+    let svgUidCounter = 0;
+
+    function nextUid() {
+      svgUidCounter += 1;
+      return svgUidCounter;
+    }
+
+    function getVariant(key) {
+      return VARIANTS.find((v) => v.key === key) || VARIANTS[0];
+    }
+
+    function readVariantFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = (params.get('variant') || 'A').toUpperCase();
+      return VARIANTS.some((v) => v.key === raw) ? raw : 'A';
+    }
+
+    function setVariant(key, push = false) {
+      const normalized = VARIANTS.some((v) => v.key === key) ? key : 'A';
+      state.variant = normalized;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('variant', normalized);
+        if (push) {
+          window.history.pushState({ variant: normalized }, '', url);
+        } else {
+          window.history.replaceState({ variant: normalized }, '', url);
+        }
+      } catch (_) {
+        // Ignore history restrictions in sandboxed viewers
+      }
+      render();
+    }
+
+    function stepVariant(delta) {
+      const idx = VARIANTS.findIndex((v) => v.key === state.variant);
+      const next = (idx + delta + VARIANTS.length) % VARIANTS.length;
+      setVariant(VARIANTS[next].key);
+    }
+
+    // =========================================================================
+    // SVG Renderers
+    // =========================================================================
+    function safeZoneOverlaySvg() {
+      if (!state.showSafeZone) return '';
+      return `
+        <g pointer-events="none">
+          <rect x="18" y="18" width="72" height="72" fill="none" stroke="#5CC8FA" stroke-width="0.9" stroke-dasharray="3 2.5" opacity="0.7" />
+          <circle cx="54" cy="54" r="33" fill="none" stroke="#C5FA55" stroke-width="1.2" stroke-dasharray="3.5 2.5" opacity="0.95" />
+          <line x1="54" y1="18" x2="54" y2="90" stroke="#C5FA55" stroke-width="0.5" opacity="0.35" />
+          <line x1="18" y1="54" x2="90" y2="54" stroke="#C5FA55" stroke-width="0.5" opacity="0.35" />
+        </g>
+      `;
+    }
+
+    function renderAdaptiveIconSvg(variant, { size = 72, mask = 'circle', fullCanvas = false, safeZone = false, parallax = false, monoPalette = null } = {}) {
+      const uid = nextUid();
+      const viewBox = fullCanvas ? '0 0 108 108' : '18 18 72 72';
+      const clipAttr = mask && !fullCanvas ? `clip-path="url(#clip-${mask})"` : '';
+      const cls = `icon-svg${parallax ? ' parallax-active' : ''}`;
+
+      let content = '';
+      if (monoPalette) {
+        content = `
+          <rect x="0" y="0" width="108" height="108" fill="${monoPalette.bg}" />
+          <g class="fg-layer">${variant.monoSvg(monoPalette.fg)}</g>
+        `;
+      } else {
+        content = `
+          <g class="bg-layer">${variant.bgSvg(uid)}</g>
+          <g class="fg-layer">${variant.fgSvg()}</g>
+        `;
+      }
+
+      return `
+        <svg class="${cls}" width="${size}" height="${size}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
+          <g ${clipAttr}>${content}</g>
+          ${safeZone ? safeZoneOverlaySvg() : ''}
+        </svg>
+      `;
+    }
+
+    function renderNeighborAppSvg(app, { size = 54, mask = 'circle', monoPalette = null } = {}) {
+      const inner = monoPalette
+        ? `<rect x="0" y="0" width="108" height="108" fill="${monoPalette.bg}" />` +
+          (app.path
+            ? `<path d="${app.path}" fill="${monoPalette.fg}" />`
+            : `<g opacity="0.92">${app.custom.replace(/#[0-9A-Fa-f]{6}/g, (hex) => (hex.toUpperCase() === '#FFFFFF' || hex.toUpperCase() === '#161B16' || hex.toUpperCase() === '#111827' ? monoPalette.bg : monoPalette.fg))}</g>`)
+        : `<rect x="0" y="0" width="108" height="108" fill="${app.bg}" />` +
+          (app.path ? `<path d="${app.path}" fill="${app.fg}" />` : app.custom);
+
+      return `
+        <svg class="icon-svg" width="${size}" height="${size}" viewBox="18 18 72 72" xmlns="http://www.w3.org/2000/svg">
+          <g clip-path="url(#clip-${mask})">${inner}</g>
+        </svg>
+      `;
+    }
+
+    // =========================================================================
+    // Section Renderers
+    // =========================================================================
+    function renderQuickStrip(v) {
+      const el = document.getElementById('quick-strip');
+      const items = VARIANTS.map((item) => {
+        const active = item.key === v.key ? 'active' : '';
+        return `
+          <button type="button" class="strip-item ${active}" data-pick="${item.key}">
+            ${renderAdaptiveIconSvg(item, { size: 40, mask: 'squircle' })}
+            <span class="meta">
+              <span class="k">Вариант ${item.key}</span>
+              <span class="n">${item.shortName}</span>
+            </span>
+          </button>
+        `;
+      }).join('');
+
+      const legacyRef = `
+        <div class="strip-item current-ref" title="Текущая неадаптивная иконка app/src/main/res/drawable/ic_launcher.xml">
+          ${renderCurrentLegacySvg(40, 'squircle', true)}
+          <span class="meta">
+            <span class="k">Сейчас</span>
+            <span class="n">ic_launcher.xml</span>
+          </span>
+        </div>
+      `;
+
+      el.innerHTML = items + legacyRef;
+      el.querySelectorAll('[data-pick]').forEach((btn) => {
+        btn.addEventListener('click', () => setVariant(btn.dataset.pick));
+      });
+    }
+
+    function renderHero(v) {
+      const el = document.getElementById('hero-section');
+      const swatches = v.palette
+        .map((p) => `<span class="token-chip"><span class="swatch" style="background:${p.hex}"></span>${p.label} <strong>${p.hex}</strong></span>`)
+        .join('');
+
+      el.innerHTML = `
+        <div class="hero-icon-wrap" id="hero-parallax-box" title="Наведите курсор для интерактивного параллакса слоёв">
+          ${renderAdaptiveIconSvg(v, { size: 110, mask: 'squircle', safeZone: state.showSafeZone, parallax: state.parallax })}
+          <span class="hero-icon-hint">наведи для параллакса</span>
+        </div>
+        <div>
+          <span class="variant-key-pill">Вариант ${v.key} · ${v.tagline}</span>
+          <h2 class="hero-name">${v.name}</h2>
+          <p class="hero-desc">${v.description}</p>
+          <div class="state-grid">
+            ${swatches}
+            <span class="token-chip">Охват safe zone: <strong>${v.safeRadius}</strong></span>
+          </div>
+          <div class="state-grid" style="margin-top:8px">
+            <span class="token-chip"><strong>Плюс:</strong> ${v.strengths}</span>
+            <span class="token-chip"><strong>Нюанс:</strong> ${v.tradeoff}</span>
+          </div>
+        </div>
+      `;
+
+      // Interactive pointer parallax on hero icon
+      const box = document.getElementById('hero-parallax-box');
+      if (box) {
+        const fg = box.querySelector('.fg-layer');
+        const bg = box.querySelector('.bg-layer');
+        box.addEventListener('pointermove', (e) => {
+          if (state.parallax || !fg || !bg) return;
+          const r = box.getBoundingClientRect();
+          const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+          const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
+          fg.style.transform = `translate(${(nx * 5).toFixed(1)}px, ${(ny * 5).toFixed(1)}px)`;
+          bg.style.transform = `translate(${(-nx * 1.8).toFixed(1)}px, ${(-ny * 1.8).toFixed(1)}px)`;
+        });
+        box.addEventListener('pointerleave', () => {
+          if (fg) fg.style.transform = '';
+          if (bg) bg.style.transform = '';
+        });
+      }
+    }
+
+    function renderLayers(v) {
+      const uid = nextUid();
+      const el = document.getElementById('layers-container');
+      el.innerHTML = `
+        <div class="layer-box">
+          <div class="layer-canvas">
+            <svg class="icon-svg" width="132" height="132" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+              ${v.bgSvg(uid)}
+              ${safeZoneOverlaySvg()}
+            </svg>
+          </div>
+          <div class="layer-label">background</div>
+          <div class="layer-note">108×108 dp · без прозрачности</div>
+        </div>
+
+        <div class="layer-box">
+          <div class="layer-canvas checkerboard">
+            <svg class="icon-svg" width="132" height="132" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+              ${v.fgSvg()}
+              ${safeZoneOverlaySvg()}
+            </svg>
+          </div>
+          <div class="layer-label">foreground</div>
+          <div class="layer-note">Знак строго в Ø 66 dp</div>
+        </div>
+
+        <div class="layer-box">
+          <div class="layer-canvas" style="background:#101410">
+            ${renderAdaptiveIconSvg(v, { size: 108, mask: 'circle', safeZone: state.showSafeZone, parallax: state.parallax })}
+          </div>
+          <div class="layer-label">Adaptive (итог)</div>
+          <div class="layer-note">${state.parallax ? 'Параллакс активен' : 'Маска 72 dp из 108 dp'}</div>
+        </div>
+      `;
+    }
+
+    function renderMasks(v) {
+      const masks = [
+        { id: 'circle',   name: 'Круг',               oem: 'Pixel / AOSP' },
+        { id: 'squircle', name: 'Сквиркл',            oem: 'Samsung One UI' },
+        { id: 'rounded',  name: 'Скругл. квадрат',    oem: 'MIUI / HyperOS' },
+        { id: 'teardrop', name: 'Капля',              oem: 'OEM / Legacy' },
+      ];
+
+      document.getElementById('masks-container').innerHTML = masks
+        .map((m) => `
+          <div class="mask-tile">
+            ${renderAdaptiveIconSvg(v, { size: 80, mask: m.id, safeZone: state.showSafeZone, parallax: state.parallax })}
+            <div class="m-name">${m.name}</div>
+            <div class="m-oem">${m.oem}</div>
+          </div>
+        `)
+        .join('');
+
+      document.getElementById('legacy-comparison').innerHTML = `
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          ${renderCurrentLegacySvg(44, 'circle', true)}
+          ${renderCurrentLegacySvg(44, 'squircle', true)}
+        </div>
+        <div>
+          <strong style="color:var(--text)">Почему нужен Adaptive Icon:</strong> текущая <code>ic_launcher.xml</code> — плоский вектор <code>48 dp</code> без слоёв. Современные Android-лаунчеры сжимают её внутрь белой системной подложки.
+        </div>
+      `;
+    }
+
+    function renderMaterialYou(v) {
+      const el = document.getElementById('material-you-container');
+      const lightItems = MATERIAL_YOU_PALETTES.map((p) => `
+        <div class="my-swatch-item">
+          ${renderAdaptiveIconSvg(v, { size: 54, mask: 'circle', monoPalette: { bg: p.lightBg, fg: p.lightFg } })}
+          <span>${p.name}</span>
+        </div>
+      `).join('');
+
+      const darkItems = MATERIAL_YOU_PALETTES.map((p) => `
+        <div class="my-swatch-item">
+          ${renderAdaptiveIconSvg(v, { size: 54, mask: 'circle', monoPalette: { bg: p.darkBg, fg: p.darkFg } })}
+          <span>${p.name}</span>
+        </div>
+      `).join('');
+
+      el.innerHTML = `
+        <div class="layer-box" style="justify-content:center">
+          <div class="layer-canvas checkerboard">
+            <svg class="icon-svg" width="132" height="132" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+              ${v.monoSvg('#F0F3EA')}
+              ${safeZoneOverlaySvg()}
+            </svg>
+          </div>
+          <div class="layer-label">monochrome-слой</div>
+          <div class="layer-note">1 цвет, чистый силуэт 66/108 dp</div>
+        </div>
+
+        <div class="my-themes-grid">
+          <div class="my-theme-card light-surface">
+            <div class="my-theme-title">Material You · Светлая системная тема</div>
+            <div class="my-palette-row">${lightItems}</div>
+          </div>
+          <div class="my-theme-card dark-surface">
+            <div class="my-theme-title">Material You · Тёмная системная тема</div>
+            <div class="my-palette-row">${darkItems}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHomeScreenAndSizes(v) {
+      const oliveMy = MATERIAL_YOU_PALETTES[0];
+      const monoPalette =
+        state.homeMode === 'my-dark'
+          ? { bg: oliveMy.darkBg, fg: oliveMy.darkFg }
+          : state.homeMode === 'my-light'
+          ? { bg: oliveMy.lightBg, fg: oliveMy.lightFg }
+          : null;
+
+      // Phone Home Screen
+      const gridSlots = [
+        { type: 'neighbor', app: NEIGHBOR_APPS[0] },
+        { type: 'neighbor', app: NEIGHBOR_APPS[1] },
+        { type: 'new' },
+        { type: 'old' },
+        { type: 'neighbor', app: NEIGHBOR_APPS[2] },
+        { type: 'neighbor', app: NEIGHBOR_APPS[3] },
+        { type: 'neighbor', app: NEIGHBOR_APPS[4] },
+        { type: 'neighbor', app: NEIGHBOR_APPS[5] },
+      ];
+
+      const gridHtml = gridSlots.map((slot) => {
+        if (slot.type === 'new') {
+          return `
+            <div class="app-slot highlight-new">
+              ${renderAdaptiveIconSvg(v, { size: 54, mask: state.homeMask, parallax: state.parallax, monoPalette })}
+              <span class="app-slot-label">Fitty (${v.key})</span>
+            </div>
+          `;
+        }
+        if (slot.type === 'old') {
+          return `
+            <div class="app-slot highlight-old">
+              ${renderCurrentLegacySvg(54, state.homeMask, true)}
+              <span class="app-slot-label">Fitty (сейчас)</span>
+            </div>
+          `;
+        }
+        return `
+          <div class="app-slot">
+            ${renderNeighborAppSvg(slot.app, { size: 54, mask: state.homeMask, monoPalette })}
+            <span class="app-slot-label">${slot.app.name}</span>
+          </div>
+        `;
+      }).join('');
+
+      const dockHtml = DOCK_APPS.map((app) => renderNeighborAppSvg(app, { size: 50, mask: state.homeMask, monoPalette })).join('');
+
+      document.getElementById('phone-container').innerHTML = `
+        <div class="phone-shell">
+          <div class="phone-screen wp-${state.wallpaper}">
+            <div>
+              <div class="status-bar">
+                <span>18:40</span>
+                <div class="status-icons">
+                  <svg width="15" height="15" viewBox="18 18 72 72" aria-label="Иконка Fitty в статус-баре">
+                    ${v.monoSvg('currentColor')}
+                  </svg>
+                  <span>5G</span>
+                  <span>84%</span>
+                </div>
+              </div>
+              <div class="clock-widget">
+                <div class="clock-time">18:40</div>
+                <div class="clock-date">Чт, 26 ноября · Тренировка сегодня</div>
+              </div>
+              <div class="app-grid">${gridHtml}</div>
+            </div>
+
+            <div>
+              <div class="search-pill">
+                <span>Поиск приложений…</span>
+                <span style="opacity:0.75">G</span>
+              </div>
+              <div class="dock-row">${dockHtml}</div>
+              <div class="nav-pill"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Small Sizes & System Surfaces
+      const sizeSpecs = [
+        { dp: 48, label: '48 dp', use: 'Рабочий стол' },
+        { dp: 36, label: '36 dp', use: 'Список прил.' },
+        { dp: 24, label: '24 dp', use: 'Шторка / чип' },
+        { dp: 18, label: '18 dp', use: 'Статус-бар' },
+      ];
+
+      const sizeCells = sizeSpecs.map((s) => {
+        const isTiny = s.dp <= 18;
+        const newIcon = isTiny
+          ? `<svg class="icon-svg" width="${s.dp}" height="${s.dp}" viewBox="18 18 72 72">${v.monoSvg('#F0F3EA')}</svg>`
+          : renderAdaptiveIconSvg(v, { size: s.dp, mask: state.homeMask });
+        const oldIcon = isTiny
+          ? `<svg class="icon-svg" width="${s.dp}" height="${s.dp}" viewBox="0 0 48 48"><path fill="#B6C1B3" d="M14,12H35V18H21V23H32V29H21V36H14Z" /></svg>`
+          : renderCurrentLegacySvg(s.dp, state.homeMask, false);
+        return `
+          <div class="size-cell">
+            <div class="size-pair">
+              <div title="Вариант ${v.key}">${newIcon}</div>
+              <div title="Текущая иконка" style="opacity:0.78">${oldIcon}</div>
+            </div>
+            <div class="size-dp">${s.label}</div>
+            <div class="size-use">${s.use}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('sizes-container').innerHTML = `
+        <div class="size-card">
+          <h4>Масштабирование: новый вариант (${v.key}) слева vs текущий справа</h4>
+          <div class="size-table">${sizeCells}</div>
+        </div>
+
+        <div class="size-card">
+          <h4>Живое уведомление таймера на экране блокировки (20–24 dp)</h4>
+          <div class="notif-card">
+            <div class="notif-head">
+              <svg class="icon-svg" width="20" height="20" viewBox="18 18 72 72">
+                ${v.monoSvg('#C5FA55')}
+              </svg>
+              <span><strong style="color:var(--text)">Fitty</strong> · сейчас · Жим гантелей</span>
+            </div>
+            <div class="notif-body">
+              <div>
+                <div style="font-size:12px;color:var(--text-muted)">Отдых между подходами</div>
+                <div class="notif-timer">1:42</div>
+              </div>
+              <div class="notif-actions">
+                <span class="notif-btn accent">+30 с</span>
+                <span class="notif-btn">Сброс</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="size-card">
+          <h4>Экран «Настройки → О приложении»</h4>
+          <div class="about-row">
+            <div class="about-left">
+              ${renderAdaptiveIconSvg(v, { size: 46, mask: 'rounded' })}
+              <div>
+                <div style="font-family:'Barlow Condensed','Inter',sans-serif;font-size:22px;font-weight:700;line-height:1.05">Fitty</div>
+                <div style="font-size:12px;color:var(--text-muted)">Версия 2.0 · Android redesign</div>
+              </div>
+            </div>
+            <span class="token-chip" style="background:var(--primary-container);color:var(--on-primary-container);border-color:transparent">Актуальная</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSwitcher(v) {
+      const idx = VARIANTS.findIndex((x) => x.key === v.key);
+      document.getElementById('sw-title').textContent = `${v.key} · ${v.name}`;
+      document.getElementById('sw-meta').textContent = `Вариант ${idx + 1} из ${VARIANTS.length} · клавиши ← / →`;
+    }
+
+    function syncControlButtons() {
+      document.getElementById('btn-safezone').classList.toggle('active', state.showSafeZone);
+      document.getElementById('btn-parallax').classList.toggle('active', state.parallax);
+
+      document.querySelectorAll('#wp-switcher button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.wp === state.wallpaper);
+      });
+      document.querySelectorAll('#home-mask-switcher button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mask === state.homeMask);
+      });
+      document.querySelectorAll('#home-mode-switcher button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mode === state.homeMode);
+      });
+    }
+
+    function render() {
+      const v = getVariant(state.variant);
+      syncControlButtons();
+      renderQuickStrip(v);
+      renderHero(v);
+      renderLayers(v);
+      renderMasks(v);
+      renderMaterialYou(v);
+      renderHomeScreenAndSizes(v);
+      renderSwitcher(v);
+    }
+
+    // =========================================================================
+    // Event Wiring
+    // =========================================================================
+    document.getElementById('btn-safezone').addEventListener('click', () => {
+      state.showSafeZone = !state.showSafeZone;
+      render();
+    });
+
+    document.getElementById('btn-parallax').addEventListener('click', () => {
+      state.parallax = !state.parallax;
+      render();
+    });
+
+    document.getElementById('wp-switcher').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-wp]');
+      if (!btn) return;
+      state.wallpaper = btn.dataset.wp;
+      render();
+    });
+
+    document.getElementById('home-mask-switcher').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mask]');
+      if (!btn) return;
+      state.homeMask = btn.dataset.mask;
+      render();
+    });
+
+    document.getElementById('home-mode-switcher').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      state.homeMode = btn.dataset.mode;
+      render();
+    });
+
+    document.getElementById('sw-prev').addEventListener('click', () => stepVariant(-1));
+    document.getElementById('sw-next').addEventListener('click', () => stepVariant(1));
+
+    document.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        stepVariant(-1);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        stepVariant(1);
+      }
+    });
+
+    window.addEventListener('popstate', () => {
+      state.variant = readVariantFromUrl();
+      render();
+    });
+
+    // Initial boot
+    state.variant = readVariantFromUrl();
+    setVariant(state.variant, false);
+  </script>
+</body>
+</html>
