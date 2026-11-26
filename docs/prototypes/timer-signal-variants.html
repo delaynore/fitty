@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE · Fitty 2.0 — Сигнал таймеров в «Настройках» и шторка выбора (A / B / C)</title>
+<!--
+  THROWAWAY UI PROTOTYPE for issue #116:
+  "Three structurally different variants (A, B, C) of the Timer Signal entry in the approved
+   Settings screen (#106) and its #1C231C bottom sheet (#115), switchable via ?variant= and
+   the floating bottom bar."
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-THEME AWARE) ==================== */
+  .shell { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(24, 30, 22, 0.04);
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .stage {
+    display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 20px; align-items: start;
+  }
+  @media (max-width: 820px) {
+    .stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 440px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-hint { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 14px 16px; box-shadow: 0 2px 8px rgba(24, 30, 22, 0.04);
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .variant-desc { margin: 0; font-size: 13px; color: var(--card-foreground, #2C352A); line-height: 1.48; }
+  .variant-bullets { margin: 8px 0 0; padding-left: 17px; font-size: 12.5px; color: var(--muted-foreground, #4A5548); line-height: 1.45; }
+  .variant-bullets li { margin-bottom: 4px; }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 44%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  /* ==================== FLOATING PROTOTYPE SWITCHER ==================== */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+    background: #141A13; color: #F0F3EA;
+    border: 1px solid #354233; border-radius: 999px;
+    padding: 5px 7px; display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  }
+  .proto-arrow {
+    width: 34px; height: 34px; border-radius: 50%; border: 0;
+    background: #232C22; color: #F0F3EA; font-size: 16px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-arrow:hover { background: #303E1B; color: #C5FA55; }
+  .proto-label {
+    padding: 0 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .proto-key {
+    background: #C5FA55; color: #1A2506; font-weight: 800; font-size: 11.5px;
+    padding: 2px 7px; border-radius: 999px;
+  }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (EXACT BASELINE #106) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-warn: #F7D16B;
+    --f-warn-bg: #2C2514;
+    --f-warn-border: #594A22;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  }
+  .m { color: var(--f-muted); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  .f-scroll-home { flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-home::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-home { padding: 12px 16px 88px; }
+  .home-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent;
+    display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center;
+    border-radius: 24px; color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  /* Approved Settings v2 baseline (#106) */
+  .set-kicker { font-size: 13.5px; color: var(--f-muted); margin: 14px 0 7px 2px; }
+  .set-kicker.first { margin-top: 2px; }
+  .bento-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bento-tile {
+    border: 0; background: var(--f-surface); border-radius: 20px; padding: 14px 14px 13px;
+    color: var(--f-text); text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between; min-height: 118px;
+  }
+  .bento-tile:hover { background: #192019; }
+  .bento-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--f-muted); font-size: 12px; font-weight: 600; }
+  .bento-val-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 38px; line-height: 1; color: var(--f-primary); margin: 8px 0 6px; }
+  .bento-val-txt { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--f-text); margin: 10px 0 8px; }
+  .bento-val-txt.sm-fit { font-size: 17.5px; line-height: 1.18; margin: 9px 0 7px; }
+  .bento-val-txt.muted { color: var(--f-muted); }
+  .bento-foot { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--f-muted); }
+  .bento-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--f-dim); }
+  .bento-dot.on { background: var(--f-primary); }
+
+  /* Variant B: full-width bento bar under the 2-column bento */
+  .bento-wide {
+    margin-top: 10px; width: 100%; border: 0; background: var(--f-surface); border-radius: 20px;
+    padding: 13px 15px; color: var(--f-text); text-align: left;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .bento-wide:hover { background: #192019; }
+  .bento-wide-left { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
+  .bento-wide-ico {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--f-chip); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .bento-wide-ico.muted { color: var(--f-dim); }
+  .bento-wide-lbl { font-size: 12px; font-weight: 600; color: var(--f-muted); line-height: 1.2; }
+  .bento-wide-val { font-size: 15.5px; font-weight: 700; color: var(--f-text); line-height: 1.22; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bento-wide-val.muted { color: var(--f-muted); font-weight: 600; }
+  .bento-wide-right { display: flex; align-items: center; gap: 6px; flex: none; }
+  .bento-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    white-space: nowrap;
+  }
+  .bento-pill.off { background: var(--f-chip); color: var(--f-muted); }
+
+  .set-list { padding: 4px 15px; }
+  .set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 11px;
+    padding: 12px 0; text-align: left; border-top: 1px solid var(--f-chip);
+  }
+  .set-row:first-child { border-top: 0; }
+  .set-row-btn:hover { opacity: 0.92; }
+  .set-row-ico {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--f-chip); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .set-row-ico.muted { color: var(--f-dim); }
+  .set-row-main { flex: 1; min-width: 0; }
+  .set-row-title { font-size: 14.5px; font-weight: 600; line-height: 1.22; color: var(--f-text); }
+  .set-row-sub { font-size: 12px; line-height: 1.3; color: var(--f-muted); margin-top: 2px; }
+  .set-row-val { font-size: 12.5px; font-weight: 600; color: var(--f-primary); margin-top: 2px; }
+  .set-row-val.muted { color: var(--f-muted); font-weight: 500; }
+  .set-row-right { display: inline-flex; align-items: center; gap: 4px; color: var(--f-muted); flex: none; }
+  .set-row-badge { font-size: 12.5px; font-weight: 600; color: var(--f-text); }
+
+  .f-switch { width: 44px; height: 26px; border-radius: 999px; border: 0; padding: 3px; background: var(--f-chip); position: relative; flex: none; }
+  .f-switch.on { background: var(--f-primary); }
+  .f-switch::after { content: ""; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform 140ms; }
+  .f-switch.on::after { background: var(--f-on-primary); transform: translateX(18px); }
+
+  .cat-card {
+    width: 100%; border: 0; padding: 15px 16px; color: var(--f-text);
+    display: flex; align-items: center; gap: 13px; text-align: left;
+  }
+  .cat-ico {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--f-chip);
+    display: flex; align-items: center; justify-content: center; color: var(--f-primary); flex: none;
+  }
+  .app-fixed-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .app-slot-head { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .app-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+  .app-icon-box { width: 48px; height: 48px; border-radius: 13px; overflow: hidden; flex: none; border: 1px solid #2A3427; }
+  .app-icon-box svg { width: 100%; height: 100%; display: block; }
+  .app-slot-stage {
+    height: 64px; border-radius: 14px; padding: 0 13px;
+    display: flex; flex-direction: column; justify-content: center;
+    background: #1A201A; overflow: hidden;
+  }
+  .stage-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .stage-ico { display: flex; align-items: center; justify-content: center; flex: none; }
+  .stage-text { flex: 1; min-width: 0; }
+  .stage-title { font-size: 13.5px; font-weight: 600; line-height: 1.22; }
+  .stage-sub { font-size: 11.5px; line-height: 1.25; opacity: 0.85; margin-top: 2px; }
+  .app-slot-action { height: 44px; display: flex; align-items: center; }
+
+  /* ==================== BOTTOM SHEET BASE (#1C231C) ==================== */
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64);
+    z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 20px; display: flex; flex-direction: column; gap: 11px;
+    max-height: 86%; overflow-y: auto; scrollbar-width: none;
+  }
+  .phone.w360 .f-sheet { padding: 10px 16px 18px; }
+  .f-sheet::-webkit-scrollbar { display: none; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 12.5px; color: var(--f-muted); line-height: 1.38; }
+  .f-sheet-cancel {
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px;
+    font-size: 14px; font-weight: 600; background: transparent; color: var(--f-text); width: 100%;
+  }
+  .f-sheet-cancel:hover { background: rgba(255,255,255,0.04); }
+
+  /* Quiet phone system-mode note */
+  .sys-hint {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 11px; border-radius: 12px;
+    background: rgba(247, 209, 107, 0.08);
+    border: 1px solid rgba(247, 209, 107, 0.24);
+    color: #E7D59F; font-size: 11.5px; line-height: 1.36;
+  }
+  .sys-hint.silent {
+    background: rgba(182, 193, 179, 0.07);
+    border-color: var(--f-outline);
+    color: var(--f-muted);
+  }
+  .sys-hint-ico { flex: none; margin-top: 1px; display: flex; color: var(--f-warn); }
+  .sys-hint.silent .sys-hint-ico { color: var(--f-muted); }
+
+  /* Animated sound wave bars & haptic feedback */
+  .eq {
+    display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; width: 14px; justify-content: center;
+  }
+  .eq i {
+    display: block; width: 2.5px; border-radius: 2px; background: var(--f-primary);
+    animation: eqPulse 0.42s ease-in-out infinite alternate;
+  }
+  .eq i:nth-child(1) { height: 6px; animation-delay: 0ms; }
+  .eq i:nth-child(2) { height: 13px; animation-delay: 110ms; }
+  .eq i:nth-child(3) { height: 9px; animation-delay: 220ms; }
+  @keyframes eqPulse {
+    0% { transform: scaleY(0.35); opacity: 0.65; }
+    100% { transform: scaleY(1); opacity: 1; }
+  }
+  @keyframes vibBuzz {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-2.5px); }
+    40% { transform: translateX(2.5px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+  }
+  .buzzing { animation: vibBuzz 260ms ease-in-out; }
+  .vib-toast {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; color: var(--f-primary);
+    background: var(--f-primary-container); padding: 2px 7px; border-radius: 999px;
+    margin-left: 6px;
+  }
+
+  /* ==================== SHEET VARIANT A: FORMULA-STYLE RADIO CARDS ==================== */
+  .vib-card-a {
+    background: var(--f-surface); border-radius: 15px; padding: 11px 13px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .sig-list-a { display: flex; flex-direction: column; gap: 6px; }
+  .sig-card-a {
+    width: 100%; border-radius: 13px; padding: 9px 12px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    transition: border-color 140ms, background 140ms;
+  }
+  .sig-card-a:hover { border-color: var(--f-outline-hi); }
+  .sig-card-a.active { border-color: var(--f-primary-border); background: #162010; }
+  .sig-card-a.playing { border-color: var(--f-primary); box-shadow: 0 0 0 1px rgba(197,250,85,0.22); }
+  .sig-card-a.none-opt.active { border-color: var(--f-outline-hi); background: #181D18; }
+  .sig-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex: none;
+    border: 1.5px solid var(--f-outline-hi); display: flex; align-items: center; justify-content: center;
+  }
+  .sig-card-a.active .sig-radio { border-color: var(--f-primary); background: var(--f-primary); color: var(--f-on-primary); }
+  .sig-card-a.none-opt.active .sig-radio { border-color: var(--f-muted); background: var(--f-muted); color: var(--f-bg); }
+  .sig-title-a { font-size: 13.5px; font-weight: 600; display: block; line-height: 1.22; }
+  .sig-sub-a { font-size: 11px; color: var(--f-muted); display: block; line-height: 1.25; margin-top: 1px; }
+  .sig-trail { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--f-dim); font-size: 11px; font-weight: 600; }
+  .sig-card-a.active .sig-trail { color: var(--f-primary); }
+
+  /* ==================== SHEET VARIANT B: 2×3 TACTILE SOUND-PAD GRID ==================== */
+  .sheet-b-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .test-pill-btn {
+    border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+  }
+  .test-pill-btn:hover { background: #3A4D20; }
+  .test-pill-btn.muted { border-color: var(--f-outline); background: var(--f-chip); color: var(--f-dim); }
+  .pad-grid-b { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pad-b {
+    position: relative; overflow: hidden;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    border-radius: 16px; padding: 11px 12px; min-height: 74px;
+    display: flex; flex-direction: column; justify-content: space-between; text-align: left;
+    transition: border-color 140ms, background 140ms;
+  }
+  .pad-b:hover { border-color: var(--f-outline-hi); }
+  .pad-b.active { border-color: var(--f-primary-border); background: #162010; }
+  .pad-b.playing { border-color: var(--f-primary); background: #1D2B14; }
+  .pad-b.none-opt.active { border-color: var(--f-outline-hi); background: #181D18; }
+  .pad-b-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .pad-b-ico {
+    width: 28px; height: 28px; border-radius: 9px; background: var(--f-surface); color: var(--f-muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pad-b.active .pad-b-ico { background: var(--f-primary-container); color: var(--f-primary); }
+  .pad-b.none-opt.active .pad-b-ico { background: var(--f-chip); color: var(--f-text); }
+  .pad-b-name { font-size: 13.5px; font-weight: 600; line-height: 1.2; margin-top: 8px; }
+  .pad-b-def { font-size: 10.5px; color: var(--f-dim); font-weight: 500; margin-top: 1px; }
+  .pad-b.active .pad-b-def { color: var(--f-on-primary-container); opacity: 0.85; }
+  .pad-b-check {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--f-primary); color: var(--f-on-primary);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pad-b.none-opt .pad-b-check { background: var(--f-muted); color: var(--f-bg); }
+  .pad-ripple {
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    border: 2px solid var(--f-primary); opacity: 0;
+    animation: padWave 560ms ease-out forwards;
+  }
+  @keyframes padWave {
+    0% { opacity: 0.85; transform: scale(0.96); }
+    100% { opacity: 0; transform: scale(1.04); }
+  }
+
+  /* ==================== SHEET VARIANT C: BORDERLESS GROUPED MINIMALIST LIST ==================== */
+  .sheet-c-kicker {
+    font-size: 11.5px; color: var(--f-dim); margin: 2px 0 -4px 4px;
+  }
+  .group-c {
+    background: var(--f-surface); border-radius: 18px; overflow: hidden;
+  }
+  .row-c {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; text-align: left;
+    border-top: 1px solid #1F261F;
+    transition: background 120ms;
+  }
+  .row-c:first-child { border-top: 0; }
+  .row-c:hover { background: rgba(255,255,255,0.03); }
+  .row-c.active { background: #1B2714; }
+  .row-c.playing { background: #223218; }
+  .row-c.none-opt { border-top: 1px solid #2A3329; }
+  .row-c.none-opt.active { background: #1E241E; }
+  .row-c-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .row-c-check {
+    width: 20px; height: 20px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: transparent; border: 1.5px solid var(--f-outline);
+  }
+  .row-c.active .row-c-check { border-color: var(--f-primary); background: var(--f-primary); color: var(--f-on-primary); }
+  .row-c.none-opt.active .row-c-check { border-color: var(--f-muted); background: var(--f-muted); color: var(--f-bg); }
+  .row-c-name { font-size: 14px; font-weight: 600; line-height: 1.2; }
+  .row-c-tag { font-size: 11px; color: var(--f-dim); font-weight: 500; margin-left: 5px; }
+  .row-c-right { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--f-dim); font-size: 11.5px; }
+  .row-c.active .row-c-right { color: var(--f-primary); }
+  .vib-row-c {
+    background: var(--f-surface); border-radius: 18px; padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Prototype · #116</span>
+      <div>
+        <h1 class="host-title">Сигнал таймеров: пункт в «Настройках» и шторка выбора</h1>
+        <div class="host-sub">3 структурно разных варианта на базе утверждённой вкладки «Настройки» (#106) и правил #115</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="seg-small" aria-label="Вид экрана">
+        <button id="view-settings" type="button">Настройки</button>
+        <button id="view-sheet" type="button">Шторка открыта</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="phone-slot">
+      <main id="phone" class="phone" aria-label="Интерактивный прототип Fitty"></main>
+      <div class="phone-hint" id="phone-hint"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2 id="var-panel-title">Вариант</h2>
+        <p class="variant-desc" id="var-desc"></p>
+        <ul class="variant-bullets" id="var-bullets"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние и симулятор телефона</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Системный режим телефона (потолок в зале)</span>
+          <div class="btn-wrap" id="ctrl-phone-mode"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Быстрые комбинации настройки</span>
+          <div class="btn-wrap" id="ctrl-quick-combo"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Текущее состояние</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button class="proto-arrow" id="prev-var" type="button" aria-label="Предыдущий вариант">←</button>
+  <span class="proto-label"><span class="proto-key" id="bar-key">A</span><span id="bar-name"></span></span>
+  <button class="proto-arrow" id="next-var" type="button" aria-label="Следующий вариант">→</button>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    chevR: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    checkSm: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    pulse: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+    trendUp: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
+    scale: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M4 7h16M7 7l-3 7h6zM17 7l-3 7h6z"/></svg>',
+    timer: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
+    bell: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
+    bellOff: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 01-3.46 0M18.63 13A17.9 17.9 0 0118 8 6 6 0 009.33 2.67M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14"/><line x1="2" y1="2" x2="22" y2="22"/></svg>',
+    vibrate: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4 8l-1 4 1 4M20 8l1 4-1 4"/></svg>',
+    vol: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>',
+    volOff: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
+    playSm: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>',
+    info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+    home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
+    history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+    dumbbell: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+    cloud: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>',
+    fittyIcon: '<svg viewBox="0 0 108 108" aria-hidden="true"><defs><radialGradient id="fgBgP" cx="50%" cy="46%" r="58%"><stop offset="0%" stop-color="#1D2619"/><stop offset="100%" stop-color="#0E110E"/></radialGradient></defs><rect x="0" y="0" width="108" height="108" fill="url(#fgBgP)"/><polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65"/><circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55"/><path fill="#C5FA55" d="M38.5,31H75.5L73.2,41H48.5L47.4,49.5H68.5L66.3,59H46.2L43.8,77H32.5Z"/><circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA"/></svg>'
+  };
+
+  const PRESETS = [
+    { id: 'soft_chime',  name: 'Мягкий звон',    def: true,  hint: 'Спокойный чистый тон',         durMs: 650 },
+    { id: 'double_beep', name: 'Двойной сигнал', def: false, hint: 'Два чётких коротких импульса', durMs: 520 },
+    { id: 'gong',        name: 'Гонг',           def: false, hint: 'Глубокий затухающий удар',     durMs: 880 },
+    { id: 'click',       name: 'Щелчок',         def: false, hint: 'Сухой тактильный клик',        durMs: 260 },
+    { id: 'bright_chord',name: 'Бодрый аккорд',  def: false, hint: 'Светлое короткое трезвучие',   durMs: 680 },
+    { id: 'none',        name: 'Без звука',      def: false, hint: 'Звуковой сигнал отключён',     durMs: 0   }
+  ];
+
+  const VARIANTS = [
+    {
+      key: 'A',
+      shortName: 'Строка в списке + радио-шторка',
+      desc: 'Максимально сохраняет утверждённую сетку #106: плитки «Таймер отдыха» и «Формула 1RM» не трогаем, а «Сигнал таймеров» встраивается первой строкой с шевроном в карточку переключателей. Шторка повторяет паттерн «Формула расчёта 1RM» (#106).',
+      bullets: [
+        'В Настройках: ноль лишних карточек, экран почти не вытягивается по высоте.',
+        'В шторке: тумблер «Вибрация» сверху, ниже вертикальные радио-карточки с короткой подсказкой характера звука и живым эквалайзером при прослушке.',
+        'Знакомый визуальный язык — один в один со шторкой выбора формулы 1RM.'
+      ]
+    },
+    {
+      key: 'B',
+      shortName: 'Широкая плитка 2+1 + сетка звуков 2×3',
+      desc: 'Собирает все три настройки со шторками в единый бенто-блок 2+1 вверху («Таймер отдыха» + «Формула 1RM» + широкая плитка «Сигнал таймеров» с бейджем вибрации). Внутри шторки — визуальная сетка 2×3 из тактильных плиток-пэдов.',
+      bullets: [
+        'В Настройках: чёткое разделение — сверху 3 плитки-шторки, ниже карточка только для 2 тумблеров.',
+        'В шторке: все 5 звуков + «Без звука» видны разом в сетке 2×3 без прокрутки даже на 360 dp.',
+        'В шапке шторки есть кнопка «Проверить», которая проигрывает связку «выбранный звук + вибрация» целиком.'
+      ]
+    },
+    {
+      key: 'C',
+      shortName: 'Пара плиток таймера + чистый список',
+      desc: 'Объединяет в верхнем ряду 2 плитки про таймеры («Таймер отдыха» и «Сигнал таймеров» рядом!), а редкую «Формулу 1RM» переносит строкой в карточку ниже. Шторка — предельно спокойный сгруппированный список без рамок и подписей.',
+      bullets: [
+        'В Настройках: обе настройки таймеров визуально рядом на первом экране, а высота секции не растёт.',
+        'В шторке: плоский сгруппированный список внутри одной поверхности #141914 без описаний — ставка на мгновенную прослушку в 1 тап.',
+        'Тумблер «Вибрация» вынесен в отдельную мягкую карточку внизу перед кнопкой «Готово».'
+      ]
+    }
+  ];
+
+  // Read initial ?variant= from URL
+  function readUrlVariant() {
+    try {
+      const q = new URLSearchParams(window.location.search).get('variant');
+      if (q && ['A', 'B', 'C'].includes(q.toUpperCase())) return q.toUpperCase();
+    } catch (_) {}
+    return 'A';
+  }
+
+  const st = {
+    variant: readUrlVariant(),
+    width: 390,
+    sheetOpen: false,
+    soundId: 'soft_chime',
+    vibration: true,
+    phoneMode: 'normal', // 'normal' | 'vibrate' | 'silent'
+    playingId: null,
+    vibPulse: false,
+    checkinEnabled: true,
+    loadPromptsEnabled: true
+  };
+
+  let playTimer = null;
+  let vibTimer = null;
+  let audioCtx = null;
+
+  function playSynthCue(id) {
+    if (id === 'none') return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      const tone = (freq, start, dur, type = 'sine', peak = 0.16, endFreq = null) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now + start);
+        if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, now + start + dur);
+        gain.gain.setValueAtTime(0.0001, now + start);
+        gain.gain.linearRampToValueAtTime(peak, now + start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + start);
+        osc.stop(now + start + dur + 0.02);
+      };
+
+      if (id === 'soft_chime') {
+        tone(880, 0, 0.52, 'sine', 0.14);
+        tone(1318.5, 0.04, 0.48, 'sine', 0.07);
+      } else if (id === 'double_beep') {
+        tone(960, 0, 0.14, 'triangle', 0.13);
+        tone(1180, 0.19, 0.18, 'triangle', 0.14);
+      } else if (id === 'gong') {
+        tone(220, 0, 0.82, 'sine', 0.18, 212);
+        tone(440, 0, 0.56, 'triangle', 0.06, 430);
+        tone(659, 0, 0.35, 'sine', 0.03);
+      } else if (id === 'click') {
+        tone(1600, 0, 0.055, 'triangle', 0.16, 420);
+        tone(900, 0.06, 0.06, 'sine', 0.09, 320);
+      } else if (id === 'bright_chord') {
+        tone(587.3, 0, 0.42, 'sine', 0.10);
+        tone(740.0, 0.07, 0.44, 'sine', 0.10);
+        tone(880.0, 0.14, 0.48, 'sine', 0.11);
+      }
+    } catch (_) {}
+  }
+
+  function triggerPreview(id) {
+    if (playTimer) clearTimeout(playTimer);
+    const p = PRESETS.find(x => x.id === id);
+    if (!p || p.id === 'none') {
+      st.playingId = null;
+      render();
+      return;
+    }
+    st.playingId = id;
+    playSynthCue(id);
+    render();
+    playTimer = setTimeout(() => {
+      st.playingId = null;
+      render();
+    }, Math.max(480, p.durMs));
+  }
+
+  function triggerVibPulse() {
+    if (vibTimer) clearTimeout(vibTimer);
+    st.vibPulse = true;
+    try { if (navigator.vibrate) navigator.vibrate(45); } catch (_) {}
+    render();
+    vibTimer = setTimeout(() => {
+      st.vibPulse = false;
+      render();
+    }, 680);
+  }
+
+  function getPreset() {
+    return PRESETS.find(p => p.id === st.soundId) || PRESETS[0];
+  }
+
+  // Exact summary strings from #115 / #116
+  function getSummaryText() {
+    const p = getPreset();
+    if (p.id === 'none' && !st.vibration) return 'Без сигнала';
+    if (p.id === 'none' && st.vibration) return 'Только вибрация';
+    if (st.vibration) return `${p.name} · вибро`;
+    return p.name;
+  }
+
+  function getGymBehaviorText() {
+    const p = getPreset();
+    const wantSound = p.id !== 'none';
+    const wantVib = st.vibration;
+    if (st.phoneMode === 'silent') return 'Тишина (телефон в беззвучном / Не беспокоить)';
+    if (st.phoneMode === 'vibrate') {
+      return wantVib
+        ? 'Только вибрация (звук подавлен режимом телефона, даже в наушниках)'
+        : 'Тишина (звук подавлен телефоном, вибрация выкл. в Fitty)';
+    }
+    if (wantSound && wantVib) return `«${p.name}» + вибрация (в наушниках — строго в них)`;
+    if (wantSound) return `Только звук «${p.name}» (без вибрации)`;
+    if (wantVib) return 'Только вибрация (звук выкл. в Fitty)';
+    return 'Тишина (в Fitty выбран режим «Без сигнала»)';
+  }
+
+  function isSilentConfig() {
+    return st.soundId === 'none' && !st.vibration;
+  }
+
+  function getSignalIcon() {
+    if (st.soundId === 'none' && !st.vibration) return ICO.bellOff;
+    if (st.soundId === 'none' && st.vibration) return ICO.vibrate;
+    return ICO.bell;
+  }
+
+  function renderSysHintHTML() {
+    if (st.phoneMode === 'normal') return '';
+    if (st.phoneMode === 'vibrate') {
+      return `<div class="sys-hint">
+        <span class="sys-hint-ico">${ICO.info}</span>
+        <span>Телефон сейчас в виброрежиме — предпрослушка играет сразу, но на тренировке звук не сработает (учитывается режим телефона).</span>
+      </div>`;
+    }
+    return `<div class="sys-hint silent">
+      <span class="sys-hint-ico">${ICO.bellOff}</span>
+      <span>На телефоне включён беззвучный режим / «Не беспокоить» — на тренировке таймеры будут без звука и вибрации.</span>
+    </div>`;
+  }
+
+  function renderEqHTML() {
+    return '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
+  }
+
+  /* ==================== SHEET RENDERERS (A / B / C) ==================== */
+  function renderSheetA() {
+    return `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div>
+            <h3>Сигнал таймеров</h3>
+            <p style="margin-top:3px">Общий для таймера отдыха и упражнений на время. Тап по звуку сразу включает образец.</p>
+          </div>
+          ${renderSysHintHTML()}
+          <div class="vib-card-a ${st.vibPulse ? 'buzzing' : ''}">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span class="set-row-ico ${st.vibration ? '' : 'muted'}">${ICO.vibrate}</span>
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap">
+                  <span>Вибрация</span>
+                  ${st.vibPulse ? '<span class="vib-toast">вжж · тест</span>' : ''}
+                </div>
+                <div style="font-size:11.5px;color:var(--f-muted);margin-top:1px">${st.vibration ? 'Короткий виброотклик в 0:00' : 'Отключена для обоих таймеров'}</div>
+              </div>
+            </div>
+            <button class="f-switch ${st.vibration ? 'on' : ''}" data-act="toggle-vib" aria-label="Вибрация"></button>
+          </div>
+          <div class="sig-list-a">
+            ${PRESETS.map(p => {
+              const sel = p.id === st.soundId;
+              const playing = p.id === st.playingId;
+              const isNone = p.id === 'none';
+              return `<button class="sig-card-a ${sel ? 'active' : ''} ${playing ? 'playing' : ''} ${isNone ? 'none-opt' : ''}" data-act="pick-sound" data-v="${p.id}">
+                <span class="sig-radio">${sel ? ICO.checkSm : ''}</span>
+                <div style="flex:1;min-width:0">
+                  <span class="sig-title-a">${p.name}${p.def ? ' · по умолчанию' : ''}</span>
+                  <span class="sig-sub-a">${p.hint}</span>
+                </div>
+                <span class="sig-trail">
+                  ${playing ? `${renderEqHTML()}<span>Играет</span>` : isNone ? ICO.volOff : (sel ? ICO.vol : ICO.playSm)}
+                </span>
+              </button>`;
+            }).join('')}
+          </div>
+          <button class="f-sheet-cancel" data-act="close-sheet">Готово</button>
+        </div>
+      </div>`;
+  }
+
+  function renderSheetB() {
+    const silentAll = isSilentConfig();
+    return `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="sheet-b-head">
+            <div style="min-width:0">
+              <h3>Сигнал таймеров</h3>
+              <p style="margin-top:2px">${getSummaryText()} · отдых и планка</p>
+            </div>
+            <button class="test-pill-btn ${silentAll ? 'muted' : ''}" data-act="test-combo" ${silentAll ? 'disabled' : ''}>
+              ${st.playingId ? renderEqHTML() : ICO.playSm}
+              <span>Проверить</span>
+            </button>
+          </div>
+          <div class="pad-grid-b">
+            ${PRESETS.map(p => {
+              const sel = p.id === st.soundId;
+              const playing = p.id === st.playingId;
+              const isNone = p.id === 'none';
+              return `<button class="pad-b ${sel ? 'active' : ''} ${playing ? 'playing' : ''} ${isNone ? 'none-opt' : ''}" data-act="pick-sound" data-v="${p.id}">
+                ${playing ? '<span class="pad-ripple"></span>' : ''}
+                <div class="pad-b-top">
+                  <span class="pad-b-ico">${playing ? renderEqHTML() : isNone ? ICO.volOff : ICO.vol}</span>
+                  ${sel ? `<span class="pad-b-check">${ICO.checkSm}</span>` : ''}
+                </div>
+                <div>
+                  <div class="pad-b-name">${p.name}</div>
+                  <div class="pad-b-def">${playing ? 'Прослушивание…' : p.def ? 'По умолчанию' : isNone ? 'Тихо' : 'Тап — образец'}</div>
+                </div>
+              </button>`;
+            }).join('')}
+          </div>
+          <div class="vib-card-a ${st.vibPulse ? 'buzzing' : ''}">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span class="set-row-ico ${st.vibration ? '' : 'muted'}">${ICO.vibrate}</span>
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap">
+                  <span>Вибрация</span>
+                  ${st.vibPulse ? '<span class="vib-toast">вжж · тест</span>' : ''}
+                </div>
+                <div style="font-size:11.5px;color:var(--f-muted);margin-top:1px">Работает отдельно от звука в 0:00</div>
+              </div>
+            </div>
+            <button class="f-switch ${st.vibration ? 'on' : ''}" data-act="toggle-vib" aria-label="Вибрация"></button>
+          </div>
+          ${renderSysHintHTML()}
+          <button class="f-sheet-cancel" data-act="close-sheet">Готово</button>
+        </div>
+      </div>`;
+  }
+
+  function renderSheetC() {
+    return `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div>
+            <h3>Сигнал таймеров</h3>
+            <p style="margin-top:2px">Для таймера отдыха и упражнений на время</p>
+          </div>
+          ${renderSysHintHTML()}
+          <div class="d sheet-c-kicker">Звук в 0:00</div>
+          <div class="group-c">
+            ${PRESETS.map(p => {
+              const sel = p.id === st.soundId;
+              const playing = p.id === st.playingId;
+              const isNone = p.id === 'none';
+              return `<button class="row-c ${sel ? 'active' : ''} ${playing ? 'playing' : ''} ${isNone ? 'none-opt' : ''}" data-act="pick-sound" data-v="${p.id}">
+                <span class="row-c-left">
+                  <span class="row-c-check">${sel ? ICO.checkSm : ''}</span>
+                  <span class="row-c-name">${p.name}${p.def ? '<span class="row-c-tag">по умолч.</span>' : ''}</span>
+                </span>
+                <span class="row-c-right">
+                  ${playing ? `${renderEqHTML()}<span>Играет</span>` : isNone ? ICO.volOff : (sel ? ICO.vol : '')}
+                </span>
+              </button>`;
+            }).join('')}
+          </div>
+          <div class="vib-row-c ${st.vibPulse ? 'buzzing' : ''}">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span class="set-row-ico ${st.vibration ? '' : 'muted'}">${ICO.vibrate}</span>
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap">
+                  <span>Вибрация</span>
+                  ${st.vibPulse ? '<span class="vib-toast">вжж · тест</span>' : ''}
+                </div>
+                <div style="font-size:11.5px;color:var(--f-muted);margin-top:1px">${st.vibration ? 'Короткий импульс в 0:00' : 'Выключена'}</div>
+              </div>
+            </div>
+            <button class="f-switch ${st.vibration ? 'on' : ''}" data-act="toggle-vib" aria-label="Вибрация"></button>
+          </div>
+          <button class="f-sheet-cancel" data-act="close-sheet">Готово</button>
+        </div>
+      </div>`;
+  }
+
+  /* ==================== WORKOUT SECTION IN SETTINGS (A / B / C) ==================== */
+  function renderWorkoutSection() {
+    const summary = getSummaryText();
+    const silent = isSilentConfig();
+    const p = getPreset();
+
+    if (st.variant === 'A') {
+      return `
+        <div class="bento-2">
+          <button class="bento-tile" type="button">
+            <div class="bento-top"><span>Таймер отдыха</span><span style="color:var(--f-primary);display:flex">${ICO.timer}</span></div>
+            <div class="bento-val-num">2:00</div>
+            <div class="bento-foot"><span class="bento-dot on"></span><span>Автостарт вкл.</span></div>
+          </button>
+          <button class="bento-tile" type="button">
+            <div class="bento-top"><span>Формула 1RM</span><span style="color:var(--f-primary);display:flex">${ICO.scale}</span></div>
+            <div class="bento-val-txt">Эпли</div>
+            <div class="bento-foot"><span>По умолчанию · 7</span></div>
+          </button>
+        </div>
+
+        <div class="cd set-list" style="margin-top:10px">
+          <button class="set-row set-row-btn" data-act="open-sheet" type="button">
+            <span class="set-row-ico ${silent ? 'muted' : ''}">${getSignalIcon()}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Сигнал таймеров</div>
+              <div class="set-row-val ${silent ? 'muted' : ''}">${summary}</div>
+            </div>
+            <span class="set-row-right">${ICO.chevR}</span>
+          </button>
+          <div class="set-row">
+            <span class="set-row-ico ${st.checkinEnabled ? '' : 'muted'}">${ICO.pulse}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Опрос о самочувствии</div>
+              <div class="set-row-sub">Карточка «Бодро / Устал» перед стартом на Главной</div>
+            </div>
+            <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle-checkin" aria-label="Опрос о самочувствии"></button>
+          </div>
+          <div class="set-row">
+            <span class="set-row-ico ${st.loadPromptsEnabled ? '' : 'muted'}">${ICO.trendUp}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Подсказки по нагрузке</div>
+              <div class="set-row-sub">Советы повысить или снизить вес на экране тренировки</div>
+            </div>
+            <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle-prompts" aria-label="Подсказки по нагрузке"></button>
+          </div>
+        </div>`;
+    }
+
+    if (st.variant === 'B') {
+      const vibPill = st.soundId === 'none'
+        ? (st.vibration ? '<span class="bento-pill">Вибро</span>' : '<span class="bento-pill off">Тихо</span>')
+        : (st.vibration ? '<span class="bento-pill">Вибро вкл.</span>' : '<span class="bento-pill off">Без вибро</span>');
+      const mainVal = st.soundId === 'none' ? (st.vibration ? 'Только вибрация' : 'Без сигнала') : p.name;
+      return `
+        <div class="bento-2">
+          <button class="bento-tile" type="button">
+            <div class="bento-top"><span>Таймер отдыха</span><span style="color:var(--f-primary);display:flex">${ICO.timer}</span></div>
+            <div class="bento-val-num">2:00</div>
+            <div class="bento-foot"><span class="bento-dot on"></span><span>Автостарт вкл.</span></div>
+          </button>
+          <button class="bento-tile" type="button">
+            <div class="bento-top"><span>Формула 1RM</span><span style="color:var(--f-primary);display:flex">${ICO.scale}</span></div>
+            <div class="bento-val-txt">Эпли</div>
+            <div class="bento-foot"><span>По умолчанию · 7</span></div>
+          </button>
+        </div>
+
+        <button class="bento-wide" data-act="open-sheet" type="button">
+          <span class="bento-wide-left">
+            <span class="bento-wide-ico ${silent ? 'muted' : ''}">${getSignalIcon()}</span>
+            <span style="min-width:0">
+              <span class="bento-wide-lbl" style="display:block">Сигнал таймеров</span>
+              <span class="bento-wide-val ${silent ? 'muted' : ''}" style="display:block">${mainVal}</span>
+            </span>
+          </span>
+          <span class="bento-wide-right">
+            ${vibPill}
+            <span class="m" style="display:flex">${ICO.chevR}</span>
+          </span>
+        </button>
+
+        <div class="cd set-list" style="margin-top:10px">
+          <div class="set-row">
+            <span class="set-row-ico ${st.checkinEnabled ? '' : 'muted'}">${ICO.pulse}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Опрос о самочувствии</div>
+              <div class="set-row-sub">Карточка «Бодро / Устал» перед стартом на Главной</div>
+            </div>
+            <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle-checkin" aria-label="Опрос о самочувствии"></button>
+          </div>
+          <div class="set-row">
+            <span class="set-row-ico ${st.loadPromptsEnabled ? '' : 'muted'}">${ICO.trendUp}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Подсказки по нагрузке</div>
+              <div class="set-row-sub">Советы повысить или снизить вес на экране тренировки</div>
+            </div>
+            <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle-prompts" aria-label="Подсказки по нагрузке"></button>
+          </div>
+        </div>`;
+    }
+
+    // Variant C: Timer-paired top bento (Rest timer + Timer signal), Formula 1RM in list card
+    const tileMain = st.soundId === 'none' ? (st.vibration ? 'Вибрация' : 'Без сигнала') : p.name;
+    const tileFoot = st.soundId === 'none'
+      ? (st.vibration ? 'Звук выкл.' : 'Звук и вибро выкл.')
+      : (st.vibration ? 'Вибрация вкл.' : 'Без вибрации');
+    const dotOn = st.vibration || st.soundId !== 'none';
+    return `
+      <div class="bento-2">
+        <button class="bento-tile" type="button">
+          <div class="bento-top"><span>Таймер отдыха</span><span style="color:var(--f-primary);display:flex">${ICO.timer}</span></div>
+          <div class="bento-val-num">2:00</div>
+          <div class="bento-foot"><span class="bento-dot on"></span><span>Автостарт вкл.</span></div>
+        </button>
+        <button class="bento-tile" data-act="open-sheet" type="button">
+          <div class="bento-top"><span>Сигнал таймеров</span><span style="color:${silent ? 'var(--f-dim)' : 'var(--f-primary)'};display:flex">${getSignalIcon()}</span></div>
+          <div class="bento-val-txt sm-fit ${silent ? 'muted' : ''}">${tileMain}</div>
+          <div class="bento-foot"><span class="bento-dot ${dotOn && st.vibration ? 'on' : ''}"></span><span>${tileFoot}</span></div>
+        </button>
+      </div>
+
+      <div class="cd set-list" style="margin-top:10px">
+        <div class="set-row">
+          <span class="set-row-ico ${st.checkinEnabled ? '' : 'muted'}">${ICO.pulse}</span>
+          <div class="set-row-main">
+            <div class="set-row-title">Опрос о самочувствии</div>
+            <div class="set-row-sub">Карточка «Бодро / Устал» перед стартом на Главной</div>
+          </div>
+          <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle-checkin" aria-label="Опрос о самочувствии"></button>
+        </div>
+        <div class="set-row">
+          <span class="set-row-ico ${st.loadPromptsEnabled ? '' : 'muted'}">${ICO.trendUp}</span>
+          <div class="set-row-main">
+            <div class="set-row-title">Подсказки по нагрузке</div>
+            <div class="set-row-sub">Советы повысить или снизить вес на экране тренировки</div>
+          </div>
+          <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle-prompts" aria-label="Подсказки по нагрузке"></button>
+        </div>
+        <button class="set-row set-row-btn" type="button">
+          <span class="set-row-ico">${ICO.scale}</span>
+          <div class="set-row-main">
+            <div class="set-row-title">Формула 1RM</div>
+            <div class="set-row-sub">Для подбора рабочего веса</div>
+          </div>
+          <span class="set-row-right"><span class="set-row-badge">Эпли</span>${ICO.chevR}</span>
+        </button>
+      </div>`;
+  }
+
+  function renderPhone() {
+    const sheetHtml = !st.sheetOpen ? ''
+      : st.variant === 'A' ? renderSheetA()
+      : st.variant === 'B' ? renderSheetB()
+      : renderSheetC();
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1">Настройки</h1>
+
+        <div class="d set-kicker first">Тренировка</div>
+        ${renderWorkoutSection()}
+
+        <div class="d set-kicker">База упражнений</div>
+        <button class="cd cat-card" type="button">
+          <span class="cat-ico">${ICO.dumbbell}</span>
+          <span style="flex:1;min-width:0">
+            <span class="d" style="font-size:20px;display:block;line-height:1.1">Каталог упражнений</span>
+            <span class="m" style="font-size:13px;display:block;margin-top:2px">Поиск, фильтры и техника выполнения</span>
+          </span>
+          <span class="m" style="display:flex">${ICO.chevR}</span>
+        </button>
+
+        <div class="d set-kicker">Приложение и обновления</div>
+        <div class="cd app-fixed-card">
+          <div class="app-slot-head">
+            <div class="app-brand">
+              <div class="app-icon-box">${ICO.fittyIcon}</div>
+              <div style="min-width:0">
+                <div class="d" style="font-size:22px;line-height:1.08">Fitty</div>
+                <div class="m" style="font-size:13px;margin-top:2px">Версия 2.0 · сборка 200</div>
+              </div>
+            </div>
+          </div>
+          <div class="app-slot-stage">
+            <div class="stage-row">
+              <span class="stage-ico m">${ICO.cloud}</span>
+              <div class="stage-text">
+                <div class="stage-title">Проверка обновлений вручную</div>
+                <div class="stage-sub m">GitHub Releases · тренировка работает офлайн</div>
+              </div>
+            </div>
+          </div>
+          <div class="app-slot-action"><button class="ob" type="button">Проверить обновления</button></div>
+        </div>
+      </div>
+
+      <nav class="f-nav">
+        <button class="f-nav-btn" type="button">${ICO.home}</button>
+        <button class="f-nav-btn" type="button">${ICO.history}</button>
+        <button class="f-nav-btn active" type="button">${ICO.settings}<span>Настройки</span></button>
+      </nav>
+      ${sheetHtml}`;
+  }
+
+  function syncUrl() {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('variant', st.variant);
+      window.history.replaceState(null, '', u.toString());
+    } catch (_) {}
+  }
+
+  function render() {
+    const vObj = VARIANTS.find(v => v.key === st.variant) || VARIANTS[0];
+    const phone = document.getElementById('phone');
+    phone.className = 'phone' + (st.width === 360 ? ' w360' : '');
+    phone.innerHTML = renderPhone();
+
+    document.getElementById('phone-hint').textContent = st.sheetOpen
+      ? 'Тап по пресету сразу играет короткий образец (Web Audio). Стрелки ← / → внизу листают варианты шторки.'
+      : 'Нажми на «Сигнал таймеров» внутри макета или кнопку «Шторка открыта» сверху. Стрелки ← / → листают варианты A / B / C.';
+
+    document.getElementById('view-settings').classList.toggle('active', !st.sheetOpen);
+    document.getElementById('view-sheet').classList.toggle('active', st.sheetOpen);
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+
+    document.getElementById('var-panel-title').textContent = `Вариант ${vObj.key} — ${vObj.shortName}`;
+    document.getElementById('var-desc').textContent = vObj.desc;
+    document.getElementById('var-bullets').innerHTML = vObj.bullets.map(b => `<li>${b}</li>`).join('');
+
+    document.getElementById('bar-key').textContent = vObj.key;
+    document.getElementById('bar-name').textContent = vObj.shortName;
+
+    // Inspector controls: Phone system mode
+    const modes = [
+      ['normal', 'Обычный'],
+      ['vibrate', 'Виброрежим'],
+      ['silent', 'Без звука / Не беспокоить']
+    ];
+    document.getElementById('ctrl-phone-mode').innerHTML = modes.map(([id, lbl]) =>
+      `<button type="button" class="cbtn ${st.phoneMode === id ? 'active' : ''}" data-host="phone-mode" data-v="${id}">${lbl}</button>`
+    ).join('');
+
+    // Quick combos
+    const combos = [
+      ['default', 'Мягкий звон · вибро', 'soft_chime', true],
+      ['vib_only', 'Только вибрация', 'none', true],
+      ['gong_only', 'Гонг (без вибро)', 'gong', false],
+      ['silent', 'Без сигнала', 'none', false]
+    ];
+    document.getElementById('ctrl-quick-combo').innerHTML = combos.map(([id, lbl, sId, vib]) => {
+      const act = st.soundId === sId && st.vibration === vib;
+      return `<button type="button" class="cbtn ${act ? 'active' : ''}" data-host="combo" data-sound="${sId}" data-vib="${vib ? '1' : '0'}">${lbl}</button>`;
+    }).join('');
+
+    // Live state table
+    const p = getPreset();
+    const modeLbl = modes.find(m => m[0] === st.phoneMode)[1];
+    document.getElementById('state-tbl').innerHTML = `
+      <tr><td>Вариант</td><td>${vObj.key} (${vObj.shortName})</td></tr>
+      <tr><td>Подпись в Настройках</td><td>${getSummaryText()}</td></tr>
+      <tr><td>Выбранный звук</td><td>${p.name}</td></tr>
+      <tr><td>Вибрация</td><td>${st.vibration ? 'Вкл.' : 'Выкл.'}</td></tr>
+      <tr><td>Режим телефона</td><td>${modeLbl}</td></tr>
+      <tr><td>Сработает в 0:00 в зале</td><td>${getGymBehaviorText()}</td></tr>
+    `;
+  }
+
+  function stepVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === st.variant);
+    st.variant = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length].key;
+    syncUrl();
+    render();
+  }
+
+  // Phone interactions
+  document.getElementById('phone').addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+    if (act === 'open-sheet') { st.sheetOpen = true; render(); }
+    else if (act === 'close-sheet') { st.sheetOpen = false; st.playingId = null; render(); }
+    else if (act === 'pick-sound') {
+      st.soundId = el.dataset.v;
+      triggerPreview(st.soundId);
+    } else if (act === 'toggle-vib') {
+      st.vibration = !st.vibration;
+      if (st.vibration) triggerVibPulse();
+      else render();
+    } else if (act === 'test-combo') {
+      if (st.soundId !== 'none') triggerPreview(st.soundId);
+      if (st.vibration) triggerVibPulse();
+    } else if (act === 'toggle-checkin') {
+      st.checkinEnabled = !st.checkinEnabled; render();
+    } else if (act === 'toggle-prompts') {
+      st.loadPromptsEnabled = !st.loadPromptsEnabled; render();
+    }
+  });
+
+  // Host controls
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-host]');
+    if (!el) return;
+    const h = el.dataset.host;
+    if (h === 'phone-mode') { st.phoneMode = el.dataset.v; render(); }
+    else if (h === 'combo') {
+      st.soundId = el.dataset.sound;
+      st.vibration = el.dataset.vib === '1';
+      render();
+    }
+  });
+
+  document.getElementById('view-settings').addEventListener('click', () => { st.sheetOpen = false; render(); });
+  document.getElementById('view-sheet').addEventListener('click', () => { st.sheetOpen = true; render(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; render(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; render(); });
+  document.getElementById('prev-var').addEventListener('click', () => stepVariant(-1));
+  document.getElementById('next-var').addEventListener('click', () => stepVariant(1));
+
+  window.addEventListener('keydown', (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); stepVariant(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); stepVariant(1); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
