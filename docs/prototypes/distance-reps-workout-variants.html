@@ -1,0 +1,1693 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #113: Дистанция и Повторения без веса (A / B / C)</title>
+<!--
+  Throwaway UI prototype for issue #113 ("Как выглядят упражнения на дистанцию и повторения без веса на экране тренировки?").
+  Plan: Three structurally different variants (A: Strict Design-System Table Grid, B: Inline ± Stepper Row, C: Focused Active-Set Card + Compact Strip) on the real Fitty v2 Workout, Summary, and History Details screens (baseline android-design-system.html + approved #79/#83/#94/#97/#99/#101/#102), switchable via ?variant=A|B|C, floating bottom bar, and side-by-side comparison.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active {
+    background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA);
+  }
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(300px, 1fr); gap: 18px; align-items: start;
+  }
+  @media (max-width: 860px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 460px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 11px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 9px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .var-desc { font-size: 12.5px; color: var(--card-foreground, #2C352A); line-height: 1.48; }
+  .var-desc ul { margin: 6px 0 0; padding-left: 17px; }
+  .var-desc li { margin-bottom: 4px; }
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  .compare-grid { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; justify-content: flex-start; }
+  .compare-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .compare-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
+  .compare-title { font-size: 13px; font-weight: 700; color: var(--foreground, #1A2018); }
+  .compare-pick {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 8px; padding: 3px 9px; font: 600 11.5px var(--font-sans, Inter, sans-serif); cursor: pointer;
+  }
+  .compare-pick:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .compare-note { font-size: 11.5px; color: var(--muted-foreground, #5B6658); max-width: 390px; line-height: 1.35; }
+  .hidden { display: none !important; }
+
+  /* Floating Prototype Switcher (UI.md) */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+    background: #141914; color: #F0F3EA;
+    border: 1.5px solid #4A6128; border-radius: 999px;
+    padding: 5px 7px; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 28px rgba(10, 14, 10, 0.36);
+  }
+  .proto-bar-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 0;
+    background: #252D24; color: #F0F3EA; font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-bar-arrow:hover { background: #303E1B; color: #C5FA55; }
+  .proto-bar-label {
+    padding: 0 8px; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .proto-bar-key {
+    background: #C5FA55; color: #1A2506; border-radius: 999px; padding: 1px 7px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 14px; letter-spacing: 0.4px;
+  }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (SCOPED TO .phone) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-placeholder: #728070;
+    --f-disabled: #5A665A;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-border: #2A526B;
+    --load-light-text: #BFE9FF;
+    --load-ease: #C09BFF;
+    --load-ease-bg: #221933;
+    --load-ease-border: #55407D;
+    --load-ease-text: #E5D6FF;
+
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+    --f-down-bg: #25221D;
+    --f-down-text: #D7B98E;
+
+    width: 390px;
+    height: 820px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.24);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 780px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: "Barlow Condensed", Inter, sans-serif; }
+
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .f-num-font { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; letter-spacing: 0.4px; }
+  .m { color: var(--f-muted); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--f-chip); font-size: 13px; font-weight: 500; color: var(--f-muted);
+    white-space: nowrap; flex: none;
+  }
+  .tag.light-target { background: var(--load-light-bg); color: var(--load-light-text); box-shadow: inset 0 0 0 1px var(--load-light-border); }
+  .tag.eased-target { background: var(--load-ease-bg); color: var(--load-ease-text); box-shadow: inset 0 0 0 1px var(--load-ease-border); }
+
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-ease  { background: var(--load-ease);  box-shadow: 0 0 9px rgba(192, 155, 255, 0.88); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+
+  .f-wstatus {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; font-weight: 600; z-index: 6; background: var(--f-bg);
+  }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px;
+    background: var(--f-primary); color: var(--f-on-primary); font-size: 12px; font-weight: 600;
+  }
+  .f-status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--f-on-primary); }
+
+  .f-scroll-work { flex: 1; overflow-y: auto; padding: 34px 20px 84px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-work::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-work { padding: 34px 15px 80px; }
+
+  .f-scroll-home { flex: 1; overflow-y: auto; padding: 14px 20px 86px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-home::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-home { padding: 12px 15px 84px; }
+
+  .f-topbar { display: flex; align-items: center; gap: 6px; height: 44px; flex: none; }
+  .f-back-btn {
+    width: 30px; height: 30px; margin-left: -4px; border-radius: 50%; border: 0;
+    background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; padding: 0; flex: none;
+  }
+  .f-top-week { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 500; color: var(--f-muted); }
+  .f-top-week .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .f-top-right { margin-left: auto; display: flex; align-items: center; gap: 7px; flex: none; }
+  .ease-top-btn {
+    height: 30px; padding: 0 9px; border-radius: 999px;
+    border: 1px solid var(--f-outline); background: var(--f-surface-hi);
+    color: var(--f-text); font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .ease-top-btn.on { background: var(--load-ease-bg); border-color: var(--load-ease); color: var(--load-ease-text); }
+
+  /* Exercise Header + 76x76 Rest Ring (#83 + #102) */
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; }
+  .f-title-btn {
+    flex: 1; min-width: 0; border: 0; background: transparent; padding: 0;
+    text-align: left; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .f-title-btn.sz-lg { font-size: 26px; line-height: 28px; }
+  .f-title-btn.sz-md { font-size: 21px; line-height: 24px; }
+  .f-title-btn.sz-sm { font-size: 18px; line-height: 21px; }
+
+  .f-rest-ring-wrap { position: relative; width: 76px; height: 76px; flex: none; }
+  .f-rest-ring {
+    position: relative; width: 76px; height: 76px; border: 0; border-radius: 50%;
+    background: transparent; flex: none; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2;
+  }
+  .f-rest-ring svg { position: absolute; left: 0; top: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+  .ring-glow-bg {
+    position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; border-radius: 50%;
+    pointer-events: none; z-index: 0; opacity: 0; transform: translate(-50%, -50%) scale(0.95);
+    background: radial-gradient(circle, rgba(197, 250, 85, 0.36) 0%, rgba(197, 250, 85, 0) 72%);
+  }
+  .ring-wave {
+    position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; border-radius: 50%;
+    pointer-events: none; z-index: 1; border: 2px solid var(--f-primary);
+    opacity: 0; transform: translate(-50%, -50%) scale(1);
+  }
+  .ring-wave-2 { border-width: 1.5px; }
+  @keyframes restRingBreathe { 0% { transform: scale(1); } 34% { transform: scale(1.07); } 72% { transform: scale(0.994); } 100% { transform: scale(1); } }
+  @keyframes restWaveOut { 0% { opacity: 0.72; transform: translate(-50%, -50%) scale(1); } 45% { opacity: 0.36; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.44); } }
+  @keyframes restGlowBloom { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } 32% { opacity: 1; transform: translate(-50%, -50%) scale(1.22); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.34); } }
+  .f-rest-ring-wrap.pulse-on .f-rest-ring { animation: restRingBreathe 820ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .f-rest-ring-wrap.pulse-on .ring-glow-bg { animation: restGlowBloom 980ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .f-rest-ring-wrap.pulse-on .ring-wave-1 { animation: restWaveOut 1050ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .f-rest-ring-wrap.pulse-on .ring-wave-2 { animation: restWaveOut 1050ms 210ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .f-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  /* Progression Strip (#99) & Lightened Note (#101) */
+  .prog-strip {
+    margin: 9px 0 2px; padding: 10px 10px 10px 13px; border-radius: 14px;
+    background: var(--f-surface); position: relative;
+    display: flex; align-items: flex-start; gap: 9px; overflow: hidden;
+  }
+  .prog-strip::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
+  .prog-strip.up::before { background: var(--f-primary); }
+  .prog-strip.down::before { background: var(--f-amber); }
+  .prog-strip-ico { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; margin-top: 1px; }
+  .prog-strip.up .prog-strip-ico { background: var(--f-primary-container); color: var(--f-primary); }
+  .prog-strip.down .prog-strip-ico { background: var(--f-amber-container); color: var(--f-amber); }
+  .prog-strip-body { flex: 1; min-width: 0; }
+  .prog-strip-title { font-size: 13px; font-weight: 600; line-height: 1.28; }
+  .prog-strip.up .prog-strip-title { color: var(--f-on-primary-container); }
+  .prog-strip.down .prog-strip-title { color: var(--f-on-amber-container); }
+  .prog-strip-sub { margin-top: 2px; font-size: 12px; line-height: 1.34; color: var(--f-muted); }
+  .prog-strip-x { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; color: var(--f-dim); display: flex; align-items: center; justify-content: center; flex: none; }
+  .ease-hint-note {
+    margin: 8px 0 2px; padding: 7px 10px; border-radius: 12px;
+    background: var(--load-ease-bg); border: 1px solid var(--load-ease-border);
+    color: var(--load-ease-text); font-size: 12px; line-height: 1.35;
+  }
+
+  /* Shared Row Primitives (#79 + #102) */
+  .f-rows { display: grid; gap: 6px; }
+  .f-row-wrap { position: relative; border-radius: 16px; transition: background 280ms ease, box-shadow 280ms ease; }
+  .f-row-wrap.is-armed { background: #161E14; box-shadow: inset 0 0 0 1.5px var(--f-primary-border); }
+  .row-inline-hint-pad { padding: 2px 8px 8px; }
+  .row-inline-hint {
+    padding: 7px 10px 9px; border-radius: 11px; background: rgba(197, 250, 85, 0.08);
+    display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--f-on-primary-container);
+    position: relative; overflow: hidden;
+  }
+  .row-inline-hint strong { color: var(--f-primary); }
+  .row-hint-track { position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: rgba(255, 255, 255, 0.08); }
+  .row-hint-fill { height: 100%; width: 100%; background: var(--f-primary); transform-origin: left center; }
+
+  .f-num { width: 28px; height: 28px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; justify-self: center; flex: none; }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: var(--f-dim); }
+
+  .f-in {
+    width: 100%; min-width: 0; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 22px;
+    text-align: center; outline: none; padding: 0 8px;
+  }
+  .f-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .f-in.is-sugg:placeholder-shown { border-style: dashed; border-color: var(--f-outline); background: #0F130F; }
+  .f-in.has-value { border-style: solid; border-color: var(--f-primary); color: var(--f-text); background: var(--f-bg); }
+  .f-in:focus { border-style: solid; border-color: var(--f-primary); background: var(--f-surface); }
+  .f-in-empty-future { height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg); }
+
+  .f-check-btn {
+    position: relative; width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; justify-self: center; padding: 0; flex: none;
+    transition: background 240ms ease, border-color 240ms ease, color 240ms ease, transform 220ms ease;
+  }
+  .btn-tonal-sugg { background: var(--f-primary-container); border: 1.5px solid var(--f-primary-border); color: var(--f-primary); }
+  .btn-solid-save { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+  .btn-rest-sugg { background: #181E18; border: 1.5px dashed #435042; color: #A3B1A0; }
+  .btn-rest-edit { background: #232E1E; border: 1.5px solid #86A844; color: #DCF2B0; }
+  .btn-rest-armed { background: var(--f-primary); border: 1.5px solid var(--f-primary); color: var(--f-on-primary); box-shadow: 0 0 16px rgba(197, 250, 85, 0.36); transform: scale(1.04); }
+  .btn-disabled { background: var(--f-chip); border: 0; color: var(--f-disabled); cursor: not-allowed !important; }
+  .armed-ring-svg { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; pointer-events: none; transform: translate(-50%, -50%); }
+  .done-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--f-badge-done); color: #9AD43D; display: flex; align-items: center; justify-content: center; justify-self: center; }
+
+  /* ==================== VARIANT A: STRICT BASELINE TABLE GRID ==================== */
+  .va-head {
+    display: grid; grid-template-columns: 32px 124px 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; font-size: 13px; color: var(--f-muted);
+    margin: 14px 0 6px; text-align: center;
+  }
+  .phone.w360 .va-head { grid-template-columns: 32px 110px 1fr 44px; }
+  .va-row {
+    display: grid; grid-template-columns: 32px 124px 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px; border-radius: 14px; text-align: center;
+  }
+  .phone.w360 .va-row { grid-template-columns: 32px 110px 1fr 44px; }
+  .va-row.active { min-height: 56px; padding: 4px 6px 4px 8px; }
+  .va-row.logged { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .va-row.future { opacity: 0.48; }
+  .va-unit-cell { text-align: left; padding-left: 4px; font-size: 14px; color: var(--f-muted); }
+  .va-row.logged .va-unit-cell { color: rgba(221, 255, 152, 0.78); }
+  .unit-seg {
+    justify-self: start; display: inline-flex; gap: 2px; padding: 3px;
+    border-radius: 11px; background: var(--f-surface); border: 1px solid var(--f-outline);
+  }
+  .unit-seg button {
+    min-height: 30px; min-width: 40px; border: 0; border-radius: 8px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    background: transparent; color: var(--f-muted); padding: 0 8px;
+  }
+  .unit-seg button.on { background: var(--f-primary); color: var(--f-on-primary); }
+
+  /* ==================== VARIANT B: INLINE ± STEPPER ROW ==================== */
+  .vb-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 0 8px; margin: 14px 0 6px; font-size: 13px; color: var(--f-muted);
+  }
+  .vb-head-left { display: flex; align-items: center; gap: 14px; }
+  .vb-row-logged {
+    display: grid; grid-template-columns: 32px 1fr 44px; gap: 10px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px; border-radius: 14px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+  }
+  .vb-logged-val { display: flex; align-items: baseline; gap: 6px; padding-left: 6px; }
+  .vb-logged-val .num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 24px; line-height: 1; }
+  .vb-logged-val .unit { font-size: 13.5px; font-weight: 500; color: rgba(221, 255, 152, 0.78); }
+  .vb-row-active {
+    display: grid; grid-template-columns: 32px 1fr 44px; gap: 8px;
+    align-items: center; padding: 4px 6px 4px 8px; min-height: 58px;
+  }
+  .vb-stepper-box {
+    display: grid; grid-template-columns: 38px 1fr 38px; gap: 6px; align-items: center; min-width: 0;
+  }
+  .phone.w360 .vb-stepper-box { grid-template-columns: 34px 1fr 34px; gap: 5px; }
+  .vb-step-btn {
+    height: 44px; border-radius: 13px; border: 1px solid var(--f-outline);
+    background: var(--f-surface-hi); color: var(--f-text);
+    font-size: 20px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .vb-step-btn:hover { background: var(--f-chip); border-color: var(--f-outline-hi); }
+  .vb-input-capsule {
+    position: relative; display: flex; align-items: center; height: 48px; min-width: 0;
+    border-radius: 14px; background: var(--f-bg); border: 1.5px solid var(--f-outline); padding: 0 10px;
+  }
+  .vb-input-capsule.is-sugg { border-style: dashed; background: #0F130F; }
+  .vb-input-capsule.has-value { border-style: solid; border-color: var(--f-primary); background: var(--f-bg); }
+  .vb-input-capsule input {
+    width: 100%; min-width: 0; height: 100%; border: 0; background: transparent; outline: none;
+    color: var(--f-text); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 23px;
+    text-align: center; padding: 0 2px;
+  }
+  .vb-input-capsule input::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .vb-unit-inline {
+    flex: none; font-size: 12.5px; font-weight: 600; color: var(--f-muted);
+    margin-left: 4px; user-select: none;
+  }
+  .vb-unit-toggle {
+    flex: none; border: 1px solid var(--f-outline); background: var(--f-surface-hi); color: var(--f-primary);
+    border-radius: 8px; padding: 3px 7px; font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 4px;
+  }
+  .vb-row-future {
+    display: grid; grid-template-columns: 32px 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 46px; opacity: 0.45;
+  }
+  .vb-future-bar { height: 44px; border-radius: 13px; border: 1.5px solid var(--f-chip); background: var(--f-bg); }
+  .vb-step-caption { font-size: 11px; color: var(--f-dim); text-align: center; margin-top: 2px; }
+
+  /* ==================== VARIANT C: FOCUSED ACTIVE-SET CARD + CHIPS ==================== */
+  .vc-chips-wrap { display: flex; gap: 7px; flex-wrap: wrap; margin: 13px 0 10px; align-items: center; }
+  .vc-chip-done {
+    display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 18px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 0.3px;
+  }
+  .vc-chip-done .idx { color: var(--f-primary); opacity: 0.85; font-size: 14px; }
+  .vc-chip-cur {
+    display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 18px;
+    box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+  }
+  .vc-chip-todo {
+    display: inline-flex; align-items: center; height: 36px; padding: 0 11px; border-radius: 18px;
+    background: var(--f-surface); color: var(--f-dim);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px;
+  }
+  .vc-card {
+    background: var(--f-surface); border-radius: 22px; padding: 15px 15px 14px;
+    display: flex; flex-direction: column; gap: 11px;
+    transition: box-shadow 260ms ease, background 260ms ease;
+  }
+  .vc-card.is-armed { background: #161E14; box-shadow: inset 0 0 0 1.5px var(--f-primary-border); }
+  .vc-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .vc-set-label { font-size: 16px; color: var(--f-primary); }
+  .vc-src-hint { font-size: 11.5px; color: var(--f-dim); }
+  .vc-input-stage { display: flex; align-items: center; gap: 10px; }
+  .vc-big-in {
+    flex: 1; min-width: 0; height: 64px; border-radius: 16px;
+    background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 36px;
+    text-align: center; outline: none; padding: 0 12px;
+  }
+  .vc-big-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .vc-big-in.is-sugg:placeholder-shown { border-style: dashed; background: #0F130F; }
+  .vc-big-in.has-value { border-style: solid; border-color: var(--f-primary); }
+  .vc-big-in:focus { border-style: solid; border-color: var(--f-primary); background: #101510; }
+  .vc-unit-stack { display: flex; flex-direction: column; gap: 4px; flex: none; }
+  .vc-unit-btn {
+    min-width: 52px; height: 30px; border-radius: 10px; border: 1px solid var(--f-outline);
+    background: var(--f-bg); color: var(--f-muted);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px; text-transform: uppercase;
+  }
+  .vc-unit-btn.on { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+  .vc-unit-static {
+    padding: 0 10px; height: 64px; border-radius: 16px; background: var(--f-surface-hi);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--f-muted); flex: none;
+  }
+  .vc-quick-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .vc-qbtn {
+    height: 36px; border-radius: 11px; border: 1px solid var(--f-outline);
+    background: var(--f-bg); color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+  }
+  .vc-qbtn:hover { background: var(--f-chip); border-color: var(--f-outline-hi); }
+  .vc-cta {
+    position: relative; width: 100%; min-height: 48px; border-radius: 999px; padding: 0 16px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .vc-cta.sugg { background: var(--f-primary-container); border: 1.5px solid var(--f-primary-border); color: var(--f-on-primary-container); }
+  .vc-cta.solid { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+  .vc-cta.rest-sugg { background: #181E18; border: 1.5px dashed #435042; color: #A3B1A0; }
+  .vc-cta.rest-edit { background: #232E1E; border: 1.5px solid #86A844; color: #DCF2B0; }
+  .vc-cta.rest-armed { background: var(--f-primary); border: 0; color: var(--f-on-primary); box-shadow: 0 0 16px rgba(197, 250, 85, 0.34); }
+  .vc-cta.disabled { background: var(--f-chip); border: 0; color: var(--f-disabled); cursor: not-allowed !important; }
+  .vc-foot-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 0 4px; font-size: 12px; color: var(--f-dim); }
+  .vc-add-link { border: 0; background: transparent; color: var(--f-muted); font-size: 12.5px; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+  .vc-add-link:hover { background: var(--f-chip); color: var(--f-text); }
+
+  /* Workout Bottom Bar */
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 14px;
+    display: flex; gap: 8px; align-items: center; z-index: 8;
+  }
+  .phone.w360 .f-bottom-nav { left: 15px; right: 15px; }
+  .f-nav-prev { width: 48px; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text); display: flex; align-items: center; justify-content: center; flex: none; }
+  .f-nav-all { flex: 1; min-height: 48px; border-radius: 24px; border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 0.6px; text-transform: uppercase; padding: 0 6px; }
+  .f-nav-next { width: 104px; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary); display: flex; align-items: center; justify-content: center; flex: none; }
+
+  /* ==================== SUMMARY & HISTORY DETAILS ==================== */
+  .sum-kicker { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--f-primary); margin-bottom: 4px; }
+  .sum-title { margin: 0; font-size: 26px; line-height: 1.1; }
+  .sum-sub { margin-top: 5px; font-size: 13px; color: var(--f-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .sum-hero { margin-top: 12px; background: linear-gradient(135deg, #1E2813 0%, #141914 70%); border-radius: 20px; padding: 13px 15px; }
+  .sum-hero.eased { background: linear-gradient(135deg, #251B38 0%, #141914 75%); }
+  .sum-hero-eye { font-size: 11.5px; font-weight: 600; color: var(--f-muted); margin-bottom: 4px; }
+  .sum-hero-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .sum-hero-metric { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 28px; font-weight: 700; line-height: 1; color: var(--f-primary); }
+  .sum-hero.eased .sum-hero-metric { color: var(--load-ease); }
+  .sum-hero-metric small { font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; color: var(--f-on-primary-container); margin-left: 3px; }
+  .sum-hero.eased .sum-hero-metric small { color: var(--load-ease-text); }
+  .sum-sec-title { font-size: 12px; color: var(--f-muted); margin: 14px 0 6px 2px; }
+  .mix-list { display: flex; flex-direction: column; gap: 8px; }
+  .mix-card { background: var(--f-surface); border-radius: 18px; padding: 12px 14px; }
+  .mix-card.is-up { background: #161E13; box-shadow: inset 0 0 0 1px #2A381D; }
+  .mix-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .mix-name { font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--f-text); }
+  .mix-total-sub { font-size: 11.5px; color: var(--f-dim); margin-top: 2px; }
+  .delta-pill { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
+  .delta-pill .n { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 15px; font-weight: 700; }
+  .delta-pill.up { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .delta-pill.up .n { color: var(--f-primary); }
+  .delta-pill.down { background: var(--f-down-bg); color: var(--f-down-text); }
+  .delta-pill.same { background: var(--f-chip); color: var(--f-muted); }
+  .delta-pill.first { background: transparent; border: 1px solid var(--f-outline); color: var(--f-muted); }
+  .mix-pills-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .mix-weight-pill { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 17px; font-weight: 700; color: var(--f-text); margin-right: 3px; }
+  .mix-weight-pill.grew { background: var(--f-primary); color: var(--f-on-primary); padding: 1px 7px; border-radius: 7px; font-size: 16px; }
+  .mix-rep-pill {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 16px; font-weight: 700;
+    min-width: 28px; height: 26px; padding: 0 7px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--f-chip); color: var(--f-muted);
+  }
+  .mix-rep-pill.tonal-up { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .mix-rep-pill.grew { background: var(--f-primary); color: var(--f-on-primary); }
+  .mix-rep-pill.dipped { background: var(--f-amber-container); color: var(--f-amber); border: 1px solid var(--f-amber-border); }
+  .mix-prev { margin-top: 5px; font-size: 12px; color: var(--f-dim); }
+
+  /* History Details Screen */
+  .hd-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .hd-date-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .hd-card { background: var(--f-surface); border-radius: 20px; padding: 13px 15px; margin-top: 9px; }
+  .hd-ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .hd-ex-name { font-size: 17px; line-height: 1.2; color: var(--f-text); }
+  .hd-ex-meta { font-size: 12px; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .hd-set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 2px; border-top: 1px solid var(--f-chip); text-align: left;
+  }
+  .hd-set-row:hover { color: var(--f-primary); }
+  .hd-set-idx { font-size: 13px; color: var(--f-muted); }
+  .hd-set-val { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 19px; color: var(--f-text); }
+  .hd-chips-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .hd-chip-edit {
+    border: 1px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    border-radius: 12px; padding: 6px 10px; display: inline-flex; align-items: baseline; gap: 5px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px;
+  }
+  .hd-chip-edit:hover { border-color: var(--f-primary); color: var(--f-primary); }
+  .hd-chip-edit small { font-family: Inter, sans-serif; font-size: 11px; color: var(--f-dim); font-weight: 600; }
+
+  /* Modal Edit Sheet */
+  .f-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64); z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; }
+  .f-sheet { background: var(--f-surface-hi); border-radius: 24px 24px 0 0; padding: 10px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); }
+  .f-sheet p { margin: 0; font-size: 12.5px; color: var(--f-muted); line-height: 1.38; }
+  .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-sheet-danger { border: 1px solid var(--f-error-border); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: var(--f-error-bg); color: var(--f-error); width: 100%; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #113 · A / B / C</span>
+      <div>
+        <h1 class="host-title">Дистанция и Повторения без веса — экран тренировки, итоги и детали истории</h1>
+        <div class="host-sub">Три структурно разных варианта на базе дизайн-системы Fitty v2 (#79, #83, #94, #97, #99, #101, #102)</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="mode-single" class="active" type="button">Интерактив</button>
+        <button id="mode-compare" type="button">A / B / C рядом</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="stage-single" class="interactive-stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone" aria-label="Интерактивный макет Fitty"></main>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Экран и упражнение</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран для проверки</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row" id="row-ex-preset">
+          <span class="ctrl-lbl">Пример упражнения</span>
+          <div class="btn-wrap" id="ctrl-ex-preset"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Состояния и стыки (#79, #94, #99, #101, #102)</span>
+          <div class="btn-wrap" id="ctrl-toggles"></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="btn-wrap">
+            <button type="button" class="cbtn" id="btn-reset">Сбросить подходы</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 id="var-panel-title">О варианте</h2>
+        <div class="var-desc" id="var-panel-desc"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние прототипа</h2>
+        <table class="state-tbl" id="live-state-tbl"></table>
+      </div>
+    </aside>
+  </section>
+
+  <section id="stage-compare" class="hidden">
+    <div class="panel" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div class="btn-wrap" id="compare-screen-btns"></div>
+        <div class="btn-wrap" id="compare-toggle-btns"></div>
+      </div>
+    </div>
+    <div id="compare-grid" class="compare-grid"></div>
+  </section>
+</div>
+
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button class="proto-bar-arrow" id="bar-prev" type="button" aria-label="Предыдущий вариант">←</button>
+  <span class="proto-bar-label" id="bar-label"></span>
+  <button class="proto-bar-arrow" id="bar-next" type="button" aria-label="Следующий вариант">→</button>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    back: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    arrowR: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
+    check: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    hourglass: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 21h12"/><path d="M7 3v3.5a5 5 0 0 0 2.2 4.15L12 12l-2.8 1.35A5 5 0 0 0 7 17.5V21"/><path d="M17 3v3.5a5 5 0 0 1-2.2 4.15L12 12l2.8 1.35a5 5 0 0 1 2.2 4.15V21"/></svg>',
+    clockMd: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    feather: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8L2 22"/></svg>',
+    trendUp: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l6-6 4 4 6-6"/><path d="M15 8h5v5"/></svg>',
+    trendDown: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l6 6 4-4 6 6"/><path d="M15 16h5v-5"/></svg>',
+    x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    chevR: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+  };
+
+  const VARIANTS = [
+    {
+      key: 'A',
+      name: 'Строгая таблица',
+      shortNote: 'Сетка 32 | 124 | 1fr | 44 (как доска «Дистанция» в дизайн-системе), м/км в шапке колонки, единый ритм с Вес × Повт.',
+      bullets: [
+        'Поле ввода фиксировано (124 dp на 390 dp, 110 dp на 360 dp) — как одна колонка из «Вес × повторения», без растягивания на всю ширину.',
+        'Для дистанции в шапке колонки стоит переключатель «м | км» из базового макета; для повторений — спокойная подпись «повт.» рядом с полем.',
+        'Кнопка ✓ / ⏳ остаётся ровно под кольцом отдыха 76×76 — привычная мышечная память с силовых упражнений.',
+        'В Истории — классические табличные строки «Подход 1 — 40 м» с итогом в шапке карточки.'
+      ]
+    },
+    {
+      key: 'B',
+      name: 'Строка со степперами ±',
+      shortNote: 'Занимает свободное место активной строки кнопками − / + (адаптивный шаг для метров и ±1 для повторов), единица внутри капсулы.',
+      bullets: [
+        'Активная строка получает крупные кнопки − / + по бокам от поля: в зале можно поправить повторы (±1) или дистанцию (±5 м / ±50 м / ±0,1 км) без клавиатуры.',
+        'Для дистанции переключение м ↔ км прямо внутри капсулы ввода (тап по чипу «м» / «км» конвертирует значение на месте).',
+        'Записанные подходы — чистые зелёные полосы «1  40 м  ✓» без лишних колонок.',
+        'В Итогах добавлен явный суммарный объём под названием, а в Истории подходы выведены компактными нажимаемыми чипами.'
+      ]
+    },
+    {
+      key: 'C',
+      name: 'Карточка активного подхода',
+      shortNote: 'Как в Планке: записанные подходы — чипы сверху, а текущий подход — крупная карточка #141914 с быстрыми шагами и широкой кнопкой записи.',
+      bullets: [
+        'Один показатель на подход не нуждается в таблице: записанные подходы сворачиваются в компактную ленту зелёных чипов (1 · 40 м ✓).',
+        'Текущий подход — сфокусированная карточка #141914 с крупным числом (36 sp), переключателем м/км справа и 4 кнопками быстрой подстройки.',
+        'Широкая кнопка «Записать подход» (или мягкая защита ⏳ → «Подтвердить ✓» с полосой отсчёта) удобна большим пальцем на ходу.',
+        'В Истории — строгий список подходов с явной стрелкой редактирования и суммой справа.'
+      ]
+    }
+  ];
+
+  const EXERCISES = {
+    dist_walk: {
+      id: 'dist_walk', type: 'distance',
+      name: 'Фермерская прогулка',
+      longName: 'Фермерская прогулка с тяжёлыми гантелями по коридору зала',
+      sets: 3, targetMeters: 40, lastMeters: 40, defaultUnit: 'm',
+      prompt: { dir: 'up', title: 'Попробовать большую дистанцию', sub: 'В прошлый раз закрыли 3 × 40 м — можно добавить 5–10 м.' },
+      exPos: '3/4'
+    },
+    dist_run: {
+      id: 'dist_run', type: 'distance',
+      name: 'Бег',
+      longName: 'Бег на беговой дорожке в ровном аэробном темпе (интервалы)',
+      sets: 3, targetMeters: 1000, lastMeters: 1000, defaultUnit: 'km',
+      prompt: { dir: 'up', title: 'Попробовать большую дистанцию', sub: 'В прошлый раз закрыли 3 × 1 км — можно прибавить дистанцию.' },
+      exPos: '4/4'
+    },
+    reps_pullup: {
+      id: 'reps_pullup', type: 'reps',
+      name: 'Подтягивания',
+      longName: 'Подтягивания на перекладине средним прямым хватом до подбородка',
+      sets: 3, repsMin: 8, repsMax: 12, lastReps: 12,
+      prompt: { dir: 'up', title: 'Попробовать больше повторений', sub: 'В прошлый раз дошли до верха диапазона 8–12 во всех подходах.' },
+      promptDown: { dir: 'down', title: 'Попробовать чуть проще', sub: 'Две тренировки подряд ниже 8 повт. — можно снизить цель или темп.' },
+      exPos: '2/4'
+    },
+    reps_short: {
+      id: 'reps_short', type: 'reps',
+      name: 'Отжимания',
+      longName: 'Отжимания от пола с паузой в нижней точке и контролем корпуса',
+      sets: 4, repsMin: 4, repsMax: 4, lastReps: 4,
+      prompt: null,
+      exPos: '3/4'
+    }
+  };
+
+  function getInitialVariant() {
+    try {
+      const p = new URLSearchParams(window.location.search).get('variant');
+      if (p && ['A', 'B', 'C'].includes(p.toUpperCase())) return p.toUpperCase();
+    } catch (_) {}
+    return 'A';
+  }
+
+  function createState() {
+    return {
+      variant: getInitialVariant(),
+      hostMode: 'single',
+      width: 390,
+      screen: 'workout_dist',
+      distPreset: 'dist_walk',
+      repsPreset: 'reps_pullup',
+      distUnit: { dist_walk: 'm', dist_run: 'km' },
+      restRunning: false,
+      restLeft: 102,
+      restDefault: 120,
+      restGuardArmed: null,
+      ringPulseUntil: 0,
+      showPrompt: true,
+      promptDown: false,
+      eased: false,
+      longNames: false,
+      noTarget: false,
+      logged: {
+        dist_walk: [40],
+        dist_run: [1000],
+        reps_pullup: [12],
+        reps_short: [4]
+      },
+      drafts: { dist_walk: '', dist_run: '', reps_pullup: '', reps_short: '' },
+      editSheet: null,
+      historySets: {
+        bench: ['62,5 кг × 10', '62,5 кг × 11', '62,5 кг × 10'],
+        pullup: [12, 12, 11],
+        walk: [40, 45, 45],
+        run: [1000, 1200],
+        plank: [65, 60]
+      }
+    };
+  }
+
+  let st = createState();
+  const REST_GUARD_MS = 4200;
+  const ARC_C = 2 * Math.PI * 25;
+
+  const fmtSec = s => `${Math.floor(s / 60)}:${s % 60 < 10 ? '0' : ''}${s % 60}`;
+  const fmtNum = v => {
+    const r = Math.round(v * 100) / 100;
+    return String(r).replace('.', ',');
+  };
+  const parseNum = raw => {
+    const n = parseFloat(String(raw || '').trim().replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  function lightenDistanceMeters(m) {
+    if (m <= 1) return 1;
+    const step = m >= 1000 ? 100 : m >= 100 ? 50 : m >= 10 ? 5 : 1;
+    const raw = Math.round((m * 0.8) / step) * step;
+    return Math.max(1, Math.min(m - (m > step ? step : 1), raw));
+  }
+
+  function metersToDisplay(m, unit) {
+    return unit === 'km' ? fmtNum(m / 1000) : fmtNum(m);
+  }
+  function displayToMeters(val, unit) {
+    return unit === 'km' ? val * 1000 : val;
+  }
+  function fmtMetersSmart(m, forceUnit) {
+    if (forceUnit === 'km') return `${fmtNum(m / 1000)} км`;
+    if (forceUnit === 'm') return `${fmtNum(m)} м`;
+    if (m >= 1000 && m % 50 === 0) return `${fmtNum(m / 1000)} км`;
+    return `${fmtNum(m)} м`;
+  }
+  function adaptiveStep(curMeters, unit) {
+    if (unit === 'km') return 0.1;
+    if (curMeters >= 1000) return 100;
+    if (curMeters >= 100) return 50;
+    if (curMeters >= 10) return 5;
+    return 1;
+  }
+
+  function currentExercise(s = st) {
+    const id = s.screen === 'workout_dist' ? s.distPreset : s.repsPreset;
+    return EXERCISES[id];
+  }
+
+  function effectiveExercisePlan(ex, s = st) {
+    if (ex.type === 'distance') {
+      const unit = s.distUnit[ex.id] || ex.defaultUnit;
+      if (s.noTarget) {
+        const suggM = s.eased ? lightenDistanceMeters(ex.lastMeters) : ex.lastMeters;
+        return { sets: 4, label: 'Без цели', suggM, unit, eased: s.eased };
+      }
+      const m = s.eased ? lightenDistanceMeters(ex.targetMeters) : ex.targetMeters;
+      return {
+        sets: ex.sets,
+        targetM: m,
+        suggM: s.eased ? m : ex.lastMeters,
+        unit,
+        label: `${ex.sets} × ${fmtMetersSmart(m, unit)}`,
+        eased: s.eased
+      };
+    } else {
+      if (s.noTarget) {
+        const suggR = s.eased ? Math.max(1, ex.lastReps - 2) : ex.lastReps;
+        return { sets: 4, label: 'Без цели', suggR, eased: s.eased };
+      }
+      let rMin = ex.repsMin, rMax = ex.repsMax;
+      if (s.eased) {
+        if (rMin >= 5) { rMin -= 2; rMax -= 2; }
+        else if (rMin >= 2) { rMin -= 1; rMax -= 1; }
+      }
+      const repStr = rMin === rMax ? `${rMin}` : `${rMin}–${rMax}`;
+      return {
+        sets: ex.sets,
+        suggR: s.eased ? rMax : ex.lastReps,
+        label: `${ex.sets} × ${repStr} повт.`,
+        eased: s.eased
+      };
+    }
+  }
+
+  function titleSizeClass(str) {
+    if (str.length > 36) return 'sz-sm';
+    if (str.length > 22) return 'sz-md';
+    return 'sz-lg';
+  }
+
+  function restRingSvg(running, left, defSec) {
+    const r = 33, c = 2 * Math.PI * r;
+    const pct = running ? Math.max(0, Math.min(1, left / defSec)) : 1;
+    return `<svg width="76" height="76" viewBox="0 0 76 76">
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="#252D24" stroke-width="6"/>
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="${running ? '#C5FA55' : '#343E33'}" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="${(pct * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 38 38)"/>
+    </svg>`;
+  }
+
+  function renderLamps(heavy, eased) {
+    const a = [];
+    if (heavy) a.push('<span class="lamp lamp-heavy"></span>');
+    if (eased) a.push('<span class="lamp lamp-ease"></span>');
+    return a.length ? `<span class="lamp-group">${a.join('')}</span>` : '';
+  }
+
+  function renderWorkoutScreen(s, variantKey, isStatic = false) {
+    const ex = currentExercise(s);
+    const plan = effectiveExercisePlan(ex, s);
+    const logged = s.logged[ex.id] || [];
+    const draft = s.drafts[ex.id] || '';
+    const unit = ex.type === 'distance' ? plan.unit : 'повт.';
+    const exName = s.longNames ? ex.longName : ex.name;
+
+    let suggDisp = '';
+    if (ex.type === 'distance') {
+      const baseM = logged.length > 0 ? logged[logged.length - 1] : plan.suggM;
+      suggDisp = baseM ? metersToDisplay(baseM, unit) : '';
+    } else {
+      const baseR = logged.length > 0 ? logged[logged.length - 1] : plan.suggR;
+      suggDisp = baseR ? String(baseR) : '';
+    }
+    const hasEdits = draft.trim() !== '';
+    const effectiveVal = hasEdits ? draft.trim() : suggDisp;
+    const canSave = parseNum(effectiveVal) !== null;
+    const guarded = s.restRunning;
+    const now = Date.now();
+    const armedObj = s.restGuardArmed && s.restGuardArmed.exId === ex.id ? s.restGuardArmed : null;
+    const isArmed = !!(canSave && guarded && armedObj && (armedObj.staticPct != null || now < armedObj.expiresAt));
+    const armedPct = isArmed ? (armedObj.staticPct != null ? armedObj.staticPct : Math.max(0, (armedObj.expiresAt - now) / REST_GUARD_MS)) : 0;
+
+    const statusPill = s.restRunning ? `<span class="f-status-pill"><i></i>Отдых ${fmtSec(s.restLeft)}</span>` : '';
+    const pulseCls = !isStatic && now < (s.ringPulseUntil || 0) ? 'pulse-on' : '';
+
+    const headerHtml = `
+      <div class="f-topbar">
+        <button class="f-back-btn" type="button" aria-label="Назад">${ICO.back}</button>
+        <div class="f-top-week">${renderLamps(true, s.eased)}<span class="lbl">Тяжёлая неделя</span></div>
+        <div class="f-top-right">
+          <button class="ease-top-btn ${s.eased ? 'on' : ''}" data-act="toggle-eased" type="button">${s.eased ? renderLamps(false, true) : ICO.feather}<span>${s.eased ? 'Легче' : 'Облегчить'}</span></button>
+          <span class="m d" style="font-size:15px">Упр. ${ex.exPos}</span>
+        </div>
+      </div>
+      <div class="f-head">
+        <button class="f-title-btn ${titleSizeClass(exName)}" type="button">${exName}</button>
+        <div class="f-rest-ring-wrap ${pulseCls}">
+          <span class="ring-glow-bg"></span><span class="ring-wave ring-wave-1"></span><span class="ring-wave ring-wave-2"></span>
+          <button class="f-rest-ring" data-act="rest-tap" type="button" title="Тап: старт/сброс отдыха">
+            ${restRingSvg(s.restRunning, s.restLeft, s.restDefault)}
+            <span class="f-rest-ring-inner">
+              <span class="d" style="font-size:10px;color:var(--f-muted)">${s.restRunning ? 'Отдых' : 'Старт'}</span>
+              <span class="d" style="font-size:22px;color:${s.restRunning ? 'var(--f-primary)' : 'var(--f-text)'};margin-top:2px">${fmtSec(s.restRunning ? s.restLeft : s.restDefault)}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div class="f-tags">
+        <span class="tag ${s.eased ? 'eased-target' : ''}">План: ${plan.label}</span>
+        ${ex.type === 'distance' && variantKey === 'B' ? `<span class="tag" style="color:var(--f-dim)">Шаг ±${adaptiveStep(parseNum(effectiveVal) ? displayToMeters(parseNum(effectiveVal), unit) : 40, unit)}${unit === 'km' ? ' км' : ' м'}</span>` : ''}
+      </div>`;
+
+    let stripHtml = '';
+    const activePrompt = ex.type === 'reps' && s.promptDown && ex.promptDown ? ex.promptDown : ex.prompt;
+    if (s.eased) {
+      stripHtml = `<div class="ease-hint-note">Облегчение: цель снижена только на сегодня (${plan.label}), программа и подсказки не изменятся.</div>`;
+    } else if (s.showPrompt && activePrompt && logged.length === 0) {
+      stripHtml = `
+        <div class="prog-strip ${activePrompt.dir}">
+          <div class="prog-strip-ico">${activePrompt.dir === 'up' ? ICO.trendUp : ICO.trendDown}</div>
+          <div class="prog-strip-body">
+            <div class="prog-strip-title">${activePrompt.title}</div>
+            <div class="prog-strip-sub">${activePrompt.sub}</div>
+          </div>
+          <button class="prog-strip-x" data-act="hide-prompt" type="button" aria-label="Скрыть">${ICO.x}</button>
+        </div>`;
+    }
+
+    const checkCls = !canSave ? 'btn-disabled'
+      : (guarded && isArmed) ? 'btn-rest-armed'
+      : guarded ? (hasEdits ? 'btn-rest-edit' : 'btn-rest-sugg')
+      : (hasEdits ? 'btn-solid-save' : 'btn-tonal-sugg');
+    const checkIcon = (canSave && guarded && !isArmed) ? ICO.hourglass : ICO.check;
+    const armedRingSvg = isArmed ? `
+      <svg class="armed-ring-svg" viewBox="0 0 54 54" aria-hidden="true">
+        <circle cx="27" cy="27" r="25" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2.4"/>
+        <circle class="live-armed-arc" cx="27" cy="27" r="25" fill="none" stroke="#C5FA55" stroke-width="2.6" stroke-linecap="round"
+          stroke-dasharray="${(armedPct * ARC_C).toFixed(1)} ${ARC_C.toFixed(1)}" transform="rotate(-90 27 27)"/>
+      </svg>` : '';
+    const inlineHintHtml = isArmed ? `
+      <div class="row-inline-hint-pad">
+        <div class="row-inline-hint" role="status">
+          <span style="color:var(--f-primary);display:flex">${ICO.clockMd}</span>
+          <span>Идёт отдых <strong>${fmtSec(s.restLeft)}</strong> — нажмите <strong>✓</strong> ещё раз</span>
+          <div class="row-hint-track"><div class="row-hint-fill live-hint-bar" style="transform:scaleX(${armedPct.toFixed(3)})"></div></div>
+        </div>
+      </div>` : '';
+
+    const totalRows = Math.max(plan.sets, logged.length + 1);
+    let bodyHtml = '';
+
+    if (variantKey === 'A') {
+      const col3Head = ex.type === 'distance'
+        ? `<span class="unit-seg" role="group" aria-label="Единицы дистанции">
+             <button class="${unit === 'm' ? 'on' : ''}" data-act="set-unit" data-v="m" type="button">м</button>
+             <button class="${unit === 'km' ? 'on' : ''}" data-act="set-unit" data-v="km" type="button">км</button>
+           </span>`
+        : '<span style="text-align:left;padding-left:4px"></span>';
+      const col2Head = ex.type === 'distance' ? 'Дистанция' : 'Повторения';
+
+      let rows = '';
+      for (let i = 0; i < totalRows; i++) {
+        if (i < logged.length) {
+          const valDisp = ex.type === 'distance' ? metersToDisplay(logged[i], unit) : String(logged[i]);
+          rows += `<div class="f-row-wrap"><div class="d va-row logged">
+            <span class="d f-num f-num-done">${i + 1}</span>
+            <span style="font-size:22px">${valDisp}</span>
+            <span class="va-unit-cell">${unit === 'km' ? 'км' : ex.type === 'distance' ? 'м' : 'повт.'}</span>
+            <span class="done-badge" aria-label="Записан">${ICO.check}</span>
+          </div></div>`;
+        } else if (i === logged.length) {
+          rows += `<div class="f-row-wrap ${isArmed ? 'is-armed' : ''}">
+            <div class="va-row active">
+              <span class="d f-num ${hasEdits ? 'f-num-active' : 'f-num-sugg'}">${i + 1}</span>
+              <input class="f-in ${suggDisp ? 'is-sugg' : ''} ${hasEdits ? 'has-value' : ''}" data-field="val" value="${draft}" placeholder="${suggDisp || '—'}" inputmode="${ex.type === 'distance' ? 'decimal' : 'numeric'}" aria-label="${col2Head}">
+              <span class="va-unit-cell ${ex.type === 'distance' ? 'd' : ''}">${unit === 'km' ? 'км' : ex.type === 'distance' ? 'м' : 'повт.'}</span>
+              <button class="f-check-btn ${checkCls}" data-act="log-set" type="button" ${!canSave ? 'disabled' : ''}>${armedRingSvg}${checkIcon}</button>
+            </div>
+            ${inlineHintHtml}
+          </div>`;
+        } else {
+          rows += `<div class="f-row-wrap"><div class="va-row future">
+            <span class="d f-num f-num-future">${i + 1}</span>
+            <div class="f-in-empty-future"></div>
+            <span></span><span></span>
+          </div></div>`;
+        }
+      }
+      bodyHtml = `
+        <div class="m d va-head"><span>№</span><span>${col2Head}</span>${col3Head}<span></span></div>
+        <div class="f-rows">${rows}</div>
+        <div style="display:flex;justify-content:center;margin-top:10px"><button class="ob" style="width:auto;min-height:44px;padding:0 20px;font-size:15px" data-act="log-set" type="button">+ Подход</button></div>`;
+    } else if (variantKey === 'B') {
+      const headLabel = ex.type === 'distance' ? 'Дистанция' : 'Повторения';
+      let rows = '';
+      for (let i = 0; i < totalRows; i++) {
+        if (i < logged.length) {
+          const valDisp = ex.type === 'distance' ? metersToDisplay(logged[i], unit) : String(logged[i]);
+          rows += `<div class="f-row-wrap"><div class="vb-row-logged">
+            <span class="d f-num f-num-done">${i + 1}</span>
+            <div class="vb-logged-val"><span class="num">${valDisp}</span><span class="unit">${unit === 'km' ? 'км' : ex.type === 'distance' ? 'м' : 'повт.'}</span></div>
+            <span class="done-badge" aria-label="Записан">${ICO.check}</span>
+          </div></div>`;
+        } else if (i === logged.length) {
+          const unitRight = ex.type === 'distance'
+            ? `<button class="vb-unit-toggle" data-act="cycle-unit" type="button" title="Сменить м / км">${unit === 'km' ? 'км' : 'м'}</button>`
+            : '<span class="vb-unit-inline">повт.</span>';
+          rows += `<div class="f-row-wrap ${isArmed ? 'is-armed' : ''}">
+            <div class="vb-row-active">
+              <span class="d f-num ${hasEdits ? 'f-num-active' : 'f-num-sugg'}">${i + 1}</span>
+              <div class="vb-stepper-box">
+                <button class="vb-step-btn" data-act="step-val" data-v="-1" type="button" aria-label="Уменьшить">−</button>
+                <div class="vb-input-capsule ${!hasEdits && suggDisp ? 'is-sugg' : ''} ${hasEdits ? 'has-value' : ''}">
+                  <input data-field="val" value="${draft}" placeholder="${suggDisp || '—'}" inputmode="${ex.type === 'distance' ? 'decimal' : 'numeric'}" aria-label="${headLabel}">
+                  ${unitRight}
+                </div>
+                <button class="vb-step-btn" data-act="step-val" data-v="1" type="button" aria-label="Увеличить">+</button>
+              </div>
+              <button class="f-check-btn ${checkCls}" data-act="log-set" type="button" ${!canSave ? 'disabled' : ''}>${armedRingSvg}${checkIcon}</button>
+            </div>
+            ${inlineHintHtml}
+          </div>`;
+        } else {
+          rows += `<div class="f-row-wrap"><div class="vb-row-future">
+            <span class="d f-num f-num-future">${i + 1}</span>
+            <div class="vb-future-bar"></div>
+            <span></span>
+          </div></div>`;
+        }
+      }
+      bodyHtml = `
+        <div class="m d vb-head"><div class="vb-head-left"><span>№</span><span>${headLabel}</span></div><span>${ex.type === 'distance' ? 'тап по «' + (unit === 'km' ? 'км' : 'м') + '» меняет ед.' : 'шаг ±1'}</span></div>
+        <div class="f-rows">${rows}</div>
+        <div style="display:flex;justify-content:center;margin-top:10px"><button class="ob" style="width:auto;min-height:44px;padding:0 20px;font-size:15px" data-act="log-set" type="button">+ Подход</button></div>`;
+    } else {
+      const chips = [];
+      for (let i = 0; i < totalRows; i++) {
+        if (i < logged.length) {
+          const valStr = ex.type === 'distance' ? fmtMetersSmart(logged[i], unit) : `${logged[i]} повт.`;
+          chips.push(`<span class="vc-chip-done"><span class="idx">${i + 1}</span><span>${valStr}</span><span style="color:var(--f-primary)">✓</span></span>`);
+        } else if (i === logged.length) {
+          chips.push(`<span class="vc-chip-cur">Подход ${i + 1}</span>`);
+        } else {
+          chips.push(`<span class="vc-chip-todo">${i + 1}</span>`);
+        }
+      }
+
+      const curNum = logged.length + 1;
+      const srcNote = hasEdits ? 'Своё значение' : suggDisp ? (logged.length > 0 ? 'Из прошлого подхода' : 'Подсказка Fitty') : 'Введите результат';
+
+      const rightUnit = ex.type === 'distance'
+        ? `<div class="vc-unit-stack" role="group" aria-label="Единицы">
+             <button class="vc-unit-btn ${unit === 'm' ? 'on' : ''}" data-act="set-unit" data-v="m" type="button">м</button>
+             <button class="vc-unit-btn ${unit === 'km' ? 'on' : ''}" data-act="set-unit" data-v="km" type="button">км</button>
+           </div>`
+        : `<div class="vc-unit-static">повт.</div>`;
+
+      let qBtns = '';
+      if (ex.type === 'distance') {
+        const curM = parseNum(effectiveVal) ? displayToMeters(parseNum(effectiveVal), unit) : 40;
+        const small = unit === 'km' ? 0.1 : (curM >= 100 ? 50 : 5);
+        const big = unit === 'km' ? 0.5 : (curM >= 100 ? 100 : 10);
+        qBtns = [
+          [-big, `−${fmtNum(big)}`],
+          [-small, `−${fmtNum(small)}`],
+          [small, `+${fmtNum(small)}`],
+          [big, `+${fmtNum(big)}`]
+        ].map(([d, lbl]) => `<button class="vc-qbtn" data-act="delta-val" data-v="${d}" type="button">${lbl}</button>`).join('');
+      } else {
+        qBtns = [[-2, '−2'], [-1, '−1'], [1, '+1'], [2, '+2']]
+          .map(([d, lbl]) => `<button class="vc-qbtn" data-act="delta-val" data-v="${d}" type="button">${lbl}</button>`).join('');
+      }
+
+      const ctaCls = !canSave ? 'disabled'
+        : (guarded && isArmed) ? 'rest-armed'
+        : guarded ? (hasEdits ? 'rest-edit' : 'rest-sugg')
+        : (hasEdits ? 'solid' : 'sugg');
+      const ctaText = !canSave ? 'Введите значение'
+        : (guarded && isArmed) ? `Подтвердить подход ${curNum}`
+        : guarded ? `Идёт отдых · записать ${effectiveVal} ${unit === 'km' ? 'км' : ex.type === 'distance' ? 'м' : 'повт.'}`
+        : `Записать ${effectiveVal} ${unit === 'km' ? 'км' : ex.type === 'distance' ? 'м' : 'повт.'}`;
+      const ctaIco = (canSave && guarded && !isArmed) ? ICO.hourglass : ICO.check;
+
+      const remaining = Math.max(0, plan.sets - curNum);
+      bodyHtml = `
+        <div class="vc-chips-wrap">${chips.join('')}</div>
+        <div class="vc-card ${isArmed ? 'is-armed' : ''}">
+          <div class="vc-card-top">
+            <span class="d vc-set-label">Подход ${curNum}${!s.noTarget ? ` из ${plan.sets}` : ''}</span>
+            <span class="vc-src-hint">${srcNote}</span>
+          </div>
+          <div class="vc-input-stage">
+            <input class="vc-big-in ${suggDisp ? 'is-sugg' : ''} ${hasEdits ? 'has-value' : ''}" data-field="val" value="${draft}" placeholder="${suggDisp || '—'}" inputmode="${ex.type === 'distance' ? 'decimal' : 'numeric'}">
+            ${rightUnit}
+          </div>
+          <div class="vc-quick-row">${qBtns}</div>
+          <button class="vc-cta ${ctaCls}" data-act="log-set" type="button" ${!canSave ? 'disabled' : ''}>${ctaIco}<span>${ctaText}</span></button>
+          ${isArmed ? `<div class="row-inline-hint" role="status"><span style="color:var(--f-primary);display:flex">${ICO.clockMd}</span><span>Отдых <strong>${fmtSec(s.restLeft)}</strong> — нажмите ещё раз для записи</span><div class="row-hint-track"><div class="row-hint-fill live-hint-bar" style="transform:scaleX(${armedPct.toFixed(3)})"></div></div></div>` : ''}
+        </div>
+        <div class="vc-foot-meta">
+          <span>${remaining > 0 ? `Осталось по плану: ${remaining}` : 'Все плановые подходы готовы'}</span>
+          <button class="vc-add-link" data-act="log-set" type="button">+ Доп. подход</button>
+        </div>`;
+    }
+
+    return `
+      <div class="f-wstatus"><span>18:40</span>${statusPill}<span class="m" style="font-size:12px">5G · 82%</span></div>
+      <div class="f-scroll-work">
+        ${headerHtml}
+        ${stripHtml}
+        ${bodyHtml}
+      </div>
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" type="button" aria-label="Предыдущее">${ICO.back}</button>
+        <button class="f-nav-all" type="button">Упражнения</button>
+        <button class="f-nav-next" type="button" aria-label="Следующее">${ICO.arrowR}</button>
+      </div>`;
+  }
+
+  function renderSummaryScreen(s, variantKey) {
+    const showTotalLine = variantKey === 'B';
+    const inlineTotalDelta = variantKey === 'C';
+
+    const heroHtml = s.eased ? `
+      <div class="sum-hero eased">
+        <div class="sum-hero-eye">Облегчённая тренировка · без сравнения с нормой</div>
+        <div class="sum-hero-big"><div class="sum-hero-metric">11 <small>подходов выполнено</small></div></div>
+        <div style="margin-top:5px;font-size:12px;color:var(--load-ease-text)">День засчитан в проход недели. Будущие подсказки не изменятся.</div>
+      </div>` : `
+      <div class="sum-hero">
+        <div class="sum-hero-eye">К прошлой тяжёлой тренировке · День A</div>
+        <div class="sum-hero-big">
+          <div class="sum-hero-metric">+4 <small>повт.</small></div>
+          <div class="sum-hero-metric" style="font-size:23px">+10 <small>м прогулка</small></div>
+          <div class="sum-hero-metric" style="font-size:23px">+0,2 <small>км бег</small></div>
+        </div>
+      </div>`;
+
+    const cardsHtml = s.eased ? `
+      <div class="d sum-sec-title">Выполнено сегодня</div>
+      <div class="mix-list">
+        <div class="mix-card">
+          <div class="mix-top"><div><div class="mix-name">Подтягивания</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 28 повт. · 3 подхода</div>' : ''}</div><span class="delta-pill same">${inlineTotalDelta ? '28 повт.' : '3 подх.'}</span></div>
+          <div class="mix-pills-row"><span class="mix-rep-pill">10</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">8</span></div>
+        </div>
+        <div class="mix-card">
+          <div class="mix-top"><div><div class="mix-name">Фермерская прогулка</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 90 м · 3 подхода</div>' : ''}</div><span class="delta-pill same">${inlineTotalDelta ? '90 м' : '3 подх.'}</span></div>
+          <div class="mix-pills-row"><span class="mix-rep-pill">30 м</span><span class="mix-rep-pill">30 м</span><span class="mix-rep-pill">30 м</span></div>
+        </div>
+        <div class="mix-card">
+          <div class="mix-top"><div><div class="mix-name">Бег</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 1,6 км · 2 подхода</div>' : ''}</div><span class="delta-pill same">${inlineTotalDelta ? '1,6 км' : '2 подх.'}</span></div>
+          <div class="mix-pills-row"><span class="mix-rep-pill">800 м</span><span class="mix-rep-pill">800 м</span></div>
+        </div>
+      </div>` : `
+      <div class="d sum-sec-title">Есть прогресс</div>
+      <div class="mix-list">
+        <div class="mix-card is-up">
+          <div class="mix-top">
+            <div><div class="mix-name">Подтягивания</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 35 повт.</div>' : ''}</div>
+            <span class="delta-pill up"><span class="n">${inlineTotalDelta ? '35 повт. · +4' : '+4 повт.'}</span></span>
+          </div>
+          <div class="mix-pills-row"><span class="mix-rep-pill grew">12</span><span class="mix-rep-pill grew">12</span><span class="mix-rep-pill tonal-up">11</span></div>
+          <div class="mix-prev">Было: 11, 10, 10 (31 повт.)</div>
+        </div>
+        <div class="mix-card is-up">
+          <div class="mix-top">
+            <div><div class="mix-name">Фермерская прогулка</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 130 м</div>' : ''}</div>
+            <span class="delta-pill up"><span class="n">${inlineTotalDelta ? '130 м · +10 м' : '+10 м'}</span></span>
+          </div>
+          <div class="mix-pills-row"><span class="mix-rep-pill tonal-up">40 м</span><span class="mix-rep-pill grew">45 м</span><span class="mix-rep-pill grew">45 м</span></div>
+          <div class="mix-prev">Было: 40 м, 40 м, 40 м (120 м)</div>
+        </div>
+        <div class="mix-card is-up">
+          <div class="mix-top">
+            <div><div class="mix-name">Бег</div>${showTotalLine ? '<div class="mix-total-sub">Всего: 2,2 км</div>' : ''}</div>
+            <span class="delta-pill up"><span class="n">${inlineTotalDelta ? '2,2 км · +0,2' : '+0,2 км'}</span></span>
+          </div>
+          <div class="mix-pills-row"><span class="mix-rep-pill tonal-up">1 км</span><span class="mix-rep-pill grew">1,2 км</span></div>
+          <div class="mix-prev">Было: 1 км, 1 км (2 км)</div>
+        </div>
+      </div>
+      <div class="d sum-sec-title">Остальные упражнения (для сверки 4 типов)</div>
+      <div class="mix-list">
+        <div class="mix-card">
+          <div class="mix-top"><div class="mix-name">Жим штанги лёжа</div><span class="delta-pill same">=</span></div>
+          <div class="mix-pills-row"><span class="mix-weight-pill">60 кг</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">10</span></div>
+        </div>
+        <div class="mix-card">
+          <div class="mix-top"><div class="mix-name">Отжимания</div><span class="delta-pill down"><span class="n">−2 повт.</span></span></div>
+          <div class="mix-pills-row"><span class="mix-rep-pill">15</span><span class="mix-rep-pill dipped">13</span><span class="mix-rep-pill dipped">12</span></div>
+          <div class="mix-prev">Было: 15, 14, 13</div>
+        </div>
+      </div>`;
+
+    return `
+      <div class="f-scroll-home">
+        <div class="sum-kicker"><span>Тренировка завершена</span><span class="m" style="font-weight:500">42 мин</span></div>
+        <h2 class="d sum-title">${s.longNames ? 'День A: Верх тела, подтягивания и дистанция' : 'День A'}</h2>
+        <div class="sum-sub">${renderLamps(true, s.eased)}<span>Тяжёлая неделя${s.eased ? ' · Облегчена' : ''}</span></div>
+        ${heroHtml}
+        ${cardsHtml}
+      </div>
+      <div class="f-bottom-nav"><button class="pb" type="button">Готово</button></div>`;
+  }
+
+  function renderHistoryDetailScreen(s, variantKey) {
+    const hs = s.historySets;
+    const pullTotal = hs.pullup.reduce((a, b) => a + b, 0);
+    const walkTotal = hs.walk.reduce((a, b) => a + b, 0);
+    const runTotal = hs.run.reduce((a, b) => a + b, 0);
+
+    const blocks = [
+      { key: 'pullup', name: s.longNames ? 'Подтягивания на перекладине средним хватом' : 'Подтягивания', type: 'reps', total: `${pullTotal} повт.`, sets: hs.pullup.map(v => `${v} повт.`) },
+      { key: 'walk', name: s.longNames ? 'Фермерская прогулка с гантелями по коридору' : 'Фермерская прогулка', type: 'distance', total: `${fmtNum(walkTotal)} м`, sets: hs.walk.map(v => `${fmtNum(v)} м`) },
+      { key: 'run', name: 'Бег', type: 'distance', total: fmtMetersSmart(runTotal), sets: hs.run.map(v => fmtMetersSmart(v)) },
+      { key: 'bench', name: 'Жим штанги лёжа', type: 'weight_reps', total: '3 подх.', sets: hs.bench },
+      { key: 'plank', name: 'Планка на предплечьях', type: 'duration', total: '2:05', sets: hs.plank.map(sec => fmtSec(sec)) }
+    ];
+
+    const cards = blocks.map(b => {
+      if (variantKey === 'B') {
+        return `<div class="hd-card">
+          <div class="hd-ex-head"><div class="d hd-ex-name">${b.name}</div><span class="hd-ex-meta">${b.sets.length} подх. · ${b.total}</span></div>
+          <div class="hd-chips-row">
+            ${b.sets.map((val, idx) => `<button class="hd-chip-edit" data-act="open-edit" data-k="${b.key}" data-i="${idx}" type="button"><small>#${idx + 1}</small><span>${val}</span></button>`).join('')}
+          </div>
+        </div>`;
+      } else {
+        return `<div class="hd-card">
+          <div class="hd-ex-head"><div class="d hd-ex-name">${b.name}</div><span class="hd-ex-meta">${b.total}</span></div>
+          ${b.sets.map((val, idx) => `<button class="hd-set-row" data-act="open-edit" data-k="${b.key}" data-i="${idx}" type="button">
+            <span class="hd-set-idx">${variantKey === 'C' ? `<span class="d" style="color:var(--f-dim);margin-right:6px">0${idx + 1}</span>` : ''}Подход ${idx + 1}</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span class="hd-set-val">${val}</span>${variantKey === 'C' ? `<span class="m" style="display:flex">${ICO.chevR}</span>` : ''}</span>
+          </button>`).join('')}
+        </div>`;
+      }
+    }).join('');
+
+    let sheetHtml = '';
+    if (s.editSheet) {
+      const es = s.editSheet;
+      sheetHtml = `<div class="f-scrim" data-act="close-edit">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <h3>${es.exTitle} · подход ${es.setIdx + 1}</h3>
+          <p>Редактирование записанного подхода в истории (${es.type === 'distance' ? 'дистанция хранится в метрах' : 'повторения без веса'}).</p>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="f-in has-value" id="hist-edit-inp" value="${es.value}" inputmode="${es.type === 'distance' ? 'decimal' : 'numeric'}">
+            <span class="d m" style="font-size:16px;flex:none;min-width:44px;text-align:center">${es.unit}</span>
+          </div>
+          <button class="pb" data-act="save-edit" type="button">Сохранить</button>
+          <button class="f-sheet-danger" data-act="close-edit" type="button">Удалить подход</button>
+          <button class="f-sheet-cancel" data-act="close-edit" type="button">Отмена</button>
+        </div>
+      </div>`;
+    }
+
+    return `
+      <div class="f-scroll-home" style="padding-bottom:28px">
+        <div class="hd-top">
+          <button class="f-back-btn" type="button" aria-label="Назад">${ICO.back}</button>
+          <h2 class="d" style="margin:0;font-size:24px;line-height:1.08">${s.longNames ? 'День A: Верх тела и дистанция' : 'День A'}</h2>
+        </div>
+        <div class="hd-date-row">
+          <span class="d" style="color:var(--f-primary);font-size:15px">26 ноября 2026</span>
+          <span class="m" style="font-size:13px">19:24</span>
+          <span class="tag" style="padding:2px 8px;font-size:11.5px">${renderLamps(true, s.eased)}<span>Тяжёлая${s.eased ? ' · Облегчена' : ''}</span></span>
+        </div>
+        <div class="m" style="font-size:13px">Базовая силовая · тап по подходу открывает правку</div>
+        ${cards}
+      </div>
+      ${sheetHtml}`;
+  }
+
+  function renderPhone(s, variantKey, isStatic = false) {
+    if (s.screen === 'summary') return renderSummaryScreen(s, variantKey);
+    if (s.screen === 'history_detail') return renderHistoryDetailScreen(s, variantKey);
+    return renderWorkoutScreen(s, variantKey, isStatic);
+  }
+
+  function syncUrlVariant(v) {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('variant', v);
+      history.replaceState(null, '', u.toString());
+    } catch (_) {}
+  }
+
+  function renderInspector() {
+    const screens = [
+      ['workout_dist', 'Тренировка: Дистанция'],
+      ['workout_reps', 'Тренировка: Повторения'],
+      ['summary', 'Итоги тренировки'],
+      ['history_detail', 'Детали в Истории']
+    ];
+    document.getElementById('ctrl-screen').innerHTML = screens
+      .map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
+
+    const exRow = document.getElementById('row-ex-preset');
+    if (st.screen === 'workout_dist') {
+      exRow.classList.remove('hidden');
+      document.getElementById('ctrl-ex-preset').innerHTML = [
+        ['dist_walk', 'Фермерская прогулка (40 м)'],
+        ['dist_run', 'Бег (1 км / 1000 м)']
+      ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.distPreset === k ? 'active' : ''}" data-host="dist-preset" data-v="${k}">${lbl}</button>`).join('');
+    } else if (st.screen === 'workout_reps') {
+      exRow.classList.remove('hidden');
+      document.getElementById('ctrl-ex-preset').innerHTML = [
+        ['reps_pullup', 'Подтягивания (3 × 8–12)'],
+        ['reps_short', 'Отжимания · короткая цель (4 × 4)']
+      ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.repsPreset === k ? 'active' : ''}" data-host="reps-preset" data-v="${k}">${lbl}</button>`).join('');
+    } else {
+      exRow.classList.add('hidden');
+    }
+
+    const toggles = [
+      ['rest', `Отдых + защита ⏳ (#102): ${st.restRunning ? 'ВКЛ' : 'ВЫКЛ'}`, st.restRunning],
+      ['eased', `Облегчена (#101): ${st.eased ? 'ВКЛ' : 'ВЫКЛ'}`, st.eased],
+      ['prompt', `Полоса прогрессии (#99): ${st.showPrompt ? 'ВКЛ' : 'ВЫКЛ'}`, st.showPrompt],
+      ['noTarget', `Без цели в плане: ${st.noTarget ? 'ВКЛ' : 'ВЫКЛ'}`, st.noTarget],
+      ['longNames', `Длинные названия (#94): ${st.longNames ? 'ВКЛ' : 'ВЫКЛ'}`, st.longNames]
+    ];
+    if (st.screen === 'workout_reps' && st.repsPreset === 'reps_pullup') {
+      toggles.push(['promptDown', `Совет: ${st.promptDown ? 'Снизить (янтарь)' : 'Прибавить (лайм)'}`, st.promptDown]);
+    }
+    document.getElementById('ctrl-toggles').innerHTML = toggles
+      .map(([k, lbl, on]) => `<button type="button" class="cbtn ${on ? 'active' : ''}" data-host="toggle" data-v="${k}">${lbl}</button>`).join('');
+
+    const vObj = VARIANTS.find(v => v.key === st.variant) || VARIANTS[0];
+    document.getElementById('var-panel-title').textContent = `Вариант ${vObj.key}: ${vObj.name}`;
+    document.getElementById('var-panel-desc').innerHTML = `<div>${vObj.shortNote}</div><ul>${vObj.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+
+    const ex = currentExercise(st);
+    const plan = effectiveExercisePlan(ex, st);
+    const logged = st.logged[ex.id] || [];
+    document.getElementById('live-state-tbl').innerHTML = `
+      <tr><td>Вариант / ширина</td><td>${vObj.key} (${vObj.name}) · ${st.width} dp</td></tr>
+      <tr><td>Экран</td><td>${screens.find(x => x[0] === st.screen)[1]}</td></tr>
+      <tr><td>Упражнение / план</td><td>${ex.name} · ${plan.label}</td></tr>
+      <tr><td>Записано подходов</td><td>${logged.length === 0 ? '0 (видна полоса #99)' : logged.map(v => ex.type === 'distance' ? fmtMetersSmart(v, plan.unit) : `${v} повт.`).join(', ')}</td></tr>
+      <tr><td>Таймер отдыха</td><td>${st.restRunning ? `идёт ${fmtSec(st.restLeft)} · мягкая защита ⏳ активна` : 'остановлен · запись в 1 тап'}</td></tr>`;
+
+    const caps = {
+      workout_dist: 'Попробуйте ввести дистанцию, переключить м ↔ км, нажать −/+ и включить «Отдых + защита ⏳», чтобы проверить 2-таповую запись.',
+      workout_reps: 'Проверьте пропорции строки на 390 dp и 360 dp, облегчение (8–12 → 6–10 и 4 → 3) и полосу совета.',
+      summary: 'Сравнение всех 4 типов упражнений в Итогах (включая режим «Облегчена»).',
+      history_detail: 'Тап по любому подходу открывает шторку редактирования.'
+    };
+    document.getElementById('phone-caption').textContent = caps[st.screen] || '';
+  }
+
+  function renderFloatingBar() {
+    const vObj = VARIANTS.find(v => v.key === st.variant) || VARIANTS[0];
+    document.getElementById('bar-label').innerHTML = `<span class="proto-bar-key">${vObj.key}</span><span>${vObj.name}</span>`;
+  }
+
+  function bindPhone(phone) {
+    phone.querySelectorAll('[data-act]').forEach(el => {
+      el.addEventListener('click', () => {
+        const act = el.dataset.act, v = el.dataset.v;
+        const ex = currentExercise(st);
+        const unit = ex.type === 'distance' ? (st.distUnit[ex.id] || ex.defaultUnit) : 'reps';
+
+        if (act === 'toggle-eased') { st.eased = !st.eased; }
+        else if (act === 'hide-prompt') { st.showPrompt = false; }
+        else if (act === 'rest-tap') {
+          st.restRunning = !st.restRunning;
+          st.restLeft = st.restDefault;
+          st.restGuardArmed = null;
+          st.ringPulseUntil = 0;
+        }
+        else if (act === 'set-unit' || act === 'cycle-unit') {
+          const nextU = act === 'cycle-unit' ? (unit === 'm' ? 'km' : 'm') : v;
+          if (nextU !== unit) {
+            const curDraft = parseNum(st.drafts[ex.id]);
+            if (curDraft !== null) {
+              const m = displayToMeters(curDraft, unit);
+              st.drafts[ex.id] = metersToDisplay(m, nextU);
+            }
+            st.distUnit[ex.id] = nextU;
+          }
+        }
+        else if (act === 'step-val' || act === 'delta-val') {
+          const plan = effectiveExercisePlan(ex, st);
+          const logged = st.logged[ex.id] || [];
+          const baseSugg = ex.type === 'distance'
+            ? (logged.length ? logged[logged.length - 1] : plan.suggM)
+            : (logged.length ? logged[logged.length - 1] : plan.suggR);
+          const curParsed = parseNum(st.drafts[ex.id]);
+          if (ex.type === 'distance') {
+            const curM = curParsed !== null ? displayToMeters(curParsed, unit) : (baseSugg || 40);
+            const curInUnit = unit === 'km' ? curM / 1000 : curM;
+            const delta = act === 'delta-val' ? parseFloat(v) : parseInt(v, 10) * adaptiveStep(curM, unit);
+            const nextInUnit = Math.max(unit === 'km' ? 0.05 : 1, Math.round((curInUnit + delta) * 100) / 100);
+            st.drafts[ex.id] = fmtNum(nextInUnit);
+          } else {
+            const curR = curParsed !== null ? Math.round(curParsed) : (baseSugg || 10);
+            const delta = parseInt(v, 10);
+            st.drafts[ex.id] = String(Math.max(1, curR + delta));
+          }
+        }
+        else if (act === 'log-set') {
+          const plan = effectiveExercisePlan(ex, st);
+          const logged = st.logged[ex.id] || (st.logged[ex.id] = []);
+          const baseSugg = ex.type === 'distance'
+            ? (logged.length ? logged[logged.length - 1] : plan.suggM)
+            : (logged.length ? logged[logged.length - 1] : plan.suggR);
+          const parsedDraft = parseNum(st.drafts[ex.id]);
+          const valToStore = ex.type === 'distance'
+            ? (parsedDraft !== null ? displayToMeters(parsedDraft, unit) : baseSugg)
+            : (parsedDraft !== null ? Math.round(parsedDraft) : baseSugg);
+          if (valToStore && valToStore > 0) {
+            const now = Date.now();
+            const armed = st.restGuardArmed && st.restGuardArmed.exId === ex.id && now < st.restGuardArmed.expiresAt;
+            if (st.restRunning && !armed) {
+              st.restGuardArmed = { exId: ex.id, expiresAt: now + REST_GUARD_MS };
+              st.ringPulseUntil = now + 1150;
+            } else {
+              logged.push(valToStore);
+              st.drafts[ex.id] = '';
+              st.restGuardArmed = null;
+              st.ringPulseUntil = 0;
+              st.restRunning = true;
+              st.restLeft = st.restDefault;
+            }
+          }
+        }
+        else if (act === 'open-edit') {
+          const k = el.dataset.k, idx = parseInt(el.dataset.i, 10);
+          if (k === 'pullup') st.editSheet = { key: k, exTitle: 'Подтягивания', setIdx: idx, type: 'reps', value: String(st.historySets.pullup[idx]), unit: 'повт.' };
+          else if (k === 'walk') st.editSheet = { key: k, exTitle: 'Фермерская прогулка', setIdx: idx, type: 'distance', value: fmtNum(st.historySets.walk[idx]), unit: 'м' };
+          else if (k === 'run') st.editSheet = { key: k, exTitle: 'Бег', setIdx: idx, type: 'distance', value: fmtNum(st.historySets.run[idx] / 1000), unit: 'км' };
+        }
+        else if (act === 'close-edit') { st.editSheet = null; }
+        else if (act === 'save-edit' && st.editSheet) {
+          const inp = document.getElementById('hist-edit-inp');
+          const parsed = parseNum(inp ? inp.value : '');
+          if (parsed !== null) {
+            if (st.editSheet.key === 'pullup') st.historySets.pullup[st.editSheet.setIdx] = Math.round(parsed);
+            if (st.editSheet.key === 'walk') st.historySets.walk[st.editSheet.setIdx] = parsed;
+            if (st.editSheet.key === 'run') st.historySets.run[st.editSheet.setIdx] = parsed * 1000;
+          }
+          st.editSheet = null;
+        }
+        render();
+      });
+    });
+
+    phone.querySelectorAll('input[data-field="val"]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const ex = currentExercise(st);
+        st.drafts[ex.id] = inp.value;
+        const pos = inp.selectionStart;
+        render();
+        const nextInp = document.querySelector('#phone-live input[data-field="val"]');
+        if (nextInp) {
+          nextInp.focus();
+          try { nextInp.setSelectionRange(pos, pos); } catch (_) {}
+        }
+      });
+    });
+  }
+
+  function renderCompare() {
+    const screens = [
+      ['workout_dist', 'Дистанция'],
+      ['workout_reps', 'Повторения'],
+      ['summary', 'Итоги'],
+      ['history_detail', 'История']
+    ];
+    document.getElementById('compare-screen-btns').innerHTML = screens
+      .map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
+    document.getElementById('compare-toggle-btns').innerHTML = [
+      ['rest', `Отдых ⏳: ${st.restRunning ? 'ВКЛ' : 'ВЫКЛ'}`, st.restRunning],
+      ['eased', `Облегчена: ${st.eased ? 'ВКЛ' : 'ВЫКЛ'}`, st.eased],
+      ['longNames', `Длинные имена: ${st.longNames ? 'ВКЛ' : 'ВЫКЛ'}`, st.longNames]
+    ].map(([k, lbl, on]) => `<button type="button" class="cbtn ${on ? 'active' : ''}" data-host="toggle" data-v="${k}">${lbl}</button>`).join('');
+
+    const snapState = Object.assign({}, st, {
+      restGuardArmed: st.restRunning ? { exId: currentExercise(st).id, staticPct: 0.72 } : null
+    });
+    const wCls = st.width === 360 ? 'w360' : '';
+    document.getElementById('compare-grid').innerHTML = VARIANTS.map(v => `
+      <div class="compare-col">
+        <div class="compare-head">
+          <span class="compare-title">Вариант ${v.key} · ${v.name}</span>
+          <button type="button" class="compare-pick" data-pick="${v.key}">Открыть интерактивно →</button>
+        </div>
+        <div class="compare-note">${v.shortNote}</div>
+        <div class="phone ${wCls}">${renderPhone(snapState, v.key, true)}</div>
+      </div>`).join('');
+
+    document.querySelectorAll('[data-pick]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        st.variant = btn.dataset.pick;
+        st.hostMode = 'single';
+        syncUrlVariant(st.variant);
+        render();
+      });
+    });
+    bindHostButtons();
+  }
+
+  function bindHostButtons() {
+    document.querySelectorAll('[data-host]').forEach(btn => {
+      btn.onclick = () => {
+        const h = btn.dataset.host, v = btn.dataset.v;
+        if (h === 'screen') { st.screen = v; st.restGuardArmed = null; st.editSheet = null; }
+        else if (h === 'dist-preset') { st.distPreset = v; st.restGuardArmed = null; }
+        else if (h === 'reps-preset') { st.repsPreset = v; st.restGuardArmed = null; }
+        else if (h === 'toggle') {
+          if (v === 'rest') { st.restRunning = !st.restRunning; st.restLeft = 102; st.restGuardArmed = null; }
+          if (v === 'eased') st.eased = !st.eased;
+          if (v === 'prompt') st.showPrompt = !st.showPrompt;
+          if (v === 'promptDown') st.promptDown = !st.promptDown;
+          if (v === 'noTarget') st.noTarget = !st.noTarget;
+          if (v === 'longNames') st.longNames = !st.longNames;
+        }
+        render();
+      };
+    });
+  }
+
+  function render() {
+    document.getElementById('mode-single').classList.toggle('active', st.hostMode === 'single');
+    document.getElementById('mode-compare').classList.toggle('active', st.hostMode === 'compare');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+    document.getElementById('stage-single').classList.toggle('hidden', st.hostMode !== 'single');
+    document.getElementById('stage-compare').classList.toggle('hidden', st.hostMode !== 'compare');
+
+    renderFloatingBar();
+
+    if (st.hostMode === 'single') {
+      const phone = document.getElementById('phone-live');
+      phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+      phone.innerHTML = renderPhone(st, st.variant, false);
+      bindPhone(phone);
+      renderInspector();
+      bindHostButtons();
+    } else {
+      renderCompare();
+    }
+  }
+
+  function stepVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === st.variant);
+    const next = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length];
+    st.variant = next.key;
+    st.restGuardArmed = null;
+    syncUrlVariant(st.variant);
+    render();
+  }
+
+  document.getElementById('bar-prev').addEventListener('click', () => stepVariant(-1));
+  document.getElementById('bar-next').addEventListener('click', () => stepVariant(1));
+  document.getElementById('mode-single').addEventListener('click', () => { st.hostMode = 'single'; render(); });
+  document.getElementById('mode-compare').addEventListener('click', () => { st.hostMode = 'compare'; render(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; render(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; render(); });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    const keep = { variant: st.variant, width: st.width, screen: st.screen, distPreset: st.distPreset, repsPreset: st.repsPreset };
+    st = Object.assign(createState(), keep);
+    st.logged = { dist_walk: [], dist_run: [], reps_pullup: [], reps_short: [] };
+    render();
+  });
+
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); stepVariant(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); stepVariant(1); }
+  });
+
+  function rafTick() {
+    if (st.hostMode === 'single' && st.restGuardArmed && st.restGuardArmed.staticPct == null) {
+      const now = Date.now();
+      if (now >= st.restGuardArmed.expiresAt) {
+        st.restGuardArmed = null;
+        render();
+      } else {
+        const pct = Math.max(0, (st.restGuardArmed.expiresAt - now) / REST_GUARD_MS);
+        document.querySelectorAll('#phone-live .live-armed-arc').forEach(arc => {
+          arc.setAttribute('stroke-dasharray', `${(pct * ARC_C).toFixed(2)} ${ARC_C.toFixed(2)}`);
+        });
+        document.querySelectorAll('#phone-live .live-hint-bar').forEach(bar => {
+          bar.style.transform = `scaleX(${pct.toFixed(4)})`;
+        });
+      }
+    }
+    requestAnimationFrame(rafTick);
+  }
+  requestAnimationFrame(rafTick);
+
+  setInterval(() => {
+    if (st.hostMode === 'single' && st.restRunning && st.restLeft > 0) {
+      st.restLeft--;
+      if (st.restLeft === 0) { st.restRunning = false; st.restGuardArmed = null; }
+      if (!st.restGuardArmed && !st.editSheet && document.activeElement?.tagName !== 'INPUT') {
+        render();
+      }
+    }
+  }, 1000);
+
+  render();
+})();
+</script>
+</body>
+</html>
