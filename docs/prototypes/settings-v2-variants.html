@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE · Fitty 2.0 — Вкладка «Настройки» (варианты A / B / C)</title>
+<!--
+  THROWAWAY UI PROTOTYPE for issue #106:
+  "Three structurally different variants (A, B, C) of the Fitty 2.0 Settings screen,
+   switchable via ?variant= and the floating bottom bar, strictly grounded in baseline
+   Board 08 from docs/android-design-system.html plus approved #81/#82/#83/#85/#92/#104 decisions."
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 16px 16px 88px;
+  }
+
+  /* ==================== HOST SHELL (OUTSIDE PHONE, ORCA-THEME AWARE) ==================== */
+  .shell { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(24, 30, 22, 0.04);
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12.5px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .stage {
+    display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 20px; align-items: start;
+  }
+  @media (max-width: 820px) {
+    .stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 440px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-hint { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 14px 16px; box-shadow: 0 2px 8px rgba(24, 30, 22, 0.04);
+  }
+  .panel h2 {
+    margin: 0 0 8px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .variant-thesis { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .variant-bullets { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--card-foreground, #364034); line-height: 1.48; }
+  .variant-bullets li { margin-bottom: 5px; }
+  .variant-bullets li:last-child { margin-bottom: 0; }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+  .cbtn.danger { color: var(--destructive, #B42318); border-color: var(--border, #E2BEBA); background: transparent; }
+
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 46%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  /* Floating bottom prototype variant switcher (UI.md spec) */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+    background: #141B12; color: #F0F3EA;
+    border: 1px solid #394832; border-radius: 999px;
+    padding: 5px 7px;
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 10px 28px rgba(10, 15, 10, 0.34);
+    max-width: calc(100vw - 24px);
+  }
+  .proto-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid #354231;
+    background: #1D261B; color: #C5FA55; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+  }
+  .proto-arrow:hover { background: #293625; }
+  .proto-pills { display: flex; align-items: center; gap: 3px; }
+  .proto-pill {
+    border: 0; border-radius: 999px; padding: 6px 11px;
+    background: transparent; color: #B6C1B3;
+    font: 600 12.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer; white-space: nowrap;
+  }
+  .proto-pill.active { background: #C5FA55; color: #1A2506; font-weight: 700; }
+  .proto-pill:hover:not(.active) { background: #222C20; color: #F0F3EA; }
+  .proto-kbd {
+    font-size: 11px; color: #81907D; padding: 0 6px 0 2px; white-space: nowrap;
+  }
+  @media (max-width: 600px) { .proto-kbd { display: none; } }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (EXACT BASELINE BOARD 08) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-warn: #F7D16B;
+    --f-warn-bg: #2C2514;
+    --f-warn-border: #594A22;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+
+  .d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .f-num-font {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .m { color: var(--f-muted); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .ob:hover { border-color: var(--f-outline-hi); background: rgba(240, 243, 234, 0.03); }
+  .ob:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Exact baseline bottom nav (.nav — 64px, radius 32px, borderless) */
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent;
+    display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center;
+    border-radius: 24px; color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  .f-scroll {
+    flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0;
+  }
+  .f-scroll::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll { padding: 12px 16px 88px; }
+
+  .set-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; }
+  .sec-kicker { font-size: 14px; color: var(--f-muted); margin: 16px 0 8px 2px; }
+  .sec-kicker.tight { margin: 12px 0 7px 2px; }
+
+  /* Exact baseline Catalog card (Board 08) */
+  .cat-card {
+    width: 100%; border: 0; padding: 16px 18px; color: var(--f-text);
+    display: flex; align-items: center; gap: 14px; text-align: left;
+    transition: background 120ms;
+  }
+  .cat-card:hover { background: #192019; }
+  .cat-ico {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--f-chip);
+    display: flex; align-items: center; justify-content: center; color: var(--f-primary); flex: none;
+  }
+  .cat-card.tonal {
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+  }
+  .cat-card.tonal:hover { background: #384920; }
+  .cat-card.tonal .cat-ico { background: rgba(11, 14, 11, 0.34); color: var(--f-primary); }
+  .cat-card.tonal .m { color: rgba(221, 255, 152, 0.78); }
+
+  /* Settings list rows inside borderless .cd */
+  .set-list { padding: 4px 16px; }
+  .set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 13px 0; text-align: left;
+    border-top: 1px solid var(--f-chip);
+  }
+  .set-row:first-child { border-top: 0; }
+  .set-row-btn:hover .set-row-title { color: #FFFFFF; }
+  .set-row-main { flex: 1; min-width: 0; }
+  .set-row-title { font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--f-text); }
+  .set-row-sub { font-size: 12px; line-height: 1.32; color: var(--f-muted); margin-top: 2px; }
+  .set-row-right { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+  .set-val-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--f-chip); color: var(--f-primary);
+    font-size: 13px; font-weight: 700; white-space: nowrap;
+  }
+  .set-val-pill.num { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 17px; padding: 3px 11px; letter-spacing: 0.4px; }
+  .set-val-text { font-size: 13.5px; font-weight: 600; color: var(--f-primary); white-space: nowrap; }
+  .set-val-text.num { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 20px; letter-spacing: 0.4px; }
+
+  .set-row-ico {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--f-chip); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .set-row-ico.muted { color: var(--f-muted); }
+
+  /* Switch (exact match to #83 / android-redesign-prototype.html) */
+  .f-switch {
+    width: 44px; height: 26px; border-radius: 999px; border: 0; padding: 3px;
+    background: var(--f-chip); position: relative; flex: none; transition: background 140ms;
+  }
+  .f-switch.on { background: var(--f-primary); }
+  .f-switch::after {
+    content: ""; display: block; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--f-muted); transition: transform 140ms, background 140ms;
+  }
+  .f-switch.on::after { background: var(--f-on-primary); transform: translateX(18px); }
+
+  /* Variant B: Inline Rest Timer card */
+  .inline-rest-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .inline-rest-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .mini-stepper { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+  .st-sm {
+    width: 36px; height: 36px; border-radius: 50%; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 20px;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .st-sm:hover { background: var(--f-outline); }
+  .st {
+    width: 44px; height: 44px; border-radius: 50%; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 22px;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .rest-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .rest-preset-btn {
+    height: 36px; border-radius: 11px; border: 1px solid var(--f-outline);
+    background: var(--f-bg); color: var(--f-muted);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px;
+  }
+  .rest-preset-btn.active {
+    background: var(--f-primary-container); border-color: var(--f-primary); color: var(--f-primary);
+  }
+  .inline-divider { height: 1px; background: var(--f-chip); margin: 0; }
+
+  /* Variant C: 2-column top quick-parameter tiles */
+  .bento-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bento-tile {
+    border: 0; background: var(--f-surface); border-radius: 20px; padding: 14px 14px 13px;
+    color: var(--f-text); text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between; min-height: 122px;
+    transition: background 120ms;
+  }
+  .bento-tile:hover { background: #192019; }
+  .bento-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--f-muted); font-size: 12px; font-weight: 600; }
+  .bento-val-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 38px; line-height: 1; color: var(--f-primary); margin: 8px 0 6px; }
+  .bento-val-txt { font-size: 21px; font-weight: 700; line-height: 1.15; color: var(--f-text); margin: 10px 0 8px; }
+  .bento-foot { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--f-muted); }
+  .bento-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--f-dim); }
+  .bento-dot.on { background: var(--f-primary); }
+
+  /* About / App updates card (Board 08 + Kinetic F. icon #104) */
+  .app-card { padding: 16px 18px; }
+  .app-head { display: flex; align-items: center; gap: 12px; }
+  .app-icon-box {
+    width: 48px; height: 48px; border-radius: 13px; overflow: hidden; flex: none;
+    border: 1px solid #2A3427; display: flex; align-items: center; justify-content: center;
+  }
+  .app-icon-box.sm { width: 40px; height: 40px; border-radius: 11px; }
+  .app-icon-box svg { width: 100%; height: 100%; display: block; }
+  .upd-banner {
+    display: flex; align-items: center; gap: 8px; margin: 12px 0;
+    padding: 10px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.3;
+  }
+  .upd-banner.ok { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .upd-banner.avail { background: #1B2811; border: 1px solid var(--f-primary-border); color: var(--f-text); }
+  .upd-banner.err { background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error); font-size: 12.5px; }
+  .upd-banner.muted { background: var(--f-chip); color: var(--f-muted); }
+  .upd-prog-track { height: 5px; border-radius: 3px; background: var(--f-chip); overflow: hidden; margin: 8px 0 10px; }
+  .upd-prog-fill { height: 100%; background: var(--f-primary); border-radius: 3px; transition: width 160ms; }
+  .upd-actions { display: flex; gap: 8px; }
+
+  /* Compact App card for Variant C */
+  .app-compact-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .app-mini-btn {
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    border-radius: 999px; height: 36px; padding: 0 13px; flex: none;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap;
+  }
+  .app-mini-btn.primary { background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary); }
+  .app-mini-btn:hover:not(.primary) { border-color: var(--f-outline-hi); }
+
+  /* Bottom sheets (#82 & #83 exact styling) */
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64);
+    z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 20px; display: flex; flex-direction: column; gap: 10px;
+    max-height: 84%; overflow-y: auto;
+  }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 12.5px; color: var(--f-muted); line-height: 1.4; }
+  .f-sheet-cancel {
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px;
+    font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%;
+  }
+  .f-sheet-confirm {
+    border: 0; border-radius: 999px; min-height: 44px;
+    font-size: 14.5px; font-weight: 700; background: var(--f-warn); color: #231B04; width: 100%;
+  }
+  .f-sheet-callout {
+    background: var(--f-warn-bg); border: 1px solid var(--f-warn-border);
+    color: #FBE4A4; border-radius: 12px; padding: 9px 11px; font-size: 12px; line-height: 1.38;
+  }
+  .plank-stepper { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 6px 0 10px; }
+  .rest-toggle-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 2px 2px; border-top: 1px solid var(--f-outline);
+  }
+  .formula-item {
+    width: 100%; border-radius: 13px; padding: 9px 11px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+  }
+  .formula-item.selected { border-color: var(--f-primary-border); background: #162010; }
+  .formula-title { font-size: 13.5px; font-weight: 600; display: block; }
+  .formula-sub { font-size: 11px; color: var(--f-muted); display: block; margin-top: 1px; line-height: 1.25; }
+  .formula-ex {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+    color: var(--f-primary); white-space: nowrap; flex: none;
+  }
+  .formula-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex: none;
+    border: 1.5px solid var(--f-outline-hi); display: flex; align-items: center; justify-content: center;
+  }
+  .formula-item.selected .formula-radio { border-color: var(--f-primary); background: var(--f-primary); color: var(--f-on-primary); }
+
+  /* Toast hint for Catalog click */
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 84px; z-index: 25;
+    background: #1D2618; border: 1px solid #4E672B; color: var(--f-text);
+    border-radius: 14px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 12px; box-shadow: 0 8px 22px rgba(0,0,0,0.48);
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Prototype · #106</span>
+      <div>
+        <h1 class="host-title">Вкладка «Настройки» Fitty 2.0 — три структурных варианта</h1>
+        <div class="host-sub">База доски 08 (`#141914`, `.d`, Kinetic F.) + отдых (`#83`), формула 1RM (`#82`), подсказки (`#85`), самочувствие (`#92`)</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="stage">
+    <div class="phone-slot">
+      <main id="phone" class="phone" aria-label="Макет вкладки Настройки"></main>
+      <div class="phone-hint">Кликабельно всё: тумблеры, пресеты, шторки выбора и проверка обновлений · ← / → меняют вариант</div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2 id="v-kicker">Вариант A</h2>
+        <div class="variant-thesis" id="v-thesis"></div>
+        <ul class="variant-bullets" id="v-bullets"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Симуляция состояния обновлений</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Статус блока «О приложении»</span>
+          <div class="btn-wrap" id="ctrl-upd"></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="btn-wrap">
+            <button type="button" class="cbtn" id="btn-active-workout">Идёт тренировка (диалог при обновлении)</button>
+            <button type="button" class="cbtn danger" id="btn-reset">Сбросить настройки</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Живое состояние настроек</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<!-- Floating bottom switcher bar (UI.md) -->
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button type="button" class="proto-arrow" id="bar-prev" aria-label="Предыдущий вариант">←</button>
+  <div class="proto-pills" id="bar-pills"></div>
+  <button type="button" class="proto-arrow" id="bar-next" aria-label="Следующий вариант">→</button>
+  <span class="proto-kbd">← / →</span>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
+    history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+    dumbbell: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+    chevR: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    check: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    checkSm: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    timer: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
+    scale: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M4 7h16M7 7l-3 7h6zM17 7l-3 7h6z"/></svg>',
+    pulse: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+    trendUp: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
+    download: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>',
+    alert: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg>',
+    fittyIcon: `<svg viewBox="0 0 108 108" aria-hidden="true">
+      <defs><radialGradient id="fgBg" cx="50%" cy="46%" r="58%"><stop offset="0%" stop-color="#1D2619"/><stop offset="100%" stop-color="#0E110E"/></radialGradient></defs>
+      <rect x="0" y="0" width="108" height="108" fill="url(#fgBg)"/>
+      <polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65"/>
+      <circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55"/>
+      <path fill="#C5FA55" d="M38.5,31H75.5L73.2,41H48.5L47.4,49.5H68.5L66.3,59H46.2L43.8,77H32.5Z"/>
+      <circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA"/>
+    </svg>`
+  };
+
+  const FORMULAS = [
+    { id: 'epley',    name: 'Эпли',     def: true,  hint: 'Классика, хорошо работает на 5–12 повт.', calc: (w, r) => w * (1 + r / 30), inv: (rm, t) => rm / (1 + t / 30) },
+    { id: 'brzycki',  name: 'Бжицки',   def: false, hint: 'Точнее на малых повторениях (2–10)',     calc: (w, r) => w * (36 / (37 - r)), inv: (rm, t) => rm * (37 - t) / 36 },
+    { id: 'oconner',  name: 'О’Коннер', def: false, hint: 'Более консервативная оценка 1RM',        calc: (w, r) => w * (1 + 0.025 * r), inv: (rm, t) => rm / (1 + 0.025 * t) },
+    { id: 'lombardi', name: 'Ломбарди', def: false, hint: 'Степенная модель (вес × повт.^0.10)',    calc: (w, r) => w * Math.pow(r, 0.10), inv: (rm, t) => rm / Math.pow(t, 0.10) },
+    { id: 'lander',   name: 'Ландер',   def: false, hint: 'Линейный % от максимума',                calc: (w, r) => (100 * w) / (101.3 - 2.67123 * r), inv: (rm, t) => rm * (101.3 - 2.67123 * t) / 100 },
+    { id: 'mayhew',   name: 'Мейхью',   def: false, hint: 'Экспоненциальная модель',                calc: (w, r) => (100 * w) / (52.2 + 41.9 * Math.exp(-0.055 * r)), inv: (rm, t) => rm * (52.2 + 41.9 * Math.exp(-0.055 * t)) / 100 },
+    { id: 'wathan',   name: 'Уотан',    def: false, hint: 'Близка к Эпли в среднем диапазоне',      calc: (w, r) => (100 * w) / (48.8 + 53.8 * Math.exp(-0.075 * r)), inv: (rm, t) => rm * (48.8 + 53.8 * Math.exp(-0.075 * t)) / 100 }
+  ];
+
+  const VARIANTS = [
+    {
+      id: 'A', short: 'A · Список',
+      name: 'Вариант A · Компактный список со шторками',
+      thesis: '«Каталог → одна карточка «Тренировка» (5 строк) → базовая карточка «О приложении»»',
+      bullets: [
+        'Максимально близок к исходной доске 08: три спокойных блока без лишних декораций.',
+        '«Каталог упражнений» вынесен наверх, т. к. им пользуются чаще, чем проверкой обновлений.',
+        'Все 3 тумблера видны и переключаются в 1 тап прямо в списке; время отдыха и формула 1RM открывают знакомые шторки (#83 / #82).',
+        'Почти весь экран помещается на 390 dp, обновления внизу сохраняют привычную полную карточку.'
+      ]
+    },
+    {
+      id: 'B', short: 'B · Инлайн-таймер',
+      name: 'Вариант B · Прямой контроль отдыха + раздельные секции',
+      thesis: '«Акцентный Каталог → инлайн-карточка «Таймер отдыха» → «Подсказки и расчёт» → «О приложении»»',
+      bullets: [
+        '«Каталог упражнений» выделен тональной зелёной карточкой (#303E1B, как «Мои программы» на Главной) — навигация визуально отделена от настроек.',
+        'Таймер отдыха настраивается прямо на экране (шаг ±15 с, 4 пресета и автозапуск) — ноль лишних шторок.',
+        'Умные функции («Опрос о самочувствии», «Подсказки по нагрузке», «Формула 1RM») собраны в отдельный смысловой блок.',
+        'Компромисс: экран выше — до «О приложении» нужно чуть проскроллить.'
+      ]
+    },
+    {
+      id: 'C', short: 'C · Плитки (1 экран)',
+      name: 'Вариант C · Две плитки-параметры + всё на одном экране',
+      thesis: '«2-колоночные плитки (Отдых + 1RM) → «Умные подсказки» с иконками → Каталог → компактная версия»',
+      bullets: [
+        'На 390 dp (и почти на 360 dp) весь экран умещается целиком без скролла.',
+        'Крупное число 2:00 в фирменном Barlow Condensed сразу показывает текущий отдых и статус автозапуска; тап открывает единую шторку #83 (такую же, как по долгому нажатию на кольцо в зале).',
+        '«О приложении» в спокойном состоянии занимает 1 компактную строку с кнопкой «Проверить», а разворачивается только когда найдено обновление, идёт загрузка или ошибка.',
+        'Компромисс: автозапуск отдыха спрятан на 1 тап глубже (внутри шторки таймера).'
+      ]
+    }
+  ];
+
+  const UPD_STATES = [
+    { id: 'uptodate', label: 'Актуальна' },
+    { id: 'idle', label: 'До проверки' },
+    { id: 'available', label: 'Есть v2.1' },
+    { id: 'downloading', label: 'Загрузка 62%' },
+    { id: 'error', label: 'Ошибка сети' }
+  ];
+
+  const fmtSec = s => `${Math.floor(s / 60)}:${s % 60 < 10 ? '0' : ''}${s % 60}`;
+  const fmtNum = v => String(Math.round(v * 10) / 10).replace('.', ',');
+
+  function initialVariantFromUrl() {
+    try {
+      const p = new URLSearchParams(window.location.search).get('variant');
+      if (p && ['A', 'B', 'C'].includes(p.toUpperCase())) return p.toUpperCase();
+    } catch {}
+    return 'A';
+  }
+
+  let st = {
+    variant: initialVariantFromUrl(),
+    width: 390,
+    restDefault: 120,
+    restAutoStart: true,
+    formulaId: 'epley',
+    checkinEnabled: true,
+    loadPromptsEnabled: true,
+    updState: 'uptodate',
+    updProgress: 62,
+    activeWorkout: false,
+    sheet: null, // 'rest_dur' | 'rest_full' | 'formula' | 'upd_warn'
+    snack: null
+  };
+
+  let snackTimer = null;
+  let dlTimer = null;
+
+  function showSnack(text) {
+    st.snack = text;
+    render();
+    clearTimeout(snackTimer);
+    snackTimer = setTimeout(() => { st.snack = null; render(); }, 2400);
+  }
+
+  function syncUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('variant', st.variant);
+      history.replaceState(null, '', url.toString());
+    } catch {}
+  }
+
+  function setVariant(v) {
+    st.variant = v;
+    st.sheet = null;
+    syncUrl();
+    render();
+  }
+
+  function cycleVariant(dir) {
+    const idx = VARIANTS.findIndex(x => x.id === st.variant);
+    const next = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length].id;
+    setVariant(next);
+  }
+
+  function startDownloadSim() {
+    clearInterval(dlTimer);
+    st.updState = 'downloading';
+    st.updProgress = 12;
+    render();
+    dlTimer = setInterval(() => {
+      st.updProgress = Math.min(100, st.updProgress + 16);
+      if (st.updProgress >= 100) {
+        clearInterval(dlTimer);
+        st.updState = 'uptodate';
+        showSnack('APK скачан · передано установщику Android');
+      }
+      render();
+    }, 550);
+  }
+
+  /* ==================== SHARED BLOCKS ==================== */
+  function renderAboutCardFull() {
+    let body = '';
+    if (st.updState === 'uptodate') {
+      body = `
+        <div class="upd-banner ok">${ICO.check}<span>Сборка актуальна</span></div>
+        <button class="ob" data-act="check-upd">Проверить обновления</button>`;
+    } else if (st.updState === 'idle') {
+      body = `
+        <div style="margin-top:12px">
+          <button class="ob" data-act="check-upd">Проверить обновления</button>
+        </div>`;
+    } else if (st.updState === 'checking') {
+      body = `
+        <div class="upd-banner muted"><span>Проверяем обновления на GitHub…</span></div>
+        <div class="upd-prog-track"><div class="upd-prog-fill" style="width:45%"></div></div>
+        <button class="ob" disabled>Проверяем…</button>`;
+    } else if (st.updState === 'available') {
+      body = `
+        <div class="upd-banner avail">
+          <span style="color:var(--f-primary);display:flex">${ICO.download}</span>
+          <div><div style="font-weight:600">Доступно обновление</div><div class="m" style="font-size:12px">Версия 2.1 · сборка 210</div></div>
+        </div>
+        <div class="upd-actions">
+          <button class="pb" data-act="start-upd">Обновить</button>
+        </div>`;
+    } else if (st.updState === 'downloading') {
+      body = `
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--f-muted)">
+            <span>Скачиваем обновление…</span><span class="f-num-font" style="color:var(--f-primary);font-size:15px">${st.updProgress}%</span>
+          </div>
+          <div class="upd-prog-track"><div class="upd-prog-fill" style="width:${st.updProgress}%"></div></div>
+          <button class="ob" data-act="cancel-upd">Отменить загрузку</button>
+        </div>`;
+    } else if (st.updState === 'error') {
+      body = `
+        <div class="upd-banner err">${ICO.alert}<span>Не удалось подключиться. Проверь интернет и попробуй ещё раз.</span></div>
+        <button class="ob" data-act="check-upd">Повторить проверку</button>`;
+    }
+
+    return `
+      <div class="cd app-card">
+        <div class="app-head">
+          <div class="app-icon-box">${ICO.fittyIcon}</div>
+          <div style="min-width:0">
+            <div class="d" style="font-size:22px;line-height:1.1">Fitty</div>
+            <div class="m" style="font-size:13px;margin-top:2px">Версия 2.0 · сборка 200</div>
+          </div>
+        </div>
+        ${body}
+      </div>`;
+  }
+
+  function renderAboutCardCompact() {
+    const expanded = ['available', 'downloading', 'error', 'checking'].includes(st.updState);
+    let extra = '';
+    let rightBtn = `<button class="app-mini-btn" data-act="check-upd">Проверить</button>`;
+    let subLine = `v2.0 · сборка 200`;
+
+    if (st.updState === 'uptodate') {
+      subLine = `v2.0 · сборка 200 · <span style="color:#A7CF64">актуальна</span>`;
+    } else if (st.updState === 'checking') {
+      rightBtn = `<span class="m" style="font-size:12px">Проверка…</span>`;
+      extra = `<div class="upd-prog-track" style="margin:10px 0 2px"><div class="upd-prog-fill" style="width:45%"></div></div>`;
+    } else if (st.updState === 'available') {
+      subLine = `v2.0 · <span style="color:var(--f-primary);font-weight:600">доступна v2.1</span>`;
+      rightBtn = `<button class="app-mini-btn primary" data-act="start-upd">Обновить</button>`;
+    } else if (st.updState === 'downloading') {
+      subLine = `Скачиваем v2.1 · ${st.updProgress}%`;
+      rightBtn = `<button class="app-mini-btn" data-act="cancel-upd">Отмена</button>`;
+      extra = `<div class="upd-prog-track" style="margin:10px 0 2px"><div class="upd-prog-fill" style="width:${st.updProgress}%"></div></div>`;
+    } else if (st.updState === 'error') {
+      rightBtn = `<button class="app-mini-btn" data-act="check-upd">Повторить</button>`;
+      extra = `<div class="upd-banner err" style="margin:10px 0 0">${ICO.alert}<span>Нет подключения к сети.</span></div>`;
+    }
+
+    return `
+      <div class="cd" style="padding:13px 15px">
+        <div class="app-compact-row">
+          <div style="display:flex;align-items:center;gap:11px;min-width:0;flex:1">
+            <div class="app-icon-box sm">${ICO.fittyIcon}</div>
+            <div style="min-width:0">
+              <div class="d" style="font-size:19px;line-height:1.05">Fitty</div>
+              <div class="m" style="font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subLine}</div>
+            </div>
+          </div>
+          ${rightBtn}
+        </div>
+        ${extra}
+      </div>`;
+  }
+
+  function renderCatalogCard(tonal = false) {
+    return `
+      <button class="cd cat-card ${tonal ? 'tonal' : ''}" data-act="open-catalog">
+        <span class="cat-ico">${ICO.dumbbell}</span>
+        <span style="flex:1;min-width:0">
+          <span class="d" style="font-size:20px;display:block;line-height:1.1">Каталог упражнений</span>
+          <span class="m" style="font-size:13px;display:block;margin-top:2px">Поиск, фильтры и техника выполнения</span>
+        </span>
+        <span style="color:${tonal ? 'var(--f-on-primary-container)' : 'var(--f-muted)'};display:flex">${ICO.chevR}</span>
+      </button>`;
+  }
+
+  /* ==================== VARIANT A ==================== */
+  function renderVariantA() {
+    const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
+    return `
+      <h1 class="d set-h1">Настройки</h1>
+      ${renderCatalogCard(false)}
+
+      <div class="d sec-kicker">Тренировка</div>
+      <div class="cd set-list">
+        <button class="set-row set-row-btn" data-act="open-sheet" data-v="rest_dur">
+          <div class="set-row-main">
+            <div class="set-row-title">Отдых по умолчанию</div>
+            <div class="set-row-sub">Пресеты и шаг ±15 с · также по удержанию кольца</div>
+          </div>
+          <div class="set-row-right">
+            <span class="set-val-pill num">${fmtSec(st.restDefault)}</span>
+            <span class="m" style="display:flex">${ICO.chevR}</span>
+          </div>
+        </button>
+
+        <div class="set-row">
+          <div class="set-row-main">
+            <div class="set-row-title">Автозапуск отдыха</div>
+            <div class="set-row-sub">Включать таймер после записи каждого подхода</div>
+          </div>
+          <button class="f-switch ${st.restAutoStart ? 'on' : ''}" data-act="toggle" data-v="restAutoStart" aria-label="Автозапуск отдыха"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-row-main">
+            <div class="set-row-title">Опрос о самочувствии</div>
+            <div class="set-row-sub">Предлагать облегчить занятие перед стартом на Главной</div>
+          </div>
+          <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle" data-v="checkinEnabled" aria-label="Опрос о самочувствии"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-row-main">
+            <div class="set-row-title">Подсказки по нагрузке</div>
+            <div class="set-row-sub">Советы повысить или снизить вес в обычных и тяжёлых неделях</div>
+          </div>
+          <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle" data-v="loadPromptsEnabled" aria-label="Подсказки по нагрузке"></button>
+        </div>
+
+        <button class="set-row set-row-btn" data-act="open-sheet" data-v="formula">
+          <div class="set-row-main">
+            <div class="set-row-title">Формула расчёта 1RM</div>
+            <div class="set-row-sub">Для подбора рабочего веса по повторениям</div>
+          </div>
+          <div class="set-row-right">
+            <span class="set-val-text">${fObj.name}</span>
+            <span class="m" style="display:flex">${ICO.chevR}</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="d sec-kicker">О приложении</div>
+      ${renderAboutCardFull()}`;
+  }
+
+  /* ==================== VARIANT B ==================== */
+  function renderVariantB() {
+    const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
+    const presets = [60, 90, 120, 180];
+    return `
+      <h1 class="d set-h1">Настройки</h1>
+      ${renderCatalogCard(true)}
+
+      <div class="d sec-kicker">Таймер отдыха</div>
+      <div class="cd inline-rest-card">
+        <div class="inline-rest-top">
+          <div style="min-width:0">
+            <div class="set-row-title">Время по умолчанию</div>
+            <div class="set-row-sub">Шаг ±15 с · действует на все тренировки</div>
+          </div>
+          <div class="mini-stepper">
+            <button class="st-sm" data-act="rest-step" data-v="-15" aria-label="Минус 15 секунд">−</button>
+            <span class="d" style="font-size:28px;line-height:1;min-width:52px;text-align:center;color:var(--f-primary)">${fmtSec(st.restDefault)}</span>
+            <button class="st-sm" data-act="rest-step" data-v="15" aria-label="Плюс 15 секунд">+</button>
+          </div>
+        </div>
+        <div class="rest-presets">
+          ${presets.map(sec => `<button class="rest-preset-btn ${st.restDefault === sec ? 'active' : ''}" data-act="rest-set" data-v="${sec}">${fmtSec(sec)}</button>`).join('')}
+        </div>
+        <div class="inline-divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div class="set-row-main">
+            <div class="set-row-title">Автозапуск после подхода</div>
+            <div class="set-row-sub">Сразу запускать отсчёт при записи нового подхода</div>
+          </div>
+          <button class="f-switch ${st.restAutoStart ? 'on' : ''}" data-act="toggle" data-v="restAutoStart" aria-label="Автозапуск после подхода"></button>
+        </div>
+      </div>
+
+      <div class="d sec-kicker">Подсказки и расчёт</div>
+      <div class="cd set-list">
+        <div class="set-row">
+          <div class="set-row-main">
+            <div class="set-row-title">Опрос о самочувствии</div>
+            <div class="set-row-sub">Карточка «Бодро / Устал» на Главной (облегчение в зале остаётся)</div>
+          </div>
+          <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle" data-v="checkinEnabled" aria-label="Опрос о самочувствии"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-row-main">
+            <div class="set-row-title">Подсказки по нагрузке</div>
+            <div class="set-row-sub">Двойная прогрессия: когда пора добавить или снизить вес</div>
+          </div>
+          <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle" data-v="loadPromptsEnabled" aria-label="Подсказки по нагрузке"></button>
+        </div>
+
+        <button class="set-row set-row-btn" data-act="open-sheet" data-v="formula">
+          <div class="set-row-main">
+            <div class="set-row-title">Формула расчёта 1RM</div>
+            <div class="set-row-sub">${fObj.hint}</div>
+          </div>
+          <div class="set-row-right">
+            <span class="set-val-pill">${fObj.name}</span>
+            <span class="m" style="display:flex">${ICO.chevR}</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="d sec-kicker">О приложении</div>
+      ${renderAboutCardFull()}`;
+  }
+
+  /* ==================== VARIANT C ==================== */
+  function renderVariantC() {
+    const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
+    return `
+      <h1 class="d set-h1" style="margin-bottom:12px">Настройки</h1>
+
+      <div class="bento-2">
+        <button class="bento-tile" data-act="open-sheet" data-v="rest_full">
+          <div class="bento-top"><span>Таймер отдыха</span><span style="color:var(--f-primary);display:flex">${ICO.timer}</span></div>
+          <div class="bento-val-num">${fmtSec(st.restDefault)}</div>
+          <div class="bento-foot"><span class="bento-dot ${st.restAutoStart ? 'on' : ''}"></span><span>${st.restAutoStart ? 'Автостарт вкл.' : 'Старт вручную'}</span></div>
+        </button>
+
+        <button class="bento-tile" data-act="open-sheet" data-v="formula">
+          <div class="bento-top"><span>Формула 1RM</span><span style="color:var(--f-primary);display:flex">${ICO.scale}</span></div>
+          <div class="bento-val-txt">${fObj.name}</div>
+          <div class="bento-foot"><span>${fObj.def ? 'По умолчанию · 7' : 'Выбрана · из 7'}</span></div>
+        </button>
+      </div>
+
+      <div class="d sec-kicker tight">Умные подсказки</div>
+      <div class="cd set-list">
+        <div class="set-row" style="padding:11px 0">
+          <span class="set-row-ico ${st.checkinEnabled ? '' : 'muted'}">${ICO.pulse}</span>
+          <div class="set-row-main">
+            <div class="set-row-title">Опрос о самочувствии</div>
+            <div class="set-row-sub">Карточка перед стартом на Главной</div>
+          </div>
+          <button class="f-switch ${st.checkinEnabled ? 'on' : ''}" data-act="toggle" data-v="checkinEnabled" aria-label="Опрос о самочувствии"></button>
+        </div>
+
+        <div class="set-row" style="padding:11px 0">
+          <span class="set-row-ico ${st.loadPromptsEnabled ? '' : 'muted'}">${ICO.trendUp}</span>
+          <div class="set-row-main">
+            <div class="set-row-title">Подсказки по нагрузке</div>
+            <div class="set-row-sub">Советы повысить или снизить вес</div>
+          </div>
+          <button class="f-switch ${st.loadPromptsEnabled ? 'on' : ''}" data-act="toggle" data-v="loadPromptsEnabled" aria-label="Подсказки по нагрузке"></button>
+        </div>
+      </div>
+
+      <div class="d sec-kicker tight">База упражнений</div>
+      ${renderCatalogCard(false)}
+
+      <div class="d sec-kicker tight">Приложение</div>
+      ${renderAboutCardCompact()}`;
+  }
+
+  /* ==================== BOTTOM SHEETS ==================== */
+  function renderSheet() {
+    if (!st.sheet) return '';
+    if (st.sheet === 'rest_dur' || st.sheet === 'rest_full') {
+      const presets = [60, 90, 120, 180];
+      const includeAuto = st.sheet === 'rest_full';
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>${includeAuto ? 'Таймер отдыха' : 'Время отдыха по умолчанию'}</h3>
+            <p>${includeAuto ? 'Те же параметры открываются долгим нажатием на кольцо отдыха во время тренировки.' : 'Используется при автоматическом и ручном запуске таймера отдыха.'}</p>
+            <div style="text-align:center">
+              <div class="plank-stepper">
+                <button class="st" data-act="rest-step" data-v="-15" aria-label="Уменьшить на 15 секунд">−</button>
+                <div class="d" style="font-size:40px;line-height:1;min-width:116px">${fmtSec(st.restDefault)}</div>
+                <button class="st" data-act="rest-step" data-v="15" aria-label="Увеличить на 15 секунд">+</button>
+              </div>
+              <div class="rest-presets">
+                ${presets.map(sec => `<button class="rest-preset-btn ${st.restDefault === sec ? 'active' : ''}" data-act="rest-set" data-v="${sec}">${fmtSec(sec)}</button>`).join('')}
+              </div>
+            </div>
+            ${includeAuto ? `
+              <div class="rest-toggle-row">
+                <div>
+                  <div style="font-size:13.5px;font-weight:600">Автозапуск после подхода</div>
+                  <div style="font-size:11.5px;color:var(--f-muted)">Включать отдых при записи нового подхода</div>
+                </div>
+                <button class="f-switch ${st.restAutoStart ? 'on' : ''}" data-act="toggle" data-v="restAutoStart"></button>
+              </div>` : ''}
+            <button class="f-sheet-cancel" data-act="close-sheet">Готово</button>
+          </div>
+        </div>`;
+    }
+    if (st.sheet === 'formula') {
+      // Sample live preview: 60 kg × 8 reps -> target 10 (+2 RIR = 12)
+      const w = 60, r = 8, target = 10;
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Формула расчёта 1RM</h3>
+            <p>Используется в подборе веса «По повторениям». Пример ориентира для замера 60 кг × 8 повт. под цель 10 повт.:</p>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              ${FORMULAS.map(f => {
+                const est = f.inv(f.calc(w, r), target + 2);
+                const sel = f.id === st.formulaId;
+                return `
+                  <button class="formula-item ${sel ? 'selected' : ''}" data-act="pick-formula" data-v="${f.id}">
+                    <span class="formula-radio">${sel ? ICO.checkSm : ''}</span>
+                    <span style="flex:1;min-width:0">
+                      <span class="formula-title">${f.name}${f.def ? ' · по умолчанию' : ''}</span>
+                      <span class="formula-sub">${f.hint}</span>
+                    </span>
+                    <span class="formula-ex">≈ ${fmtNum(est)} кг</span>
+                  </button>`;
+              }).join('')}
+            </div>
+            <button class="f-sheet-cancel" data-act="close-sheet">Готово</button>
+          </div>
+        </div>`;
+    }
+    if (st.sheet === 'upd_warn') {
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Продолжить обновление?</h3>
+            <div class="f-sheet-callout">Сейчас идёт незавершённая тренировка. Сохранённые программы и записанные подходы останутся, но несохранённый ввод в полях может пропасть.</div>
+            <button class="f-sheet-confirm" data-act="confirm-upd">Продолжить и скачать v2.1</button>
+            <button class="f-sheet-cancel" data-act="close-sheet">Назад</button>
+          </div>
+        </div>`;
+    }
+    return '';
+  }
+
+  /* ==================== RENDER ==================== */
+  function render() {
+    const phone = document.getElementById('phone');
+    phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+
+    const bodyHtml = st.variant === 'A' ? renderVariantA() : st.variant === 'B' ? renderVariantB() : renderVariantC();
+    const snackHtml = st.snack ? `<div class="f-snack"><span>${st.snack}</span></div>` : '';
+
+    phone.innerHTML = `
+      <div class="f-scroll">${bodyHtml}</div>
+      ${snackHtml}
+      <nav class="f-nav" aria-label="Нижняя навигация">
+        <button class="f-nav-btn" data-act="nav-stub" data-v="Главная" aria-label="Главная">${ICO.home}</button>
+        <button class="f-nav-btn" data-act="nav-stub" data-v="История" aria-label="История">${ICO.history}</button>
+        <button class="f-nav-btn active" aria-label="Настройки">${ICO.settings}<span>Настройки</span></button>
+      </nav>
+      ${renderSheet()}`;
+
+    // Inspector metadata
+    const vObj = VARIANTS.find(v => v.id === st.variant);
+    document.getElementById('v-kicker').textContent = vObj.name;
+    document.getElementById('v-thesis').textContent = vObj.thesis;
+    document.getElementById('v-bullets').innerHTML = vObj.bullets.map(b => `<li>${b}</li>`).join('');
+
+    // Width toggles
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+
+    // Update simulator buttons
+    document.getElementById('ctrl-upd').innerHTML = UPD_STATES.map(u =>
+      `<button type="button" class="cbtn ${st.updState === u.id ? 'active' : ''}" data-host="upd" data-v="${u.id}">${u.label}</button>`
+    ).join('');
+    document.getElementById('btn-active-workout').classList.toggle('active', st.activeWorkout);
+
+    // Live state table
+    const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
+    document.getElementById('state-tbl').innerHTML = `
+      <tr><td>Вариант</td><td>${vObj.id} (${vObj.short.slice(4)})</td></tr>
+      <tr><td>Отдых по умолчанию</td><td>${fmtSec(st.restDefault)} (${st.restDefault} с)</td></tr>
+      <tr><td>Автозапуск отдыха</td><td>${st.restAutoStart ? 'Вкл.' : 'Выкл.'}</td></tr>
+      <tr><td>Формула 1RM</td><td>${fObj.name}${fObj.def ? ' (по умолчанию)' : ''}</td></tr>
+      <tr><td>Опрос о самочувствии</td><td>${st.checkinEnabled ? 'Вкл. (виден на Главной)' : 'Выкл. (Главная чистая)'}</td></tr>
+      <tr><td>Подсказки по нагрузке</td><td>${st.loadPromptsEnabled ? 'Вкл.' : 'Выкл.'}</td></tr>
+      <tr><td>Статус обновлений</td><td>${st.updState}${st.updState === 'downloading' ? ` (${st.updProgress}%)` : ''}</td></tr>`;
+
+    // Floating bottom bar pills
+    document.getElementById('bar-pills').innerHTML = VARIANTS.map(v =>
+      `<button type="button" class="proto-pill ${st.variant === v.id ? 'active' : ''}" data-bar-v="${v.id}">${v.short}</button>`
+    ).join('');
+  }
+
+  /* ==================== EVENTS ==================== */
+  document.addEventListener('click', (e) => {
+    const barBtn = e.target.closest('[data-bar-v]');
+    if (barBtn) { setVariant(barBtn.dataset.barV); return; }
+
+    const hostBtn = e.target.closest('[data-host="upd"]');
+    if (hostBtn) {
+      clearInterval(dlTimer);
+      st.updState = hostBtn.dataset.v;
+      if (st.updState === 'downloading') st.updProgress = 62;
+      render();
+      return;
+    }
+
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act, v = el.dataset.v;
+
+    if (act === 'toggle') {
+      st[v] = !st[v];
+      render();
+    } else if (act === 'open-sheet') {
+      st.sheet = v;
+      render();
+    } else if (act === 'close-sheet') {
+      st.sheet = null;
+      render();
+    } else if (act === 'rest-step') {
+      st.restDefault = Math.max(15, Math.min(300, st.restDefault + parseInt(v, 10)));
+      render();
+    } else if (act === 'rest-set') {
+      st.restDefault = parseInt(v, 10);
+      render();
+    } else if (act === 'pick-formula') {
+      st.formulaId = v;
+      render();
+    } else if (act === 'open-catalog') {
+      showSnack('Переход в «Каталог упражнений» (отдельный экран)');
+    } else if (act === 'nav-stub') {
+      showSnack(`Вкладка «${v}» — переключение в сводном прототипе`);
+    } else if (act === 'check-upd') {
+      st.updState = 'checking';
+      render();
+      setTimeout(() => {
+        st.updState = 'available';
+        render();
+      }, 650);
+    } else if (act === 'start-upd') {
+      if (st.activeWorkout) { st.sheet = 'upd_warn'; render(); }
+      else startDownloadSim();
+    } else if (act === 'confirm-upd') {
+      st.sheet = null;
+      startDownloadSim();
+    } else if (act === 'cancel-upd') {
+      clearInterval(dlTimer);
+      st.updState = 'available';
+      showSnack('Загрузка отменена');
+    }
+  });
+
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; render(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; render(); });
+  document.getElementById('bar-prev').addEventListener('click', () => cycleVariant(-1));
+  document.getElementById('bar-next').addEventListener('click', () => cycleVariant(1));
+  document.getElementById('btn-active-workout').addEventListener('click', () => { st.activeWorkout = !st.activeWorkout; render(); });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    clearInterval(dlTimer);
+    st.restDefault = 120; st.restAutoStart = true; st.formulaId = 'epley';
+    st.checkinEnabled = true; st.loadPromptsEnabled = true;
+    st.updState = 'uptodate'; st.activeWorkout = false; st.sheet = null;
+    render();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') cycleVariant(-1);
+    else if (e.key === 'ArrowRight') cycleVariant(1);
+    else if (e.key === 'Escape' && st.sheet) { st.sheet = null; render(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
