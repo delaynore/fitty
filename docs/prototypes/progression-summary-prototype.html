@@ -1,0 +1,2106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty · Прототип: подсказки прогрессии и дельта в итогах (#99)</title>
+<!--
+  PROTOTYPE (throwaway UI exploration for issue #99).
+  Plan: Three structurally distinct variants (A, B, C) of workout progression prompts
+  and workout summary deltas, switchable via ?variant= and a floating bottom bar.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --page-bg: #EEEFEA;
+    --page-card: #FFFFFF;
+    --page-ink: #1D221B;
+    --page-muted: #5A6457;
+    --page-border: #D2D7CC;
+
+    /* Fitty Android design system tokens */
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #7F8C7C;
+    --f-placeholder: #728070;
+
+    /* Calm coaching amber for "try lighter" (distinct from #FFB4AB destructive error) */
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+
+    /* Calm muted down-delta in summary */
+    --f-down-bg: #25221D;
+    --f-down-text: #D7B98E;
+  }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font: 14px/1.45 Inter, system-ui, -apple-system, sans-serif;
+    padding: 16px 16px 96px;
+  }
+
+  .proto-shell {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  /* ==================== PROTOTYPE TOOLBAR (NOT PART OF APP) ==================== */
+  .proto-header {
+    background: var(--page-card);
+    border: 1px solid var(--page-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(20, 25, 20, 0.04);
+  }
+  .proto-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .proto-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #232A20;
+    color: #C5FA55;
+  }
+  .proto-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--page-ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .proto-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .proto-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--page-muted);
+  }
+  .proto-select {
+    font: 500 13px Inter, system-ui, sans-serif;
+    border: 1px solid var(--page-border);
+    border-radius: 9px;
+    padding: 6px 10px;
+    background: #F8F9F6;
+    color: var(--page-ink);
+    cursor: pointer;
+    max-width: 100%;
+  }
+  .proto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--page-border);
+    background: #F8F9F6;
+    font: 600 12px Inter, system-ui, sans-serif;
+    color: var(--page-ink);
+    cursor: pointer;
+    user-select: none;
+  }
+  .proto-toggle[aria-pressed="true"] {
+    background: #232A20;
+    border-color: #232A20;
+    color: #F0F3EA;
+  }
+  .proto-toggle .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #98A295;
+  }
+  .proto-toggle[aria-pressed="true"] .dot {
+    background: #C5FA55;
+  }
+  .proto-btn-small {
+    padding: 6px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--page-border);
+    background: #FFFFFF;
+    color: var(--page-ink);
+    font: 600 12px Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .proto-btn-small:hover { background: #F1F3EE; }
+
+  .view-tabs {
+    display: inline-flex;
+    background: #E4E7DF;
+    padding: 3px;
+    border-radius: 10px;
+    gap: 2px;
+  }
+  .view-tabs button {
+    border: 0;
+    background: transparent;
+    color: var(--page-muted);
+    font: 600 12px Inter, system-ui, sans-serif;
+    padding: 5px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .view-tabs button[aria-pressed="true"] {
+    background: #FFFFFF;
+    color: var(--page-ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .variant-blurb {
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid #E5E8E0;
+    font-size: 13px;
+    color: var(--page-muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .variant-blurb strong { color: var(--page-ink); }
+
+  /* ==================== STAGE & PHONES ==================== */
+  .stage {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .phone-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .phone-col.is-hidden { display: none; }
+  .phone-caption {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--page-muted);
+  }
+
+  .phone {
+    width: min(390px, calc(100vw - 24px));
+    height: 780px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+    padding: 34px 20px 80px;
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone button {
+    font-family: Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .phone-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-bottom: 12px;
+    min-height: 0;
+  }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+
+  /* Numeric Barlow Condensed (never Cyrillic prose) */
+  .f-num-font {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+
+  /* Status bar */
+  .f-status {
+    position: absolute;
+    left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 12px; font-weight: 600;
+    color: var(--f-text);
+    pointer-events: none;
+  }
+  .f-status .muted { color: var(--f-muted); font-weight: 500; }
+
+  /* Workout Topbar (Issue #89 Variant A) */
+  .f-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    flex: none;
+  }
+  .f-back-btn {
+    width: 32px; height: 32px;
+    margin-left: -6px;
+    border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+  }
+  .f-week-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--f-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .f-ex-counter {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--f-muted);
+    white-space: nowrap;
+  }
+  .f-ex-counter span {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  /* Workout Header + 76x76 Rest Ring (Issue #83) */
+  .f-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 2px 0 8px;
+    flex: none;
+  }
+  .f-head h1 {
+    margin: 0;
+    flex: 1;
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    line-height: 1.12;
+    color: var(--f-text);
+  }
+  .f-rest-ring {
+    position: relative;
+    width: 76px; height: 76px;
+    border: 0; border-radius: 50%;
+    background: transparent;
+    flex: none;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .f-rest-ring svg { position: absolute; inset: 0; }
+  .f-rest-ring-inner {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; line-height: 1.05;
+  }
+  .f-rest-label { font-size: 10px; font-weight: 600; color: var(--f-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .f-rest-time { font-size: 22px; color: var(--f-primary); margin-top: 2px; }
+
+  /* Tags row (Issue #89 plan chip) */
+  .f-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 2px 0 4px;
+  }
+  .f-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--f-chip);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--f-muted);
+    line-height: 1.2;
+  }
+  .f-tag strong {
+    color: var(--f-text);
+    font-weight: 600;
+  }
+
+  /* ==================== VARIANT A: WORKOUT PROGRESSION CHIP ==================== */
+  .prog-chip-a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    border: 1px solid transparent;
+    transition: background 120ms, border-color 120ms, transform 80ms;
+  }
+  .prog-chip-a:active { transform: scale(0.97); }
+  .prog-chip-a.up {
+    background: var(--f-primary-container);
+    border-color: var(--f-primary-border);
+    color: var(--f-on-primary-container);
+  }
+  .prog-chip-a.down {
+    background: var(--f-amber-container);
+    border-color: var(--f-amber-border);
+    color: var(--f-on-amber-container);
+  }
+  .prog-chip-a .ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .prog-chip-a.up .ico { color: var(--f-primary); }
+  .prog-chip-a.down .ico { color: var(--f-amber); }
+  .prog-chip-a-detail {
+    width: 100%;
+    margin-top: 6px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: var(--f-surface-hi);
+    border: 1px solid var(--f-outline);
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--f-muted);
+  }
+  .prog-chip-a-detail strong { color: var(--f-text); font-weight: 600; }
+
+  /* ==================== VARIANT B: CONTEXTUAL COACHING STRIP ==================== */
+  .prog-strip-b {
+    margin: 10px 0 2px;
+    padding: 10px 10px 10px 13px;
+    border-radius: 14px;
+    background: var(--f-surface);
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .prog-strip-b::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+  }
+  .prog-strip-b.up::before { background: var(--f-primary); }
+  .prog-strip-b.down::before { background: var(--f-amber); }
+  .prog-strip-b-ico {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    margin-top: 1px;
+  }
+  .prog-strip-b.up .prog-strip-b-ico {
+    background: var(--f-primary-container);
+    color: var(--f-primary);
+  }
+  .prog-strip-b.down .prog-strip-b-ico {
+    background: var(--f-amber-container);
+    color: var(--f-amber);
+  }
+  .prog-strip-b-body { flex: 1; min-width: 0; }
+  .prog-strip-b-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .prog-strip-b.up .prog-strip-b-title { color: var(--f-on-primary-container); }
+  .prog-strip-b.down .prog-strip-b-title { color: var(--f-on-amber-container); }
+  .prog-strip-b-sub {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--f-muted);
+  }
+  .prog-strip-b-close {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: var(--f-dim);
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .prog-strip-b-close:hover { background: var(--f-chip); color: var(--f-text); }
+
+  /* ==================== VARIANT C: WEIGHT-COLUMN ANCHOR ==================== */
+  .col-weight-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+  .weight-nudge-c {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .weight-nudge-c.up {
+    background: var(--f-primary-container);
+    color: var(--f-primary);
+    border: 1px solid var(--f-primary-border);
+  }
+  .weight-nudge-c.down {
+    background: var(--f-amber-container);
+    color: var(--f-amber);
+    border: 1px solid var(--f-amber-border);
+  }
+  .row-footnote-c {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 4px 44px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--f-muted);
+  }
+  .row-footnote-c .dot-c {
+    width: 6px; height: 6px; border-radius: 50%; flex: none;
+  }
+  .row-footnote-c.up .dot-c { background: var(--f-primary); }
+  .row-footnote-c.down .dot-c { background: var(--f-amber); }
+
+  /* ==================== SET TABLE (ISSUE #79 APPROVED) ==================== */
+  .f-col-head {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr 44px;
+    gap: 8px;
+    align-items: center;
+    padding: 0 6px 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--f-muted);
+    margin: 14px 0 6px;
+    text-align: center;
+  }
+  .f-rows { display: flex; flex-direction: column; gap: 6px; }
+  .f-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr 44px;
+    gap: 8px;
+    align-items: center;
+    padding: 0 6px 0 8px;
+    min-height: 48px;
+    border-radius: 14px;
+    text-align: center;
+  }
+  .f-row-active { min-height: 54px; }
+  .f-row-logged {
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+    cursor: pointer;
+    transition: background 120ms;
+  }
+  .f-row-logged:hover { background: #374720; }
+  .f-row-future { opacity: 0.45; }
+
+  .f-num {
+    width: 28px; height: 28px; border-radius: 50%; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: #81907D; }
+
+  .f-in {
+    width: 100%; min-width: 0; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text);
+    border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 22px; text-align: center;
+    outline: none; padding: 0 6px;
+    transition: border-color 120ms, background 120ms;
+  }
+  .f-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .f-in:placeholder-shown {
+    border-style: dashed;
+    border-color: var(--f-outline);
+    background: #0F130F;
+  }
+  .f-in.has-value {
+    border-style: solid;
+    border-color: var(--f-primary);
+    color: var(--f-text);
+    background: var(--f-bg);
+  }
+  .f-in:focus {
+    border-style: solid;
+    border-color: var(--f-primary);
+    background: var(--f-surface);
+  }
+  .f-in-empty-future {
+    height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg);
+  }
+
+  .f-check-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    justify-self: center;
+    transition: background 140ms, border-color 140ms, color 140ms, transform 80ms;
+  }
+  .f-check-btn:active { transform: scale(0.94); }
+  .btn-tonal-sugg {
+    background: var(--f-primary-container);
+    border: 1.5px solid var(--f-primary-border);
+    color: var(--f-primary);
+  }
+  .btn-tonal-sugg:hover { background: #3C4F20; }
+  .btn-solid-save {
+    background: var(--f-primary);
+    border: 0;
+    color: var(--f-on-primary);
+  }
+  .done-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--f-badge-done); color: #9AD43D;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+
+  .f-undo-strip {
+    margin-top: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-radius: 12px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline);
+    font-size: 12px; color: var(--f-muted);
+  }
+  .f-undo-strip button {
+    border: 0; background: transparent; color: var(--f-primary);
+    font-weight: 600; font-size: 12px; padding: 0;
+  }
+
+  .f-add-set { display: flex; justify-content: center; margin-top: 10px; }
+  .f-ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px;
+    min-height: 44px; padding: 0 20px;
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 600; font-size: 14px;
+  }
+  .f-ob:hover { border-color: #4A5748; }
+
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .f-nav-prev {
+    width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-nav-all {
+    flex: 1; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text);
+    font-weight: 600; font-size: 15px;
+  }
+  .f-nav-finish {
+    width: 110px; height: 48px; border-radius: 24px;
+    border: 0; background: var(--f-primary); color: var(--f-on-primary);
+    font-weight: 700; font-size: 14px; flex: none;
+  }
+
+  /* ==================== SUMMARY SCREEN SHARED ==================== */
+  .sum-header {
+    padding-top: 6px;
+    margin-bottom: 12px;
+    flex: none;
+  }
+  .sum-kicker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--f-primary);
+    margin-bottom: 4px;
+  }
+  .sum-kicker .date { color: var(--f-muted); font-weight: 500; }
+  .sum-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+  }
+  .sum-sub {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--f-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sum-footer {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px;
+  }
+  .sum-btn-primary {
+    flex: 1; height: 48px; border-radius: 999px;
+    border: 0; background: var(--f-primary); color: var(--f-on-primary);
+    font-weight: 700; font-size: 15px;
+  }
+  .sum-btn-secondary {
+    height: 48px; padding: 0 16px; border-radius: 999px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    font-weight: 600; font-size: 14px;
+  }
+
+  /* Delta pills */
+  .delta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex: none;
+  }
+  .delta-pill .n {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .delta-pill.up {
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+  }
+  .delta-pill.up .n { color: var(--f-primary); }
+  .delta-pill.down {
+    background: var(--f-down-bg);
+    color: var(--f-down-text);
+  }
+  .delta-pill.same {
+    background: var(--f-chip);
+    color: var(--f-muted);
+  }
+  .delta-pill.first {
+    background: transparent;
+    border: 1px solid var(--f-outline);
+    color: var(--f-muted);
+  }
+
+  /* ==================== VARIANT A: SUMMARY COMPACT LIST ==================== */
+  .sum-a-list { display: flex; flex-direction: column; gap: 8px; }
+  .sum-a-card {
+    background: var(--f-surface);
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+  .sum-a-card.is-live {
+    box-shadow: inset 0 0 0 1px var(--f-primary-border);
+  }
+  .sum-a-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sum-a-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--f-text);
+    line-height: 1.25;
+  }
+  .sum-a-sets {
+    margin-top: 5px;
+    font-size: 14px;
+    color: var(--f-text);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sum-a-sets .val {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .sum-a-prev {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--f-dim);
+  }
+  .sum-a-next-hint {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #1F261E;
+    font-size: 12px;
+    color: var(--f-on-primary-container);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sum-a-next-hint.down { color: var(--f-on-amber-container); }
+
+  /* ==================== VARIANT B: SUMMARY KPI + BEFORE/AFTER CARDS ==================== */
+  .sum-b-kpi {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .sum-b-tile {
+    background: var(--f-surface);
+    border-radius: 16px;
+    padding: 10px 10px 9px;
+  }
+  .sum-b-tile .big {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--f-text);
+  }
+  .sum-b-tile.accent .big { color: var(--f-primary); }
+  .sum-b-tile .lbl {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--f-muted);
+  }
+  .sum-b-list { display: flex; flex-direction: column; gap: 10px; }
+  .sum-b-card {
+    background: var(--f-surface);
+    border-radius: 18px;
+    padding: 12px 14px;
+  }
+  .sum-b-card.is-live {
+    box-shadow: inset 0 0 0 1px var(--f-primary-border);
+  }
+  .sum-b-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .sum-b-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .sum-b-compare {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+    background: #0F130F;
+    border-radius: 12px;
+    padding: 9px 10px;
+  }
+  .sum-b-col-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--f-dim);
+    margin-bottom: 2px;
+  }
+  .sum-b-col-val {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--f-muted);
+    line-height: 1.15;
+  }
+  .sum-b-col.now .sum-b-col-val { color: var(--f-text); }
+  .sum-b-col-sum {
+    font-size: 11px;
+    color: var(--f-dim);
+    margin-top: 2px;
+  }
+  .sum-b-arrow {
+    color: var(--f-dim);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .sum-b-arrow.up { color: var(--f-primary); }
+  .sum-b-arrow.down { color: var(--f-amber); }
+
+  /* ==================== VARIANT C: SUMMARY HERO + GROUPED ==================== */
+  .sum-c-hero {
+    background: linear-gradient(135deg, #1E2813 0%, #141914 70%);
+    border: 1px solid #2D3B1D;
+    border-radius: 20px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .sum-c-hero-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--f-muted);
+    margin-bottom: 4px;
+  }
+  .sum-c-hero-big {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .sum-c-hero-metric {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--f-primary);
+  }
+  .sum-c-hero-metric small {
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--f-on-primary-container);
+    margin-left: 3px;
+  }
+  .sum-c-sec-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--f-muted);
+    margin: 12px 0 6px 4px;
+  }
+  .sum-c-wins { display: flex; flex-direction: column; gap: 8px; }
+  .sum-c-win-card {
+    background: #171F14;
+    border: 1px solid #2A381D;
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+  .sum-c-win-card.is-live { border-color: var(--f-primary); }
+  .sum-c-win-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sum-c-set-pills {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .sum-c-weight-tag {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--f-text);
+    margin-right: 4px;
+  }
+  .sum-c-rep-pill {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 8px;
+    background: var(--f-primary-container);
+    color: var(--f-on-primary-container);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sum-c-rep-pill.grew {
+    background: var(--f-primary);
+    color: var(--f-on-primary);
+  }
+  .sum-c-rest-box {
+    background: var(--f-surface);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .sum-c-rest-row {
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #1E251E;
+  }
+  .sum-c-rest-row:last-child { border-bottom: 0; }
+  .sum-c-rest-left { min-width: 0; }
+  .sum-c-rest-name { font-size: 14px; font-weight: 600; color: var(--f-text); }
+  .sum-c-rest-meta { font-size: 12px; color: var(--f-dim); margin-top: 2px; }
+
+  /* ==================== SYNTHESIS MIX SUMMARY CAPSULES ==================== */
+  .mix-card {
+    background: var(--f-surface);
+    border: 1px solid transparent;
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+  .mix-card.is-up { background: #161E13; border-color: #2A381D; }
+  .mix-card.is-live { border-color: var(--f-primary); }
+  .mix-pills-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .mix-weight-pill {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--f-text); margin-right: 3px; letter-spacing: 0.3px;
+  }
+  .mix-weight-pill.grew { background: var(--f-primary); color: var(--f-on-primary); padding: 1px 7px; border-radius: 7px; font-size: 16px; }
+  .mix-weight-pill.down { background: var(--f-amber-container); color: var(--f-amber); border: 1px solid var(--f-amber-border); padding: 1px 7px; border-radius: 7px; font-size: 16px; }
+  .mix-rep-pill {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 16px; font-weight: 700;
+    min-width: 28px; height: 26px; padding: 0 7px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--f-chip); color: var(--f-muted);
+  }
+  .mix-rep-pill.tonal-up { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .mix-rep-pill.grew { background: var(--f-primary); color: var(--f-on-primary); }
+  .mix-rep-pill.dipped { background: var(--f-amber-container); color: var(--f-amber); border: 1px solid var(--f-amber-border); }
+
+  /* ==================== STATE INSPECTOR ==================== */
+  .state-box {
+    margin-top: 18px;
+    background: var(--page-card);
+    border: 1px solid var(--page-border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--page-muted);
+  }
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 8px 16px;
+    margin-top: 6px;
+  }
+  .state-item b {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--page-muted);
+  }
+  .state-item span { color: var(--page-ink); font-weight: 600; }
+
+  /* ==================== FLOATING BOTTOM VARIANT SWITCHER (UI.md) ==================== */
+  .proto-switcher {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: #161C15;
+    color: #F0F3EA;
+    border: 1.5px solid #394635;
+    box-shadow: 0 10px 28px rgba(10, 14, 10, 0.32);
+    max-width: calc(100vw - 24px);
+  }
+  .proto-sw-arrow {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid #354132;
+    background: #222B20;
+    color: #F0F3EA;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex: none;
+    transition: background 120ms, border-color 120ms;
+  }
+  .proto-sw-arrow:hover { background: #2D3A2A; border-color: #C5FA55; color: #C5FA55; }
+  .proto-sw-label {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .proto-sw-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px; height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #C5FA55;
+    color: #1A2506;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .proto-sw-hint {
+    font-size: 11px;
+    color: #93A090;
+    margin-left: 6px;
+  }
+  @media (max-width: 560px) {
+    .proto-sw-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="proto-shell">
+  <header class="proto-header" aria-label="Управление прототипом">
+    <div class="proto-title-row">
+      <h1 class="proto-title">
+        <span class="proto-badge">Прототип #99</span>
+        Подсказки прогрессии на экране тренировки и дельта повторов в итогах
+      </h1>
+      <div class="view-tabs" id="view-tabs" role="group" aria-label="Отображаемые экраны">
+        <button type="button" data-view="both" aria-pressed="true">Оба рядом</button>
+        <button type="button" data-view="workout" aria-pressed="false">Тренировка</button>
+        <button type="button" data-view="summary" aria-pressed="false">Итоги</button>
+      </div>
+    </div>
+    <div class="proto-controls">
+      <label class="proto-field">
+        Сценарий:
+        <select class="proto-select" id="scenario-select"></select>
+      </label>
+      <button type="button" class="proto-toggle" id="prompts-toggle" aria-pressed="true">
+        <span class="dot" aria-hidden="true"></span>
+        Подсказки по нагрузке: <span id="prompts-toggle-text">вкл.</span>
+      </button>
+      <button type="button" class="proto-btn-small" id="reset-sets-btn">Сбросить подходы</button>
+    </div>
+    <div class="variant-blurb" id="variant-blurb"></div>
+  </header>
+
+  <section class="stage" aria-label="Сравнение экранов">
+    <div class="phone-col" id="col-workout">
+      <div class="phone-caption">Экран тренировки</div>
+      <main class="phone" id="phone-workout" aria-label="Экран тренировки"></main>
+    </div>
+    <div class="phone-col" id="col-summary">
+      <div class="phone-caption">Итоги тренировки</div>
+      <main class="phone" id="phone-summary" aria-label="Итоги тренировки"></main>
+    </div>
+  </section>
+
+  <section class="state-box" aria-live="polite">
+    <strong>Состояние прототипа</strong>
+    <div class="state-grid" id="state-grid"></div>
+  </section>
+</div>
+
+<nav class="proto-switcher" aria-label="Переключатель вариантов прототипа">
+  <button type="button" class="proto-sw-arrow" id="sw-prev" aria-label="Предыдущий вариант">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="proto-sw-label" id="sw-label"></div>
+  <button type="button" class="proto-sw-arrow" id="sw-next" aria-label="Следующий вариант">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</nav>
+
+<script>
+const VARIANTS = [
+  {
+    key: 'FINAL',
+    name: 'Согласованный: Полоса B (с ×) + группировка C с капсулами',
+    workoutIdea: 'Чип плана остаётся один; под ним полоса совета с вертикальной границей слева (лайм / янтарь), короткой причиной и кнопкой ×; скрывается после записи подхода 1.',
+    summaryIdea: 'Hero-блок сравнения сверху + группировка «Есть прогресс» / «Остальные упражнения», внутри карточек поштучная цветовая подсветка капсул подходов (и веса), дельта-пилюля справа и тихая строка «Было: …».'
+  },
+  {
+    key: 'M1',
+    name: 'Микс 1: Полоса B (с ×) + список A с капсулами C',
+    workoutIdea: 'Полоса совета из B с вертикальной акцентной границей слева (лайм / янтарь) и кнопкой ×; скрывается после подхода 1.',
+    summaryIdea: 'Hero-блок из C + единый список карточек в порядке тренировки (как A), цветные капсулы подходов (как C) и строка-ориентир на следующий раз.'
+  },
+  {
+    key: 'M2',
+    name: 'Микс 2: Полоса B (без ×) + группы C без советов',
+    workoutIdea: 'Та же полоса с вертикальной границей слева, но без кнопки × — игнорируется и исчезает после подхода 1.',
+    summaryIdea: 'Hero-блок из C + группировка «Есть прогресс» / «Остальные», везде цветные капсулы подходов, только фактические дельты без советов.'
+  },
+  {
+    key: 'A',
+    name: 'Чип рядом с планом + компактные строки',
+    workoutIdea: 'Тональный чип-подсказка в той же строке, что и «План: …» (тап раскрывает причину, игнорируется в 0 нажатий).',
+    summaryIdea: 'Плоский список компактных карточек: подходы слева, дельта-пилюля справа, приглушённая строка «Было: …».'
+  },
+  {
+    key: 'B',
+    name: 'Полоса совета + сравнение «Было → Стало»',
+    workoutIdea: 'Чип плана остаётся один; под ним тонкая полоса с акцентной линией слева и короткой причиной (можно закрыть × или просто игнорировать).',
+    summaryIdea: 'Сверху 3 KPI-плитки, ниже карточки со сравнением «Прошлый раз → Сегодня» и суммами повторов.'
+  },
+  {
+    key: 'C',
+    name: 'Якорь на колонке веса + группы по прогрессу',
+    workoutIdea: 'Шапка и чип плана 100% как в базовом экране; микро-бэдж «↑ тяжелее?» привязан прямо к колонке веса, короткое пояснение — сноской под строкой 1.',
+    summaryIdea: 'Главный прирост тренировки в hero-блоке; упражнения с ростом выделены отдельно капсулами подходов, остальные собраны в компактный блок.'
+  }
+];
+
+const SCENARIOS = [
+  {
+    id: 'range-up',
+    label: 'Прибавить: верх диапазона (3×8–12)',
+    weekLabel: 'Тяжёлая неделя',
+    dayTitle: 'День А · Тяжёлая',
+    compareBase: 'прошлым Днём А (Тяжёлая)',
+    exIndex: '2/4',
+    exercise: 'Жим штанги лёжа',
+    planText: '3 × 8–12',
+    plannedSets: 3,
+    prevSets: [[60, 12], [60, 12], [60, 12]],
+    suggestion: [60, 12],
+    prompt: {
+      dir: 'up',
+      chipText: 'Попробовать тяжелее',
+      stripTitle: 'Можно попробовать вес тяжелее',
+      nudgeText: 'тяжелее?',
+      reasonShort: 'В прошлый раз 60 кг × 12 / 12 / 12 — верх цели выполнен.',
+      reasonDetail: 'В прошлом занятии все 3 подхода достигли верхней границы 12 повторов с весом 60 кг. Шаг веса выбери по инвентарю или оставь 60 кг.'
+    },
+    ruleNote: 'Верхняя граница диапазона 8–12 достигнута во всех 3 плановых подходах с одним весом (1 занятие).',
+    summaryLinkExercise: 'Жим штанги лёжа',
+    summaryItems: [
+      { name: 'Жим штанги лёжа', type: 'wr', prev: [[60, 11], [60, 10], [60, 12]], now: [[60, 12], [60, 12], [60, 12]], nextDir: 'up' },
+      { name: 'Тяга штанги в наклоне', type: 'wr', prev: [[70, 8], [70, 8], [70, 8]], now: [[72.5, 8], [72.5, 8], [72.5, 7]], nextDir: null },
+      { name: 'Разводка гантелей', type: 'wr', prev: [[14, 10], [14, 10], [14, 10]], now: [[14, 10], [14, 10], [14, 10]], nextDir: null },
+      { name: 'Жим гантелей стоя', type: 'wr', prev: [[22, 6], [22, 6], [22, 5]], now: [[22, 6], [22, 5], [22, 5]], nextDir: 'down' },
+      { name: 'Планка', type: 'dur', prev: null, now: ['0:50', '0:45', '0:45'], nextDir: null }
+    ]
+  },
+  {
+    id: 'exact-up',
+    label: 'Прибавить: точная цель (3×8, без чередования)',
+    weekLabel: '',
+    dayTitle: 'День Б',
+    compareBase: 'прошлым Днём Б',
+    exIndex: '1/4',
+    exercise: 'Приседания со штангой',
+    planText: '3 × 8',
+    plannedSets: 3,
+    prevSets: [[80, 8], [80, 8], [80, 8]],
+    suggestion: [80, 8],
+    prompt: {
+      dir: 'up',
+      chipText: 'Попробовать тяжелее',
+      stripTitle: 'Цель выполнена — можно тяжелее',
+      nudgeText: 'тяжелее?',
+      reasonShort: 'Прошлый раз: 80 кг × 8 / 8 / 8 (цель 3 × 8 выполнена).',
+      reasonDetail: 'Все 3 плановых подхода закрыты на 8 повторов с весом 80 кг. Если готов — впиши следующий удобный вес.'
+    },
+    ruleNote: 'Точная цель 3 × 8 выполнена во всех подходах с одним весом; чередование недель выключено.',
+    summaryLinkExercise: 'Приседания со штангой',
+    summaryItems: [
+      { name: 'Приседания со штангой', type: 'wr', prev: [[80, 8], [80, 7], [80, 7]], now: [[80, 8], [80, 8], [80, 8]], nextDir: 'up' },
+      { name: 'Румынская тяга', type: 'wr', prev: [[75, 10], [75, 10], [75, 9]], now: [[75, 10], [75, 10], [75, 10]], nextDir: 'up' },
+      { name: 'Выпады с гантелями', type: 'wr', prev: [[16, 10], [16, 10], [16, 10]], now: [[18, 8], [18, 8], [18, 8]], nextDir: null },
+      { name: 'Скручивания на блоке', type: 'wr', prev: [[30, 12], [30, 12], [30, 12]], now: [[30, 12], [30, 12], [30, 12]], nextDir: null }
+    ]
+  },
+  {
+    id: 'no-target-up',
+    label: 'Прибавить: без цели, рост суммы повторов',
+    weekLabel: '',
+    dayTitle: 'День В',
+    compareBase: 'прошлым Днём В',
+    exIndex: '3/4',
+    exercise: 'Подтягивания с дополнительным весом',
+    planText: '',
+    plannedSets: 3,
+    prevSets: [[10, 8], [10, 8], [10, 8]],
+    suggestion: [10, 8],
+    prompt: {
+      dir: 'up',
+      chipText: 'Попробовать тяжелее',
+      stripTitle: 'Повторы выросли — можно тяжелее',
+      nudgeText: 'тяжелее?',
+      reasonShort: 'С 10 кг: 8/8/7 → 8/8/8 (+1 повтор за прошлое занятие).',
+      reasonDetail: 'Цель по повторам не задана, но сумма повторов с весом 10 кг выросла при том же числе подходов. Можно попробовать вес выше.'
+    },
+    ruleNote: 'Без цели: сравнение двух последних занятий с 10 кг и 3 подходами — сумма повторов выросла (23 → 24).',
+    summaryLinkExercise: 'Подтягивания с дополнительным весом',
+    summaryItems: [
+      { name: 'Подтягивания с дополнительным весом', type: 'wr', prev: [[10, 8], [10, 8], [10, 7]], now: [[10, 8], [10, 8], [10, 8]], nextDir: 'up' },
+      { name: 'Тяга верхнего блока', type: 'wr', prev: [[55, 10], [55, 9], [55, 9]], now: [[55, 10], [55, 10], [55, 10]], nextDir: null },
+      { name: 'Сгибание рук со штангой', type: 'wr', prev: [[27.5, 10], [27.5, 10], [27.5, 9]], now: [[27.5, 10], [27.5, 9], [27.5, 9]], nextDir: null }
+    ]
+  },
+  {
+    id: 'range-down',
+    label: 'Снизить вес: 2 занятия ниже диапазона',
+    weekLabel: 'Тяжёлая неделя',
+    dayTitle: 'День А · Тяжёлая',
+    compareBase: 'прошлым Днём А (Тяжёлая)',
+    exIndex: '4/4',
+    exercise: 'Жим гантелей стоя',
+    planText: '3 × 8–12',
+    plannedSets: 3,
+    prevSets: [[22, 6], [22, 5], [22, 5]],
+    suggestion: [22, 6],
+    prompt: {
+      dir: 'down',
+      chipText: 'Попробовать легче',
+      stripTitle: 'Попробуй вес чуть легче',
+      nudgeText: 'легче?',
+      reasonShort: 'Два занятия подряд с 22 кг ниже цели 8–12 (6/6/5 и 6/5/5).',
+      reasonDetail: 'Две сопоставимые тренировки все подходы ниже 8 повторов без роста суммы. Меньший вес поможет вернуться в рабочий диапазон.'
+    },
+    ruleNote: 'Два сопоставимых занятия подряд все подходы ниже нижней границы (8) и сумма повторов не выросла (17 → 16).',
+    summaryLinkExercise: 'Жим гантелей стоя',
+    summaryItems: [
+      { name: 'Жим штанги лёжа', type: 'wr', prev: [[60, 11], [60, 10], [60, 12]], now: [[60, 12], [60, 12], [60, 12]], nextDir: 'up' },
+      { name: 'Тяга штанги в наклоне', type: 'wr', prev: [[70, 8], [70, 8], [70, 8]], now: [[72.5, 8], [72.5, 8], [72.5, 7]], nextDir: null },
+      { name: 'Разводка гантелей', type: 'wr', prev: [[14, 10], [14, 10], [14, 10]], now: [[14, 10], [14, 10], [14, 10]], nextDir: null },
+      { name: 'Жим гантелей стоя', type: 'wr', prev: [[22, 6], [22, 6], [22, 5]], now: [[22, 6], [22, 5], [22, 5]], nextDir: 'down' }
+    ]
+  },
+  {
+    id: 'normal-mid',
+    label: 'Без подсказки: рост внутри диапазона',
+    weekLabel: 'Тяжёлая неделя',
+    dayTitle: 'День А · Тяжёлая',
+    compareBase: 'прошлым Днём А (Тяжёлая)',
+    exIndex: '2/4',
+    exercise: 'Тяга штанги в наклоне',
+    planText: '3 × 8–12',
+    plannedSets: 3,
+    prevSets: [[70, 10], [70, 9], [70, 9]],
+    suggestion: [70, 10],
+    prompt: null,
+    ruleNote: 'Прошлые подходы 10/9/9 внутри диапазона 8–12: продолжаем копить повторы с 70 кг, подсказки прогрессии нет.',
+    summaryLinkExercise: 'Тяга штанги в наклоне',
+    summaryItems: [
+      { name: 'Тяга штанги в наклоне', type: 'wr', prev: [[70, 9], [70, 9], [70, 8]], now: [[70, 10], [70, 9], [70, 9]], nextDir: null },
+      { name: 'Жим штанги лёжа', type: 'wr', prev: [[60, 6], [60, 5], [60, 5]], now: [[60, 7], [60, 6], [60, 5]], nextDir: null },
+      { name: 'Разводка гантелей', type: 'wr', prev: [[14, 10], [14, 10], [14, 10]], now: [[14, 10], [14, 10], [14, 10]], nextDir: null }
+    ]
+  },
+  {
+    id: 'light-week',
+    label: 'Лёгкая неделя (плановая разгрузка, без советов)',
+    weekLabel: 'Лёгкая неделя',
+    dayTitle: 'День А · Лёгкая',
+    compareBase: 'прошлым Днём А (Лёгкая)',
+    exIndex: '2/4',
+    exercise: 'Жим штанги лёжа',
+    planText: '3 × 6–10',
+    plannedSets: 3,
+    prevSets: [[60, 8], [60, 8], [60, 8]],
+    suggestion: [60, 8],
+    prompt: null,
+    ruleNote: 'На лёгкой неделе проактивные подсказки прогрессии не показываются; итоги сравниваются строго с прошлой лёгкой неделей.',
+    summaryLinkExercise: 'Жим штанги лёжа',
+    summaryItems: [
+      { name: 'Жим штанги лёжа', type: 'wr', prev: [[60, 7], [60, 7], [60, 7]], now: [[60, 8], [60, 8], [60, 8]], nextDir: null },
+      { name: 'Тяга штанги в наклоне', type: 'wr', prev: [[70, 6], [70, 6], [70, 6]], now: [[70, 6], [70, 6], [70, 6]], nextDir: null },
+      { name: 'Жим гантелей стоя', type: 'wr', prev: [[20, 6], [20, 6], [20, 6]], now: [[20, 7], [20, 6], [20, 6]], nextDir: null }
+    ]
+  }
+];
+
+const state = {
+  variant: parseInitialVariant(),
+  scenarioId: 'range-up',
+  loadPromptsEnabled: true,
+  view: 'both',
+  setsByScenario: {},
+  extraRowsByScenario: {},
+  typedW: '',
+  typedR: '',
+  chipExpanded: false,
+  stripDismissed: false,
+  selectedLoggedIdx: null
+};
+
+function parseInitialVariant() {
+  try {
+    const raw = (new URL(location.href).searchParams.get('variant') || 'FINAL').toUpperCase();
+    return ['FINAL', 'M1', 'M2', 'A', 'B', 'C'].includes(raw) ? raw : 'FINAL';
+  } catch {
+    return 'FINAL';
+  }
+}
+
+function getScenario() {
+  return SCENARIOS.find(s => s.id === state.scenarioId) || SCENARIOS[0];
+}
+
+function getSets() {
+  if (!state.setsByScenario[state.scenarioId]) state.setsByScenario[state.scenarioId] = [];
+  return state.setsByScenario[state.scenarioId];
+}
+
+function getTotalRows(sc) {
+  const logged = getSets().length;
+  const extra = state.extraRowsByScenario[sc.id] || 0;
+  return Math.max(sc.plannedSets + extra, logged + (logged >= sc.plannedSets + extra ? 0 : 1));
+}
+
+function fmtNum(n) {
+  return Number.isInteger(n) ? String(n) : String(n).replace('.', ',');
+}
+
+function repWord(absN) {
+  const m10 = absN % 10, m100 = absN % 100;
+  if (m10 === 1 && m100 !== 11) return 'повтор';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'повтора';
+  return 'повторов';
+}
+
+function computeDelta(item) {
+  if (!item.prev) {
+    return { kind: 'first', primary: 'Впервые', secondary: '', repsDelta: 0, weightDelta: 0, prevSum: 0, nowSum: 0 };
+  }
+  if (item.type === 'dur') {
+    return { kind: 'same', primary: '=', secondary: '', repsDelta: 0, weightDelta: 0, prevSum: 0, nowSum: 0 };
+  }
+  const prevW = item.prev[0][0];
+  const nowW = item.now[0][0];
+  const prevSameW = item.prev.every(s => s[0] === prevW);
+  const nowSameW = item.now.every(s => s[0] === nowW);
+  const prevMaxW = Math.max(...item.prev.map(s => s[0]));
+  const nowMaxW = Math.max(...item.now.map(s => s[0]));
+  const prevSum = item.prev.reduce((a, s) => a + s[1], 0);
+  const nowSum = item.now.reduce((a, s) => a + s[1], 0);
+  const repsDelta = nowSum - prevSum;
+  const weightDelta = +(nowMaxW - prevMaxW).toFixed(2);
+
+  if (weightDelta > 0) {
+    const repNote = repsDelta === 0 ? '' : (repsDelta > 0 ? `+${repsDelta} повт.` : `−${Math.abs(repsDelta)} повт.`);
+    return {
+      kind: 'up',
+      primary: `+${fmtNum(weightDelta)} кг`,
+      shortNum: `+${fmtNum(weightDelta)}`,
+      shortUnit: 'кг',
+      secondary: repNote,
+      repsDelta,
+      weightDelta,
+      prevSum,
+      nowSum
+    };
+  }
+  if (weightDelta < 0) {
+    const repNote = repsDelta === 0 ? '' : (repsDelta > 0 ? `+${repsDelta} повт.` : `−${Math.abs(repsDelta)} повт.`);
+    return {
+      kind: 'down',
+      primary: `−${fmtNum(Math.abs(weightDelta))} кг`,
+      shortNum: `−${fmtNum(Math.abs(weightDelta))}`,
+      shortUnit: 'кг',
+      secondary: repNote,
+      repsDelta,
+      weightDelta,
+      prevSum,
+      nowSum
+    };
+  }
+  if (repsDelta > 0) {
+    return {
+      kind: 'up',
+      primary: `+${repsDelta} ${repWord(repsDelta)}`,
+      shortNum: `+${repsDelta}`,
+      shortUnit: repWord(repsDelta),
+      secondary: '',
+      repsDelta,
+      weightDelta: 0,
+      prevSum,
+      nowSum
+    };
+  }
+  if (repsDelta < 0) {
+    return {
+      kind: 'down',
+      primary: `−${Math.abs(repsDelta)} ${repWord(Math.abs(repsDelta))}`,
+      shortNum: `−${Math.abs(repsDelta)}`,
+      shortUnit: repWord(Math.abs(repsDelta)),
+      secondary: '',
+      repsDelta,
+      weightDelta: 0,
+      prevSum,
+      nowSum
+    };
+  }
+  return {
+    kind: 'same',
+    primary: 'Без изменений',
+    shortNum: '=',
+    shortUnit: '',
+    secondary: '',
+    repsDelta: 0,
+    weightDelta: 0,
+    prevSum,
+    nowSum
+  };
+}
+
+function formatSetsInline(item, which) {
+  const arr = item[which];
+  if (!arr) return '—';
+  if (item.type === 'dur') return arr.join(' / ');
+  const firstW = arr[0][0];
+  const sameW = arr.every(s => s[0] === firstW);
+  if (sameW) {
+    return `${fmtNum(firstW)} кг · ${arr.map(s => s[1]).join(' / ')}`;
+  }
+  return arr.map(s => `${fmtNum(s[0])}×${s[1]}`).join(' · ');
+}
+
+function checkSvg(size = 20) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+}
+
+function arrowDirSvg(dir, size = 14) {
+  if (dir === 'up') {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 9v8H9"/></svg>`;
+}
+
+function titleFontSize(name) {
+  if (name.length > 32) return '19px';
+  if (name.length > 22) return '22px';
+  return '25px';
+}
+
+/* ==================== RENDER WORKOUT SCREEN ==================== */
+function renderWorkout(sc) {
+  const sets = getSets();
+  const totalRows = getTotalRows(sc);
+  const activePrompt = (state.loadPromptsEnabled && sc.prompt && sets.length === 0) ? sc.prompt : null;
+  const activePromptWithDismiss = (activePrompt && !state.stripDismissed) ? activePrompt : null;
+  const hint = sets.length > 0 ? sets[sets.length - 1] : sc.suggestion;
+  const edited = state.typedW.trim() !== '' || state.typedR.trim() !== '';
+
+  // Tags area differs by variant
+  let tagsHtml = '';
+  const planChip = sc.planText ? `<span class="f-tag">План: <strong>${sc.planText}</strong></span>` : '';
+
+  if (state.variant === 'A') {
+    const promptChip = activePrompt
+      ? `<button type="button" class="prog-chip-a ${activePrompt.dir}" id="btn-chip-a" aria-expanded="${state.chipExpanded}">
+           <span class="ico">${arrowDirSvg(activePrompt.dir, 14)}</span>
+           <span>${activePrompt.chipText}</span>
+         </button>`
+      : '';
+    const detail = (activePrompt && state.chipExpanded)
+      ? `<div class="prog-chip-a-detail"><strong>Почему совет:</strong> ${activePrompt.reasonDetail}</div>`
+      : '';
+    tagsHtml = (planChip || promptChip) ? `<div class="f-tags">${planChip}${promptChip}${detail}</div>` : '';
+  } else if (state.variant === 'FINAL' || state.variant === 'B' || state.variant === 'M1' || state.variant === 'M2') {
+    const showClose = state.variant !== 'M2';
+    const promptForStrip = showClose ? activePromptWithDismiss : activePrompt;
+    const strip = promptForStrip
+      ? `<div class="prog-strip-b ${promptForStrip.dir}" role="note">
+           <div class="prog-strip-b-ico">${arrowDirSvg(promptForStrip.dir, 15)}</div>
+           <div class="prog-strip-b-body">
+             <div class="prog-strip-b-title">${promptForStrip.stripTitle}</div>
+             <div class="prog-strip-b-sub">${promptForStrip.reasonShort}</div>
+           </div>
+           ${showClose ? `<button type="button" class="prog-strip-b-close" id="btn-strip-close" aria-label="Скрыть подсказку">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+           </button>` : ''}
+         </div>`
+      : '';
+    tagsHtml = `${planChip ? `<div class="f-tags">${planChip}</div>` : ''}${strip}`;
+  } else {
+    // Variant C: Header + plan chip 100% untouched
+    tagsHtml = planChip ? `<div class="f-tags">${planChip}</div>` : '';
+  }
+
+  // Column header (Variant C anchors micro-nudge to Weight column when untouched)
+  const showCNudge = state.variant === 'C' && activePrompt && !edited;
+  const weightHeaderHtml = showCNudge
+    ? `<span class="col-weight-wrap">Вес, кг <span class="weight-nudge-c ${activePrompt.dir}">${activePrompt.dir === 'up' ? '↑' : '↓'} ${activePrompt.nudgeText}</span></span>`
+    : `<span>Вес, кг</span>`;
+
+  // Build rows (strictly 4-column compact row from #79)
+  let rowsHtml = '';
+  sets.forEach((p, idx) => {
+    rowsHtml += `
+      <div class="f-row f-row-logged f-num-font" data-logged-idx="${idx}" title="Нажмите, чтобы отменить подход">
+        <span class="f-num f-num-done">${idx + 1}</span>
+        <span style="font-size:22px">${fmtNum(p[0])}</span>
+        <span style="font-size:22px">${p[1]}</span>
+        <span class="done-badge" aria-label="Подход ${idx + 1} записан">${checkSvg(17)}</span>
+      </div>`;
+  });
+
+  if (sets.length < totalRows) {
+    const activeNum = sets.length + 1;
+    rowsHtml += `
+      <div class="f-row f-row-active">
+        <span class="f-num ${edited ? 'f-num-active' : 'f-num-sugg'} f-num-font" id="active-num">${activeNum}</span>
+        <input class="f-in ${state.typedW.trim() ? 'has-value' : ''}" id="inp-w"
+          value="${state.typedW}" placeholder="${fmtNum(hint[0])}" inputmode="decimal" aria-label="Вес, кг">
+        <input class="f-in ${state.typedR.trim() ? 'has-value' : ''}" id="inp-r"
+          value="${state.typedR}" placeholder="${hint[1]}" inputmode="numeric" aria-label="Повторения">
+        <button class="f-check-btn ${edited ? 'btn-solid-save' : 'btn-tonal-sugg'}" type="button" id="btn-commit" aria-label="Записать подход">
+          ${checkSvg(20)}
+        </button>
+      </div>`;
+    if (showCNudge) {
+      rowsHtml += `
+        <div class="row-footnote-c ${activePrompt.dir}">
+          <span class="dot-c" aria-hidden="true"></span>
+          <span>${activePrompt.reasonShort}</span>
+        </div>`;
+    }
+  }
+
+  for (let n = sets.length + 2; n <= totalRows; n++) {
+    rowsHtml += `
+      <div class="f-row f-row-future">
+        <span class="f-num f-num-future f-num-font">${n}</span>
+        <div class="f-in-empty-future"></div>
+        <div class="f-in-empty-future"></div>
+        <span></span>
+      </div>`;
+  }
+
+  const undoStrip = state.selectedLoggedIdx !== null && sets[state.selectedLoggedIdx]
+    ? `<div class="f-undo-strip">
+         <span>Подход ${state.selectedLoggedIdx + 1}: ${fmtNum(sets[state.selectedLoggedIdx][0])} кг × ${sets[state.selectedLoggedIdx][1]}</span>
+         <button type="button" id="btn-del-set">Удалить</button>
+       </div>`
+    : '';
+
+  const phone = document.getElementById('phone-workout');
+  phone.innerHTML = `
+    <div class="f-status" aria-hidden="true">
+      <span>18:40</span>
+      <span class="muted">5G · 82%</span>
+    </div>
+    <div class="f-topbar">
+      <button class="f-back-btn" type="button" aria-label="Назад">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      ${sc.weekLabel ? `<span class="f-week-label">${sc.weekLabel}</span>` : ''}
+      <span class="f-ex-counter">Упр. <span>${sc.exIndex}</span></span>
+    </div>
+    <div class="f-head">
+      <h1 style="font-size:${titleFontSize(sc.exercise)}">${sc.exercise}</h1>
+      <button class="f-rest-ring" type="button" aria-label="Таймер отдыха 2:00">
+        <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+          <circle cx="38" cy="38" r="33" fill="none" stroke="#252D24" stroke-width="6"></circle>
+          <circle cx="38" cy="38" r="33" fill="none" stroke="#C5FA55" stroke-width="6" stroke-linecap="round" stroke-dasharray="207 207" transform="rotate(-90 38 38)"></circle>
+        </svg>
+        <span class="f-rest-ring-inner">
+          <span class="f-rest-label">Отдых</span>
+          <span class="f-rest-time f-num-font">2:00</span>
+        </span>
+      </button>
+    </div>
+    <div class="phone-scroll">
+      ${tagsHtml}
+      <div class="f-col-head">
+        <span>№</span>
+        ${weightHeaderHtml}
+        <span>Повторения</span>
+        <span></span>
+      </div>
+      <div class="f-rows">${rowsHtml}</div>
+      ${undoStrip}
+      <div class="f-add-set"><button class="f-ob" type="button" id="btn-add-set">+ Подход</button></div>
+    </div>
+    <div class="f-bottom-nav">
+      <button class="f-nav-prev" type="button" aria-label="Предыдущее">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <button class="f-nav-all" type="button">Упражнения</button>
+      <button class="f-nav-finish" type="button" id="btn-go-summary">Завершить</button>
+    </div>
+  `;
+
+  // Wire workout listeners
+  const chipA = document.getElementById('btn-chip-a');
+  if (chipA) {
+    chipA.onclick = () => {
+      state.chipExpanded = !state.chipExpanded;
+      renderAll();
+    };
+  }
+  const closeB = document.getElementById('btn-strip-close');
+  if (closeB) {
+    closeB.onclick = () => {
+      state.stripDismissed = true;
+      renderAll();
+    };
+  }
+  const inpW = document.getElementById('inp-w');
+  const inpR = document.getElementById('inp-r');
+  const btnCommit = document.getElementById('btn-commit');
+  if (inpW && inpR && btnCommit) {
+    const syncInputVisual = () => {
+      state.typedW = inpW.value;
+      state.typedR = inpR.value;
+      const isEd = state.typedW.trim() !== '' || state.typedR.trim() !== '';
+      inpW.classList.toggle('has-value', state.typedW.trim() !== '');
+      inpR.classList.toggle('has-value', state.typedR.trim() !== '');
+      btnCommit.classList.toggle('btn-solid-save', isEd);
+      btnCommit.classList.toggle('btn-tonal-sugg', !isEd);
+      const numEl = document.getElementById('active-num');
+      if (numEl) numEl.className = 'f-num f-num-font ' + (isEd ? 'f-num-active' : 'f-num-sugg');
+    };
+    inpW.oninput = syncInputVisual;
+    inpR.oninput = syncInputVisual;
+    const commit = () => {
+      const rawW = (inpW.value.trim() || inpW.placeholder).replace(',', '.');
+      const rawR = inpR.value.trim() || inpR.placeholder;
+      const w = Number(rawW);
+      const r = Number(rawR);
+      if (!(w > 0 && Number.isFinite(w) && Number.isInteger(r) && r > 0)) return;
+      getSets().push([w, r]);
+      state.typedW = '';
+      state.typedR = '';
+      state.selectedLoggedIdx = null;
+      renderAll();
+    };
+    btnCommit.onclick = commit;
+    [inpW, inpR].forEach(el => {
+      el.onkeydown = e => { if (e.key === 'Enter') commit(); };
+    });
+  }
+  phone.querySelectorAll('[data-logged-idx]').forEach(row => {
+    row.onclick = () => {
+      const idx = Number(row.dataset.loggedIdx);
+      state.selectedLoggedIdx = state.selectedLoggedIdx === idx ? null : idx;
+      renderAll();
+    };
+  });
+  const btnDel = document.getElementById('btn-del-set');
+  if (btnDel) {
+    btnDel.onclick = () => {
+      if (state.selectedLoggedIdx !== null) {
+        getSets().splice(state.selectedLoggedIdx, 1);
+        state.selectedLoggedIdx = null;
+        renderAll();
+      }
+    };
+  }
+  const btnAdd = document.getElementById('btn-add-set');
+  if (btnAdd) {
+    btnAdd.onclick = () => {
+      state.extraRowsByScenario[sc.id] = (state.extraRowsByScenario[sc.id] || 0) + 1;
+      renderAll();
+    };
+  }
+  const btnFinish = document.getElementById('btn-go-summary');
+  if (btnFinish) {
+    btnFinish.onclick = () => {
+      if (state.view === 'workout') {
+        state.view = 'summary';
+        renderAll();
+      } else {
+        document.getElementById('phone-summary').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    };
+  }
+}
+
+/* ==================== RENDER SUMMARY SCREEN ==================== */
+function getEffectiveSummaryItems(sc) {
+  const logged = getSets();
+  return sc.summaryItems.map(item => {
+    if (logged.length > 0 && item.name === sc.summaryLinkExercise) {
+      return { ...item, prev: sc.prevSets, now: logged, isLive: true };
+    }
+    return { ...item, isLive: false };
+  });
+}
+
+function renderSummary(sc) {
+  const items = getEffectiveSummaryItems(sc);
+  const computed = items.map(it => ({ item: it, delta: computeDelta(it) }));
+  const totalSets = items.reduce((a, it) => a + it.now.length, 0);
+  const grewCount = computed.filter(x => x.delta.kind === 'up').length;
+  const totalRepsGain = computed.reduce((a, x) => a + (x.delta.weightDelta === 0 && x.delta.repsDelta > 0 ? x.delta.repsDelta : 0), 0);
+  const maxWeightGain = computed.reduce((a, x) => Math.max(a, x.delta.weightDelta > 0 ? x.delta.weightDelta : 0), 0);
+
+  let bodyHtml = '';
+
+  const renderMixPills = (item, delta) => {
+    if (item.type === 'dur') return item.now.map(t => `<span class="mix-rep-pill">${t}</span>`).join('');
+    const firstW = item.now[0][0];
+    const sameW = item.now.every(s => s[0] === firstW);
+    if (!sameW) {
+      return item.now.map((s, idx) => {
+        const prev = item.prev && item.prev[idx];
+        let cls = '';
+        if (!prev || s[0] > prev[0] || (s[0] === prev[0] && s[1] > prev[1])) cls = 'grew';
+        else if (s[0] < prev[0] || (s[0] === prev[0] && s[1] < prev[1])) cls = 'dipped';
+        else if (delta.kind === 'up') cls = 'tonal-up';
+        return `<span class="mix-rep-pill ${cls}">${fmtNum(s[0])}×${s[1]}</span>`;
+      }).join('');
+    }
+    const wCls = delta.weightDelta > 0 ? 'grew' : (delta.weightDelta < 0 ? 'down' : '');
+    const wTag = `<span class="mix-weight-pill ${wCls}">${fmtNum(firstW)} кг</span>`;
+    const rPills = item.now.map((s, idx) => {
+      const prev = item.prev && item.prev[idx];
+      let cls = '';
+      if (delta.weightDelta > 0) cls = (!prev || s[1] > prev[1]) ? 'grew' : 'tonal-up';
+      else if (delta.weightDelta === 0 && item.prev) {
+        if (!prev || s[1] > prev[1]) cls = 'grew';
+        else if (s[1] < prev[1]) cls = 'dipped';
+        else if (delta.kind === 'up') cls = 'tonal-up';
+      }
+      return `<span class="mix-rep-pill ${cls}">${s[1]}</span>`;
+    }).join('');
+    return wTag + rPills;
+  };
+
+  const renderMixCard = (item, delta, showNextHint) => {
+    const pillText = delta.kind === 'same' ? '='
+      : (delta.shortNum ? `<span class="n">${delta.shortNum}</span> ${delta.shortUnit}` : delta.primary);
+    const prevLine = item.prev && delta.kind !== 'same'
+      ? `<div class="sum-a-prev" style="margin-top:6px">Было: ${formatSetsInline(item, 'prev')}${delta.secondary ? ' (' + delta.secondary + ')' : ''}</div>` : '';
+    const nextHint = (showNextHint && state.loadPromptsEnabled && item.nextDir && !item.isLive)
+      ? `<div class="sum-a-next-hint ${item.nextDir}">${arrowDirSvg(item.nextDir, 13)}<span>${item.nextDir === 'up' ? 'В следующий раз можно попробовать тяжелее' : '2 раза ниже цели — можно попробовать легче'}</span></div>` : '';
+    return `<article class="mix-card ${delta.kind === 'up' ? 'is-up' : ''} ${item.isLive ? 'is-live' : ''}"><div class="sum-a-top"><div class="sum-a-name">${item.name}</div><span class="delta-pill ${delta.kind}">${pillText}</span></div><div class="mix-pills-row">${renderMixPills(item, delta)}</div>${prevLine}${nextHint}</article>`;
+  };
+
+  if (state.variant === 'FINAL' || state.variant === 'M1' || state.variant === 'M2') {
+    const heroParts = [];
+    if (totalRepsGain > 0) heroParts.push(`<span class="sum-c-hero-metric">+${totalRepsGain}<small>${repWord(totalRepsGain)}</small></span>`);
+    if (maxWeightGain > 0) heroParts.push(`<span class="sum-c-hero-metric">+${fmtNum(maxWeightGain)}<small>кг макс.</small></span>`);
+    if (heroParts.length === 0) heroParts.push(`<span class="sum-c-hero-metric" style="color:var(--f-text)">${totalSets}<small>подходов</small></span>`);
+    const hero = `<div class="sum-c-hero"><div class="sum-c-hero-eyebrow">Сравнение с ${sc.compareBase}</div><div class="sum-c-hero-big">${heroParts.join('')}</div></div>`;
+    if (state.variant === 'M1') {
+      bodyHtml = hero + `<div class="sum-a-list">` + computed.map(({ item, delta }) => renderMixCard(item, delta, true)).join('') + `</div>`;
+    } else {
+      const wins = computed.filter(x => x.delta.kind === 'up');
+      const rest = computed.filter(x => x.delta.kind !== 'up');
+      bodyHtml = hero +
+        (wins.length ? `<div class="sum-c-sec-title">Есть прогресс · ${wins.length}</div><div class="sum-a-list">${wins.map(({ item, delta }) => renderMixCard(item, delta, false)).join('')}</div>` : '') +
+        (rest.length ? `<div class="sum-c-sec-title">Остальные упражнения · ${rest.length}</div><div class="sum-a-list">${rest.map(({ item, delta }) => renderMixCard(item, delta, false)).join('')}</div>` : '');
+    }
+  } else if (state.variant === 'A') {
+    bodyHtml = `<div class="sum-a-list">` + computed.map(({ item, delta }) => {
+      const pillText = delta.kind === 'same'
+        ? '='
+        : (delta.shortNum ? `<span class="n">${delta.shortNum}</span> ${delta.shortUnit}` : delta.primary);
+      const secondaryNote = delta.secondary ? ` (${delta.secondary})` : '';
+      const prevLine = item.prev && delta.kind !== 'same'
+        ? `<div class="sum-a-prev">Было: ${formatSetsInline(item, 'prev')}${secondaryNote}</div>`
+        : '';
+      const nextHint = (state.loadPromptsEnabled && item.nextDir && !item.isLive)
+        ? `<div class="sum-a-next-hint ${item.nextDir}">
+             ${arrowDirSvg(item.nextDir, 13)}
+             <span>${item.nextDir === 'up' ? 'В следующий раз можно попробовать тяжелее' : '2 раза ниже цели — можно попробовать легче'}</span>
+           </div>`
+        : '';
+      return `
+        <article class="sum-a-card ${item.isLive ? 'is-live' : ''}">
+          <div class="sum-a-top">
+            <div class="sum-a-name">${item.name}</div>
+            <span class="delta-pill ${delta.kind}">${pillText}</span>
+          </div>
+          <div class="sum-a-sets"><span class="val">${formatSetsInline(item, 'now')}</span></div>
+          ${prevLine}
+          ${nextHint}
+        </article>`;
+    }).join('') + `</div>`;
+  } else if (state.variant === 'B') {
+    bodyHtml = `
+      <div class="sum-b-kpi">
+        <div class="sum-b-tile">
+          <div class="big">${totalSets}</div>
+          <div class="lbl">Подходов</div>
+        </div>
+        <div class="sum-b-tile accent">
+          <div class="big">${grewCount}/${items.length}</div>
+          <div class="lbl">С ростом</div>
+        </div>
+        <div class="sum-b-tile">
+          <div class="big">42<span style="font-family:Inter;font-size:12px;font-weight:600;margin-left:2px">м</span></div>
+          <div class="lbl">Длительность</div>
+        </div>
+      </div>
+      <div class="sum-b-list">` + computed.map(({ item, delta }) => {
+      const badge = delta.kind === 'first'
+        ? `<span class="delta-pill first">Впервые</span>`
+        : delta.kind === 'same'
+          ? `<span class="delta-pill same">Без изменений</span>`
+          : `<span class="delta-pill ${delta.kind}">${arrowDirSvg(delta.kind, 12)} <span class="n">${delta.shortNum}</span> ${delta.shortUnit}</span>`;
+      const compareBox = item.prev
+        ? `<div class="sum-b-compare">
+             <div class="sum-b-col">
+               <div class="sum-b-col-lbl">Прошлый раз</div>
+               <div class="sum-b-col-val">${formatSetsInline(item, 'prev')}</div>
+               ${item.type === 'wr' ? `<div class="sum-b-col-sum">Сумма: ${delta.prevSum} повт.</div>` : ''}
+             </div>
+             <div class="sum-b-arrow ${delta.kind}">→</div>
+             <div class="sum-b-col now">
+               <div class="sum-b-col-lbl">Сегодня</div>
+               <div class="sum-b-col-val">${formatSetsInline(item, 'now')}</div>
+               ${item.type === 'wr' ? `<div class="sum-b-col-sum">Сумма: ${delta.nowSum} повт.${delta.secondary ? ' · ' + delta.secondary : ''}</div>` : ''}
+             </div>
+           </div>`
+        : `<div class="sum-b-compare" style="grid-template-columns:1fr">
+             <div class="sum-b-col now">
+               <div class="sum-b-col-lbl">Записано сегодня</div>
+               <div class="sum-b-col-val">${formatSetsInline(item, 'now')}</div>
+             </div>
+           </div>`;
+      return `
+        <article class="sum-b-card ${item.isLive ? 'is-live' : ''}">
+          <div class="sum-b-head">
+            <div class="sum-b-name">${item.name}</div>
+            ${badge}
+          </div>
+          ${compareBox}
+        </article>`;
+    }).join('') + `</div>`;
+  } else {
+    // Variant C: Hero delta + grouped by progress vs other
+    const wins = computed.filter(x => x.delta.kind === 'up');
+    const rest = computed.filter(x => x.delta.kind !== 'up');
+    const heroParts = [];
+    if (totalRepsGain > 0) heroParts.push(`<span class="sum-c-hero-metric">+${totalRepsGain}<small>${repWord(totalRepsGain)}</small></span>`);
+    if (maxWeightGain > 0) heroParts.push(`<span class="sum-c-hero-metric">+${fmtNum(maxWeightGain)}<small>кг макс.</small></span>`);
+    if (heroParts.length === 0) heroParts.push(`<span class="sum-c-hero-metric" style="color:var(--f-text)">${totalSets}<small>подходов записано</small></span>`);
+
+    const winsHtml = wins.length > 0
+      ? `<div class="sum-c-sec-title">Есть прогресс · ${wins.length}</div>
+         <div class="sum-c-wins">` + wins.map(({ item, delta }) => {
+          const pills = item.type === 'wr'
+            ? `<span class="sum-c-weight-tag">${fmtNum(item.now[0][0])} кг</span>` +
+              item.now.map((s, idx) => {
+                const prevRep = item.prev && item.prev[idx] ? item.prev[idx][1] : null;
+                const grew = delta.weightDelta > 0 || (prevRep !== null && s[1] > prevRep);
+                return `<span class="sum-c-rep-pill ${grew ? 'grew' : ''}">${s[1]}</span>`;
+              }).join('')
+            : `<span class="sum-c-weight-tag">${formatSetsInline(item, 'now')}</span>`;
+          return `
+            <article class="sum-c-win-card ${item.isLive ? 'is-live' : ''}">
+              <div class="sum-c-win-top">
+                <div class="sum-a-name">${item.name}</div>
+                <span class="delta-pill up"><span class="n">${delta.shortNum}</span> ${delta.shortUnit}</span>
+              </div>
+              <div class="sum-c-set-pills">${pills}</div>
+              <div class="sum-a-prev" style="margin-top:6px">Было: ${formatSetsInline(item, 'prev')}${delta.secondary ? ' (' + delta.secondary + ')' : ''}</div>
+            </article>`;
+        }).join('') + `</div>`
+      : '';
+
+    const restHtml = rest.length > 0
+      ? `<div class="sum-c-sec-title">Остальные упражнения · ${rest.length}</div>
+         <div class="sum-c-rest-box">` + rest.map(({ item, delta }) => {
+          const pill = delta.kind === 'same'
+            ? `<span class="delta-pill same">=</span>`
+            : delta.kind === 'first'
+              ? `<span class="delta-pill first">Впервые</span>`
+              : `<span class="delta-pill down"><span class="n">${delta.shortNum}</span> ${delta.shortUnit}</span>`;
+          return `
+            <div class="sum-c-rest-row">
+              <div class="sum-c-rest-left">
+                <div class="sum-c-rest-name">${item.name}</div>
+                <div class="sum-c-rest-meta">${formatSetsInline(item, 'now')}</div>
+              </div>
+              ${pill}
+            </div>`;
+        }).join('') + `</div>`
+      : '';
+
+    bodyHtml = `
+      <div class="sum-c-hero">
+        <div class="sum-c-hero-eyebrow">Сравнение с ${sc.compareBase}</div>
+        <div class="sum-c-hero-big">${heroParts.join('')}</div>
+      </div>
+      ${winsHtml}
+      ${restHtml}`;
+  }
+
+  const phone = document.getElementById('phone-summary');
+  phone.innerHTML = `
+    <div class="f-status" aria-hidden="true">
+      <span>19:22</span>
+      <span class="muted">5G · 76%</span>
+    </div>
+    <div class="sum-header">
+      <div class="sum-kicker">
+        <span>Тренировка завершена</span>
+        <span class="date">Сегодня · 42 мин</span>
+      </div>
+      <h2 class="sum-title">${sc.dayTitle}</h2>
+      <div class="sum-sub">
+        <span>Базовая силовая</span>
+        <span>·</span>
+        <span>Сравнение с ${sc.compareBase}</span>
+      </div>
+    </div>
+    <div class="phone-scroll">${bodyHtml}</div>
+    <div class="sum-footer">
+      <button type="button" class="sum-btn-secondary">В историю</button>
+      <button type="button" class="sum-btn-primary">Готово</button>
+    </div>
+  `;
+}
+
+/* ==================== RENDER CHROME & STATE INSPECTOR ==================== */
+function renderChrome(sc) {
+  const vObj = VARIANTS.find(v => v.key === state.variant);
+  document.getElementById('sw-label').innerHTML =
+    `<span class="proto-sw-key">${vObj.key}</span>${vObj.name}<span class="proto-sw-hint">← / →</span>`;
+
+  document.getElementById('variant-blurb').innerHTML = `
+    <div><strong>Тренировка:</strong> ${vObj.workoutIdea}</div>
+    <div><strong>Итоги:</strong> ${vObj.summaryIdea}</div>`;
+
+  const toggleBtn = document.getElementById('prompts-toggle');
+  toggleBtn.setAttribute('aria-pressed', String(state.loadPromptsEnabled));
+  document.getElementById('prompts-toggle-text').textContent = state.loadPromptsEnabled ? 'вкл.' : 'выкл.';
+
+  document.querySelectorAll('#view-tabs button').forEach(btn => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.view === state.view));
+  });
+  document.getElementById('col-workout').classList.toggle('is-hidden', state.view === 'summary');
+  document.getElementById('col-summary').classList.toggle('is-hidden', state.view === 'workout');
+
+  const sets = getSets();
+  const promptVisible = state.loadPromptsEnabled && !!sc.prompt && sets.length === 0 && !(['FINAL', 'B', 'M1'].includes(state.variant) && state.stripDismissed);
+  document.getElementById('state-grid').innerHTML = `
+    <div class="state-item"><b>Вариант</b><span>${vObj.key} · ${vObj.name}</span></div>
+    <div class="state-item"><b>Подсказки по нагрузке (Settings)</b><span>${state.loadPromptsEnabled ? 'Включены' : 'Выключены — советы скрыты, Set suggestion сохранён'}</span></div>
+    <div class="state-item"><b>Подсказка прогрессии сейчас</b><span>${promptVisible ? (sc.prompt.dir === 'up' ? 'Прибавить вес (без кг)' : 'Снизить вес (без кг)') : (sets.length > 0 ? 'Скрыта после записи подхода 1' : 'Нет активного триггера / выкл.')}</span></div>
+    <div class="state-item"><b>Записано в тренировке</b><span>${sets.length > 0 ? sets.map(p => fmtNum(p[0]) + '×' + p[1]).join(', ') + ' (итоги обновлены вживую)' : '0 подходов (в строке 1 — Set suggestion ' + fmtNum(sc.suggestion[0]) + ' × ' + sc.suggestion[1] + ')'}</span></div>
+    <div class="state-item" style="grid-column:1/-1"><b>Правило сценария</b><span>${sc.ruleNote}</span></div>
+  `;
+}
+
+function setVariant(nextKey) {
+  state.variant = nextKey;
+  state.chipExpanded = false;
+  state.stripDismissed = false;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('variant', nextKey);
+    history.replaceState(null, '', u);
+  } catch {}
+  renderAll();
+}
+
+function cycleVariant(dir) {
+  const keys = VARIANTS.map(v => v.key);
+  const idx = keys.indexOf(state.variant);
+  const next = keys[(idx + dir + keys.length) % keys.length];
+  setVariant(next);
+}
+
+function renderAll() {
+  const sc = getScenario();
+  renderChrome(sc);
+  renderWorkout(sc);
+  renderSummary(sc);
+}
+
+// Init scenario select
+const scenarioSelect = document.getElementById('scenario-select');
+SCENARIOS.forEach(s => {
+  const opt = document.createElement('option');
+  opt.value = s.id;
+  opt.textContent = s.label;
+  scenarioSelect.appendChild(opt);
+});
+scenarioSelect.value = state.scenarioId;
+scenarioSelect.onchange = () => {
+  state.scenarioId = scenarioSelect.value;
+  state.typedW = '';
+  state.typedR = '';
+  state.chipExpanded = false;
+  state.stripDismissed = false;
+  state.selectedLoggedIdx = null;
+  renderAll();
+};
+
+document.getElementById('prompts-toggle').onclick = () => {
+  state.loadPromptsEnabled = !state.loadPromptsEnabled;
+  renderAll();
+};
+
+document.getElementById('reset-sets-btn').onclick = () => {
+  state.setsByScenario[state.scenarioId] = [];
+  state.extraRowsByScenario[state.scenarioId] = 0;
+  state.typedW = '';
+  state.typedR = '';
+  state.chipExpanded = false;
+  state.stripDismissed = false;
+  state.selectedLoggedIdx = null;
+  renderAll();
+};
+
+document.getElementById('view-tabs').onclick = e => {
+  const btn = e.target.closest('button[data-view]');
+  if (!btn) return;
+  state.view = btn.dataset.view;
+  renderAll();
+};
+
+document.getElementById('sw-prev').onclick = () => cycleVariant(-1);
+document.getElementById('sw-next').onclick = () => cycleVariant(1);
+
+document.addEventListener('keydown', e => {
+  const tag = e.target && e.target.tagName;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (e.target && e.target.isContentEditable)) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); cycleVariant(-1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); cycleVariant(1); }
+});
+
+// Auto-switch to workout tab on narrow viewports so first load fits cleanly
+if (window.innerWidth < 840) {
+  state.view = 'workout';
+}
+
+renderAll();
+</script>
+</body>
+</html>
