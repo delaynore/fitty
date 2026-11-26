@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #102, #104, #106.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #102, #104, #105, #106.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -347,7 +347,50 @@
   .prog-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(221, 255, 152, 0.48); }
   .prog-dot.done { background: var(--load-heavy); border-color: var(--load-heavy); }
   .prog-dot.done.light { background: var(--load-light); border-color: var(--load-light); }
+  .prog-dot.active-run { border-color: var(--f-primary); background: rgba(197, 250, 85, 0.35); }
   .prog-dot.skipped { background: transparent; border-style: dashed; opacity: 0.65; }
+
+  /* Approved compact A2 Hero card for In-progress workout on Home (#105) */
+  .live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); flex: none;
+    box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); animation: livePulse 2s ease-out infinite;
+  }
+  @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); } 70% { box-shadow: 0 0 0 5px rgba(197, 250, 85, 0); } 100% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0); } }
+  .hero-a2 {
+    background: linear-gradient(155deg, #192415 0%, #141914 72%);
+    border: 1.5px solid var(--f-primary-border); border-radius: 20px;
+    padding: 13px 15px 14px; margin-bottom: 12px;
+  }
+  .hero-a2.accent-light { background: linear-gradient(155deg, #132531 0%, #141914 72%); border-color: var(--load-light-border); }
+  .hero-a2.accent-ease { background: linear-gradient(155deg, #211932 0%, #141914 72%); border-color: var(--load-ease-border); }
+  .a2-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
+  .a2-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: 0.55px; color: var(--f-on-primary-container); }
+  .a2-cancel-btn { border: 0; background: transparent; padding: 5px 8px; margin: -5px -8px -5px 0; border-radius: 8px; color: var(--f-error); font-size: 12px; font-weight: 600; line-height: 1; display: inline-flex; align-items: center; opacity: 0.9; }
+  .a2-cancel-btn:hover { background: rgba(255, 180, 171, 0.1); opacity: 1; }
+  .a2-head { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .a2-id { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .a2-day { font-size: 23px; line-height: 1.06; color: var(--f-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .a2-load-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; line-height: 16px; color: var(--f-muted); }
+  .a2-load-row .lamp-group { height: 16px; }
+  .a2-timer-tile { flex: none; min-width: 84px; padding: 7px 11px; border-radius: 13px; background: rgba(11, 14, 11, 0.56); border: 1px solid rgba(197, 250, 85, 0.24); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+  .a2-timer-tile.is-ex { background: rgba(197, 250, 85, 0.14); border-color: var(--f-primary); }
+  .a2-timer-lbl { font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: 0.45px; text-transform: uppercase; color: var(--f-muted); }
+  .a2-timer-tile.is-ex .a2-timer-lbl { color: var(--f-on-primary-container); }
+  .a2-timer-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 26px; line-height: 0.96; color: var(--f-primary); font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+  .a2-prog-wrap { margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+  .a2-prog-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .a2-ex-cur { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 6px; font-size: 13px; line-height: 1.25; color: var(--f-text); font-weight: 500; }
+  .a2-ex-step { flex: none; font-size: 12px; font-weight: 600; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .a2-ex-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .a2-sets-count { flex: none; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--f-on-primary-container); font-variant-numeric: tabular-nums; }
+  .h-segs { display: flex; gap: 4px; margin-top: 7px; }
+  .h-seg { flex: 1; height: 3.5px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); }
+  .h-seg.done { background: var(--f-primary); }
+  .h-seg.cur { background: rgba(197, 250, 85, 0.45); }
+  .a2-cta { margin-top: 12px; min-height: 46px; }
+  .ex-pill-done { background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+  .ex-pill-cur { background: rgba(197, 250, 85, 0.14); color: var(--f-primary); border: 1px solid var(--f-primary-border); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+  .browse-lock-note { margin-top: 10px; padding: 9px 12px; border-radius: 13px; background: var(--f-surface); color: var(--f-dim); font-size: 11.5px; line-height: 1.35; text-align: center; }
 
   /* Readiness check-in card (#101) */
   .rc-card {
@@ -417,7 +460,9 @@
   .f-day-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .f-day-chip.selected { border: 0; background: var(--f-primary); color: var(--f-on-primary); }
   .f-day-chip.selected.theme-light { background: var(--load-light); color: #07202D; }
+  .f-day-chip.selected.browse-muted { background: var(--f-surface-hi); color: var(--f-text); border: 1.5px solid var(--f-outline-hi); }
   .f-day-chip.done:not(.selected) { background: #172115; border-color: #2E4222; color: #C7DBAE; }
+  .f-day-chip.running:not(.selected) { background: #172213; border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
   .f-day-chip.skipped:not(.selected) { background: #141714; border-style: dashed; border-color: #2D342C; color: #8D988A; }
   .f-day-chip.skipped:not(.selected) .chip-name { text-decoration: line-through; text-decoration-color: #657063; }
   .chip-mark {
@@ -455,6 +500,8 @@
     flex: 1; min-width: 0; font-size: 15px; font-weight: 500; line-height: 20px; color: var(--f-text);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
   }
+  .home-ex-row.is-done .home-ex-name { color: var(--f-muted); }
+  .home-ex-row.is-cur .home-ex-name { color: var(--f-on-primary-container); font-weight: 600; }
 
   /* ==================== WORKOUT SCREEN (Baseline board 03/07/16/17/19 + #79/#82/#83/#89/#99/#101) ==================== */
   .f-topbar { display: flex; align-items: center; gap: 6px; height: 44px; flex: none; }
@@ -695,6 +742,10 @@
   .f-sheet-confirm { border: 0; border-radius: 999px; min-height: 46px; font-size: 14.5px; font-weight: 700; background: var(--f-warn); color: #231B04; width: 100%; }
   .f-sheet-tonal { border: 0; border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: var(--f-primary-container); color: var(--f-on-primary-container); width: 100%; }
   .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-sheet-summary { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--f-text); }
+  .f-sheet-summary-sub { font-size: 12px; color: var(--f-muted); }
+  .f-sheet-warn { background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error); border-radius: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.38; }
+  .f-sheet-danger { width: 100%; min-height: 46px; border-radius: 999px; border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase; }
 
   /* Exact baseline All Exercises sheet row (board 21) */
   .allex-row {
@@ -1055,6 +1106,7 @@
     feather: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 00-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
     scale: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M4 7h16M7 7l-3 7h6zM17 7l-3 7h6z"/></svg>',
     flag: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+    play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13l11-6.5z"/></svg>',
     stopSq: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>',
     trendUp: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
     trendDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></svg>',
@@ -1204,7 +1256,7 @@
     return {
       hostMode: 'interactive', width: 390, screen: 'home', preset: 'mid_heavy',
       alternating: true, passNumber: 2, proposedWeek: 'heavy', currentWeek: 'heavy',
-      dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A',
+      dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A', activeWorkoutDayId: null,
       longNames: false, checkinEnabled: true, loadPromptsEnabled: true,
       checkinAnswer: 'none', easeMode: 'none', sessionMarkedLightened: false,
       exIndex: 0,
@@ -1265,26 +1317,102 @@
       dirty = true;
     }
     if (st.plankRunning) { st.plankElapsed++; dirty = true; }
-    if (dirty && (st.screen === 'workout' || st.screen === 'lock')) {
+    if (dirty && (st.screen === 'workout' || st.screen === 'lock' || (st.screen === 'home' && st.activeWorkoutDayId))) {
       if (st.screen === 'workout' && (st.restGuardArmed || Date.now() < st.ringPulseUntil)) {
         const tEl = document.getElementById('live-rest-time'), hEl = document.getElementById('live-hint-time');
         if (tEl) tEl.textContent = fmtSec(st.restLeft);
         if (hEl) hEl.textContent = fmtSec(st.restLeft);
-      } else {
+      } else if (!st.sheet) {
         renderLive();
       }
     }
   }, 1000);
+
+  const setWord = n => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'подход';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'подхода';
+    return 'подходов';
+  };
 
   /* ==================== HOME SCREEN ==================== */
   function renderHomeHTML(s) {
     const p = passInfo(s), locked = isWeekLocked(s), wk = activeWeekKey(s), isLight = wk === 'light';
     const day = getDay(s), daySt = s.alternating ? (s.dayStatus[day.id] || 'todo') : 'todo';
     const progName = s.longNames ? 'Базовая силовая программа на 3 дня с чередованием нагрузки' : 'Базовая силовая';
+    const hasActive = !!s.activeWorkoutDayId;
+    const activeDay = hasActive ? (DAYS.find(d => d.id === s.activeWorkoutDayId) || DAYS[0]) : null;
+    const isViewingActive = hasActive && day.id === activeDay.id;
+    const activeIsEased = s.easeMode !== 'none' || s.sessionMarkedLightened;
+
+    let heroHtml = '';
+    let activeTotalSets = 0;
+    if (hasActive) {
+      const exList = activeDay.exercises;
+      const curIdx = Math.min(s.exIndex, exList.length - 1);
+      const curEx = exList[curIdx];
+      let doneEx = 0;
+      const segs = exList.map((ex, idx) => {
+        const loggedCnt = (s.logged[ex.id] || []).length;
+        activeTotalSets += loggedCnt;
+        const planSets = effectivePlan(ex, wk, s.easeMode).sets;
+        const isDone = loggedCnt >= planSets;
+        if (isDone) doneEx++;
+        const cls = isDone ? 'done' : (idx === curIdx ? 'cur' : '');
+        return `<span class="h-seg ${cls}"></span>`;
+      }).join('');
+
+      const lamps = renderLamps(s.alternating ? wk : null, activeIsEased);
+      const loadParts = [];
+      if (s.alternating) loadParts.push(weekLabel(wk));
+      if (activeIsEased) loadParts.push('Облегчена');
+      const loadLine = (lamps || loadParts.length)
+        ? `<div class="a2-load-row">${lamps}${loadParts.length ? `<span>${loadParts.join(' · ')}</span>` : ''}</div>`
+        : '';
+
+      let timerTile = '';
+      const plankEx = exList.find(e => e.type === 'duration');
+      if (s.plankRunning && plankEx) {
+        const pPlan = effectivePlan(plankEx, wk, s.easeMode);
+        const targetSec = Math.max(0, pPlan.sec + s.plankOffset);
+        const isOver = targetSec > 0 && s.plankElapsed > targetSec;
+        const tDisp = targetSec === 0 ? fmtSec(s.plankElapsed) : isOver ? `+${fmtSec(s.plankElapsed - targetSec)}` : fmtSec(targetSec - s.plankElapsed);
+        timerTile = `<div class="a2-timer-tile is-ex"><span class="a2-timer-lbl">${isOver ? 'Цель ✓' : 'Планка'}</span><span class="a2-timer-num">${tDisp}</span></div>`;
+      } else if (s.restRunning) {
+        timerTile = `<div class="a2-timer-tile"><span class="a2-timer-lbl">Отдых</span><span class="a2-timer-num">${fmtSec(s.restLeft)}</span></div>`;
+      }
+
+      const heroAccent = activeIsEased ? 'accent-ease' : isLight ? 'accent-light' : '';
+      heroHtml = `
+        <div class="hero-a2 ${heroAccent}">
+          <div class="a2-top">
+            <span class="a2-kicker"><span class="live-dot"></span><span>Идёт тренировка</span></span>
+            <button class="a2-cancel-btn" data-act="open-sheet" data-v="cancel_workout" type="button">Отменить</button>
+          </div>
+          <div class="a2-head">
+            <div class="a2-id">
+              <div class="d a2-day">${dayDisplayName(activeDay, s)}</div>
+              ${loadLine}
+            </div>
+            ${timerTile}
+          </div>
+          <div class="a2-prog-wrap">
+            <div class="a2-prog-row">
+              <div class="a2-ex-cur">
+                <span class="a2-ex-step">${curIdx + 1}/${exList.length}</span>
+                <span class="a2-ex-name">${exDisplayName(curEx, s)}</span>
+              </div>
+              <span class="a2-sets-count">${activeTotalSets === 0 ? '0 подходов' : `${activeTotalSets} ${setWord(activeTotalSets)}`}</span>
+            </div>
+            <div class="h-segs">${segs}</div>
+          </div>
+          <button class="pb a2-cta" data-act="resume-workout" type="button">${ICO.play}<span>Продолжить тренировку</span></button>
+        </div>`;
+    }
 
     let progFooter = '';
     if (s.alternating) {
-      if (!locked) {
+      if (!locked && !hasActive) {
         progFooter = `
           <div class="prog-week-divider">
             <div class="prog-week-meta"><span>Новый проход · ${p.total} дн.</span><span>Смена до старта</span></div>
@@ -1294,11 +1422,17 @@
             </div>
           </div>`;
       } else {
-        const dots = DAYS.map(d => `<span class="prog-dot ${s.dayStatus[d.id] || 'todo'} ${isLight ? 'light' : ''}"></span>`).join('');
+        const dots = DAYS.map(d => {
+          const dState = hasActive && d.id === activeDay.id && (s.dayStatus[d.id] || 'todo') === 'todo' ? 'active-run' : (s.dayStatus[d.id] || 'todo');
+          return `<span class="prog-dot ${dState} ${isLight ? 'light' : ''}"></span>`;
+        }).join('');
+        const lockText = !locked && hasActive
+          ? `${weekShort(wk)} · идёт 1-й день`
+          : weekLabel(wk);
         progFooter = `
           <div class="prog-week-divider">
             <button class="prog-locked-row" data-act="open-sheet" data-v="locked">
-              <span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICO.lock}${renderLamps(wk, false)}<span>${weekLabel(wk)}</span></span>
+              <span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICO.lock}${renderLamps(wk, false)}<span>${lockText}</span></span>
               <span class="prog-dots">${dots}<span style="margin-left:3px;font-weight:700">${p.resolved}/${p.total}</span></span>
             </button>
           </div>`;
@@ -1306,7 +1440,7 @@
     }
 
     let rcHtml = '';
-    if (s.checkinEnabled) {
+    if (s.checkinEnabled && !hasActive) {
       const isOk = s.checkinAnswer === 'ok', isTired = s.checkinAnswer === 'tired', isEased = isTired && s.easeMode !== 'none';
       const subtitle = isEased
         ? (s.easeMode === 'fewerSets' ? 'На сегодня: −1 подход в каждом упражнении' : 'На сегодня: легче подходы без изменения программы')
@@ -1339,27 +1473,45 @@
 
     const chips = DAYS.map(d => {
       const ds = s.alternating ? (s.dayStatus[d.id] || 'todo') : 'todo', sel = d.id === day.id;
-      const mark = ds === 'done' ? '<span class="chip-mark chip-mark-done">✓</span>' : ds === 'skipped' ? '<span class="chip-mark chip-mark-skip">⊘</span>' : '';
-      return `<button class="f-day-chip ${sel ? 'selected' : ''} ${sel && isLight ? 'theme-light' : ''} ${ds}" data-act="select-day" data-v="${d.id}"><span class="chip-name">${dayDisplayName(d, s)}</span>${mark}</button>`;
+      const isRunning = hasActive && d.id === activeDay.id;
+      const mark = isRunning
+        ? '<span class="live-dot"></span>'
+        : ds === 'done' ? '<span class="chip-mark chip-mark-done">✓</span>' : ds === 'skipped' ? '<span class="chip-mark chip-mark-skip">⊘</span>' : '';
+      const selCls = sel
+        ? (hasActive ? 'selected browse-muted' : `selected ${isLight ? 'theme-light' : ''}`)
+        : (isRunning ? 'running' : ds);
+      return `<button class="f-day-chip ${selCls}" data-act="select-day" data-v="${d.id}"><span class="chip-name">${dayDisplayName(d, s)}</span>${mark}</button>`;
     }).join('');
 
-    const dayRightAction = !s.alternating ? '' :
+    const dayRightAction = !s.alternating || hasActive ? (s.alternating && daySt === 'done' ? '<span style="font-size:12px;color:#A7CF64;font-weight:600;flex:none;white-space:nowrap">Выполнен в проходе</span>' : '') :
       daySt === 'todo' ? `<button class="f-ghost-btn" data-act="open-sheet" data-v="skip">${ICO.skip}<span>Пропустить день</span></button>` :
       daySt === 'skipped' ? `<button class="f-restore-pill" data-act="restore-day" data-v="${day.id}">Вернуть в неделю</button>` :
       '<span style="font-size:12px;color:#A7CF64;font-weight:600;flex:none;white-space:nowrap">Выполнен в проходе</span>';
 
-    const showCardHead = s.alternating || s.longNames || s.easeMode !== 'none';
+    const showCardHead = s.alternating || s.longNames || s.easeMode !== 'none' || hasActive;
     const cardHead = showCardHead ? `
       <div class="f-card-head">
         <div style="min-width:0;flex:1">
           <div class="f-card-head-title">${dayDisplayName(day, s)}</div>
-          <div class="f-card-head-meta"><span>${day.exercises.length} упр.</span>${renderLamps(s.alternating ? wk : null, s.easeMode !== 'none')}${s.easeMode !== 'none' ? '<span style="color:var(--load-ease-text)">Облегчён</span>' : ''}</div>
+          <div class="f-card-head-meta"><span>${day.exercises.length} упр.</span>${isViewingActive ? '<span style="color:var(--f-primary);font-weight:600">· идёт сейчас</span>' : `${renderLamps(s.alternating ? wk : null, !hasActive && s.easeMode !== 'none')}${!hasActive && s.easeMode !== 'none' ? '<span style="color:var(--load-ease-text)">Облегчён</span>' : ''}`}</div>
         </div>
         ${dayRightAction}
       </div>` : '';
 
     const rows = day.exercises.map((ex, i) => {
-      const plan = effectivePlan(ex, wk, s.easeMode);
+      const plan = effectivePlan(ex, wk, isViewingActive || !hasActive ? s.easeMode : 'none');
+      if (isViewingActive) {
+        const loggedCnt = (s.logged[ex.id] || []).length;
+        const isDone = loggedCnt >= plan.sets;
+        const isCur = i === Math.min(s.exIndex, day.exercises.length - 1) && !isDone;
+        const tagCls = plan.eased ? 'eased-target' : isLight ? 'light-target' : '';
+        const rightBadge = isDone
+          ? `<span class="ex-pill-done">${loggedCnt}/${plan.sets} ✓</span>`
+          : isCur
+            ? `<span class="ex-pill-cur">${loggedCnt}/${plan.sets} · сейчас</span>`
+            : `<span class="tag ${tagCls}">${plan.label}</span>`;
+        return `<div class="home-ex-row ${!showCardHead && i === 0 ? 'no-top' : ''} ${isDone ? 'is-done' : ''} ${isCur ? 'is-cur' : ''}"><span class="d home-ex-idx">0${i + 1}</span><span class="home-ex-name">${exDisplayName(ex, s)}</span>${rightBadge}</div>`;
+      }
       const tagCls = plan.eased ? 'eased-target' : isLight ? 'light-target' : '';
       return `<div class="home-ex-row ${!showCardHead && i === 0 ? 'no-top' : ''}"><span class="d home-ex-idx">0${i + 1}</span><span class="home-ex-name">${exDisplayName(ex, s)}</span><span class="tag ${tagCls}">${plan.label}</span></div>`;
     }).join('');
@@ -1370,15 +1522,29 @@
       : daySt === 'skipped' ? `Всё-таки начать · ${day.name}`
       : s.easeMode !== 'none' ? `Начать облегчённую · ${day.name}` : 'Начать тренировку';
 
+    const bottomActionHtml = !hasActive
+      ? `<button class="pb ${isLight ? 'theme-light' : ''} ${s.easeMode !== 'none' ? 'eased-cta' : ''}" style="margin-top:12px" data-act="start-workout">${ctaText}</button>`
+      : (!isViewingActive ? `<div class="browse-lock-note">Режим просмотра · чтобы начать ${day.name}, завершите или отмените текущую тренировку</div>` : '');
+
     let sheetHtml = '';
-    if (s.sheet === 'skip') {
+    if (s.sheet === 'cancel_workout' && hasActive) {
+      const hasTimer = s.restRunning || s.plankRunning;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Отменить тренировку?</h3><div class="f-sheet-summary"><strong style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${dayDisplayName(activeDay, s)} ${renderLamps(s.alternating ? wk : null, activeIsEased)}</strong><span class="f-sheet-summary-sub">${activeTotalSets === 0 ? 'Записанных подходов пока нет' : `Записано подходов: ${activeTotalSets} · они удалятся без сохранения в историю`}</span></div>${hasTimer ? `<div class="f-sheet-warn">${s.plankRunning ? 'Идущий таймер планки будет остановлен без записи подхода.' : 'Идущий таймер отдыха будет остановлен.'}</div>` : ''}<button class="f-sheet-danger" data-act="confirm-cancel-workout">Отменить тренировку</button><button class="f-sheet-cancel" data-act="close-sheet">Оставить тренировку</button></div></div>`;
+    } else if (s.sheet === 'skip') {
       const willFinish = p.todo === 1 && daySt === 'todo', nextW = weekLabel(oppWeek(s.currentWeek)).toLowerCase();
       sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Пропустить ${day.name} в этой неделе?</h3><p>День пропустится только в текущем проходе (${weekLabel(s.currentWeek).toLowerCase()}). В следующей тренировочной неделе он снова будет в плане.</p>${willFinish ? `<div class="f-sheet-callout">Это последний оставшийся день прохода. После пропуска текущая неделя завершится, и Fitty предложит <strong>${nextW}</strong> с Дня A.</div>` : ''}<button class="f-sheet-confirm" data-act="confirm-skip">Пропустить ${day.name}</button><button class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
     } else if (s.sheet === 'locked') {
-      const hint = s.currentWeek === 'light'
-        ? 'Если силы вернулись раньше — можно завершить лёгкую неделю досрочно и открыть новую тяжёлую.'
-        : 'Чтобы облегчить только одно занятие, используйте разовое облегчение. Если нужна полная разгрузка — можно завершить неделю досрочно.';
-      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>${weekLabel(s.currentWeek)} уже идёт</h3><p>Пройдено ${p.resolved} из ${p.total} дн. Вариант фиксируется на весь проход, чтобы сохранять чистую историю и подсказки.</p><p>${hint}</p><button class="f-sheet-tonal" data-act="open-sheet" data-v="confirm_end">Завершить неделю досрочно</button><button class="f-sheet-cancel" data-act="close-sheet">Понятно</button></div></div>`;
+      if (hasActive) {
+        const activeLockMsg = !locked
+          ? 'Сейчас запущена первая тренировка прохода — сменить вариант недели можно после её отмены.'
+          : 'Завершить неделю досрочно можно после того, как текущая тренировка будет завершена или отменена.';
+        sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>${weekLabel(s.currentWeek)} уже идёт</h3><p>${activeLockMsg}</p><button class="f-sheet-cancel" data-act="close-sheet">Понятно</button></div></div>`;
+      } else {
+        const hint = s.currentWeek === 'light'
+          ? 'Если силы вернулись раньше — можно завершить лёгкую неделю досрочно и открыть новую тяжёлую.'
+          : 'Чтобы облегчить только одно занятие, используйте разовое облегчение. Если нужна полная разгрузка — можно завершить неделю досрочно.';
+        sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>${weekLabel(s.currentWeek)} уже идёт</h3><p>Пройдено ${p.resolved} из ${p.total} дн. Вариант фиксируется на весь проход, чтобы сохранять чистую историю и подсказки.</p><p>${hint}</p><button class="f-sheet-tonal" data-act="open-sheet" data-v="confirm_end">Завершить неделю досрочно</button><button class="f-sheet-cancel" data-act="close-sheet">Понятно</button></div></div>`;
+      }
     } else if (s.sheet === 'confirm_end') {
       const nextW = weekLabel(oppWeek(s.currentWeek)).toLowerCase();
       sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Завершить ${weekLabel(s.currentWeek).toLowerCase()} досрочно?</h3><p>Выполненные дни останутся в истории как <strong>${weekShort(s.currentWeek).toLowerCase()}</strong>. Оставшиеся дни (${p.todo}) закроются, и откроется новый проход — Fitty предложит <strong>${nextW}</strong>.</p><button class="f-sheet-confirm" data-act="confirm-end-early">Завершить и перейти к новой неделе</button><button class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
@@ -1389,6 +1555,7 @@
     return `
       <div class="f-scroll-home">
         <h1 class="d home-h1"><span>Fitty</span></h1>
+        ${heroHtml}
         <div class="home-prog">
           <div class="home-prog-top">
             <div style="min-width:0;flex:1">
@@ -1400,10 +1567,10 @@
           ${progFooter}
         </div>
         ${rcHtml}
-        <div class="m d home-sec-title">${s.alternating ? `Тренировочный день · ${p.todo} осталось` : `Тренировочный день · ${DAYS.length}`}</div>
+        <div class="m d home-sec-title">${hasActive ? 'Дни программы · просмотр' : s.alternating ? `Тренировочный день · ${p.todo} осталось` : `Тренировочный день · ${DAYS.length}`}</div>
         <div class="sc">${chips}</div>
         <div class="cd home-ex-card">${cardHead}${rows}</div>
-        <button class="pb ${isLight ? 'theme-light' : ''} ${s.easeMode !== 'none' ? 'eased-cta' : ''}" style="margin-top:12px" data-act="start-workout">${ctaText}</button>
+        ${bottomActionHtml}
       </div>
       ${snackHtml}
       <nav class="f-nav">
@@ -1968,6 +2135,7 @@
     ].map(([k, lbl, col]) => `<button type="button" class="cbtn ${st.preset === k ? 'active' : ''}" data-host="preset" data-v="${k}"><span class="cbtn-dot" style="background:${col}"></span>${lbl}</button>`).join('');
 
     document.getElementById('ctrl-toggles').innerHTML = [
+      ['activeWorkout', `Активная тренировка (#105): ${st.activeWorkoutDayId ? 'ВКЛ' : 'ВЫКЛ'}`, !!st.activeWorkoutDayId],
       ['checkin', `Опрос самочувствия: ${st.checkinEnabled ? 'ВКЛ' : 'ВЫКЛ'}`, st.checkinEnabled],
       ['prompts', `Подсказки по нагрузке: ${st.loadPromptsEnabled ? 'ВКЛ' : 'ВЫКЛ'}`, st.loadPromptsEnabled],
       ['longNames', `Длинные названия (#94): ${st.longNames ? 'ВКЛ' : 'ВЫКЛ'}`, st.longNames]
@@ -1999,7 +2167,7 @@
         const act = el.dataset.act, v = el.dataset.v;
         if (act === 'go-screen') { st.screen = v; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
         else if (act === 'set-week') { if (!isWeekLocked()) { st.currentWeek = v; st.snack = null; } }
-        else if (act === 'select-day') { st.selectedDay = v; st.exIndex = 0; st.snack = null; st.restGuardArmed = null; }
+        else if (act === 'select-day') { st.selectedDay = v; if (!st.activeWorkoutDayId) st.exIndex = 0; st.snack = null; st.restGuardArmed = null; }
         else if (act === 'set-checkin') {
           st.checkinAnswer = v;
           if (v === 'tired' && st.easeMode === 'none') st.easeMode = 'fewerSets';
@@ -2024,7 +2192,14 @@
           st.snack = { text: `${prevW} завершена досрочно` };
         }
         else if (act === 'undo-snack' && st.undoSnap) { Object.assign(st, st.undoSnap, { dayStatus: { ...st.undoSnap.dayStatus }, snack: null, undoSnap: null }); }
-        else if (act === 'start-workout') { st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.restGuardArmed = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
+        else if (act === 'start-workout') { st.activeWorkoutDayId = st.selectedDay; st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.restGuardArmed = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
+        else if (act === 'resume-workout' && st.activeWorkoutDayId) { st.selectedDay = st.activeWorkoutDayId; st.screen = 'workout'; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
+        else if (act === 'confirm-cancel-workout') {
+          st.activeWorkoutDayId = null; st.sheet = null; st.restRunning = false; st.plankRunning = false;
+          st.restGuardArmed = null; st.easeMode = 'none'; st.sessionMarkedLightened = false; st.checkinAnswer = 'none';
+          st.logged = { bench: [], row: [], incline: [], plank: [] };
+          st.snack = { text: 'Тренировка отменена' }; st.undoSnap = null;
+        }
         else if (act === 'dismiss-prompt') { st.dismissedPrompts[v] = true; }
         else if (act === 'log-set') {
           const ex = getEx(), plan = effectivePlan(ex, activeWeekKey(), st.easeMode), logged = st.logged[ex.id] || (st.logged[ex.id] = []), draft = st.drafts[ex.id] || { w: '', r: '' };
@@ -2090,6 +2265,7 @@
           const day = getDay();
           st.history.unshift({ date: '26 ноября 2026', time: '19:24', day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(), lightened: st.easeMode !== 'none' || st.sessionMarkedLightened });
           if (st.alternating) st.dayStatus[day.id] = 'done';
+          st.activeWorkoutDayId = null;
           st.screen = 'history';
         }
         else if (act === 'lock-cycle-plank') { const order = ['overtime', 'countdown', 'countup']; st.lockPlankState = order[(order.indexOf(st.lockPlankState) + 1) % order.length]; }
@@ -2185,9 +2361,10 @@
     const wCls = st.width === 360 ? 'w360' : '';
     const sections = [
       {
-        title: '1. Главная — база доски 02 + неделя (#98) + самочувствие (#101) + длинные имена (#94)',
-        sub: 'Точная типографика .d, безрамочная карточка упражнений, 64px навигация и единый голубой #5CC8FA для лёгкой недели',
+        title: '1. Главная — база доски 02 + активная сессия (#105) + неделя (#98) + самочувствие (#101) + длинные имена (#94)',
+        sub: 'Точная типографика .d, компактная Hero-карточка A2 при запущенной тренировке, безрамочная карточка упражнений, 64px навигация и единый голубой #5CC8FA для лёгкой недели',
         cards: [
+          { title: 'Главная · Активная тренировка (#105 · A2)', note: 'Компактная Hero-карточка наверху («Отменить» в шапке, лампы рядом с подписью, плитка таймера, живой прогресс в списке дня, опрос скрыт).', state: snap({ screen: 'home', activeWorkoutDayId: 'A', currentWeek: 'heavy', easeMode: 'fewerSets', sessionMarkedLightened: true, exIndex: 1, restRunning: true, restLeft: 102, logged: { bench: [{ w: '60', r: '12' }, { w: '60', r: '12' }], row: [{ w: '70', r: '8' }], incline: [], plank: [] }, dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A' }) },
           { title: 'Главная · Тяжёлая + Самочувствие раскрыто', note: 'Стык #98 + #101: зелёная карточка с 🔒 и точками + раскрытое облегчение + живой пересчёт целей.', state: snap({ screen: 'home', currentWeek: 'heavy', checkinAnswer: 'tired', easeMode: 'easier', dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A' }) },
           { title: 'Главная · Новый проход (0/3) · Лёгкая (#5CC8FA)', note: 'Стык #98 + #101: сегмент «Тяжёлая / Лёгкая» до старта с лампами и голубыми акцентами.', state: snap({ screen: 'home', currentWeek: 'light', proposedWeek: 'light', dayStatus: { A: 'todo', B: 'todo', C: 'todo' }, selectedDay: 'A' }) },
           { title: 'Главная · Чистый режим (как в базовом макете)', note: 'Чередование выкл., опрос выкл. — сверка 1-в-1 с исходной доской «Главная».', state: snap({ screen: 'home', alternating: false, checkinEnabled: false }) }
@@ -2276,6 +2453,7 @@
     if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; renderLive(); }
     else if (h === 'preset') { applyPreset(v); }
     else if (h === 'toggle') {
+      if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.sheet = null; }
       if (v === 'checkin') st.checkinEnabled = !st.checkinEnabled;
       if (v === 'prompts') st.loadPromptsEnabled = !st.loadPromptsEnabled;
       if (v === 'longNames') st.longNames = !st.longNames;
