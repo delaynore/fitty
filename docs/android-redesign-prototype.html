@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #102, #104, #105, #106, #113.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #102, #104, #105, #106, #113, #115/#116.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2919,6 +2919,10 @@
       if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.sheet = null; }
       if (v === 'checkin') st.checkinEnabled = !st.checkinEnabled;
       if (v === 'prompts') st.loadPromptsEnabled = !st.loadPromptsEnabled;
+      if (v === 'phoneSoundMode') {
+        const order = ['normal', 'vibrate', 'silent'];
+        st.phoneSoundMode = order[(order.indexOf(st.phoneSoundMode) + 1) % order.length];
+      }
       if (v === 'longNames') st.longNames = !st.longNames;
       renderLive();
     }
