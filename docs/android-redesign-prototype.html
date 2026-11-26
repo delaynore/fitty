@@ -1,0 +1,1899 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 Android — Сводный прототип (на базе android-design-system.html)</title>
+<!--
+  Consolidated living prototype built STRICTLY on the baseline CSS & components from
+  docs/android-design-system.html, layering ONLY explicitly approved decisions from
+  docs/android-redesign.md and closed tickets:
+    - Baseline preserved: .d uppercase display typography (Barlow Condensed for digits/latin +
+      bold uppercase Inter for Cyrillic), borderless #141914 cards, 64px borderless bottom nav,
+      280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
+      "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
+      Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 16px 16px 32px;
+  }
+
+  /* ==================== HOST SHELL (OUTSIDE PHONE) ==================== */
+  .shell { max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(24, 30, 22, 0.04);
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12.5px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 11px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active {
+    background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.14);
+  }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(300px, 1fr); gap: 20px; align-items: start;
+  }
+  @media (max-width: 860px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 460px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-hint-bar { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 14px 16px; box-shadow: 0 2px 8px rgba(24, 30, 22, 0.04);
+  }
+  .panel h2 {
+    margin: 0 0 10px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+  .cbtn.danger { color: var(--destructive, #B42318); border-color: var(--border, #E2BEBA); background: transparent; }
+  .cbtn-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  .junction-list { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--card-foreground, #364034); line-height: 1.48; }
+  .junction-list li { margin-bottom: 6px; }
+  .junction-list li:last-child { margin-bottom: 0; }
+  .junction-list code {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    font-size: 11px; background: var(--secondary, #EFF3EC); padding: 1px 5px; border-radius: 5px; color: var(--secondary-foreground, #1D261A);
+  }
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  .board-wrap { display: flex; flex-direction: column; gap: 22px; }
+  .board-section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border, #D4DAD0); padding-bottom: 6px;
+  }
+  .board-section-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--foreground, #1A2018); }
+  .board-section-head span { font-size: 12.5px; color: var(--muted-foreground, #5B6658); }
+  .board-grid { display: flex; flex-wrap: wrap; gap: 22px 20px; align-items: flex-start; }
+  .board-card { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+  .board-card-cap { max-width: 390px; display: flex; flex-direction: column; gap: 2px; }
+  .board-card-title { font-size: 13px; font-weight: 700; color: var(--foreground, #1B2219); }
+  .board-card-note { font-size: 11.5px; color: var(--muted-foreground, #5C6759); line-height: 1.35; }
+  .board-card-jump {
+    border: 0; background: transparent; padding: 0;
+    color: var(--primary, #2E5210); font: 600 11.5px var(--font-sans, Inter, sans-serif);
+    cursor: pointer; text-decoration: underline; align-self: flex-start; margin-top: 1px;
+  }
+  .hidden { display: none !important; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (EXACT BASELINE) ==================== */
+  .phone {
+    /* Baseline tokens from docs/android-design-system.html ("Основы") */
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-placeholder: #728070;
+    --f-disabled: #5A665A;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+
+    /* Approved semantic load colors (#101 unified across Home/Workout/Summary/History) */
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-border: #2A526B;
+    --load-light-text: #BFE9FF;
+    --load-ease: #C09BFF;
+    --load-ease-bg: #221933;
+    --load-ease-border: #55407D;
+    --load-ease-text: #E5D6FF;
+
+    /* Approved coaching amber (#99) & confirmation warn */
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+    --f-down-bg: #25221D;
+    --f-down-text: #D7B98E;
+    --f-warn: #F7D16B;
+    --f-warn-bg: #2C2514;
+    --f-warn-border: #594A22;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: "Barlow Condensed", Inter, sans-serif; }
+
+  /* Exact baseline display class (.d): Barlow Condensed for digits/latin, bold uppercase Inter for Cyrillic */
+  .d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .f-num-font {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .m { color: var(--f-muted); }
+
+  /* Exact baseline borderless card (.cd) */
+  .cd { background: var(--f-surface); border-radius: 20px; }
+
+  /* Exact baseline pill buttons (.pb / .ob) */
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pb.theme-light { background: var(--load-light); color: #07202D; }
+  .pb.eased-cta { box-shadow: inset 0 0 0 2px var(--load-ease); }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* Exact baseline tag (.tag) */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--f-chip); font-size: 13px; font-weight: 500; color: var(--f-muted);
+    white-space: nowrap; flex: none;
+  }
+  .tag.light-target { background: var(--load-light-bg); color: var(--load-light-text); box-shadow: inset 0 0 0 1px var(--load-light-border); }
+  .tag.eased-target { background: var(--load-ease-bg); color: var(--load-ease-text); box-shadow: inset 0 0 0 1px var(--load-ease-border); }
+  .tag-action {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 999px;
+    background: var(--f-primary-container); border: 1px solid var(--f-primary-border);
+    font-size: 13px; font-weight: 600; color: var(--f-on-primary-container);
+  }
+  .tag-action:hover { background: #3A4C20; }
+
+  /* Exact baseline bottom nav (.nav — 64px, radius 32px, borderless) */
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent;
+    display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center;
+    border-radius: 24px; color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  /* Exact baseline Workout status bar (only on workout screens, matches board 03/16/17) */
+  .f-wstatus {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; font-weight: 600; z-index: 6;
+    background: var(--f-bg);
+  }
+  .f-status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px; border-radius: 12px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-size: 12px; font-weight: 600;
+  }
+  .f-status-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--f-on-primary); }
+
+  /* Scroll containers */
+  .f-scroll-home { flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-home::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-home { padding: 12px 16px 88px; }
+
+  .f-scroll-work { flex: 1; overflow-y: auto; padding: 34px 20px 84px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-work::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-work { padding: 34px 15px 80px; }
+
+  /* Approved 8dp glowing "lamp" indicators (#101) */
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-ease  { background: var(--load-ease);  box-shadow: 0 0 9px rgba(192, 155, 255, 0.88); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+
+  /* ==================== HOME SCREEN (Baseline board 02 + #98 + #101 + #94) ==================== */
+  .home-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+  .home-prog {
+    background: var(--f-primary-container); border-radius: 18px;
+    padding: 14px 18px; color: var(--f-on-primary-container);
+  }
+  .home-prog-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .home-prog-name {
+    font-size: 22px; line-height: 1.15; margin-top: 2px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+
+  /* Embedded Training week footer (#98 + #101 lamps) */
+  .prog-week-divider { margin-top: 11px; padding-top: 10px; border-top: 1px solid rgba(221, 255, 152, 0.16); }
+  .prog-week-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: rgba(221, 255, 152, 0.8); margin-bottom: 6px; }
+  .prog-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: rgba(11, 14, 11, 0.42); border: 1px solid rgba(221, 255, 152, 0.14);
+    border-radius: 12px; padding: 3px;
+  }
+  .prog-seg-btn {
+    border: 0; border-radius: 9px; min-height: 34px; font-size: 12.5px; font-weight: 600;
+    background: transparent; color: rgba(240, 243, 234, 0.74);
+    display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px;
+  }
+  .prog-seg-btn.active-heavy { background: var(--f-primary); color: var(--f-on-primary); }
+  .prog-seg-btn.active-light { background: var(--load-light); color: #07202D; }
+
+  .prog-locked-row {
+    width: 100%; border: 0; background: transparent; padding: 0; color: inherit;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .prog-locked-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600;
+    background: rgba(11, 14, 11, 0.34); border: 1px solid rgba(221, 255, 152, 0.22); color: #EEFFCA;
+  }
+  .prog-locked-pill.is-light {
+    background: rgba(19, 37, 49, 0.88); border-color: rgba(92, 200, 250, 0.46); color: var(--load-light-text);
+  }
+  .prog-dots { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(221, 255, 152, 0.88); }
+  .prog-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(221, 255, 152, 0.48); }
+  .prog-dot.done { background: var(--load-heavy); border-color: var(--load-heavy); }
+  .prog-dot.done.light { background: var(--load-light); border-color: var(--load-light); }
+  .prog-dot.skipped { background: transparent; border-style: dashed; opacity: 0.65; }
+
+  /* Readiness check-in card (#101) */
+  .rc-card {
+    margin-top: 12px;
+    background: linear-gradient(135deg, #1B231A 0%, #1C1929 100%);
+    border: 1.5px solid #4A5A3E;
+    border-radius: 20px; padding: 12px 13px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  }
+  .rc-card.is-ok { background: linear-gradient(135deg, #1D2915 0%, #172014 100%); border-color: #6B8F2E; }
+  .rc-card.is-eased {
+    background: linear-gradient(135deg, #251B38 0%, #1D162C 100%);
+    border-color: var(--load-ease);
+    box-shadow: 0 0 0 1px rgba(192, 155, 255, 0.24), 0 6px 18px rgba(192, 155, 255, 0.14);
+  }
+  .rc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+  .rc-title-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .rc-ico {
+    width: 28px; height: 28px; border-radius: 10px; flex: none;
+    background: rgba(197, 250, 85, 0.14); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .is-eased .rc-ico { background: rgba(192, 155, 255, 0.2); color: var(--load-ease); }
+  .rc-title { font-size: 13.5px; font-weight: 700; color: var(--f-text); line-height: 1.2; }
+  .rc-sub { font-size: 11.5px; color: var(--f-muted); line-height: 1.25; margin-top: 1px; }
+  .rc-btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rc-choice {
+    min-height: 40px; padding: 0 10px; border-radius: 13px;
+    font-size: 12.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  }
+  .rc-choice-ok { background: #1C2716; border: 1.5px solid #445B26; color: #DCFA9F; }
+  .rc-choice-ok.selected { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+  .rc-choice-tired { background: #231B34; border: 1.5px solid #594483; color: #E4D4FF; }
+  .rc-choice-tired.selected { background: var(--load-ease); border-color: var(--load-ease); color: #190E2B; }
+  .rc-inline-modes { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(192, 155, 255, 0.24); display: grid; gap: 7px; }
+  .mode-card {
+    width: 100%; text-align: left; border-radius: 13px; padding: 9px 11px;
+    background: rgba(11, 14, 11, 0.65); border: 1.5px solid #43345F; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .mode-card.selected { background: rgba(192, 155, 255, 0.16); border-color: var(--load-ease); }
+  .mode-card-title { font-size: 13px; font-weight: 600; display: block; }
+  .mode-card-sub { font-size: 11.5px; color: var(--f-muted); display: block; margin-top: 1px; }
+  .mode-card.selected .mode-card-sub { color: var(--load-ease-text); }
+  .mode-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex: none;
+    border: 1.5px solid #6B5791; display: flex; align-items: center; justify-content: center;
+  }
+  .mode-card.selected .mode-radio { border-color: var(--load-ease); background: var(--load-ease); color: #1A102B; }
+  .rc-inline-reset { border: 0; background: transparent; color: var(--f-muted); font-size: 12px; font-weight: 600; padding: 3px 0 0; text-align: center; }
+
+  /* Day chips (exact baseline 44px, 18px .d uppercase + #98 marks + #94 max-width 220px) */
+  .home-sec-title { font-size: 14px; margin: 16px 0 8px; }
+  .sc {
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+    margin-right: -20px; padding-right: 20px;
+  }
+  .sc::-webkit-scrollbar { display: none; }
+  .f-day-chip {
+    flex: none; min-height: 44px; max-width: 220px; padding: 0 18px; border-radius: 14px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 18px;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .f-day-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .f-day-chip.selected { border: 0; background: var(--f-primary); color: var(--f-on-primary); }
+  .f-day-chip.selected.theme-light { background: var(--load-light); color: #07202D; }
+  .f-day-chip.done:not(.selected) { background: #172115; border-color: #2E4222; color: #C7DBAE; }
+  .f-day-chip.skipped:not(.selected) { background: #141714; border-style: dashed; border-color: #2D342C; color: #8D988A; }
+  .f-day-chip.skipped:not(.selected) .chip-name { text-decoration: line-through; text-decoration-color: #657063; }
+  .chip-mark {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 18px; height: 18px; border-radius: 50%; font-family: Inter, sans-serif; font-size: 11px; font-weight: 700;
+  }
+  .chip-mark-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .selected .chip-mark-done, .selected .chip-mark-skip { background: rgba(15, 25, 10, 0.16); color: inherit; }
+  .chip-mark-skip { background: #262C25; color: #9AA598; }
+
+  /* Exercise preview card (borderless .cd per baseline!) */
+  .home-ex-card { margin-top: 12px; padding: 0 16px; }
+  .f-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px 0 10px;
+  }
+  .f-card-head-title {
+    font-size: 14px; font-weight: 600; color: var(--f-text); line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .f-card-head-meta { font-size: 12px; color: var(--f-dim); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .f-ghost-btn {
+    border: 0; background: transparent; color: var(--f-muted);
+    font-size: 12.5px; font-weight: 500; padding: 5px 8px; border-radius: 9px;
+    display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+  }
+  .f-ghost-btn:hover { background: var(--f-chip); color: var(--f-text); }
+  .f-restore-pill {
+    border: 1px solid var(--f-outline); background: var(--f-chip); color: var(--f-text);
+    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; flex: none; white-space: nowrap;
+  }
+  .home-ex-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--f-chip); }
+  .home-ex-row.no-top { border-top: 0; }
+  .home-ex-idx { font-size: 16px; color: var(--f-dim); width: 22px; flex: none; }
+  .home-ex-name {
+    flex: 1; min-width: 0; font-size: 15px; font-weight: 500; line-height: 20px; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+
+  /* ==================== WORKOUT SCREEN (Baseline board 03/07/16/17/19 + #79/#82/#83/#89/#99/#101) ==================== */
+  .f-topbar { display: flex; align-items: center; gap: 6px; height: 44px; flex: none; }
+  .f-back-btn {
+    width: 30px; height: 30px; margin-left: -4px; border-radius: 50%; border: 0;
+    background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; padding: 0; flex: none;
+  }
+  .f-top-week {
+    display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+    font-size: 13px; font-weight: 500; color: var(--f-muted);
+  }
+  .f-top-week .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .f-top-right { margin-left: auto; display: flex; align-items: center; gap: 7px; flex: none; }
+  .ease-top-btn {
+    height: 30px; padding: 0 9px; border-radius: 999px;
+    border: 1px solid var(--f-outline); background: var(--f-surface-hi);
+    color: var(--f-text); font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .ease-top-btn.on { background: var(--load-ease-bg); border-color: var(--load-ease); color: var(--load-ease-text); }
+
+  /* Exercise header + 76x76 rest ring (exact baseline board 03/19 + #83 adaptive sizing) */
+  .f-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 8px; }
+  .f-title-btn {
+    flex: 1; min-width: 0; border: 0; background: transparent; padding: 0;
+    text-align: left; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .f-title-btn.sz-lg { font-size: 26px; line-height: 28px; }
+  .f-title-btn.sz-md { font-size: 21px; line-height: 24px; }
+  .f-title-btn.sz-sm { font-size: 18px; line-height: 21px; }
+
+  .f-rest-ring {
+    position: relative; width: 76px; height: 76px; border: 0; border-radius: 50%;
+    background: transparent; flex: none; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .f-rest-ring svg { position: absolute; left: 0; top: 0; }
+  .f-rest-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+
+  .f-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  /* Progression coaching strip (#99) */
+  .prog-strip {
+    margin: 9px 0 2px; padding: 10px 10px 10px 13px; border-radius: 14px;
+    background: var(--f-surface); position: relative;
+    display: flex; align-items: flex-start; gap: 9px; overflow: hidden;
+  }
+  .prog-strip::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
+  .prog-strip.up::before { background: var(--f-primary); }
+  .prog-strip.down::before { background: var(--f-amber); }
+  .prog-strip-ico { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; margin-top: 1px; }
+  .prog-strip.up .prog-strip-ico { background: var(--f-primary-container); color: var(--f-primary); }
+  .prog-strip.down .prog-strip-ico { background: var(--f-amber-container); color: var(--f-amber); }
+  .prog-strip-body { flex: 1; min-width: 0; }
+  .prog-strip-title { font-size: 13px; font-weight: 600; line-height: 1.28; }
+  .prog-strip.up .prog-strip-title { color: var(--f-on-primary-container); }
+  .prog-strip.down .prog-strip-title { color: var(--f-on-amber-container); }
+  .prog-strip-sub { margin-top: 2px; font-size: 12px; line-height: 1.34; color: var(--f-muted); }
+  .prog-strip-x {
+    width: 24px; height: 24px; border-radius: 50%; border: 0;
+    background: transparent; color: var(--f-dim); display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .ease-hint-note {
+    margin: 8px 0 2px; padding: 7px 10px; border-radius: 12px;
+    background: var(--load-ease-bg); border: 1px solid var(--load-ease-border);
+    color: var(--load-ease-text); font-size: 12px; line-height: 1.35;
+  }
+
+  /* Set table (exact baseline board 03 grid + #79 approved states) */
+  .f-col-head {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; font-size: 13px;
+    color: var(--f-muted); margin: 14px 0 4px; text-align: center;
+  }
+  .f-rows { display: grid; gap: 6px; }
+  .f-row {
+    display: grid; grid-template-columns: 32px 1fr 1fr 44px; gap: 8px;
+    align-items: center; padding: 0 6px 0 8px; min-height: 48px;
+    border-radius: 14px; text-align: center;
+  }
+  .f-row-active { min-height: 56px; }
+  .f-row-logged { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .f-row-future { opacity: 0.5; }
+  .f-num { width: 28px; height: 28px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .f-num-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .f-num-active { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+  .f-num-sugg { box-shadow: inset 0 0 0 1.5px var(--f-outline); color: var(--f-muted); }
+  .f-num-future { background: var(--f-chip); color: var(--f-dim); }
+
+  .f-in {
+    width: 100%; min-width: 0; height: 48px; border-radius: 14px;
+    background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 22px;
+    text-align: center; outline: none; padding: 0 6px;
+  }
+  .f-in::placeholder { color: var(--f-placeholder); opacity: 1; }
+  .f-in.is-sugg:placeholder-shown { border-style: dashed; border-color: var(--f-outline); background: #0F130F; }
+  .f-in.has-value { border-style: solid; border-color: var(--f-primary); color: var(--f-text); background: var(--f-bg); }
+  .f-in:focus { border-style: solid; border-color: var(--f-primary); background: var(--f-surface); }
+  .f-in-empty-future { height: 48px; border-radius: 14px; border: 1.5px solid var(--f-chip); background: var(--f-bg); }
+
+  .f-check-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; justify-self: center; }
+  .btn-tonal-sugg { background: var(--f-primary-container); border: 1.5px solid var(--f-primary-border); color: var(--f-primary); }
+  .btn-solid-save { background: var(--f-primary); border: 0; color: var(--f-on-primary); }
+  .btn-disabled { background: var(--f-chip); border: 0; color: var(--f-disabled); cursor: not-allowed !important; }
+  .done-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--f-badge-done); color: #9AD43D;
+    display: flex; align-items: center; justify-content: center; justify-self: center;
+  }
+
+  /* ==================== EXACT BASELINE PLANK TIMER (Boards 16 & 17 + #81 overtime) ==================== */
+  .plank-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 12px -20px 0 0; padding-right: 20px; }
+  .plank-chips::-webkit-scrollbar { display: none; }
+  .plank-chip {
+    flex: none; display: flex; align-items: center; height: 40px; padding: 0 16px;
+    border-radius: 20px; font-size: 17px;
+  }
+  .plank-chip.done { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .plank-chip.cur { box-shadow: inset 0 0 0 1.5px var(--f-primary); color: var(--f-primary); }
+
+  .plank-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 14px 0 6px;
+  }
+  .plank-stepper { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .st {
+    width: 44px; height: 44px; border-radius: 50%; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 22px;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .plank-ring-wrap { position: relative; width: 268px; height: 268px; margin: 0 auto; }
+  .phone.w360 .plank-ring-wrap { width: 238px; height: 238px; }
+  .plank-ring-wrap svg { width: 100%; height: 100%; display: block; }
+  .plank-start-btn {
+    position: absolute; inset: 22px; border-radius: 50%; border: 0;
+    background: var(--f-primary); color: var(--f-on-primary);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .plank-stop-btn {
+    position: absolute; inset: 22px; border-radius: 50%; border: 0;
+    background: var(--f-surface-hi); color: var(--f-text);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .plank-stop-btn.overtime { background: #1E2C16; box-shadow: inset 0 0 0 2px var(--f-primary); }
+
+  /* Exact baseline workout bottom bar (board 03 & 07) */
+  .f-bottom-nav {
+    position: absolute; left: 20px; right: 20px; bottom: 16px;
+    display: flex; gap: 8px; align-items: center; z-index: 8;
+  }
+  .phone.w360 .f-bottom-nav { left: 15px; right: 15px; }
+  .f-nav-prev {
+    width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-nav-all {
+    flex: 1; min-height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: transparent; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 17px; letter-spacing: 0.6px; text-transform: uppercase; padding: 0 6px;
+  }
+  .f-nav-next {
+    width: 104px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-primary); background: var(--f-primary-container); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-nav-finish {
+    width: 104px; height: 48px; border-radius: 24px; border: 0;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700;
+    font-size: 15px; letter-spacing: 0.2px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* ==================== BOTTOM SHEETS (Baseline boards 20/21 + #82/#83/#98/#101) ==================== */
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62);
+    z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-scrim.keep-header { top: 154px; }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 20px; display: flex; flex-direction: column; gap: 10px;
+    max-height: 82%; overflow-y: auto;
+  }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.4; }
+  .f-sheet-callout {
+    background: var(--f-warn-bg); border: 1px solid var(--f-warn-border);
+    color: #FBE4A4; border-radius: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.38;
+  }
+  .f-sheet-confirm { border: 0; border-radius: 999px; min-height: 46px; font-size: 14.5px; font-weight: 700; background: var(--f-warn); color: #231B04; width: 100%; }
+  .f-sheet-tonal { border: 0; border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: var(--f-primary-container); color: var(--f-on-primary-container); width: 100%; }
+  .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+
+  /* Exact baseline All Exercises sheet row (board 21) */
+  .allex-row {
+    width: 100%; border: 0; border-radius: 14px;
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    text-align: left; min-height: 56px; background: transparent; color: var(--f-text);
+  }
+  .allex-row.cur { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .allex-num {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--f-chip); color: var(--f-muted);
+    font-size: 15px; display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .allex-row.cur .allex-num { color: var(--f-primary); }
+
+  /* Weight calibration (#82) — Cyrillic titles in Inter per #82 decision */
+  .f-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--f-bg); border-radius: 999px; padding: 3px; border: 1px solid var(--f-outline); }
+  .f-seg button { border: 0; border-radius: 999px; min-height: 34px; padding: 4px 6px; background: transparent; color: var(--f-muted); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .f-seg button.active { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .f-rec-dot { font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 999px; background: var(--f-primary); color: var(--f-on-primary); }
+  .f-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .f-field-lbl { display: block; font-size: 11.5px; color: var(--f-muted); margin-bottom: 3px; text-align: center; }
+  .f-feel-stack { display: flex; flex-direction: column; gap: 6px; }
+  .f-feel-card {
+    width: 100%; border-radius: 13px; padding: 8px 11px;
+    border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; gap: 9px; text-align: left;
+  }
+  .f-feel-card.just-right { border-color: var(--f-primary-border); background: #162010; }
+  .f-feel-card.selected-heavy { border-color: var(--f-error); background: var(--f-error-bg); }
+  .f-feel-ico { width: 28px; height: 28px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 13px; }
+  .f-feel-card.just-right .f-feel-ico { background: var(--f-primary); color: var(--f-on-primary); }
+  .f-feel-title { font-size: 13.5px; font-weight: 600; display: block; }
+  .f-feel-sub { font-size: 11px; color: var(--f-muted); display: block; line-height: 1.25; }
+  .f-formula-trigger {
+    width: 100%; border-radius: 12px; padding: 8px 11px;
+    border: 1px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left;
+  }
+  .f-est-box { border-radius: 13px; padding: 10px 12px; background: #151E0F; border: 1px solid var(--f-primary-border); display: flex; flex-direction: column; gap: 6px; }
+
+  /* Rest long-press sheet (#83) */
+  .rest-now-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--f-surface); border-radius: 14px; padding: 9px 12px; }
+  .rest-quick-btns { display: flex; gap: 6px; }
+  .rest-quick-btn { border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+  .rest-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .rest-preset-btn { height: 36px; border-radius: 11px; border: 1px solid var(--f-outline); background: var(--f-bg); color: var(--f-muted); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; }
+  .rest-preset-btn.active { background: var(--f-primary-container); border-color: var(--f-primary); color: var(--f-primary); }
+  .rest-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px 2px; border-top: 1px solid var(--f-outline); }
+  .f-switch { width: 44px; height: 26px; border-radius: 999px; border: 0; padding: 3px; background: var(--f-chip); position: relative; flex: none; }
+  .f-switch.on { background: var(--f-primary); }
+  .f-switch::after { content: ""; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform 140ms; }
+  .f-switch.on::after { background: var(--f-on-primary); transform: translateX(18px); }
+
+  /* Floating Snackbars (#82 + #98) */
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 84px; z-index: 25;
+    background: #1D2618; border: 1px solid #4E672B; color: var(--f-text);
+    border-radius: 14px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 12px; box-shadow: 0 8px 22px rgba(0,0,0,0.48);
+  }
+  .f-snack-undo { border: 1px solid #597530; background: var(--f-primary-container); color: var(--f-on-primary-container); border-radius: 999px; padding: 5px 10px; font-size: 11.5px; font-weight: 700; flex: none; }
+
+  /* ==================== SUMMARY SCREEN (#99 + #101) ==================== */
+  .sum-kicker { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--f-primary); margin-bottom: 4px; }
+  .sum-title { margin: 0; font-size: 26px; line-height: 1.1; }
+  .sum-sub { margin-top: 5px; font-size: 13px; color: var(--f-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .sum-hero {
+    margin-top: 12px; background: linear-gradient(135deg, #1E2813 0%, #141914 70%);
+    border-radius: 20px; padding: 14px 16px;
+  }
+  .sum-hero.eased { background: linear-gradient(135deg, #251B38 0%, #141914 75%); }
+  .sum-hero-eye { font-size: 11.5px; font-weight: 600; color: var(--f-muted); margin-bottom: 4px; }
+  .sum-hero-big { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .sum-hero-metric { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 30px; font-weight: 700; line-height: 1; color: var(--f-primary); }
+  .sum-hero.eased .sum-hero-metric { color: var(--load-ease); }
+  .sum-hero-metric small { font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--f-on-primary-container); margin-left: 3px; }
+  .sum-hero.eased .sum-hero-metric small { color: var(--load-ease-text); }
+  .sum-sec-title { font-size: 12px; color: var(--f-muted); margin: 14px 0 6px 2px; }
+  .mix-list { display: flex; flex-direction: column; gap: 8px; }
+  .mix-card { background: var(--f-surface); border-radius: 18px; padding: 12px 14px; }
+  .mix-card.is-up { background: #161E13; box-shadow: inset 0 0 0 1px #2A381D; }
+  .mix-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .mix-name { font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--f-text); }
+  .delta-pill { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
+  .delta-pill .n { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 15px; font-weight: 700; }
+  .delta-pill.up { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .delta-pill.up .n { color: var(--f-primary); }
+  .delta-pill.down { background: var(--f-down-bg); color: var(--f-down-text); }
+  .delta-pill.same { background: var(--f-chip); color: var(--f-muted); }
+  .delta-pill.first { background: transparent; border: 1px solid var(--f-outline); color: var(--f-muted); }
+  .mix-pills-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .mix-weight-pill { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 17px; font-weight: 700; color: var(--f-text); margin-right: 3px; }
+  .mix-weight-pill.grew { background: var(--f-primary); color: var(--f-on-primary); padding: 1px 7px; border-radius: 7px; font-size: 16px; }
+  .mix-rep-pill {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-size: 16px; font-weight: 700;
+    min-width: 28px; height: 26px; padding: 0 7px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--f-chip); color: var(--f-muted);
+  }
+  .mix-rep-pill.tonal-up { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .mix-rep-pill.grew { background: var(--f-primary); color: var(--f-on-primary); }
+  .mix-rep-pill.dipped { background: var(--f-amber-container); color: var(--f-amber); border: 1px solid var(--f-amber-border); }
+  .mix-prev { margin-top: 5px; font-size: 12px; color: var(--f-dim); }
+
+  /* ==================== EXACT BASELINE HISTORY SCREEN (Board 04 + #101 lamps & side ribbon + #94) ==================== */
+  .hist-card {
+    background: var(--f-surface); border-radius: 20px; padding: 14px 18px; margin-bottom: 8px;
+    position: relative; overflow: hidden;
+  }
+  .hist-card.has-ribbon { padding-left: 20px; }
+  .hist-card.has-ribbon::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .hist-card.rib-heavy::before { background: var(--load-heavy); }
+  .hist-card.rib-light::before { background: var(--load-light); }
+  .hist-card.rib-ease::before { background: var(--load-ease); }
+  .hist-card.rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
+  .hist-card.rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
+  .hist-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .hist-date { font-size: 16px; color: var(--f-primary); }
+  .hist-time { font-size: 13px; color: var(--f-muted); flex: none; }
+  .hist-row-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 3px; }
+  .hist-title {
+    font-size: 22px; line-height: 24px; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+    flex: 1; min-width: 0;
+  }
+  .hist-badge {
+    display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+    padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    background: var(--f-chip); color: var(--f-muted); margin-top: 2px;
+  }
+  .hist-prog { font-size: 13px; color: var(--f-muted); margin-top: 3px; }
+
+  /* ==================== EXACT BASELINE LOCK SCREEN (Board 18 + #83 + #94) ==================== */
+  .lock-screen {
+    flex: 1; background: var(--f-bg); padding: 0 16px 24px;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .lock-clock { text-align: center; font-size: 96px; line-height: 96px; margin-top: 76px; letter-spacing: 1px; }
+  .lock-date { text-align: center; font-size: 15px; color: var(--f-muted); margin: 6px 0 34px; }
+  .lock-stack { display: flex; flex-direction: column; gap: 10px; }
+  .lock-card { background: var(--f-surface-hi); border-radius: 22px; padding: 12px 14px; }
+  .lock-card.overtime { background: #1D2A17; box-shadow: inset 0 0 0 1px var(--f-primary-border); }
+  .lock-app-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--f-muted); }
+  .lock-app-ico {
+    width: 16px; height: 16px; border-radius: 4px; background: var(--f-surface); color: var(--f-primary);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lock-main-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .lock-left { flex: 1; min-width: 0; }
+  .lock-head { display: flex; align-items: baseline; gap: 8px; }
+  .lock-num { font-size: 30px; line-height: 30px; color: var(--f-primary); }
+  .lock-goal-pill { padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--f-primary-container); color: var(--f-primary); white-space: nowrap; }
+  .lock-sub { display: flex; align-items: center; font-size: 12px; color: var(--f-muted); margin-top: 3px; min-width: 0; }
+  .lock-sub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .lock-sub-suf { flex: none; white-space: nowrap; }
+  .lock-btns { display: flex; align-items: center; gap: 6px; flex: none; }
+  .lock-btn-stop {
+    border: 0; border-radius: 999px; min-height: 38px; padding: 0 14px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap;
+  }
+  .lock-btn-tonal {
+    border: 0; border-radius: 999px; min-height: 36px; padding: 0 11px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap;
+  }
+  .lock-btn-ob {
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 36px; padding: 0 12px;
+    background: transparent; color: var(--f-text);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap;
+  }
+  .lock-bar { height: 4px; border-radius: 2px; background: var(--f-chip); margin-top: 10px; overflow: hidden; }
+  .lock-bar-fill { height: 4px; border-radius: 2px; background: var(--f-primary); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Fitty 2.0 · На базе дизайн-системы</span>
+      <div>
+        <h1 class="host-title">Сводный прототип: исходный android-design-system.html + согласованные решения</h1>
+        <div class="host-sub">Вернул базовую типографику .d (UPPERCASE), поверхности без рамок, Планку 280px, Экран блокировки, Историю и шторки из исходного HTML</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="tab-interactive" class="active" type="button">Интерактив</button>
+        <button id="tab-board" type="button">Все экраны рядом</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="view-interactive" class="interactive-stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone" aria-label="Интерактивный макет Fitty Android"></main>
+      <div class="phone-hint-bar" id="phone-hint"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Экран и сценарий</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Пресет программы / недели (Главная)</span>
+          <div class="btn-wrap" id="ctrl-preset"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Переключатели и стресс-тесты</span>
+          <div class="btn-wrap" id="ctrl-toggles"></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="btn-wrap">
+            <button type="button" class="cbtn" id="btn-open-rest-sheet">Шторка долгого нажатия на отдых</button>
+            <button type="button" class="cbtn danger" id="btn-reset-all">Сбросить состояние</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Стыки для сверки</h2>
+        <ul class="junction-list">
+          <li><strong>База возвращена 1-в-1:</strong> <code>.d</code> UPPERCASE-типографика, карточки <code>#141914</code> без рамок, нижний бар <code>64px</code>, Планка с кругом <code>280px</code>, История с лаймовой датой, Экран блокировки <code>#0B0E0B</code> + часы <code>96px</code> + <code>Fitty · сейчас</code>, шторки досок 20 и 21.</li>
+          <li><strong>Цвет лёгкой недели (#98 → #101):</strong> сквозной голубой <code>#5CC8FA</code> вместо мятного <code>#7CE2D0</code>.</li>
+          <li><strong>Высота Главной:</strong> карточка программы с <code>Training week</code> + раскрытый <code>Readiness check-in</code> + чипы дней <code>44px</code> + упражнения на <code>390 / 360 dp</code>.</li>
+          <li><strong>Топ-бар тренировки:</strong> <code>←</code> + лампа(ы) + <code>Тяжёлая неделя</code> + <code>Облегчить</code> + <code>УПР. 1/4</code> на <code>360 dp</code>.</li>
+          <li><strong>Два янтаря рядом:</strong> в упражнении 2 — лампа тяжёлой недели <code>#F59E42</code> и полоса совета «снизить вес» <code>#F5C469</code>.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Живое состояние</h2>
+        <table class="state-tbl" id="live-state-tbl"></table>
+      </div>
+    </aside>
+  </section>
+
+  <section id="view-board" class="board-wrap hidden"></section>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    back: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    chevR: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    arrowR: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    check: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    checkSm: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    x: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+    lock: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+    skip: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
+    pulse: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+    feather: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 00-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
+    scale: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M4 7h16M7 7l-3 7h6zM17 7l-3 7h6z"/></svg>',
+    flag: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+    stopSq: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>',
+    trendUp: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
+    trendDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></svg>',
+    home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
+    history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
+  };
+
+  const FORMULAS = [
+    { id: 'epley',    name: 'Эпли',     def: true,  hint: 'Классика, хорошо работает на 5–12 повт.', calc: (w, r) => r === 1 ? w : w * (1 + r / 30), inv: (rm, t) => rm / (1 + t / 30) },
+    { id: 'brzycki',  name: 'Бжицки',   def: false, hint: 'Точнее на малых повторениях (2–10)',     calc: (w, r) => r === 1 ? w : w * (36 / (37 - r)), inv: (rm, t) => rm * (37 - t) / 36 },
+    { id: 'oconner',  name: 'О’Коннер', def: false, hint: 'Более консервативная оценка 1RM',        calc: (w, r) => r === 1 ? w : w * (1 + 0.025 * r), inv: (rm, t) => rm / (1 + 0.025 * t) },
+    { id: 'lombardi', name: 'Ломбарди', def: false, hint: 'Степенная модель (вес × повт.^0.10)',    calc: (w, r) => r === 1 ? w : w * Math.pow(r, 0.10), inv: (rm, t) => rm / Math.pow(t, 0.10) },
+    { id: 'lander',   name: 'Ландер',   def: false, hint: 'Линейный % от максимума',                calc: (w, r) => r === 1 ? w : (100 * w) / (101.3 - 2.67123 * r), inv: (rm, t) => rm * (101.3 - 2.67123 * t) / 100 },
+    { id: 'mayhew',   name: 'Мейхью',   def: false, hint: 'Экспоненциальная модель',                calc: (w, r) => r === 1 ? w : (100 * w) / (52.2 + 41.9 * Math.exp(-0.055 * r)), inv: (rm, t) => rm * (52.2 + 41.9 * Math.exp(-0.055 * t)) / 100 },
+    { id: 'wathan',   name: 'Уотан',    def: false, hint: 'Близка к Эпли в среднем диапазоне',      calc: (w, r) => r === 1 ? w : (100 * w) / (48.8 + 53.8 * Math.exp(-0.075 * r)), inv: (rm, t) => rm * (48.8 + 53.8 * Math.exp(-0.075 * t)) / 100 }
+  ];
+
+  const DAYS = [
+    {
+      id: 'A', name: 'День A', longName: 'День A: Верх тела — грудь, спина и стабилизация корпуса',
+      exercises: [
+        {
+          id: 'bench', type: 'weight_reps', muscle: 'Грудь', equip: 'Штанга, скамья', recordLabel: 'Вес × повторения',
+          name: 'Жим штанги лёжа',
+          longName: 'Жим штанги лёжа на наклонной скамье узким хватом',
+          heavy: { sets: 3, repsMin: 8, repsMax: 12, lastW: 60, lastR: 12 },
+          light: { sets: 3, repsMin: 6, repsMax: 10, lastW: 52.5, lastR: 10 },
+          regular: { sets: 3, repsMin: 8, repsMax: 12, lastW: 60, lastR: 12 },
+          hasHistory: true,
+          prompt: { dir: 'up', title: 'Можно попробовать вес потяжелее', sub: 'В прошлый раз все 3 подхода на 60 кг закрыты по верхней границе 12 повт.' }
+        },
+        {
+          id: 'row', type: 'weight_reps', muscle: 'Спина', equip: 'Штанга', recordLabel: 'Вес × повторения',
+          name: 'Тяга штанги в наклоне',
+          longName: 'Тяга штанги в наклоне к поясу обратным хватом с паузой вверху',
+          heavy: { sets: 3, repsMin: 8, repsMax: 12, lastW: 70, lastR: 7 },
+          light: { sets: 3, repsMin: 6, repsMax: 10, lastW: 60, lastR: 8 },
+          regular: { sets: 3, repsMin: 8, repsMax: 12, lastW: 70, lastR: 7 },
+          hasHistory: true,
+          prompt: { dir: 'down', title: 'Возможно, вес сейчас тяжеловат', sub: 'Две тренировки подряд все подходы ниже цели 8–12 повт. без роста суммы.' }
+        },
+        {
+          id: 'incline', type: 'weight_reps', muscle: 'Грудь', equip: 'Гантели, скамья', recordLabel: 'Вес × повторения',
+          name: 'Жим гантелей на наклонной скамье',
+          longName: 'Жим гантелей на наклонной скамье 30° с нейтральным хватом',
+          heavy: { sets: 3, repsMin: 10, repsMax: 10, lastW: null, lastR: null },
+          light: { sets: 3, repsMin: 8, repsMax: 8, lastW: null, lastR: null },
+          regular: { sets: 3, repsMin: 10, repsMax: 10, lastW: null, lastR: null },
+          hasHistory: false, prompt: null
+        },
+        {
+          id: 'plank', type: 'duration', muscle: 'Кор', equip: 'Без оборудования', recordLabel: 'Время',
+          name: 'Планка',
+          longName: 'Планка на предплечьях с удержанием нейтрального таза',
+          heavy: { sets: 3, sec: 60 },
+          light: { sets: 3, sec: 50 },
+          regular: { sets: 3, sec: 60 },
+          hasHistory: true, prompt: null
+        }
+      ]
+    },
+    {
+      id: 'B', name: 'День B', longName: 'День B: грудь, плечи и трицепс с длинным названием',
+      exercises: [
+        { id: 'squat', type: 'weight_reps', muscle: 'Ноги', equip: 'Штанга', recordLabel: 'Вес × повторения', name: 'Присед со штангой на груди с паузой', longName: 'Фронтальный присед со штангой на груди с паузой внизу', heavy: { sets: 3, repsMin: 8, repsMax: 10, lastW: 75, lastR: 9 }, light: { sets: 3, repsMin: 6, repsMax: 8, lastW: 65, lastR: 8 }, regular: { sets: 3, repsMin: 8, repsMax: 10, lastW: 75, lastR: 9 }, hasHistory: true, prompt: null },
+        { id: 'rdl', type: 'weight_reps', muscle: 'Задняя поверхность бедра', equip: 'Гантели', recordLabel: 'Вес × повторения', name: 'Румынская тяга с гантелями', longName: 'Румынская тяга с гантелями на слегка согнутых ногах', heavy: { sets: 3, repsMin: 8, repsMax: 10, lastW: 24, lastR: 10 }, light: { sets: 3, repsMin: 6, repsMax: 8, lastW: 20, lastR: 8 }, regular: { sets: 3, repsMin: 8, repsMax: 10, lastW: 24, lastR: 10 }, hasHistory: true, prompt: { dir: 'up', title: 'Можно попробовать вес потяжелее', sub: 'Все 3 подхода закрыты на 10 повт.' } },
+        { id: 'calves', type: 'weight_reps', muscle: 'Икры', equip: 'Тренажёр', recordLabel: 'Вес × повторения', name: 'Подъём на носки стоя', longName: 'Подъём на носки стоя в тренажёре с паузой внизу', heavy: { sets: 3, repsMin: 12, repsMax: 15, lastW: 50, lastR: 14 }, light: { sets: 3, repsMin: 10, repsMax: 13, lastW: 45, lastR: 12 }, regular: { sets: 3, repsMin: 12, repsMax: 15, lastW: 50, lastR: 14 }, hasHistory: true, prompt: null }
+      ]
+    },
+    {
+      id: 'C', name: 'День C', longName: 'День C: Силовая становая тяга и подтягивания',
+      exercises: [
+        { id: 'dead', type: 'weight_reps', muscle: 'Спина, ноги', equip: 'Штанга', recordLabel: 'Вес × повторения', name: 'Становая тяга классическая', longName: 'Становая тяга классическая с пола с паузой на колене', heavy: { sets: 3, repsMin: 1, repsMax: 3, lastW: 110, lastR: 3 }, light: { sets: 3, repsMin: 1, repsMax: 3, lastW: 95, lastR: 3, shortHint: true }, regular: { sets: 3, repsMin: 1, repsMax: 3, lastW: 110, lastR: 3 }, hasHistory: true, prompt: null },
+        { id: 'pullup', type: 'weight_reps', muscle: 'Спина', equip: 'Турник', recordLabel: 'Повторения', name: 'Подтягивания', longName: 'Подтягивания широким хватом до подбородка без раскачки', heavy: { sets: 3, repsMin: 8, repsMax: 8, lastW: 0, lastR: 8 }, light: { sets: 3, repsMin: 6, repsMax: 6, lastW: 0, lastR: 6 }, regular: { sets: 3, repsMin: 8, repsMax: 8, lastW: 0, lastR: 8 }, hasHistory: true, prompt: null }
+      ]
+    }
+  ];
+
+  const INITIAL_HISTORY = [
+    { date: '26 ноября 2026', time: '18:40', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Базовая силовая', week: 'heavy', lightened: true },
+    { date: '23 ноября 2026', time: '19:05', day: 'День B: грудь, плечи и трицепс с длинным названием', longDay: 'День B: грудь, плечи и трицепс с длинным названием', prog: 'Базовая силовая', week: 'heavy', lightened: false },
+    { date: '20 ноября 2026', time: '18:22', day: 'День C', longDay: 'День C: Силовая становая тяга и подтягивания', prog: 'Базовая силовая', week: 'light', lightened: false },
+    { date: '18 ноября 2026', time: '19:15', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Базовая силовая', week: 'light', lightened: true },
+    { date: '15 ноября 2026', time: '10:12', day: 'День B', longDay: 'День B: грудь, плечи и трицепс с длинным названием', prog: 'Фулбоди без чередования', week: 'regular', lightened: true },
+    { date: '13 ноября 2026', time: '18:50', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Фулбоди без чередования', week: 'regular', lightened: false }
+  ];
+
+  const fmtSec = s => { const abs = Math.abs(Math.round(s)); return `${Math.floor(abs / 60)}:${abs % 60 < 10 ? '0' : ''}${abs % 60}`; };
+  const round5 = sec => sec <= 5 ? sec : Math.max(5, Math.min(sec - 5, Math.round((sec * 0.8) / 5) * 5));
+  const fmtNum = v => String(Math.round(v * 10) / 10).replace('.', ',');
+  const weekLabel = w => w === 'heavy' ? 'Тяжёлая неделя' : w === 'light' ? 'Лёгкая неделя' : '';
+  const weekShort = w => w === 'heavy' ? 'Тяжёлая' : w === 'light' ? 'Лёгкая' : 'Обычная';
+  const oppWeek = w => w === 'heavy' ? 'light' : 'heavy';
+
+  function renderLamps(week, lightened) {
+    const arr = [];
+    if (week === 'heavy') arr.push('<span class="lamp lamp-heavy" title="Тяжёлая неделя"></span>');
+    if (week === 'light') arr.push('<span class="lamp lamp-light" title="Лёгкая неделя"></span>');
+    if (lightened) arr.push('<span class="lamp lamp-ease" title="Облегчённая тренировка"></span>');
+    return arr.length ? `<span class="lamp-group">${arr.join('')}</span>` : '';
+  }
+
+  function effectivePlan(ex, weekKey, easeMode) {
+    const base = ex[weekKey] || ex.regular;
+    let sets = base.sets, shortHint = !!base.shortHint;
+    if (easeMode === 'fewerSets') sets = Math.max(1, sets - 1);
+    if (ex.type === 'duration') {
+      const sec = easeMode === 'easier' ? round5(base.sec) : base.sec;
+      return { sets, sec, origSec: base.sec, label: `${sets} × ${fmtSec(sec)}`, eased: easeMode !== 'none' };
+    }
+    let rMin = base.repsMin, rMax = base.repsMax;
+    if (easeMode === 'easier') {
+      if (rMin >= 5) { rMin -= 2; rMax -= 2; } else shortHint = true;
+    }
+    const repTxt = rMin === rMax ? `${rMin}` : `${rMin}–${rMax}`;
+    const label = shortHint ? `${sets} × ${repTxt} · легче вес` : `${sets} × ${repTxt}`;
+    return { sets, repsMin: rMin, repsMax: rMax, shortHint, lastW: base.lastW, lastR: easeMode === 'easier' && base.lastR ? Math.max(1, rMax) : base.lastR, label, eased: easeMode !== 'none' };
+  }
+
+  function titleSizeClass(str) {
+    if (str.length > 36) return 'sz-sm';
+    if (str.length > 22) return 'sz-md';
+    return 'sz-lg';
+  }
+
+  function restRingSvg(running, left, defSec) {
+    const r = 33, c = 2 * Math.PI * r;
+    const pct = running ? Math.max(0, Math.min(1, left / defSec)) : 1;
+    return `<svg width="76" height="76" viewBox="0 0 76 76">
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="#252D24" stroke-width="6"/>
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="${running ? '#C5FA55' : '#343E33'}" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="${(pct * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 38 38)"/>
+    </svg>`;
+  }
+
+  function createInitialState() {
+    return {
+      hostMode: 'interactive', width: 390, screen: 'home', preset: 'mid_heavy',
+      alternating: true, passNumber: 2, proposedWeek: 'heavy', currentWeek: 'heavy',
+      dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A',
+      longNames: false, checkinEnabled: true, loadPromptsEnabled: true,
+      checkinAnswer: 'none', easeMode: 'none', sessionMarkedLightened: false,
+      exIndex: 0,
+      logged: { bench: [{ w: '60', r: '12' }], row: [], incline: [], plank: [60, 58] },
+      drafts: { bench: { w: '', r: '' }, row: { w: '', r: '' }, incline: { w: '', r: '' } },
+      calibratedSuggestion: null, dismissedPrompts: {},
+      plankOffset: -15, plankRunning: false, plankElapsed: 0,
+      restDefault: 120, restAutoStart: true, restRunning: true, restLeft: 102,
+      formulaId: 'epley', calTab: 'feel', calFormulaPicker: false,
+      calFeelW: '18', calFeelR: '10', calFeelAnswer: null, calCalcW: '26', calCalcR: '8',
+      sheet: null, snack: null, undoSnap: null,
+      history: INITIAL_HISTORY.slice(), lockPlankState: 'overtime'
+    };
+  }
+
+  let st = createInitialState();
+  const activeWeekKey = (s = st) => s.alternating ? s.currentWeek : 'regular';
+  function passInfo(s = st) {
+    let done = 0, skipped = 0, todo = 0;
+    for (const d of DAYS) { const v = s.dayStatus[d.id] || 'todo'; if (v === 'done') done++; else if (v === 'skipped') skipped++; else todo++; }
+    return { total: DAYS.length, done, skipped, todo, resolved: done + skipped };
+  }
+  const isWeekLocked = (s = st) => s.alternating && passInfo(s).resolved > 0;
+  const getDay = (s = st) => DAYS.find(d => d.id === s.selectedDay) || DAYS[0];
+  const getEx = (s = st) => { const d = getDay(s); return d.exercises[s.exIndex] || d.exercises[0]; };
+  const dayDisplayName = (d, s = st) => s.longNames ? d.longName : d.name;
+  const exDisplayName = (ex, s = st) => s.longNames ? ex.longName : ex.name;
+
+  setInterval(() => {
+    if (st.hostMode !== 'interactive') return;
+    let dirty = false;
+    if (st.restRunning && st.restLeft > 0) { st.restLeft--; if (st.restLeft === 0) st.restRunning = false; dirty = true; }
+    if (st.plankRunning) { st.plankElapsed++; dirty = true; }
+    if (dirty && (st.screen === 'workout' || st.screen === 'lock')) renderLive();
+  }, 1000);
+
+  /* ==================== HOME SCREEN ==================== */
+  function renderHomeHTML(s) {
+    const p = passInfo(s), locked = isWeekLocked(s), wk = activeWeekKey(s), isLight = wk === 'light';
+    const day = getDay(s), daySt = s.alternating ? (s.dayStatus[day.id] || 'todo') : 'todo';
+    const progName = s.longNames ? 'Базовая силовая программа на 3 дня с чередованием нагрузки' : 'Базовая силовая';
+
+    let progFooter = '';
+    if (s.alternating) {
+      if (!locked) {
+        progFooter = `
+          <div class="prog-week-divider">
+            <div class="prog-week-meta"><span>Новый проход · ${p.total} дн.</span><span>Смена до старта</span></div>
+            <div class="prog-seg">
+              <button class="prog-seg-btn ${!isLight ? 'active-heavy' : ''}" data-act="set-week" data-v="heavy"><span class="lamp lamp-heavy"></span><span>Тяжёлая${s.proposedWeek === 'heavy' ? ' · план' : ''}</span></button>
+              <button class="prog-seg-btn ${isLight ? 'active-light' : ''}" data-act="set-week" data-v="light"><span class="lamp lamp-light"></span><span>Лёгкая${s.proposedWeek === 'light' ? ' · план' : ''}</span></button>
+            </div>
+          </div>`;
+      } else {
+        const dots = DAYS.map(d => `<span class="prog-dot ${s.dayStatus[d.id] || 'todo'} ${isLight ? 'light' : ''}"></span>`).join('');
+        progFooter = `
+          <div class="prog-week-divider">
+            <button class="prog-locked-row" data-act="open-sheet" data-v="locked">
+              <span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICO.lock}${renderLamps(wk, false)}<span>${weekLabel(wk)}</span></span>
+              <span class="prog-dots">${dots}<span style="margin-left:3px;font-weight:700">${p.resolved}/${p.total}</span></span>
+            </button>
+          </div>`;
+      }
+    }
+
+    let rcHtml = '';
+    if (s.checkinEnabled) {
+      const isOk = s.checkinAnswer === 'ok', isTired = s.checkinAnswer === 'tired', isEased = isTired && s.easeMode !== 'none';
+      const subtitle = isEased
+        ? (s.easeMode === 'fewerSets' ? 'На сегодня: −1 подход в каждом упражнении' : 'На сегодня: легче подходы без изменения программы')
+        : isOk ? 'Отлично — идём по обычному плану' : 'Необязательно — можно сразу жать «Начать»';
+      const inlineModes = isTired ? `
+        <div class="rc-inline-modes">
+          <button class="mode-card ${s.easeMode === 'fewerSets' ? 'selected' : ''}" data-act="set-ease" data-v="fewerSets">
+            <span><span class="mode-card-title">Меньше подходов (−1)</span><span class="mode-card-sub">Рабочий вес тот же, короче объём</span></span>
+            <span class="mode-radio">${s.easeMode === 'fewerSets' ? ICO.checkSm : ''}</span>
+          </button>
+          <button class="mode-card ${s.easeMode === 'easier' ? 'selected' : ''}" data-act="set-ease" data-v="easier">
+            <span><span class="mode-card-title">Легче подходы</span><span class="mode-card-sub">−2 повтора / ~80% времени от плана сегодня</span></span>
+            <span class="mode-radio">${s.easeMode === 'easier' ? ICO.checkSm : ''}</span>
+          </button>
+          <button class="rc-inline-reset" data-act="set-checkin" data-v="none">Оставить обычный план</button>
+        </div>` : '';
+      rcHtml = `
+        <div class="rc-card ${isOk ? 'is-ok' : ''} ${isEased ? 'is-eased' : ''}">
+          <div class="rc-head">
+            <div class="rc-title-wrap"><div class="rc-ico">${ICO.pulse}</div><div><div class="rc-title">Как самочувствие сегодня?</div><div class="rc-sub">${subtitle}</div></div></div>
+            ${isEased ? renderLamps(null, true) : ''}
+          </div>
+          <div class="rc-btn-pair">
+            <button class="rc-choice rc-choice-ok ${isOk ? 'selected' : ''}" data-act="set-checkin" data-v="ok">Бодро</button>
+            <button class="rc-choice rc-choice-tired ${isTired ? 'selected' : ''}" data-act="set-checkin" data-v="tired">Устал · облегчить</button>
+          </div>
+          ${inlineModes}
+        </div>`;
+    }
+
+    const chips = DAYS.map(d => {
+      const ds = s.alternating ? (s.dayStatus[d.id] || 'todo') : 'todo', sel = d.id === day.id;
+      const mark = ds === 'done' ? '<span class="chip-mark chip-mark-done">✓</span>' : ds === 'skipped' ? '<span class="chip-mark chip-mark-skip">⊘</span>' : '';
+      return `<button class="f-day-chip ${sel ? 'selected' : ''} ${sel && isLight ? 'theme-light' : ''} ${ds}" data-act="select-day" data-v="${d.id}"><span class="chip-name">${dayDisplayName(d, s)}</span>${mark}</button>`;
+    }).join('');
+
+    const dayRightAction = !s.alternating ? '' :
+      daySt === 'todo' ? `<button class="f-ghost-btn" data-act="open-sheet" data-v="skip">${ICO.skip}<span>Пропустить день</span></button>` :
+      daySt === 'skipped' ? `<button class="f-restore-pill" data-act="restore-day" data-v="${day.id}">Вернуть в неделю</button>` :
+      '<span style="font-size:12px;color:#A7CF64;font-weight:600;flex:none;white-space:nowrap">Выполнен в проходе</span>';
+
+    const showCardHead = s.alternating || s.longNames || s.easeMode !== 'none';
+    const cardHead = showCardHead ? `
+      <div class="f-card-head">
+        <div style="min-width:0;flex:1">
+          <div class="f-card-head-title">${dayDisplayName(day, s)}</div>
+          <div class="f-card-head-meta"><span>${day.exercises.length} упр.</span>${renderLamps(s.alternating ? wk : null, s.easeMode !== 'none')}${s.easeMode !== 'none' ? '<span style="color:var(--load-ease-text)">Облегчён</span>' : ''}</div>
+        </div>
+        ${dayRightAction}
+      </div>` : '';
+
+    const rows = day.exercises.map((ex, i) => {
+      const plan = effectivePlan(ex, wk, s.easeMode);
+      const tagCls = plan.eased ? 'eased-target' : isLight ? 'light-target' : '';
+      return `<div class="home-ex-row ${!showCardHead && i === 0 ? 'no-top' : ''}"><span class="d home-ex-idx">0${i + 1}</span><span class="home-ex-name">${exDisplayName(ex, s)}</span><span class="tag ${tagCls}">${plan.label}</span></div>`;
+    }).join('');
+
+    const ctaText = !s.alternating
+      ? (s.easeMode !== 'none' ? 'Начать облегчённую' : 'Начать тренировку')
+      : daySt === 'done' ? `Повторить · ${day.name}`
+      : daySt === 'skipped' ? `Всё-таки начать · ${day.name}`
+      : s.easeMode !== 'none' ? `Начать облегчённую · ${day.name}` : 'Начать тренировку';
+
+    let sheetHtml = '';
+    if (s.sheet === 'skip') {
+      const willFinish = p.todo === 1 && daySt === 'todo', nextW = weekLabel(oppWeek(s.currentWeek)).toLowerCase();
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Пропустить ${day.name} в этой неделе?</h3><p>День пропустится только в текущем проходе (${weekLabel(s.currentWeek).toLowerCase()}). В следующей тренировочной неделе он снова будет в плане.</p>${willFinish ? `<div class="f-sheet-callout">Это последний оставшийся день прохода. После пропуска текущая неделя завершится, и Fitty предложит <strong>${nextW}</strong> с Дня A.</div>` : ''}<button class="f-sheet-confirm" data-act="confirm-skip">Пропустить ${day.name}</button><button class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
+    } else if (s.sheet === 'locked') {
+      const hint = s.currentWeek === 'light'
+        ? 'Если силы вернулись раньше — можно завершить лёгкую неделю досрочно и открыть новую тяжёлую.'
+        : 'Чтобы облегчить только одно занятие, используйте разовое облегчение. Если нужна полная разгрузка — можно завершить неделю досрочно.';
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>${weekLabel(s.currentWeek)} уже идёт</h3><p>Пройдено ${p.resolved} из ${p.total} дн. Вариант фиксируется на весь проход, чтобы сохранять чистую историю и подсказки.</p><p>${hint}</p><button class="f-sheet-tonal" data-act="open-sheet" data-v="confirm_end">Завершить неделю досрочно</button><button class="f-sheet-cancel" data-act="close-sheet">Понятно</button></div></div>`;
+    } else if (s.sheet === 'confirm_end') {
+      const nextW = weekLabel(oppWeek(s.currentWeek)).toLowerCase();
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Завершить ${weekLabel(s.currentWeek).toLowerCase()} досрочно?</h3><p>Выполненные дни останутся в истории как <strong>${weekShort(s.currentWeek).toLowerCase()}</strong>. Оставшиеся дни (${p.todo}) закроются, и откроется новый проход — Fitty предложит <strong>${nextW}</strong>.</p><button class="f-sheet-confirm" data-act="confirm-end-early">Завершить и перейти к новой неделе</button><button class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
+    }
+
+    const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span>${s.undoSnap ? '<button class="f-snack-undo" data-act="undo-snack">Отменить</button>' : ''}</div>` : '';
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1"><span>Fitty</span></h1>
+        <div class="home-prog">
+          <div class="home-prog-top">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:12px">Мои программы</div>
+              <div class="d home-prog-name">${progName}</div>
+            </div>
+            ${ICO.chevR}
+          </div>
+          ${progFooter}
+        </div>
+        ${rcHtml}
+        <div class="m d home-sec-title">${s.alternating ? `Тренировочный день · ${p.todo} осталось` : `Тренировочный день · ${DAYS.length}`}</div>
+        <div class="sc">${chips}</div>
+        <div class="cd home-ex-card">${cardHead}${rows}</div>
+        <button class="pb ${isLight ? 'theme-light' : ''} ${s.easeMode !== 'none' ? 'eased-cta' : ''}" style="margin-top:12px" data-act="start-workout">${ctaText}</button>
+      </div>
+      ${snackHtml}
+      <nav class="f-nav">
+        <button class="f-nav-btn active" data-act="go-screen" data-v="home">${ICO.home}<span>Главная</span></button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="history">${ICO.history}</button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="lock" title="Экран блокировки">${ICO.settings}</button>
+      </nav>
+      ${sheetHtml}`;
+  }
+
+  /* ==================== WORKOUT SCREEN ==================== */
+  function renderWorkoutHTML(s) {
+    const day = getDay(s), ex = getEx(s), wk = activeWeekKey(s), isLight = wk === 'light', isEased = s.easeMode !== 'none';
+    const plan = effectivePlan(ex, wk, s.easeMode), exName = exDisplayName(ex, s), logged = s.logged[ex.id] || [];
+    const showCalChip = ex.type === 'weight_reps' && !ex.hasHistory && logged.length === 0 && !(isLight && ex.heavy.lastW);
+
+    // Exact baseline top status bar with live pill (board 03/16/17)
+    let statusPill = '';
+    if (ex.type === 'duration' && s.plankRunning) {
+      const targetSec = Math.max(0, plan.sec + s.plankOffset);
+      const isOver = targetSec > 0 && s.plankElapsed > targetSec;
+      const t = targetSec === 0 ? fmtSec(s.plankElapsed) : isOver ? `+${fmtSec(s.plankElapsed - targetSec)}` : fmtSec(targetSec - s.plankElapsed);
+      statusPill = `<span class="f-status-pill"><i></i>Планка ${t}</span>`;
+    } else if (s.restRunning) {
+      statusPill = `<span class="f-status-pill"><i></i>Отдых ${fmtSec(s.restLeft)}</span>`;
+    }
+
+    const weekPart = s.alternating
+      ? `<div class="f-top-week">${renderLamps(wk, isEased)}<span class="lbl">${weekLabel(wk)}</span></div>`
+      : (isEased ? `<div class="f-top-week">${renderLamps(null, true)}<span class="lbl" style="color:var(--load-ease-text)">Облегчена</span></div>` : '');
+    const easeBtnLabel = isEased ? (s.easeMode === 'fewerSets' ? '−1 подход' : 'Легче') : 'Облегчить';
+
+    const planTagCls = isEased ? 'eased-target' : isLight ? 'light-target' : '';
+    const planTags = `
+      <div class="f-tags">
+        <span class="tag ${planTagCls}">План: ${plan.label}</span>
+        ${showCalChip ? `<button class="tag-action" data-act="open-sheet" data-v="calibrate">${ICO.scale}<span>Подобрать вес</span></button>` : ''}
+      </div>`;
+
+    let stripHtml = '';
+    if (s.loadPromptsEnabled && !isLight && !isEased && ex.prompt && logged.length === 0 && !s.dismissedPrompts[ex.id]) {
+      const dir = ex.prompt.dir;
+      stripHtml = `
+        <div class="prog-strip ${dir}">
+          <div class="prog-strip-ico">${dir === 'up' ? ICO.trendUp : ICO.trendDown}</div>
+          <div class="prog-strip-body"><div class="prog-strip-title">${ex.prompt.title}</div><div class="prog-strip-sub">${ex.prompt.sub}</div></div>
+          <button class="prog-strip-x" data-act="dismiss-prompt" data-v="${ex.id}" aria-label="Скрыть">${ICO.x}</button>
+        </div>`;
+    } else if (isEased && !(ex.type === 'duration' && s.plankRunning)) {
+      const note = s.easeMode === 'fewerSets'
+        ? 'Облегчение: −1 подход. При желании вес можно слегка снизить по ощущениям.'
+        : 'Облегчение: цель снижена только на сегодня, программа и подсказки не изменятся.';
+      stripHtml = `<div class="ease-hint-note">${note}</div>`;
+    }
+
+    let bodyHtml = '';
+    if (ex.type === 'duration') {
+      // EXACT BASELINE PLANK (boards 16 & 17 + #81 overtime)
+      const targetSec = Math.max(0, plan.sec + s.plankOffset);
+      const isOver = s.plankRunning && targetSec > 0 && s.plankElapsed > targetSec;
+      const curNum = logged.length + 1;
+      const chips = logged.map((sec, idx) => `<span class="d plank-chip done">${idx + 1} · ${fmtSec(sec)} ✓</span>`).join('')
+        + `<span class="d plank-chip cur">${curNum} · ${s.plankRunning ? 'идёт' : '…'}</span>`;
+
+      const r = 110, c = 2 * Math.PI * r;
+      const pct = !s.plankRunning ? 1 : targetSec === 0 ? 0.65 : isOver ? 1 : Math.max(0.03, (targetSec - s.plankElapsed) / targetSec);
+      const dash = (pct * c).toFixed(0);
+      const disp = s.plankRunning
+        ? (targetSec === 0 ? fmtSec(s.plankElapsed) : isOver ? `+${fmtSec(s.plankElapsed - targetSec)}` : fmtSec(targetSec - s.plankElapsed))
+        : (targetSec > 0 ? fmtSec(targetSec) : 'Без цели');
+
+      bodyHtml = `
+        <div class="plank-chips">${chips}</div>
+        <div class="plank-stage">
+          <div class="d" style="color:var(--f-primary);font-size:16px;margin-bottom:${s.plankRunning ? '10px' : '8px'}">Подход ${curNum}</div>
+          ${!s.plankRunning ? `
+            <div class="plank-stepper">
+              <button class="st" data-act="plank-step" data-v="-5" aria-label="Уменьшить цель на 5 секунд">−</button>
+              <div style="min-width:132px;text-align:center;line-height:1">
+                <div class="m" style="font-size:11px">Цель сегодня</div>
+                <div class="d" style="font-size:26px;margin-top:2px">${targetSec > 0 ? fmtSec(targetSec) : 'Без цели'}</div>
+              </div>
+              <button class="st" data-act="plank-step" data-v="5" aria-label="Увеличить цель на 5 секунд">+</button>
+            </div>` : ''}
+          <div class="plank-ring-wrap">
+            <svg viewBox="0 0 240 240" aria-hidden="true">
+              <circle cx="120" cy="120" r="${r}" fill="none" stroke="#252D24" stroke-width="10"/>
+              <circle cx="120" cy="120" r="${r}" fill="none" stroke="#C5FA55" stroke-width="10" stroke-linecap="round" stroke-dasharray="${dash} ${c.toFixed(0)}" transform="rotate(-90 120 120)"/>
+            </svg>
+            ${!s.plankRunning ? `
+              <button class="plank-start-btn" data-act="plank-toggle">
+                <span class="d" style="font-size:52px;line-height:52px">Старт</span>
+                <span class="d" style="font-size:22px;margin-top:4px;opacity:.75">${targetSec > 0 ? fmtSec(targetSec) : 'Без цели'}</span>
+              </button>` : `
+              <button class="plank-stop-btn ${isOver ? 'overtime' : ''}" data-act="plank-toggle">
+                ${isOver ? '<span class="lock-goal-pill" style="margin-bottom:2px">Цель ✓</span>' : ''}
+                <span class="d" style="font-size:70px;line-height:70px;color:var(--f-primary)">${disp}</span>
+                <span class="m" style="font-size:13px">${targetSec === 0 ? 'счёт вверх' : isOver ? `сверх цели ${fmtSec(targetSec)}` : `осталось из ${fmtSec(targetSec)}`}</span>
+                <span class="d" style="font-size:20px;margin-top:6px;display:flex;align-items:center;gap:8px">${ICO.stopSq}Стоп</span>
+              </button>`}
+          </div>
+          <div style="margin-top:12px">
+            <span class="tag">${ICO.flag}План ${fmtSec(plan.origSec)}${targetSec !== plan.origSec && targetSec > 0 ? ` · цель ${fmtSec(targetSec)}` : ''}</span>
+          </div>
+        </div>`;
+    } else {
+      const totalRows = Math.max(plan.sets, logged.length + 1);
+      const draft = s.drafts[ex.id] || { w: '', r: '' };
+      let suggW = '', suggR = '';
+      if (logged.length > 0) { suggW = logged[logged.length - 1].w; suggR = logged[logged.length - 1].r; }
+      else if (ex.id === 'incline' && s.calibratedSuggestion) { suggW = s.calibratedSuggestion.w; suggR = s.calibratedSuggestion.r; }
+      else if (plan.lastW !== null && plan.lastW !== undefined) { suggW = String(plan.lastW).replace('.', ','); suggR = String(plan.lastR || plan.repsMax); }
+      const hasSugg = suggW !== '' && suggR !== '';
+      const hasEdits = draft.w.trim() !== '' || draft.r.trim() !== '';
+      const canSave = (draft.w.trim() !== '' || suggW !== '') && (draft.r.trim() !== '' || suggR !== '');
+
+      let rowsHtml = '';
+      for (let i = 0; i < totalRows; i++) {
+        if (i < logged.length) {
+          const item = logged[i];
+          rowsHtml += `
+            <div class="d f-row f-row-logged">
+              <span class="d f-num f-num-done">${i + 1}</span>
+              <span style="font-size:22px">${item.w}</span>
+              <span style="font-size:22px">${item.r}</span>
+              <span class="done-badge" aria-label="Записан">${ICO.check}</span>
+            </div>`;
+        } else if (i === logged.length) {
+          const checkCls = !canSave ? 'btn-disabled' : hasEdits ? 'btn-solid-save' : 'btn-tonal-sugg';
+          const numCls = hasEdits ? 'f-num-active' : 'f-num-sugg';
+          rowsHtml += `
+            <div class="f-row f-row-active">
+              <span class="d f-num ${numCls}">${i + 1}</span>
+              <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${draft.w ? 'has-value' : ''}" data-field="w" value="${draft.w}" placeholder="${suggW || '—'}" aria-label="Вес">
+              <input class="f-in ${hasSugg ? 'is-sugg' : ''} ${draft.r ? 'has-value' : ''}" data-field="r" value="${draft.r}" placeholder="${suggR || '—'}" aria-label="Повторения">
+              <button class="f-check-btn ${checkCls}" data-act="log-set" ${!canSave ? 'disabled' : ''}>${ICO.check}</button>
+            </div>`;
+        } else {
+          rowsHtml += `<div class="f-row f-row-future"><span class="d f-num f-num-future">${i + 1}</span><div class="f-in-empty-future"></div><div class="f-in-empty-future"></div><span></span></div>`;
+        }
+      }
+
+      bodyHtml = `
+        <div class="m d f-col-head"><span>№</span><span>Вес, кг</span><span>Повторения</span><span></span></div>
+        <div class="f-rows">${rowsHtml}</div>
+        <div style="display:flex;justify-content:center;margin-top:10px"><button class="ob" style="width:auto;min-height:44px;padding:0 20px;font-size:15px" data-act="log-set">+ Подход</button></div>`;
+    }
+
+    const restRingHtml = (ex.type === 'duration' && s.plankRunning) ? '' : `
+      <button class="f-rest-ring" data-act="rest-tap" title="Тап: старт/сброс · Правый клик: настройки">
+        ${restRingSvg(s.restRunning, s.restLeft, s.restDefault)}
+        <span class="f-rest-ring-inner">
+          <span class="d" style="font-size:10px;color:var(--f-muted)">${s.restRunning ? 'Отдых' : 'Старт'}</span>
+          <span class="d" style="font-size:22px;color:${s.restRunning ? 'var(--f-primary)' : 'var(--f-text)'};margin-top:2px">${fmtSec(s.restRunning ? s.restLeft : s.restDefault)}</span>
+        </span>
+      </button>`;
+
+    const isLast = s.exIndex === day.exercises.length - 1;
+
+    // Sheets on Workout
+    let sheetHtml = '';
+    if (s.sheet === 'lighten') {
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h3>Облегчить тренировку сегодня</h3>${renderLamps(null, true)}</div><p>Затронет оставшиеся упражнения и незаписанные подходы. Программа и будущие подсказки не изменятся.</p><button class="mode-card ${s.easeMode === 'fewerSets' ? 'selected' : ''}" data-act="set-ease-workout" data-v="fewerSets"><span><span class="mode-card-title">Меньше подходов (−1)</span><span class="mode-card-sub">Рабочий вес остаётся, короче объём</span></span><span class="mode-radio">${s.easeMode === 'fewerSets' ? ICO.checkSm : ''}</span></button><button class="mode-card ${s.easeMode === 'easier' ? 'selected' : ''}" data-act="set-ease-workout" data-v="easier"><span><span class="mode-card-title">Легче подходы</span><span class="mode-card-sub">−2 повтора / ~80% времени от цели сегодня</span></span><span class="mode-radio">${s.easeMode === 'easier' ? ICO.checkSm : ''}</span></button>${isEased ? '<button class="f-sheet-tonal" data-act="set-ease-workout" data-v="none">Вернуть обычный план</button>' : ''}<button class="f-sheet-cancel" data-act="close-sheet">Готово</button></div></div>`;
+    } else if (s.sheet === 'rest_menu') {
+      const presets = [60, 90, 120, 180];
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Таймер отдыха</h3>${s.restRunning ? `<div class="rest-now-row"><div><div style="font-size:11px;color:var(--f-muted)">Сейчас идёт</div><div class="d" style="font-size:22px;color:var(--f-primary)">${fmtSec(s.restLeft)}</div></div><div class="rest-quick-btns"><button class="rest-quick-btn" data-act="rest-add" data-v="15">+15 с</button><button class="rest-quick-btn" data-act="rest-add" data-v="30">+30 с</button></div></div>` : ''}<div style="text-align:center"><div style="font-size:12px;color:var(--f-muted)">Время отдыха по умолчанию</div><div class="plank-stepper" style="margin:8px 0 10px"><button class="st" data-act="rest-def-step" data-v="-15">−</button><div class="d" style="font-size:38px;line-height:1;min-width:110px">${fmtSec(s.restDefault)}</div><button class="st" data-act="rest-def-step" data-v="15">+</button></div><div class="rest-presets">${presets.map(sec => `<button class="rest-preset-btn ${s.restDefault === sec ? 'active' : ''}" data-act="rest-def-set" data-v="${sec}">${fmtSec(sec)}</button>`).join('')}</div></div><div class="rest-toggle-row"><div><div style="font-size:13.5px;font-weight:600">Автозапуск после подхода</div><div style="font-size:11.5px;color:var(--f-muted)">Дублируется в Настройках</div></div><button class="f-switch ${s.restAutoStart ? 'on' : ''}" data-act="toggle-rest-auto"></button></div><button class="f-sheet-cancel" data-act="close-sheet">Закрыть</button></div></div>`;
+    } else if (s.sheet === 'calibrate') {
+      const fObj = FORMULAS.find(f => f.id === s.formulaId) || FORMULAS[0];
+      const cw = parseFloat(String(s.calCalcW).replace(',', '.')) || 0, cr = parseInt(s.calCalcR, 10) || 0, targetR = plan.repsMax || 10;
+      const validCalc = cw > 0 && cr >= 1 && cr <= 15, est1RM = validCalc ? fObj.calc(cw, cr) : 0, estWork = validCalc ? fObj.inv(est1RM, targetR + 2) : 0;
+      let calBody = '';
+      if (s.calFormulaPicker) {
+        calBody = `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Формула расчёта 1RM</h3><button class="f-ghost-btn" data-act="cal-formula-close">Назад</button></div><p>Изменение здесь обновит формулу и в Настройках.</p><div style="display:flex;flex-direction:column;gap:4px">${FORMULAS.map(f => `<button class="f-feel-card ${f.id === fObj.id ? 'just-right' : ''}" data-act="cal-pick-formula" data-v="${f.id}"><div style="flex:1;min-width:0"><span class="f-feel-title">${f.name}${f.def ? ' · по умолчанию' : ''}</span><span class="f-feel-sub">${f.hint}</span></div><span class="f-num-font" style="color:var(--f-primary);font-size:15px">${validCalc ? '≈ ' + fmtNum(f.inv(f.calc(cw, cr), targetR + 2)) + ' кг' : ''}</span></button>`).join('')}</div>`;
+      } else if (s.calTab === 'feel') {
+        calBody = `<p>Сделайте лёгкий пробный подход и отметьте ощущения. В историю попадёт только вариант «В самый раз».</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес пробы, кг</span><input class="f-in has-value" data-cal="feelW" value="${s.calFeelW}"></div><div><span class="f-field-lbl">Повторения</span><input class="f-in has-value" data-cal="feelR" value="${s.calFeelR}"></div></div><div class="f-feel-stack"><button class="f-feel-card" data-act="cal-feel" data-v="light"><span class="f-feel-ico">↑</span><span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Отдохните и возьмите следующий комфортный вес тяжелее</span></span></button><button class="f-feel-card just-right" data-act="cal-feel" data-v="ok"><span class="f-feel-ico">✓</span><span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Запишет подход 1 и подскажет вес для подхода 2</span></span></button><button class="f-feel-card ${s.calFeelAnswer === 'heavy' ? 'selected-heavy' : ''}" data-act="cal-feel" data-v="heavy"><span class="f-feel-ico">↓</span><span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Попробуйте легче · если вес минимальный — замените упражнение</span></span></button></div>${s.calFeelAnswer === 'heavy' ? '<div class="f-sheet-callout" style="background:var(--f-error-bg);border-color:var(--f-error-border);color:#FFD6D2">Возьмите вес легче или откройте замену упражнения в каталоге. Проба не сохранена.</div>' : ''}`;
+      } else {
+        calBody = `<p>Один чистый подход до потери техники (не выше 15 повт.). Замер не попадёт в историю — подставим ориентир в строку 1.</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес, кг</span><input class="f-in has-value" data-cal="calcW" value="${s.calCalcW}"></div><div><span class="f-field-lbl">Повторения (до 15)</span><input class="f-in has-value" data-cal="calcR" value="${s.calCalcR}"></div></div><button class="f-formula-trigger" data-act="cal-formula-open"><div><div style="font-size:12.5px;font-weight:600">Формула: ${fObj.name}</div><div style="font-size:11px;color:var(--f-muted)">1RM ≈ ${validCalc ? fmtNum(est1RM) + ' кг' : '—'} · пересчёт под цель + 2</div></div><span style="font-size:12px;font-weight:600;color:var(--f-primary)">Сменить</span></button><div class="f-est-box"><div style="display:flex;align-items:baseline;justify-content:space-between"><span class="f-num-font" style="font-size:30px;color:var(--f-primary)">≈ ${fmtNum(estWork)} <small style="font-family:Inter;font-size:14px;color:var(--f-on-primary-container)">кг × ${targetR}</small></span><span style="font-size:11px;color:var(--f-muted)">округлите к снаряду</span></div><button class="pb" style="margin-top:2px;min-height:42px;font-size:15px" data-act="cal-apply-est">Подставить ориентир в подход 1</button></div>`;
+      }
+      sheetHtml = `<div class="f-scrim keep-header" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div>${!s.calFormulaPicker ? `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Подобрать рабочий вес</h3><button class="prog-strip-x" data-act="close-sheet">${ICO.x}</button></div><div class="f-seg"><button class="${s.calTab === 'feel' ? 'active' : ''}" data-act="cal-tab" data-v="feel">По ощущениям <span class="f-rec-dot">Рек.</span></button><button class="${s.calTab === 'calc' ? 'active' : ''}" data-act="cal-tab" data-v="calc">По повторениям</button></div>` : ''}${calBody}</div></div>`;
+    } else if (s.sheet === 'ex_detail') {
+      // EXACT BASELINE BOARD 20 ("Название упражнения целиком")
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div class="m d" style="font-size:13px">Упражнение ${s.exIndex + 1} из ${day.exercises.length}</div>
+            <h2 class="d" style="margin:0;font-size:26px;line-height:28px">${exDisplayName(ex, s)}</h2>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag">${ex.muscle}</span><span class="tag">${ex.equip.split(',')[0]}</span><span class="tag">План: ${plan.label}</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+              <div style="background:var(--f-surface);border-radius:14px;padding:10px 12px"><div class="m" style="font-size:12px">Тип записи</div><div style="font-size:15px;font-weight:500;margin-top:2px">${ex.recordLabel}</div></div>
+              <div style="background:var(--f-surface);border-radius:14px;padding:10px 12px"><div class="m" style="font-size:12px">Оборудование</div><div style="font-size:15px;font-weight:500;margin-top:2px">${ex.equip}</div></div>
+            </div>
+            <button class="ob" style="margin-top:4px;font-size:15px" data-act="close-sheet">Открыть в каталоге</button>
+          </div>
+        </div>`;
+    } else if (s.sheet === 'all_ex') {
+      // EXACT BASELINE BOARD 21 ("Список всех упражнений")
+      const totalLogged = day.exercises.reduce((sum, item) => sum + (s.logged[item.id] || []).length, 0);
+      sheetHtml = `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 4px 2px">
+              <span class="d" style="font-size:20px">Все упражнения</span>
+              <span class="m" style="font-size:13px">Записано ${totalLogged} подходов</span>
+            </div>
+            <div style="display:grid;gap:2px">
+              ${day.exercises.map((item, idx) => {
+                const cnt = (s.logged[item.id] || []).length, pl = effectivePlan(item, wk, s.easeMode);
+                return `<button class="allex-row ${idx === s.exIndex ? 'cur' : ''}" data-act="jump-ex" data-v="${idx}">
+                  <span class="d allex-num">${idx + 1}</span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:500;line-height:20px">${exDisplayName(item, s)}</span><span class="m" style="font-size:12px">План ${pl.label}</span></span>
+                  <span class="tag">${cnt > 0 ? cnt + ' подх.' : '0'}</span>
+                </button>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span>${s.snack.undoType === 'cal' ? '<button class="f-snack-undo" data-act="undo-cal">Сбросить</button>' : ''}</div>` : '';
+
+    return `
+      <div class="f-wstatus"><span>18:40</span>${statusPill}<span class="m" style="font-size:12px">5G · 82%</span></div>
+      <div class="f-scroll-work">
+        <div class="f-topbar">
+          <button class="f-back-btn" data-act="go-screen" data-v="home" aria-label="Назад">${ICO.back}</button>
+          ${weekPart}
+          <div class="f-top-right">
+            <button class="ease-top-btn ${isEased ? 'on' : ''}" data-act="open-sheet" data-v="lighten">${isEased ? renderLamps(null, true) : ICO.feather}<span>${easeBtnLabel}</span></button>
+            <span class="m d" style="font-size:15px">Упр. ${s.exIndex + 1}/${day.exercises.length}</span>
+          </div>
+        </div>
+        <div class="f-head">
+          <button class="f-title-btn ${titleSizeClass(exName)}" data-act="open-sheet" data-v="ex_detail">${exName}</button>
+          ${restRingHtml}
+        </div>
+        ${planTags}
+        ${stripHtml}
+        ${bodyHtml}
+      </div>
+      ${snackHtml}
+      <div class="f-bottom-nav">
+        <button class="f-nav-prev" data-act="prev-ex" ${s.exIndex === 0 ? 'disabled style="opacity:0.4"' : ''}>${ICO.back}</button>
+        <button class="f-nav-all" data-act="open-sheet" data-v="all_ex">Упражнения</button>
+        ${isLast
+          ? '<button class="f-nav-finish" data-act="finish-workout">Завершить</button>'
+          : `<button class="f-nav-next" data-act="next-ex">${ICO.arrowR}</button>`}
+      </div>
+      ${sheetHtml}`;
+  }
+
+  /* ==================== SUMMARY SCREEN (#99 + #101) ==================== */
+  function renderSummaryHTML(s) {
+    const day = getDay(s), wk = activeWeekKey(s), isEased = s.easeMode !== 'none' || s.sessionMarkedLightened;
+    const heroHtml = isEased ? `
+      <div class="sum-hero eased">
+        <div class="sum-hero-eye">Облегчённая тренировка · без сравнения с нормой</div>
+        <div class="sum-hero-big"><div class="sum-hero-metric">8 <small>подходов выполнено</small></div></div>
+        <div style="margin-top:5px;font-size:12px;color:var(--load-ease-text)">День засчитан в проход недели. Будущие подсказки веса остались прежними.</div>
+      </div>` : `
+      <div class="sum-hero">
+        <div class="sum-hero-eye">К прошлой тяжёлой тренировке · ${day.name}</div>
+        <div class="sum-hero-big"><div class="sum-hero-metric">+5 <small>повт.</small></div><div class="sum-hero-metric" style="font-size:24px">+2,5 <small>кг в жиме</small></div></div>
+      </div>`;
+
+    const cardsHtml = isEased ? `
+      <div class="d sum-sec-title">Выполнено сегодня</div>
+      <div class="mix-list">
+        <div class="mix-card"><div class="mix-top"><div class="mix-name">Жим штанги лёжа</div><span class="delta-pill same">2 подх.</span></div><div class="mix-pills-row"><span class="mix-weight-pill">60 кг</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">10</span></div></div>
+        <div class="mix-card"><div class="mix-top"><div class="mix-name">Тяга штанги в наклоне</div><span class="delta-pill same">2 подх.</span></div><div class="mix-pills-row"><span class="mix-weight-pill">65 кг</span><span class="mix-rep-pill">8</span><span class="mix-rep-pill">8</span></div></div>
+        <div class="mix-card"><div class="mix-top"><div class="mix-name">Планка</div><span class="delta-pill same">2 подх.</span></div><div class="mix-pills-row"><span class="mix-rep-pill">0:50</span><span class="mix-rep-pill">0:48</span></div></div>
+      </div>` : `
+      <div class="d sum-sec-title">Есть прогресс</div>
+      <div class="mix-list">
+        <div class="mix-card is-up"><div class="mix-top"><div class="mix-name">Жим штанги лёжа</div><span class="delta-pill up"><span class="n">+2,5 кг</span></span></div><div class="mix-pills-row"><span class="mix-weight-pill grew">62,5 кг</span><span class="mix-rep-pill tonal-up">10</span><span class="mix-rep-pill grew">11</span><span class="mix-rep-pill tonal-up">10</span></div><div class="mix-prev">Было: 60 кг · 12, 12, 12</div></div>
+        <div class="mix-card is-up"><div class="mix-top"><div class="mix-name">Планка</div><span class="delta-pill up"><span class="n">+15 с</span></span></div><div class="mix-pills-row"><span class="mix-rep-pill grew">1:05</span><span class="mix-rep-pill grew">1:00</span><span class="mix-rep-pill tonal-up">0:50</span></div><div class="mix-prev">Было: 0:55, 0:55, 0:50</div></div>
+      </div>
+      <div class="d sum-sec-title">Остальные упражнения</div>
+      <div class="mix-list">
+        <div class="mix-card"><div class="mix-top"><div class="mix-name">Тяга штанги в наклоне</div><span class="delta-pill down"><span class="n">−2 повт.</span></span></div><div class="mix-pills-row"><span class="mix-weight-pill">70 кг</span><span class="mix-rep-pill">7</span><span class="mix-rep-pill dipped">6</span><span class="mix-rep-pill dipped">5</span></div><div class="mix-prev">Было: 70 кг · 7, 7, 6</div></div>
+        <div class="mix-card"><div class="mix-top"><div class="mix-name">Жим гантелей на наклонной скамье</div><span class="delta-pill first">Впервые</span></div><div class="mix-pills-row"><span class="mix-weight-pill">20 кг</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">10</span><span class="mix-rep-pill">9</span></div></div>
+      </div>`;
+
+    return `
+      <div class="f-scroll-home">
+        <div class="sum-kicker"><span>Тренировка завершена</span><span class="m" style="font-weight:500">44 мин</span></div>
+        <h2 class="d sum-title">${dayDisplayName(day, s)}</h2>
+        <div class="sum-sub">${renderLamps(s.alternating ? wk : null, isEased)}<span>${s.alternating ? weekLabel(wk) : 'Обычный план'}${isEased ? ' · Облегчена' : ''}</span></div>
+        ${heroHtml}
+        ${cardsHtml}
+      </div>
+      <div class="f-bottom-nav"><button class="pb" data-act="save-to-history">Готово · в историю</button></div>`;
+  }
+
+  /* ==================== EXACT BASELINE HISTORY SCREEN (Board 04 + #101 lamps & ribbon + #94) ==================== */
+  function renderHistoryHTML(s) {
+    const cards = s.history.map(item => {
+      const hasLamps = item.week !== 'regular' || item.lightened;
+      const badgeTxt = [item.week === 'heavy' ? 'Тяжёлая' : item.week === 'light' ? 'Лёгкая' : '', item.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
+      const ribCls = item.week === 'heavy' && item.lightened ? 'has-ribbon rib-heavy-ease'
+        : item.week === 'light' && item.lightened ? 'has-ribbon rib-light-ease'
+        : item.week === 'heavy' ? 'has-ribbon rib-heavy'
+        : item.week === 'light' ? 'has-ribbon rib-light'
+        : item.lightened ? 'has-ribbon rib-ease' : '';
+      return `
+        <div class="hist-card ${ribCls}">
+          <div class="hist-top"><span class="d hist-date">${item.date}</span><span class="hist-time">${item.time}</span></div>
+          <div class="hist-row-main">
+            <div class="d hist-title">${s.longNames ? item.longDay : item.day}</div>
+            ${hasLamps ? `<span class="hist-badge">${renderLamps(item.week, item.lightened)}<span>${badgeTxt}</span></span>` : ''}
+          </div>
+          <div class="hist-prog">${item.prog}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1">История</h1>
+        ${cards}
+      </div>
+      <nav class="f-nav">
+        <button class="f-nav-btn" data-act="go-screen" data-v="home">${ICO.home}</button>
+        <button class="f-nav-btn active" data-act="go-screen" data-v="history">${ICO.history}<span>История</span></button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="lock" title="Экран блокировки">${ICO.settings}</button>
+      </nav>`;
+  }
+
+  /* ==================== EXACT BASELINE LOCK SCREEN (Board 18 + #83 + #94) ==================== */
+  function renderLockHTML(s) {
+    const exName = s.longNames ? 'Тяга штанги в наклоне к поясу обратным хватом с паузой' : 'Жим лёжа';
+    const plankOver = s.lockPlankState === 'overtime', plankUp = s.lockPlankState === 'countup';
+    const plankTime = plankOver ? '+0:12' : plankUp ? '0:38' : '0:24';
+    const plankPct = plankOver ? 100 : 60;
+    const restPct = Math.round((s.restLeft / s.restDefault) * 100);
+
+    return `
+      <div class="lock-screen">
+        <div class="d lock-clock">18:40</div>
+        <div class="lock-date">четверг, 26 ноября</div>
+        <div class="lock-stack">
+          <div class="lock-card ${plankOver ? 'overtime' : ''}">
+            <div class="lock-app-row"><span class="lock-app-ico">F</span><span>Fitty · сейчас</span></div>
+            <div class="lock-main-row">
+              <div class="lock-left">
+                <div class="lock-head"><span class="d" style="font-size:14px">Планка</span><span class="d lock-num">${plankTime}</span>${plankOver ? '<span class="lock-goal-pill">Цель ✓</span>' : ''}</div>
+                <div class="lock-sub"><span class="lock-sub-name">${s.longNames ? 'Планка на предплечьях с удержанием нейтрального таза' : 'Планка на предплечьях'}</span><span class="lock-sub-suf">&nbsp;· подход 3 из 3</span></div>
+              </div>
+              <div class="lock-btns"><button class="lock-btn-stop" data-act="lock-cycle-plank">■ Стоп</button></div>
+            </div>
+            <div class="lock-bar"><div class="lock-bar-fill" style="width:${plankPct}%"></div></div>
+          </div>
+
+          <div class="lock-card">
+            <div class="lock-app-row"><span class="lock-app-ico">F</span><span>Fitty · сейчас</span></div>
+            <div class="lock-main-row">
+              <div class="lock-left">
+                <div class="lock-head"><span class="d" style="font-size:14px">Отдых</span><span class="d lock-num">${fmtSec(s.restLeft)}</span></div>
+                <div class="lock-sub"><span class="lock-sub-name">${exName}</span><span class="lock-sub-suf">&nbsp;· подход 3 из 3</span></div>
+              </div>
+              <div class="lock-btns">
+                <button class="lock-btn-tonal" data-act="rest-add" data-v="30">+30 с</button>
+                <button class="lock-btn-ob" data-act="lock-reset-rest">Сброс</button>
+              </div>
+            </div>
+            <div class="lock-bar"><div class="lock-bar-fill" style="width:${restPct}%"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:auto;padding-top:16px;text-align:center;font-size:11.5px;color:var(--f-dim)">
+          Тап «■ Стоп» в прототипе переключает состояния планки: переработка / отсчёт / без цели
+        </div>
+      </div>`;
+  }
+
+  function renderPhoneContent(s) {
+    if (s.screen === 'home') return renderHomeHTML(s);
+    if (s.screen === 'workout') return renderWorkoutHTML(s);
+    if (s.screen === 'summary') return renderSummaryHTML(s);
+    if (s.screen === 'history') return renderHistoryHTML(s);
+    return renderLockHTML(s);
+  }
+
+  /* ==================== INTERACTIVE WIRING ==================== */
+  function applyPreset(p) {
+    st.preset = p; st.sheet = null; st.snack = null; st.undoSnap = null; st.checkinAnswer = 'none'; st.easeMode = 'none';
+    if (p === 'mid_heavy') { st.alternating = true; st.passNumber = 2; st.proposedWeek = 'heavy'; st.currentWeek = 'heavy'; st.dayStatus = { A: 'todo', B: 'done', C: 'todo' }; st.selectedDay = 'A'; }
+    else if (p === 'new_pass') { st.alternating = true; st.passNumber = 1; st.proposedWeek = 'light'; st.currentWeek = 'light'; st.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; st.selectedDay = 'A'; }
+    else if (p === 'mid_light') { st.alternating = true; st.passNumber = 2; st.proposedWeek = 'light'; st.currentWeek = 'light'; st.dayStatus = { A: 'done', B: 'todo', C: 'todo' }; st.selectedDay = 'B'; }
+    else if (p === 'last_day') { st.alternating = true; st.passNumber = 2; st.proposedWeek = 'heavy'; st.currentWeek = 'heavy'; st.dayStatus = { A: 'done', B: 'todo', C: 'done' }; st.selectedDay = 'B'; }
+    else if (p === 'alt_off') { st.alternating = false; st.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; st.selectedDay = 'A'; }
+    renderLive();
+  }
+
+  function renderInspector() {
+    document.getElementById('ctrl-screen').innerHTML = [
+      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['lock', 'Экран блокировки']
+    ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
+
+    document.getElementById('ctrl-preset').innerHTML = [
+      ['mid_heavy', 'Тяжёлая (1/3)', '#F59E42'], ['new_pass', 'Новый проход (0/3 · выбор)', '#5CC8FA'],
+      ['mid_light', 'Лёгкая (1/3)', '#5CC8FA'], ['last_day', 'Последний день (2/3)', '#F59E42'], ['alt_off', 'Без чередования', '#81907D']
+    ].map(([k, lbl, col]) => `<button type="button" class="cbtn ${st.preset === k ? 'active' : ''}" data-host="preset" data-v="${k}"><span class="cbtn-dot" style="background:${col}"></span>${lbl}</button>`).join('');
+
+    document.getElementById('ctrl-toggles').innerHTML = [
+      ['checkin', `Опрос самочувствия: ${st.checkinEnabled ? 'ВКЛ' : 'ВЫКЛ'}`, st.checkinEnabled],
+      ['prompts', `Подсказки по нагрузке: ${st.loadPromptsEnabled ? 'ВКЛ' : 'ВЫКЛ'}`, st.loadPromptsEnabled],
+      ['longNames', `Длинные названия (#94): ${st.longNames ? 'ВКЛ' : 'ВЫКЛ'}`, st.longNames]
+    ].map(([k, lbl, on]) => `<button type="button" class="cbtn ${on ? 'active' : ''}" data-host="toggle" data-v="${k}">${lbl}</button>`).join('');
+
+    const p = passInfo(st), day = getDay(st), ex = getEx(st);
+    document.getElementById('live-state-tbl').innerHTML = `
+      <tr><td>Ширина</td><td>${st.width} dp</td></tr>
+      <tr><td>Чередование / неделя</td><td>${st.alternating ? `${weekShort(st.currentWeek)} (проход ${p.resolved}/${p.total})` : 'выкл.'}</td></tr>
+      <tr><td>Облегчение</td><td>${st.easeMode === 'none' ? 'нет' : st.easeMode === 'fewerSets' ? 'Меньше подходов (−1)' : 'Легче подходы'}</td></tr>
+      <tr><td>День / упражнение</td><td>${day.name} · ${ex.name} (${st.exIndex + 1}/${day.exercises.length})</td></tr>
+      <tr><td>Отдых</td><td>${st.restRunning ? `идёт ${fmtSec(st.restLeft)}` : `готов (${fmtSec(st.restDefault)})`} · авто ${st.restAutoStart ? 'вкл' : 'выкл'}</td></tr>`;
+
+    const hints = {
+      home: 'Кликайте «Тяжёлая/Лёгкая», замок 🔒, «Устал · облегчить», чипы дней, «Пропустить день» и «Начать тренировку».',
+      workout: 'Листайте упражнения (№1 прибавить, №2 снизить, №3 Подобрать вес, №4 Планка 280px). Правый клик по кругу отдыха → шторка.',
+      summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
+      history: 'Точный стиль Истории из дизайн-системы (лаймовая дата UPPERCASE, название 22px, без рамок) + 8dp-лампы и бейдж недели.',
+      lock: 'Точный стиль доски 18 (#0B0E0B, часы 96px, Fitty · сейчас) + согласованные в #83 кнопки «■ Стоп» и «+30 с / Сброс».'
+    };
+    document.getElementById('phone-hint').textContent = hints[st.screen] || '';
+  }
+
+  function bindPhoneEvents(phone) {
+    phone.querySelectorAll('[data-act]').forEach(el => {
+      el.addEventListener('click', () => {
+        const act = el.dataset.act, v = el.dataset.v;
+        if (act === 'go-screen') { st.screen = v; st.sheet = null; st.snack = null; }
+        else if (act === 'set-week') { if (!isWeekLocked()) { st.currentWeek = v; st.snack = null; } }
+        else if (act === 'select-day') { st.selectedDay = v; st.exIndex = 0; st.snack = null; }
+        else if (act === 'set-checkin') {
+          st.checkinAnswer = v;
+          if (v === 'tired' && st.easeMode === 'none') st.easeMode = 'fewerSets';
+          if (v !== 'tired') st.easeMode = 'none';
+        }
+        else if (act === 'set-ease') { st.easeMode = v; }
+        else if (act === 'set-ease-workout') { st.easeMode = v; st.sheet = null; }
+        else if (act === 'open-sheet') { st.sheet = v; st.calFormulaPicker = false; }
+        else if (act === 'close-sheet') { st.sheet = null; }
+        else if (act === 'restore-day') { st.dayStatus[v] = 'todo'; st.selectedDay = v; st.snack = null; }
+        else if (act === 'confirm-skip') {
+          st.undoSnap = { dayStatus: { ...st.dayStatus }, currentWeek: st.currentWeek, proposedWeek: st.proposedWeek, selectedDay: st.selectedDay };
+          const dId = st.selectedDay; st.dayStatus[dId] = 'skipped'; st.sheet = null;
+          if (passInfo().todo === 0) { const nxt = oppWeek(st.currentWeek); st.currentWeek = nxt; st.proposedWeek = nxt; st.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; st.selectedDay = 'A'; }
+          else { const nxtD = DAYS.find(d => st.dayStatus[d.id] === 'todo'); if (nxtD) st.selectedDay = nxtD.id; }
+          st.snack = { text: `День ${dId} пропущен в этой неделе` };
+        }
+        else if (act === 'confirm-end-early') {
+          st.undoSnap = { dayStatus: { ...st.dayStatus }, currentWeek: st.currentWeek, proposedWeek: st.proposedWeek, selectedDay: st.selectedDay };
+          const prevW = weekLabel(st.currentWeek), nxt = oppWeek(st.currentWeek);
+          st.currentWeek = nxt; st.proposedWeek = nxt; st.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; st.selectedDay = 'A'; st.sheet = null;
+          st.snack = { text: `${prevW} завершена досрочно` };
+        }
+        else if (act === 'undo-snack' && st.undoSnap) { Object.assign(st, st.undoSnap, { dayStatus: { ...st.undoSnap.dayStatus }, snack: null, undoSnap: null }); }
+        else if (act === 'start-workout') { st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
+        else if (act === 'dismiss-prompt') { st.dismissedPrompts[v] = true; }
+        else if (act === 'log-set') {
+          const ex = getEx(), plan = effectivePlan(ex, activeWeekKey(), st.easeMode), logged = st.logged[ex.id] || (st.logged[ex.id] = []), draft = st.drafts[ex.id] || { w: '', r: '' };
+          const suggW = logged.length ? logged[logged.length - 1].w : (ex.id === 'incline' && st.calibratedSuggestion ? st.calibratedSuggestion.w : (plan.lastW != null ? String(plan.lastW).replace('.', ',') : ''));
+          const suggR = logged.length ? logged[logged.length - 1].r : (ex.id === 'incline' && st.calibratedSuggestion ? st.calibratedSuggestion.r : (plan.lastR != null ? String(plan.lastR) : ''));
+          const w = draft.w.trim() || suggW, r = draft.r.trim() || suggR;
+          if (w && r) {
+            logged.push({ w, r }); st.drafts[ex.id] = { w: '', r: '' };
+            if (st.easeMode !== 'none') st.sessionMarkedLightened = true;
+            if (st.restAutoStart) { st.restRunning = true; st.restLeft = st.restDefault; }
+          }
+        }
+        else if (act === 'plank-step') {
+          const base = effectivePlan(getEx(), activeWeekKey(), st.easeMode).sec;
+          const next = base + st.plankOffset + parseInt(v, 10);
+          st.plankOffset = next < 5 ? -base : next - base;
+        }
+        else if (act === 'plank-toggle') {
+          if (!st.plankRunning) { st.plankRunning = true; st.plankElapsed = 21; st.restRunning = false; }
+          else {
+            st.plankRunning = false; (st.logged.plank || (st.logged.plank = [])).push(Math.max(15, st.plankElapsed));
+            if (st.restAutoStart) { st.restRunning = true; st.restLeft = st.restDefault; }
+          }
+        }
+        else if (act === 'rest-tap') { st.restRunning = !st.restRunning; st.restLeft = st.restDefault; }
+        else if (act === 'rest-add') { st.restLeft += parseInt(v, 10); st.restRunning = true; }
+        else if (act === 'rest-def-step') { st.restDefault = Math.max(15, Math.min(600, st.restDefault + parseInt(v, 10))); if (!st.restRunning) st.restLeft = st.restDefault; }
+        else if (act === 'rest-def-set') { st.restDefault = parseInt(v, 10); if (!st.restRunning) st.restLeft = st.restDefault; }
+        else if (act === 'toggle-rest-auto') { st.restAutoStart = !st.restAutoStart; }
+        else if (act === 'cal-tab') { st.calTab = v; st.calFeelAnswer = null; }
+        else if (act === 'cal-formula-open') { st.calFormulaPicker = true; }
+        else if (act === 'cal-formula-close') { st.calFormulaPicker = false; }
+        else if (act === 'cal-pick-formula') { st.formulaId = v; st.calFormulaPicker = false; }
+        else if (act === 'cal-feel') {
+          if (v === 'ok') { (st.logged.incline || (st.logged.incline = [])).push({ w: st.calFeelW || '18', r: st.calFeelR || '10' }); st.sheet = null; st.snack = null; if (st.restAutoStart) { st.restRunning = true; st.restLeft = st.restDefault; } }
+          else st.calFeelAnswer = v;
+        }
+        else if (act === 'cal-apply-est') {
+          const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
+          const cw = parseFloat(String(st.calCalcW).replace(',', '.')) || 26, cr = parseInt(st.calCalcR, 10) || 8;
+          const wStr = fmtNum(fObj.inv(fObj.calc(cw, cr), 12));
+          st.calibratedSuggestion = { w: wStr, r: '10', formula: fObj.name }; st.sheet = null;
+          st.snack = { text: `Ориентир ≈ ${wStr} кг × 10 в подходе 1 · замер не записан`, undoType: 'cal' };
+        }
+        else if (act === 'undo-cal') { st.calibratedSuggestion = null; st.snack = null; st.sheet = 'calibrate'; st.calTab = 'calc'; }
+        else if (act === 'prev-ex') { st.exIndex = Math.max(0, st.exIndex - 1); st.snack = null; }
+        else if (act === 'next-ex') { st.exIndex = Math.min(getDay().exercises.length - 1, st.exIndex + 1); st.snack = null; }
+        else if (act === 'jump-ex') { st.exIndex = parseInt(v, 10); st.sheet = null; }
+        else if (act === 'finish-workout') { st.screen = 'summary'; st.sheet = null; st.snack = null; }
+        else if (act === 'save-to-history') {
+          const day = getDay();
+          st.history.unshift({ date: '26 ноября 2026', time: '19:24', day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(), lightened: st.easeMode !== 'none' || st.sessionMarkedLightened });
+          if (st.alternating) st.dayStatus[day.id] = 'done';
+          st.screen = 'history';
+        }
+        else if (act === 'lock-cycle-plank') { const order = ['overtime', 'countdown', 'countup']; st.lockPlankState = order[(order.indexOf(st.lockPlankState) + 1) % order.length]; }
+        else if (act === 'lock-reset-rest') { st.restLeft = st.restDefault; }
+        renderLive();
+      });
+    });
+
+    const ring = phone.querySelector('[data-act="rest-tap"]');
+    if (ring) {
+      ring.addEventListener('contextmenu', e => { e.preventDefault(); st.sheet = 'rest_menu'; renderLive(); });
+      let holdTimer = null;
+      ring.addEventListener('pointerdown', () => { holdTimer = setTimeout(() => { st.sheet = 'rest_menu'; renderLive(); }, 450); });
+      ring.addEventListener('pointerup', () => clearTimeout(holdTimer));
+      ring.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+    }
+
+    phone.querySelectorAll('input[data-field]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const ex = getEx(), d = st.drafts[ex.id] || (st.drafts[ex.id] = { w: '', r: '' });
+        d[inp.dataset.field] = inp.value;
+        inp.classList.toggle('has-value', inp.value.trim() !== '');
+        const row = inp.closest('.f-row-active');
+        if (row) {
+          const wIn = row.querySelector('input[data-field="w"]'), rIn = row.querySelector('input[data-field="r"]');
+          const hasEdits = (wIn && wIn.value.trim() !== '') || (rIn && rIn.value.trim() !== '');
+          const canSave = ((wIn && wIn.value.trim() !== '') || (wIn && wIn.placeholder && wIn.placeholder !== '—'))
+            && ((rIn && rIn.value.trim() !== '') || (rIn && rIn.placeholder && rIn.placeholder !== '—'));
+          const btn = row.querySelector('.f-check-btn'), num = row.querySelector('.f-num');
+          if (btn) { btn.disabled = !canSave; btn.className = 'f-check-btn ' + (!canSave ? 'btn-disabled' : hasEdits ? 'btn-solid-save' : 'btn-tonal-sugg'); }
+          if (num) { num.className = 'd f-num ' + (hasEdits ? 'f-num-active' : 'f-num-sugg'); }
+        }
+      });
+    });
+    phone.querySelectorAll('input[data-cal]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        if (inp.dataset.cal === 'feelW') st.calFeelW = inp.value;
+        if (inp.dataset.cal === 'feelR') st.calFeelR = inp.value;
+        if (inp.dataset.cal === 'calcW') st.calCalcW = inp.value;
+        if (inp.dataset.cal === 'calcR') st.calCalcR = inp.value;
+      });
+    });
+  }
+
+  function renderLive() {
+    const phone = document.getElementById('phone-live');
+    phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+    phone.innerHTML = renderPhoneContent(st);
+    bindPhoneEvents(phone);
+    renderInspector();
+  }
+
+  function snap(ov) {
+    const b = createInitialState();
+    return Object.assign(b, ov, { dayStatus: Object.assign({}, b.dayStatus, ov.dayStatus || {}), logged: Object.assign({}, b.logged, ov.logged || {}), drafts: Object.assign({}, b.drafts, ov.drafts || {}) });
+  }
+
+  function renderBoard() {
+    const wCls = st.width === 360 ? 'w360' : '';
+    const sections = [
+      {
+        title: '1. Главная — база доски 02 + неделя (#98) + самочувствие (#101) + длинные имена (#94)',
+        sub: 'Точная типографика .d, безрамочная карточка упражнений, 64px навигация и единый голубой #5CC8FA для лёгкой недели',
+        cards: [
+          { title: 'Главная · Тяжёлая + Самочувствие раскрыто', note: 'Стык #98 + #101: зелёная карточка с 🔒 и точками + раскрытое облегчение + живой пересчёт целей.', state: snap({ screen: 'home', currentWeek: 'heavy', checkinAnswer: 'tired', easeMode: 'easier', dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A' }) },
+          { title: 'Главная · Новый проход (0/3) · Лёгкая (#5CC8FA)', note: 'Стык #98 + #101: сегмент «Тяжёлая / Лёгкая» до старта с лампами и голубыми акцентами.', state: snap({ screen: 'home', currentWeek: 'light', proposedWeek: 'light', dayStatus: { A: 'todo', B: 'todo', C: 'todo' }, selectedDay: 'A' }) },
+          { title: 'Главная · Чистый режим (как в базовом макете)', note: 'Чередование выкл., опрос выкл. — сверка 1-в-1 с исходной доской «Главная».', state: snap({ screen: 'home', alternating: false, checkinEnabled: false }) }
+        ]
+      },
+      {
+        title: '2. Тренировка — база досок 03/16/17/19 + 6 принятых решений (#79, #82, #83, #89, #99, #101)',
+        sub: 'Круг 76×76, адаптивный UPPERCASE-заголовок, полоса совета, Планка 280px и все шторки',
+        cards: [
+          { title: 'Тренировка · Совет «Потяжелее» + Подсказка (#79 + #99)', note: 'Пунктирная подсказка с тональной ✓, лаймовая полоса совета, кнопка «+ ПОДХОД» и «УПРАЖНЕНИЯ».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, logged: { bench: [] }, drafts: { bench: { w: '', r: '' } } }) },
+          { title: 'Тренировка · Янтарь лампы + Янтарь «Снизить» + Длинное имя', note: 'Проверка контраста #101 (#F59E42) и #99 (#F5C469) + 3-строчный заголовок рядом с кругом 76×76.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 1, longNames: true, logged: { row: [] }, drafts: { row: { w: '65', r: '' } } }) },
+          { title: 'Тренировка · Шторка «Подобрать вес» (1RM)', note: 'Стык #82 + #83 + #101: шапка и круг отдыха видимы наверху, формула Эпли в Inter.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 2, sheet: 'calibrate', calTab: 'calc', logged: { incline: [] } }) },
+          { title: 'Планка · Старт (база доски 16 + облегчение)', note: 'Чипы подходов, степпер «Цель сегодня» и круглый СТАРТ 280px (облегчённая цель 0:50).', state: snap({ screen: 'workout', currentWeek: 'heavy', easeMode: 'easier', exIndex: 3, plankRunning: false, plankOffset: 0 }) },
+          { title: 'Планка · Идёт замер / переработка (база доски 17 + #81)', note: 'Круг 280px, переработка +0:12 с бейджем «Цель ✓», пилюля «Планка +0:12» в статус-баре.', state: snap({ screen: 'workout', currentWeek: 'heavy', easeMode: 'none', exIndex: 3, plankRunning: true, plankOffset: -15, plankElapsed: 57, restRunning: false }) },
+          { title: 'Тренировка · Шторка долгого нажатия на отдых (#83)', note: '«Сейчас идёт 1:42» с +15/+30 с, фокус на времени по умолчанию (±15 с + пресеты) и автозапуск.', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, sheet: 'rest_menu', restRunning: true, restLeft: 102 }) }
+        ]
+      },
+      {
+        title: '3. Итоги, История (доска 04) и Экран блокировки (доска 18)',
+        sub: 'Точная база Истории и Экрана блокировки + согласованные лампы #101, дельты #99 и карточки #83',
+        cards: [
+          { title: 'Итоги · Обычная / тяжёлая с прогрессом (#99 + #101)', note: 'Hero-прирост, «Есть прогресс» / «Остальные», цветные капсулы, лампа недели.', state: snap({ screen: 'summary', currentWeek: 'heavy', easeMode: 'none' }) },
+          { title: 'Итоги · Облегчённая (две лампы)', note: 'Фактические подходы без негативных дельт, двойная лампа (янтарь + лаванда).', state: snap({ screen: 'summary', currentWeek: 'heavy', easeMode: 'fewerSets', sessionMarkedLightened: true }) },
+          { title: 'История · База доски 04 + лампы (#101) и бейджи (#94)', note: 'Без рамок, лаймовая дата UPPERCASE 16px, день 22px UPPERCASE, одиночные и парные 8dp-лампы.', state: snap({ screen: 'history' }) },
+          { title: 'Экран блокировки · База доски 18 + #83 + #94', note: 'Фон #0B0E0B, часы 96px, «Fitty · сейчас», Планка с «■ Стоп» и Отдых с «+30 с / Сброс».', state: snap({ screen: 'lock', longNames: true, lockPlankState: 'overtime', restLeft: 102 }) }
+        ]
+      }
+    ];
+
+    const container = document.getElementById('view-board');
+    container.innerHTML = sections.map((sec, sIdx) => `
+      <div>
+        <div class="board-section-head"><h2>${sec.title}</h2><span>${sec.sub}</span></div>
+        <div class="board-grid" style="margin-top:14px">
+          ${sec.cards.map((c, cIdx) => `
+            <div class="board-card">
+              <div class="board-card-cap">
+                <div class="board-card-title">${c.title}</div>
+                <div class="board-card-note">${c.note}</div>
+                <button type="button" class="board-card-jump" data-jump-sec="${sIdx}" data-jump-card="${cIdx}">Открыть в интерактиве →</button>
+              </div>
+              <div class="phone ${wCls}" style="pointer-events:none">${renderPhoneContent(c.state)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+
+    container.querySelectorAll('[data-jump-sec]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = sections[parseInt(btn.dataset.jumpSec, 10)].cards[parseInt(btn.dataset.jumpCard, 10)].state;
+        const w = st.width;
+        st = Object.assign(createInitialState(), target, { hostMode: 'interactive', width: w });
+        syncHostTabs(); renderLive(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
+  function syncHostTabs() {
+    document.getElementById('tab-interactive').classList.toggle('active', st.hostMode === 'interactive');
+    document.getElementById('tab-board').classList.toggle('active', st.hostMode === 'board');
+    document.getElementById('view-interactive').classList.toggle('hidden', st.hostMode !== 'interactive');
+    document.getElementById('view-board').classList.toggle('hidden', st.hostMode !== 'board');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+  }
+
+  document.getElementById('tab-interactive').addEventListener('click', () => { st.hostMode = 'interactive'; syncHostTabs(); renderLive(); });
+  document.getElementById('tab-board').addEventListener('click', () => { st.hostMode = 'board'; syncHostTabs(); renderBoard(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; syncHostTabs(); st.hostMode === 'board' ? renderBoard() : renderLive(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; syncHostTabs(); st.hostMode === 'board' ? renderBoard() : renderLive(); });
+  document.getElementById('btn-open-rest-sheet').addEventListener('click', () => { st.screen = 'workout'; st.exIndex = 0; st.sheet = 'rest_menu'; renderLive(); });
+  document.getElementById('btn-reset-all').addEventListener('click', () => { const w = st.width, m = st.hostMode; st = createInitialState(); st.width = w; st.hostMode = m; renderLive(); });
+
+  document.querySelector('.inspector').addEventListener('click', e => {
+    const btn = e.target.closest('[data-host]'); if (!btn) return;
+    const h = btn.dataset.host, v = btn.dataset.v;
+    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; renderLive(); }
+    else if (h === 'preset') { applyPreset(v); }
+    else if (h === 'toggle') {
+      if (v === 'checkin') st.checkinEnabled = !st.checkinEnabled;
+      if (v === 'prompts') st.loadPromptsEnabled = !st.loadPromptsEnabled;
+      if (v === 'longNames') st.longNames = !st.longNames;
+      renderLive();
+    }
+  });
+
+  syncHostTabs();
+  renderLive();
+})();
+</script>
+</body>
+</html>
