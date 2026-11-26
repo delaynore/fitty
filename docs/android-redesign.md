@@ -86,3 +86,15 @@ The owner accepts losing existing local data when moving the current personal in
   - [`docs/assets/app-icon/ic_notification_fitty.xml`](assets/app-icon/ic_notification_fitty.xml) → `app/src/main/res/drawable/ic_notification_fitty.xml` (exact same `pathData` framed cleanly at `24×24 dp` for the status bar and lock-screen live timer notifications).
   - Visual reference preview: [`docs/assets/app-icon/ic_launcher_preview.svg`](assets/app-icon/ic_launcher_preview.svg).
 
+## Settings
+
+- Organize the **Settings** (`Настройки`) tab on top of baseline Board 08 (`#141914` borderless cards, `.d` uppercase section kickers, `64 dp` floating bottom nav with **Settings** active) into three thematic sections: **Workout** (`Тренировка`), **Exercise base** (`База упражнений`), and **App and updates** (`Приложение и обновления`).
+- In **Workout** (`Тренировка`):
+  - Place a two-column pair of `#141914` parameter tiles at the top: **Rest timer** (`Таймер отдыха`, displaying the default duration in `Barlow Condensed` `38 sp` lime with an auto-start status dot/label and opening the shared `#83` rest timer bottom sheet with `±15 s` stepper, `1:00 / 1:30 / 2:00 / 3:00` presets, and auto-start toggle) and **1RM formula** (`Формула 1RM`, displaying the selected formula name in `Inter` with `По умолчанию · 7` / `Выбрана · из 7` and opening the shared `#82` 7-formula radio sheet with one-line hints and a live sample preview).
+  - Directly below the two tiles (`10 dp` gap), place a single `#141914` switch card with `#252D24` icon tiles for the two app-wide behavioral toggles (both on by default): **Readiness check-in** (`Опрос о самочувствии`) and **Load prompts** (`Подсказки по нагрузке`).
+- In **Exercise base** (`База упражнений`), keep the baseline Board 08 **Exercise catalog** (`Каталог упражнений`) card (`40×40` `#252D24` dumbbell tile, `.d` `20 sp` title, subtitle, chevron).
+- In **App and updates** (`Приложение и обновления`), use a **fixed-height, zero-layout-shift three-slot card** (`#141914`) whose outer height stays constant across every update state so checking, downloading, permission prompts, or errors never shift the screen or force re-scrolling:
+  - **Top slot (`48 dp`):** Kinetic `F.` app icon (`48×48`), `Fitty` title, installed `Версия X · сборка Y`, and an optional version pill (`v2.1`) when an update is available.
+  - **Middle slot (`64 dp` fixed):** status/progress stage that swaps content in place for idle (`Проверка обновлений вручную`), checking (indeterminate progress bar), up-to-date (`#303E1B` `Сборка актуальна`), available (`Доступно обновление`), downloading (filename, percentage, and linear progress bar), Android install-permission prompt, installer handoff (`APK загружен · передано установщику`), and network/APK error (`#361C1A` / `#FFB4AB`).
+  - **Bottom slot (`44 dp` fixed):** single full-width action button matching the current state (`Проверить обновления` / disabled `Проверяем…` / lime `Обновить до …` / `Отменить загрузку` / `Разрешить установку` / tonal installer action / `Повторить проверку`). Keep the active-workout / unsaved-edits confirmation sheet before starting a download.
+

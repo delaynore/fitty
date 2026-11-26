@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #104, #106.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -836,6 +836,97 @@
   }
   .lock-bar { height: 4px; border-radius: 2px; background: var(--f-chip); margin-top: 10px; overflow: hidden; }
   .lock-bar-fill { height: 4px; border-radius: 2px; background: var(--f-primary); }
+
+  /* ==================== SETTINGS SCREEN (Board 08 + #104 + #106) ==================== */
+  .set-kicker { font-size: 13.5px; color: var(--f-muted); margin: 14px 0 7px 2px; }
+  .set-kicker.first { margin-top: 2px; }
+  .bento-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bento-tile {
+    border: 0; background: var(--f-surface); border-radius: 20px; padding: 14px 14px 13px;
+    color: var(--f-text); text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between; min-height: 118px;
+  }
+  .bento-tile:hover { background: #192019; }
+  .bento-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--f-muted); font-size: 12px; font-weight: 600; }
+  .bento-val-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 38px; line-height: 1; color: var(--f-primary); margin: 8px 0 6px; }
+  .bento-val-txt { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--f-text); margin: 10px 0 8px; }
+  .bento-foot { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--f-muted); }
+  .bento-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--f-dim); }
+  .bento-dot.on { background: var(--f-primary); }
+
+  .set-list { padding: 4px 15px; }
+  .set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 11px;
+    padding: 12px 0; text-align: left; border-top: 1px solid var(--f-chip);
+  }
+  .set-row:first-child { border-top: 0; }
+  .set-row-ico {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--f-chip); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .set-row-ico.muted { color: var(--f-dim); }
+  .set-row-main { flex: 1; min-width: 0; }
+  .set-row-title { font-size: 14.5px; font-weight: 600; line-height: 1.22; color: var(--f-text); }
+  .set-row-sub { font-size: 12px; line-height: 1.3; color: var(--f-muted); margin-top: 2px; }
+
+  .cat-card {
+    width: 100%; border: 0; padding: 15px 16px; color: var(--f-text);
+    display: flex; align-items: center; gap: 13px; text-align: left;
+  }
+  .cat-card:hover { background: #192019; }
+  .cat-ico {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--f-chip);
+    display: flex; align-items: center; justify-content: center; color: var(--f-primary); flex: none;
+  }
+
+  /* Fixed-height zero-layout-shift App & Updates card (#106) */
+  .app-fixed-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .app-fixed-card.hl-avail { background: #172013; box-shadow: inset 0 0 0 1px var(--f-primary-border); }
+  .app-fixed-card.hl-warn  { background: #1F1B12; box-shadow: inset 0 0 0 1px var(--f-warn-border); }
+  .app-fixed-card.hl-err   { background: #1D1515; box-shadow: inset 0 0 0 1px var(--f-error-border); }
+  .app-slot-head { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .app-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+  .app-icon-box { width: 48px; height: 48px; border-radius: 13px; overflow: hidden; flex: none; border: 1px solid #2A3427; }
+  .app-icon-box svg { width: 100%; height: 100%; display: block; }
+  .ver-pill { padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; flex: none; background: var(--f-primary-container); color: var(--f-primary); white-space: nowrap; }
+  .app-slot-stage {
+    height: 64px; border-radius: 14px; padding: 0 13px;
+    display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    background: #1A201A; border: 1px solid transparent; overflow: hidden;
+  }
+  .app-slot-stage.st-ok { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .app-slot-stage.st-avail { background: #1F2D14; border-color: var(--f-primary-border); }
+  .app-slot-stage.st-warn { background: var(--f-warn-bg); border-color: var(--f-warn-border); color: #FBE4A4; }
+  .app-slot-stage.st-err { background: var(--f-error-bg); border-color: var(--f-error-border); color: var(--f-error); }
+  .stage-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .stage-ico { display: flex; align-items: center; justify-content: center; flex: none; }
+  .stage-text { flex: 1; min-width: 0; }
+  .stage-title { font-size: 13.5px; font-weight: 600; line-height: 1.22; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stage-sub { font-size: 11.5px; line-height: 1.25; opacity: 0.85; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .upd-prog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--f-text); font-weight: 500; }
+  .upd-prog-track { position: relative; height: 6px; border-radius: 999px; background: rgba(11, 14, 11, 0.55); overflow: hidden; }
+  .upd-prog-fill { height: 100%; background: var(--f-primary); border-radius: 999px; transition: width 140ms linear; }
+  .upd-prog-indet {
+    position: absolute; top: 0; bottom: 0; width: 42%; border-radius: 999px;
+    background: linear-gradient(90deg, rgba(197,250,85,0.18), #C5FA55, rgba(197,250,85,0.18));
+    animation: indetSlide 1.05s ease-in-out infinite;
+  }
+  @keyframes indetSlide { 0% { left: -45%; } 100% { left: 105%; } }
+  .app-slot-action { height: 44px; display: flex; align-items: center; }
+  .app-slot-action .pb, .app-slot-action .ob { min-height: 44px; height: 44px; }
+  .app-slot-action .tonal-btn {
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border: 1px solid var(--f-primary-border); border-radius: 999px; height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .formula-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex: none;
+    border: 1.5px solid var(--f-outline-hi); display: flex; align-items: center; justify-content: center;
+  }
+  .f-feel-card.just-right .formula-radio { border-color: var(--f-primary); background: var(--f-primary); color: var(--f-on-primary); }
 </style>
 </head>
 <body>
@@ -930,7 +1021,14 @@
     trendDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></svg>',
     home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
     history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-    settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
+    settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+    dumbbell: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
+    timer: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6"/></svg>',
+    download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>',
+    shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/></svg>',
+    alert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg>',
+    cloud: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>',
+    fittyIcon: '<svg viewBox="0 0 108 108" aria-hidden="true"><defs><radialGradient id="fgBgProto" cx="50%" cy="46%" r="58%"><stop offset="0%" stop-color="#1D2619"/><stop offset="100%" stop-color="#0E110E"/></radialGradient></defs><rect x="0" y="0" width="108" height="108" fill="url(#fgBgProto)"/><polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65"/><circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55"/><path fill="#C5FA55" d="M38.5,31H75.5L73.2,41H48.5L47.4,49.5H68.5L66.3,59H46.2L43.8,77H32.5Z"/><circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA"/></svg>'
   };
 
   const FORMULAS = [
@@ -1077,7 +1175,8 @@
       formulaId: 'epley', calTab: 'feel', calFormulaPicker: false,
       calFeelW: '18', calFeelR: '10', calFeelAnswer: null, calCalcW: '26', calCalcR: '8',
       sheet: null, snack: null, undoSnap: null,
-      history: INITIAL_HISTORY.slice(), lockPlankState: 'overtime'
+      history: INITIAL_HISTORY.slice(), lockPlankState: 'overtime',
+      installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0
     };
   }
 
@@ -1235,7 +1334,7 @@
       <nav class="f-nav">
         <button class="f-nav-btn active" data-act="go-screen" data-v="home">${ICO.home}<span>Главная</span></button>
         <button class="f-nav-btn" data-act="go-screen" data-v="history">${ICO.history}</button>
-        <button class="f-nav-btn" data-act="go-screen" data-v="lock" title="Экран блокировки">${ICO.settings}</button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="settings" title="Настройки">${ICO.settings}</button>
       </nav>
       ${sheetHtml}`;
   }
@@ -1554,8 +1653,134 @@
       <nav class="f-nav">
         <button class="f-nav-btn" data-act="go-screen" data-v="home">${ICO.home}</button>
         <button class="f-nav-btn active" data-act="go-screen" data-v="history">${ICO.history}<span>История</span></button>
-        <button class="f-nav-btn" data-act="go-screen" data-v="lock" title="Экран блокировки">${ICO.settings}</button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="settings" title="Настройки">${ICO.settings}</button>
       </nav>`;
+  }
+
+  /* ==================== SETTINGS SCREEN (Board 08 + #104 + #106) ==================== */
+  function renderSettingsHTML(s) {
+    const fObj = FORMULAS.find(f => f.id === s.formulaId) || FORMULAS[0];
+    const hl = s.updState === 'available' || s.updState === 'installer_ready' ? 'hl-avail'
+      : s.updState === 'permission' ? 'hl-warn'
+      : s.updState === 'error' ? 'hl-err' : '';
+    const rightPill = s.updState === 'available' ? '<span class="ver-pill">v2.1</span>' : '';
+
+    let stageCls = 'st-idle', stageHtml = '', actionHtml = '';
+    if (s.updState === 'idle') {
+      stageHtml = `<div class="stage-row"><span class="stage-ico m">${ICO.cloud}</span><div class="stage-text"><div class="stage-title" style="color:var(--f-text)">Проверка обновлений вручную</div><div class="stage-sub m">GitHub Releases · тренировка работает офлайн</div></div></div>`;
+      actionHtml = `<button class="ob" data-act="check-upd">Проверить обновления</button>`;
+    } else if (s.updState === 'checking') {
+      stageHtml = `<div class="upd-prog-head"><span>Проверяем обновления…</span><span class="m" style="font-size:11.5px;font-weight:400">GitHub</span></div><div class="upd-prog-track"><div class="upd-prog-indet"></div></div>`;
+      actionHtml = `<button class="ob" disabled>Проверяем…</button>`;
+    } else if (s.updState === 'uptodate') {
+      stageCls = 'st-ok';
+      stageHtml = `<div class="stage-row"><span class="stage-ico">${ICO.check}</span><div class="stage-text"><div class="stage-title">Сборка актуальна</div><div class="stage-sub">Установлена последняя стабильная версия</div></div></div>`;
+      actionHtml = `<button class="ob" data-act="check-upd">Проверить обновления</button>`;
+    } else if (s.updState === 'available') {
+      stageCls = 'st-avail';
+      stageHtml = `<div class="stage-row"><span class="stage-ico" style="color:var(--f-primary)">${ICO.download}</span><div class="stage-text"><div class="stage-title">Доступно обновление · v2.1</div><div class="stage-sub m">Сборка 210 · программы и история сохранятся</div></div></div>`;
+      actionHtml = `<button class="pb" data-act="start-upd">Обновить до 2.1</button>`;
+    } else if (s.updState === 'downloading') {
+      stageHtml = `<div class="upd-prog-head"><span>Скачиваем fitty-210.apk…</span><span id="upd-prog-pct-live" class="f-num-font" style="color:var(--f-primary);font-size:17px">${s.updProgress}%</span></div><div class="upd-prog-track"><div id="upd-prog-fill-live" class="upd-prog-fill" style="width:${s.updProgress}%"></div></div>`;
+      actionHtml = `<button class="ob" data-act="cancel-upd">Отменить загрузку</button>`;
+    } else if (s.updState === 'permission') {
+      stageCls = 'st-warn';
+      stageHtml = `<div class="stage-row"><span class="stage-ico">${ICO.shield}</span><div class="stage-text"><div class="stage-title">Нужно разрешение Android</div><div class="stage-sub">Разрешите установку обновлений из Fitty</div></div></div>`;
+      actionHtml = `<button class="pb" data-act="grant-perm">Разрешить установку</button>`;
+    } else if (s.updState === 'installer_ready') {
+      stageCls = 'st-ok';
+      stageHtml = `<div class="stage-row"><span class="stage-ico">${ICO.check}</span><div class="stage-text"><div class="stage-title">APK загружен · передано установщику</div><div class="stage-sub">Подтвердите обновление в окне Android</div></div></div>`;
+      actionHtml = `<button class="tonal-btn" data-act="finish-install">Симулировать установку v2.1</button>`;
+    } else if (s.updState === 'error') {
+      stageCls = 'st-err';
+      stageHtml = `<div class="stage-row"><span class="stage-ico">${ICO.alert}</span><div class="stage-text"><div class="stage-title">Не удалось подключиться</div><div class="stage-sub">Проверь интернет и попробуй ещё раз</div></div></div>`;
+      actionHtml = `<button class="ob" data-act="check-upd">Повторить проверку</button>`;
+    }
+
+    let sheetHtml = '';
+    if (s.sheet === 'settings_rest') {
+      const presets = [60, 90, 120, 180];
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Таймер отдыха</h3><p>Те же параметры открываются долгим нажатием на кольцо отдыха во время тренировки.</p><div style="text-align:center"><div class="plank-stepper" style="margin:6px 0 10px"><button class="st" data-act="rest-def-step" data-v="-15">−</button><div class="d" style="font-size:38px;line-height:1;min-width:110px">${fmtSec(s.restDefault)}</div><button class="st" data-act="rest-def-step" data-v="15">+</button></div><div class="rest-presets">${presets.map(sec => `<button class="rest-preset-btn ${s.restDefault === sec ? 'active' : ''}" data-act="rest-def-set" data-v="${sec}">${fmtSec(sec)}</button>`).join('')}</div></div><div class="rest-toggle-row"><div><div style="font-size:13.5px;font-weight:600">Автозапуск после подхода</div><div style="font-size:11.5px;color:var(--f-muted)">Включать отдых при записи нового подхода</div></div><button class="f-switch ${s.restAutoStart ? 'on' : ''}" data-act="toggle-rest-auto"></button></div><button class="f-sheet-cancel" data-act="close-sheet">Готово</button></div></div>`;
+    } else if (s.sheet === 'settings_formula') {
+      const w = 60, r = 8, target = 10;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Формула расчёта 1RM</h3><p>Используется в подборе веса «По повторениям». Пример для замера 60 кг × 8 повт. под цель 10 повт.:</p><div style="display:flex;flex-direction:column;gap:5px">${FORMULAS.map(f => {
+        const est = f.inv(f.calc(w, r), target + 2), sel = f.id === s.formulaId;
+        return `<button class="f-feel-card ${sel ? 'just-right' : ''}" data-act="set-pick-formula" data-v="${f.id}"><span class="formula-radio">${sel ? ICO.checkSm : ''}</span><div style="flex:1;min-width:0"><span class="f-feel-title">${f.name}${f.def ? ' · по умолчанию' : ''}</span><span class="f-feel-sub">${f.hint}</span></div><span class="f-num-font" style="color:var(--f-primary);font-size:15px;white-space:nowrap">≈ ${fmtNum(est)} кг</span></button>`;
+      }).join('')}</div><button class="f-sheet-cancel" data-act="close-sheet">Готово</button></div></div>`;
+    }
+
+    const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span></div>` : '';
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1">Настройки</h1>
+
+        <div class="d set-kicker first">Тренировка</div>
+        <div class="bento-2">
+          <button class="bento-tile" data-act="open-sheet" data-v="settings_rest">
+            <div class="bento-top"><span>Таймер отдыха</span><span style="color:var(--f-primary);display:flex">${ICO.timer}</span></div>
+            <div class="bento-val-num">${fmtSec(s.restDefault)}</div>
+            <div class="bento-foot"><span class="bento-dot ${s.restAutoStart ? 'on' : ''}"></span><span>${s.restAutoStart ? 'Автостарт вкл.' : 'Старт вручную'}</span></div>
+          </button>
+          <button class="bento-tile" data-act="open-sheet" data-v="settings_formula">
+            <div class="bento-top"><span>Формула 1RM</span><span style="color:var(--f-primary);display:flex">${ICO.scale}</span></div>
+            <div class="bento-val-txt">${fObj.name}</div>
+            <div class="bento-foot"><span>${fObj.def ? 'По умолчанию · 7' : 'Выбрана · из 7'}</span></div>
+          </button>
+        </div>
+
+        <div class="cd set-list" style="margin-top:10px">
+          <div class="set-row">
+            <span class="set-row-ico ${s.checkinEnabled ? '' : 'muted'}">${ICO.pulse}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Опрос о самочувствии</div>
+              <div class="set-row-sub">Карточка «Бодро / Устал» перед стартом на Главной</div>
+            </div>
+            <button class="f-switch ${s.checkinEnabled ? 'on' : ''}" data-act="toggle-setting" data-v="checkinEnabled" aria-label="Опрос о самочувствии"></button>
+          </div>
+          <div class="set-row">
+            <span class="set-row-ico ${s.loadPromptsEnabled ? '' : 'muted'}">${ICO.trendUp}</span>
+            <div class="set-row-main">
+              <div class="set-row-title">Подсказки по нагрузке</div>
+              <div class="set-row-sub">Советы повысить или снизить вес на экране тренировки</div>
+            </div>
+            <button class="f-switch ${s.loadPromptsEnabled ? 'on' : ''}" data-act="toggle-setting" data-v="loadPromptsEnabled" aria-label="Подсказки по нагрузке"></button>
+          </div>
+        </div>
+
+        <div class="d set-kicker">База упражнений</div>
+        <button class="cd cat-card" data-act="open-catalog">
+          <span class="cat-ico">${ICO.dumbbell}</span>
+          <span style="flex:1;min-width:0">
+            <span class="d" style="font-size:20px;display:block;line-height:1.1">Каталог упражнений</span>
+            <span class="m" style="font-size:13px;display:block;margin-top:2px">Поиск, фильтры и техника выполнения</span>
+          </span>
+          <span class="m" style="display:flex">${ICO.chevR}</span>
+        </button>
+
+        <div class="d set-kicker">Приложение и обновления</div>
+        <div class="cd app-fixed-card ${hl}">
+          <div class="app-slot-head">
+            <div class="app-brand">
+              <div class="app-icon-box">${ICO.fittyIcon}</div>
+              <div style="min-width:0">
+                <div class="d" style="font-size:22px;line-height:1.08">Fitty</div>
+                <div class="m" style="font-size:13px;margin-top:2px">Версия ${s.installedVer} · сборка ${s.installedCode}</div>
+              </div>
+            </div>
+            ${rightPill}
+          </div>
+          <div class="app-slot-stage ${stageCls}">${stageHtml}</div>
+          <div class="app-slot-action">${actionHtml}</div>
+        </div>
+      </div>
+      ${snackHtml}
+      <nav class="f-nav">
+        <button class="f-nav-btn" data-act="go-screen" data-v="home">${ICO.home}</button>
+        <button class="f-nav-btn" data-act="go-screen" data-v="history">${ICO.history}</button>
+        <button class="f-nav-btn active" data-act="go-screen" data-v="settings">${ICO.settings}<span>Настройки</span></button>
+      </nav>
+      ${sheetHtml}`;
   }
 
   /* ==================== EXACT BASELINE LOCK SCREEN (Board 18 + #83 + #94) ==================== */
@@ -1609,6 +1834,7 @@
     if (s.screen === 'workout') return renderWorkoutHTML(s);
     if (s.screen === 'summary') return renderSummaryHTML(s);
     if (s.screen === 'history') return renderHistoryHTML(s);
+    if (s.screen === 'settings') return renderSettingsHTML(s);
     return renderLockHTML(s);
   }
 
@@ -1625,7 +1851,7 @@
 
   function renderInspector() {
     document.getElementById('ctrl-screen').innerHTML = [
-      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['lock', 'Экран блокировки']
+      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['lock', 'Экран блокировки']
     ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
 
     document.getElementById('ctrl-preset').innerHTML = [
@@ -1645,13 +1871,15 @@
       <tr><td>Чередование / неделя</td><td>${st.alternating ? `${weekShort(st.currentWeek)} (проход ${p.resolved}/${p.total})` : 'выкл.'}</td></tr>
       <tr><td>Облегчение</td><td>${st.easeMode === 'none' ? 'нет' : st.easeMode === 'fewerSets' ? 'Меньше подходов (−1)' : 'Легче подходы'}</td></tr>
       <tr><td>День / упражнение</td><td>${day.name} · ${ex.name} (${st.exIndex + 1}/${day.exercises.length})</td></tr>
-      <tr><td>Отдых</td><td>${st.restRunning ? `идёт ${fmtSec(st.restLeft)}` : `готов (${fmtSec(st.restDefault)})`} · авто ${st.restAutoStart ? 'вкл' : 'выкл'}</td></tr>`;
+      <tr><td>Отдых</td><td>${st.restRunning ? `идёт ${fmtSec(st.restLeft)}` : `готов (${fmtSec(st.restDefault)})`} · авто ${st.restAutoStart ? 'вкл' : 'выкл'}</td></tr>
+      <tr><td>Формула 1RM / версия</td><td>${(FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0]).name} · v${st.installedVer} (${st.installedCode})</td></tr>`;
 
     const hints = {
       home: 'Кликайте «Тяжёлая/Лёгкая», замок 🔒, «Устал · облегчить», чипы дней, «Пропустить день» и «Начать тренировку».',
       workout: 'Листайте упражнения (№1 прибавить, №2 снизить, №3 Подобрать вес, №4 Планка 280px). Правый клик по кругу отдыха → шторка.',
       summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
       history: 'Точный стиль Истории из дизайн-системы (лаймовая дата UPPERCASE, название 22px, без рамок) + 8dp-лампы и бейдж недели.',
+      settings: 'Согласованные Настройки (#106): 3 темы, плитки «Таймер отдыха» и «Формула 1RM» синхронизированы с тренировкой, фиксированная карточка обновлений без скачков высоты.',
       lock: 'Точный стиль доски 18 (#0B0E0B, часы 96px, Fitty · сейчас) + согласованные в #83 кнопки «■ Стоп» и «+30 с / Сброс».'
     };
     document.getElementById('phone-hint').textContent = hints[st.screen] || '';
@@ -1746,6 +1974,32 @@
         }
         else if (act === 'lock-cycle-plank') { const order = ['overtime', 'countdown', 'countup']; st.lockPlankState = order[(order.indexOf(st.lockPlankState) + 1) % order.length]; }
         else if (act === 'lock-reset-rest') { st.restLeft = st.restDefault; }
+        else if (act === 'toggle-setting') { st[v] = !st[v]; }
+        else if (act === 'set-pick-formula') { st.formulaId = v; }
+        else if (act === 'open-catalog') { st.snack = { text: 'Переход в «Каталог упражнений» (отдельный экран)' }; }
+        else if (act === 'check-upd') {
+          st.updState = 'checking'; renderLive();
+          setTimeout(() => { st.updState = st.installedCode >= 210 ? 'uptodate' : 'available'; renderLive(); }, 1100);
+          return;
+        }
+        else if (act === 'start-upd') {
+          st.updState = 'downloading'; st.updProgress = 6; renderLive();
+          const dl = setInterval(() => {
+            if (st.updState !== 'downloading') { clearInterval(dl); return; }
+            st.updProgress = Math.min(100, st.updProgress + 6);
+            if (st.updProgress >= 100) {
+              clearInterval(dl); renderLive();
+              setTimeout(() => { if (st.updState === 'downloading') { st.updState = 'installer_ready'; renderLive(); } }, 380);
+              return;
+            }
+            const f = document.getElementById('upd-prog-fill-live'), p = document.getElementById('upd-prog-pct-live');
+            if (f && p) { f.style.width = `${st.updProgress}%`; p.textContent = `${st.updProgress}%`; }
+          }, 140);
+          return;
+        }
+        else if (act === 'cancel-upd') { st.updState = 'available'; st.snack = { text: 'Загрузка отменена' }; }
+        else if (act === 'grant-perm') { st.updState = 'installer_ready'; }
+        else if (act === 'finish-install') { st.installedVer = '2.1'; st.installedCode = 210; st.updState = 'uptodate'; st.snack = { text: 'Fitty обновлён до v2.1 (сборка 210)' }; }
         renderLive();
       });
     });
@@ -1831,6 +2085,15 @@
           { title: 'Итоги · Облегчённая (две лампы)', note: 'Фактические подходы без негативных дельт, двойная лампа (янтарь + лаванда).', state: snap({ screen: 'summary', currentWeek: 'heavy', easeMode: 'fewerSets', sessionMarkedLightened: true }) },
           { title: 'История · База доски 04 + лампы (#101) и бейджи (#94)', note: 'Без рамок, лаймовая дата UPPERCASE 16px, день 22px UPPERCASE, одиночные и парные 8dp-лампы.', state: snap({ screen: 'history' }) },
           { title: 'Экран блокировки · База доски 18 + #83 + #94', note: 'Фон #0B0E0B, часы 96px, «Fitty · сейчас», Планка с «■ Стоп» и Отдых с «+30 с / Сброс».', state: snap({ screen: 'lock', longNames: true, lockPlankState: 'overtime', restLeft: 102 }) }
+        ]
+      },
+      {
+        title: '4. Настройки — база доски 08 + иконка Kinetic F. (#104) + #106',
+        sub: '3 темы (Тренировка / База упражнений / Приложение и обновления), 2 плитки-шторки + 2 тумблера + фиксированная карточка обновлений без скачков высоты',
+        cards: [
+          { title: 'Настройки · Основной вид (до проверки)', note: 'Плитки «Таймер отдыха» и «Формула 1RM», тумблеры, Каталог упражнений и фиксированный блок обновлений.', state: snap({ screen: 'settings', updState: 'idle' }) },
+          { title: 'Настройки · Доступно обновление v2.1 (та же высота)', note: 'Средний слот 64 px и кнопка 44 px меняются на месте без смещения экрана.', state: snap({ screen: 'settings', updState: 'available' }) },
+          { title: 'Настройки · Шторка выбора формулы 1RM (#82 + #106)', note: 'Единая шторка 7 формул с живым примером ориентира (синхронизирована с экраном тренировки).', state: snap({ screen: 'settings', updState: 'uptodate', sheet: 'settings_formula' }) }
         ]
       }
     ];
