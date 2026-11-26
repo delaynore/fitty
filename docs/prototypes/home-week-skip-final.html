@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitty #98 — Финальный прототип: выбор варианта недели, досрочное завершение и пропуск дня</title>
+<!-- Final validated UI design for Home (#98): Program-embedded week controls (1-tap segmented switch before pass, locked pill + progress dots mid-pass with bottom sheet explanation & early pass completion), Variant A day chips + exercise header skip/restore + bottom sheet skip confirmation, zero redundant rollover banners/snackbars. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f5f5f2;
+    color: #171717;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .shell { max-width: 980px; margin: 0 auto; padding: 14px 16px 32px; display: flex; flex-direction: column; gap: 12px; }
+  .toolbar { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid #e2e2dd; border-radius: 12px; padding: 12px 14px; }
+  .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; }
+  .toolbar-group { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .toolbar-label { font-size: 11.5px; font-weight: 600; color: #666660; margin-right: 2px; }
+  .ctrl-btn { border: 1px solid #d6d6d0; background: #f2f2ee; color: #1f1f1d; border-radius: 8px; padding: 4px 9px; font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; }
+  .ctrl-btn:hover { background: #e6e6e0; }
+  .ctrl-btn.active { background: #171717; color: #fff; border-color: #171717; }
+  .grid { display: grid; grid-template-columns: 390px minmax(260px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; justify-items: center; } .side { width: 100%; max-width: 420px; } }
+
+  .phone {
+    --f-bg: #0B0E0B; --f-surface: #141914; --f-surface-hi: #1C231C; --f-chip: #252D24;
+    --f-outline: #343E33; --f-outline-hi: #4B5849; --f-primary: #C5FA55; --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B; --f-on-primary-container: #DDFF98; --f-badge-done: #1F2B0D;
+    --f-text: #F0F3EA; --f-muted: #B6C1B3; --f-dim: #81907D; --f-light-accent: #7CE2D0;
+    --f-light-bg: #162B28; --f-light-text: #BFF6EC; --f-skip-text: #8D988A;
+    --f-warn: #F7D16B; --f-warn-bg: #2C2514; --f-warn-border: #594A22;
+    width: 390px; height: 780px; background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822; box-shadow: 0 14px 36px rgba(0,0,0,0.28);
+    position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column;
+  }
+  .phone button { font-family: Inter, system-ui, sans-serif; cursor: pointer; }
+  .f-status { height: 28px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 4px 22px 0; font-size: 12px; font-weight: 600; color: var(--f-muted); }
+  .f-scroll { flex: 1; overflow-y: auto; padding: 6px 18px 92px; scrollbar-width: none; }
+  .f-scroll::-webkit-scrollbar { display: none; }
+  .f-d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .f-brand { margin: 2px 0 10px; font-size: 28px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+  .f-prog { background: var(--f-primary-container); border-radius: 18px; padding: 13px 16px; color: var(--f-on-primary-container); }
+  .f-prog-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .f-prog-label { font-size: 12px; opacity: 0.85; }
+  .f-prog-name { font-size: 19px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; margin-top: 2px; }
+  .prog-week-divider { margin-top: 11px; padding-top: 10px; border-top: 1px solid rgba(221, 255, 152, 0.16); }
+  .prog-week-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: rgba(221, 255, 152, 0.78); margin-bottom: 7px; }
+  .prog-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(11, 14, 11, 0.42); border: 1px solid rgba(221, 255, 152, 0.14); border-radius: 12px; padding: 3px; }
+  .prog-seg-btn { border: 0; border-radius: 9px; min-height: 34px; font-size: 12.5px; font-weight: 600; background: transparent; color: rgba(240, 243, 234, 0.72); display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .prog-seg-btn.active-heavy { background: var(--f-primary); color: var(--f-on-primary); }
+  .prog-seg-btn.active-light { background: var(--f-light-accent); color: #0B211E; }
+  .prog-locked-row { width: 100%; border: 0; background: transparent; padding: 0; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .prog-locked-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: rgba(11, 14, 11, 0.32); border: 1px solid rgba(221, 255, 152, 0.22); color: #EEFFCA; }
+  .prog-locked-pill.is-light { background: rgba(22, 43, 40, 0.85); border-color: rgba(124, 226, 208, 0.45); color: var(--f-light-text); }
+  .prog-dots { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(221, 255, 152, 0.88); }
+  .prog-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(221, 255, 152, 0.48); }
+  .prog-dot.done { background: var(--f-primary); border-color: var(--f-primary); }
+  .prog-dot.done.light { background: var(--f-light-accent); border-color: var(--f-light-accent); }
+  .prog-dot.skipped { background: transparent; border-style: dashed; opacity: 0.65; }
+  .f-sec-head { display: flex; align-items: center; justify-content: space-between; margin: 15px 0 8px; gap: 8px; }
+  .f-sec-title { font-size: 13px; font-weight: 600; color: var(--f-muted); }
+  .f-sc { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-right: -18px; padding-right: 18px; padding-bottom: 2px; }
+  .f-sc::-webkit-scrollbar { display: none; }
+  .f-day-chip { flex: none; min-height: 42px; padding: 0 14px; border-radius: 14px; font-size: 14.5px; font-weight: 600; border: 1.5px solid var(--f-outline); background: transparent; color: var(--f-text); display: inline-flex; align-items: center; gap: 7px; }
+  .f-day-chip.selected { border-color: transparent; background: var(--f-primary); color: var(--f-on-primary); }
+  .f-day-chip.selected.theme-light { background: var(--f-light-accent); color: #0B211E; }
+  .f-day-chip.done:not(.selected) { background: #172115; border-color: #2E4222; color: #C7DBAE; }
+  .f-day-chip.skipped:not(.selected) { background: #141714; border-style: dashed; border-color: #2D342C; color: var(--f-skip-text); }
+  .f-day-chip.skipped:not(.selected) .chip-name { text-decoration: line-through; text-decoration-color: #657063; }
+  .chip-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700; }
+  .chip-mark-done { background: var(--f-badge-done); color: var(--f-primary); }
+  .selected .chip-mark-done, .selected .chip-mark-skip { background: rgba(26, 37, 6, 0.16); color: inherit; }
+  .chip-mark-skip { background: #262C25; color: #9AA598; }
+  .f-card { background: var(--f-surface); border-radius: 20px; margin-top: 11px; padding: 0 15px; border: 1px solid #1E251E; }
+  .f-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 0 9px; }
+  .f-card-head-title { font-size: 13px; font-weight: 600; color: var(--f-muted); display: flex; align-items: center; gap: 6px; }
+  .f-ex-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-top: 1px solid var(--f-chip); }
+  .f-ex-row.no-top { border-top: 0; }
+  .f-ex-idx { font-size: 15px; color: var(--f-dim); width: 20px; flex: none; }
+  .f-ex-name { flex: 1; font-size: 14px; font-weight: 500; line-height: 18px; color: var(--f-text); }
+  .f-tag { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; background: var(--f-chip); font-size: 12px; font-weight: 500; color: var(--f-muted); white-space: nowrap; }
+  .f-tag.light-target { background: var(--f-light-bg); color: var(--f-light-text); border: 1px solid #244842; }
+  .f-ghost-btn { border: 0; background: transparent; color: var(--f-muted); font-size: 12.5px; font-weight: 500; padding: 5px 8px; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; }
+  .f-ghost-btn:hover { background: var(--f-chip); color: var(--f-text); }
+  .f-restore-pill { border: 1px solid var(--f-outline); background: var(--f-chip); color: var(--f-text); font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px; }
+  .f-pb { margin-top: 12px; background: var(--f-primary); color: var(--f-on-primary); border: 0; border-radius: 999px; min-height: 46px; font-weight: 700; font-size: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .f-pb.theme-light { background: var(--f-light-accent); color: #0B211E; }
+  .f-scrim { position: absolute; inset: 0; background: rgba(6, 9, 6, 0.72); z-index: 40; display: flex; flex-direction: column; justify-content: flex-end; }
+  .f-sheet { background: var(--f-surface-hi); border-top: 1px solid var(--f-outline); border-radius: 22px 22px 0 0; padding: 10px 18px 20px; display: flex; flex-direction: column; gap: 11px; }
+  .f-sheet-handle { width: 34px; height: 4px; border-radius: 999px; background: #465245; align-self: center; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.42; }
+  .f-sheet-callout { background: var(--f-warn-bg); border: 1px solid var(--f-warn-border); color: #FBE4A4; border-radius: 12px; padding: 8px 11px; font-size: 12px; line-height: 1.4; }
+  .f-sheet-actions { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; }
+  .f-sheet-confirm { border: 0; border-radius: 999px; min-height: 44px; font-size: 14.5px; font-weight: 700; background: var(--f-warn); color: #231B04; width: 100%; }
+  .f-sheet-tonal { border: 1px solid var(--f-outline-hi); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: var(--f-chip); color: var(--f-text); width: 100%; }
+  .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 42px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-snack { position: absolute; left: 14px; right: 14px; bottom: 80px; background: #232C22; border: 1px solid #3D4C3B; color: var(--f-text); border-radius: 13px; padding: 9px 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; z-index: 30; box-shadow: 0 8px 20px rgba(0,0,0,0.45); }
+  .f-snack-undo { border: 0; background: transparent; color: var(--f-primary); font-weight: 700; font-size: 12.5px; padding: 3px 5px; flex: none; }
+  .f-nav { position: absolute; left: 14px; right: 14px; bottom: 10px; height: 60px; background: var(--f-surface-hi); border-radius: 30px; display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 15; border: 1px solid #263025; }
+  .f-nav-item { display: flex; align-items: center; gap: 6px; height: 44px; min-width: 44px; justify-content: center; border-radius: 22px; color: var(--f-muted); font-weight: 600; font-size: 13.5px; }
+  .f-nav-item.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 16px; }
+  .side { display: flex; flex-direction: column; gap: 11px; }
+  .panel { background: #fff; border: 1px solid #e2e2dd; border-radius: 12px; padding: 13px 15px; }
+  .panel h2 { margin: 0 0 7px; font-size: 13.5px; font-weight: 700; }
+  .panel ul { margin: 5px 0 0; padding-left: 17px; font-size: 12.5px; color: #52524c; }
+  .panel li { margin-bottom: 4px; }
+  .state-grid { display: grid; grid-template-columns: 118px 1fr; gap: 5px 8px; font-size: 12px; }
+  .state-k { color: #6c6c66; }
+  .state-v { color: #171717; font-weight: 600; font-family: ui-monospace, monospace; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Сценарий:</span>
+        <button class="ctrl-btn" data-preset="mid_light">Середина лёгкой (1/3)</button>
+        <button class="ctrl-btn" data-preset="new_heavy">Новый проход (0/3)</button>
+        <button class="ctrl-btn" data-preset="last_day">Последний день (2/3)</button>
+        <button class="ctrl-btn" data-preset="alt_off">Чередование выкл</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+    <div class="side">
+      <div class="panel">
+        <h2>Согласованная сборка (B + A + досрочное завершение)</h2>
+        <ul>
+          <li><strong>Карточка программы:</strong> до старта — 1-тап сегмент `Тяжёлая / Лёгкая`; в процессе — `🔒 Тяжёлая/Лёгкая неделя` + точки прогресса.</li>
+          <li><strong>Тап на `🔒`:</strong> нижняя шторка с пояснением фиксации и кнопкой «Завершить неделю досрочно» (с подтверждением) для перехода к новому проходу противоположного варианта.</li>
+          <li><strong>Дни и пропуск:</strong> чипы с `✓` / `⊘`, в заголовке карточки упражнений — `Пропустить день`, `Вернуть в неделю` или `Выполнен в проходе`, подтверждение пропуска в нижней шторке.</li>
+          <li><strong>Без лишних плашек:</strong> без баннера и snackbar при обычном завершении прохода; короткий `Отменить` только после явного пропуска или досрочного закрытия.</li>
+        </ul>
+      </div>
+      <div class="panel" id="state-panel"></div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const DAYS = [
+    { id: 'A', name: 'День A', exercises: [{ name: 'Присед со штангой на груди', heavy: '3 × 8–12', light: '3 × 6–10' }, { name: 'Жим штанги лёжа', heavy: '3 × 8', light: '3 × 6' }, { name: 'Тяга штанги в наклоне', heavy: '4 × 10', light: '4 × 8' }, { name: 'Планка на предплечьях', heavy: '3 × 0:45', light: '3 × 0:35' }] },
+    { id: 'B', name: 'День B', exercises: [{ name: 'Румынская тяга с гантелями', heavy: '3 × 8–10', light: '3 × 6–8' }, { name: 'Жим гантелей сидя', heavy: '3 × 10', light: '3 × 8' }, { name: 'Подтягивания широким хватом', heavy: '3 × 8', light: '3 × 6' }, { name: 'Подъём на носки стоя', heavy: '3 × 12', light: '3 × 10' }] },
+    { id: 'C', name: 'День C', exercises: [{ name: 'Становая тяга классическая', heavy: '3 × 1–3', light: '3 × 1–3 · легче вес' }, { name: 'Жим на наклонной скамье', heavy: '3 × 8–12', light: '3 × 6–10' }, { name: 'Тяга верхнего блока', heavy: '3 × 10', light: '3 × 8' }, { name: 'Сгибания на бицепс', heavy: '3 × 12', light: '3 × 10' }] }
+  ];
+  const ICONS = {
+    chevronRight: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    lock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+    skip: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>',
+    home: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
+    history: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
+  };
+  const state = {
+    preset: 'mid_light', alternating: true, passNumber: 2, proposedWeek: 'light', currentWeek: 'light',
+    dayStatus: { A: 'done', B: 'todo', C: 'todo' }, selectedDay: 'B', sheet: null, snack: null, undoSnapshot: null,
+    historyPasses: ['Проход 1: Тяжёлая (3 вып.)']
+  };
+  const weekLabel = w => w === 'heavy' ? 'Тяжёлая неделя' : 'Лёгкая неделя';
+  const weekShort = w => w === 'heavy' ? 'Тяжёлая' : 'Лёгкая';
+  const oppositeWeek = w => w === 'heavy' ? 'light' : 'heavy';
+  function passProgress() {
+    let done = 0, skipped = 0, todo = 0;
+    for (const d of DAYS) { const st = state.dayStatus[d.id] || 'todo'; if (st === 'done') done++; else if (st === 'skipped') skipped++; else todo++; }
+    return { total: DAYS.length, done, skipped, todo, resolved: done + skipped };
+  }
+  const isLocked = () => state.alternating && passProgress().resolved > 0;
+  const firstTodo = () => (DAYS.find(d => (state.dayStatus[d.id] || 'todo') === 'todo') || DAYS[0]).id;
+  const snapshot = () => ({ passNumber: state.passNumber, proposedWeek: state.proposedWeek, currentWeek: state.currentWeek, dayStatus: { ...state.dayStatus }, selectedDay: state.selectedDay, historyPasses: state.historyPasses.slice() });
+  function restore(snap) { Object.assign(state, snap, { dayStatus: { ...snap.dayStatus }, historyPasses: snap.historyPasses.slice(), sheet: null, snack: null, undoSnapshot: null }); render(); }
+  function rolloverPass(note, undoSnap) {
+    const p = passProgress(), prev = state.currentWeek, next = oppositeWeek(prev);
+    state.historyPasses.push(`Проход ${state.passNumber}: ${weekShort(prev)} (${p.done} вып.${p.skipped ? ', ' + p.skipped + ' проп.' : ''}${note ? ', ' + note : ''})`);
+    state.passNumber += 1; state.proposedWeek = next; state.currentWeek = next;
+    state.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; state.selectedDay = 'A'; state.undoSnapshot = undoSnap || null;
+  }
+  function applyPreset(p) {
+    state.preset = p; state.sheet = null; state.snack = null; state.undoSnapshot = null;
+    if (p === 'alt_off') { state.alternating = false; state.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; state.selectedDay = 'A'; }
+    else if (p === 'mid_light') { state.alternating = true; state.passNumber = 2; state.proposedWeek = 'light'; state.currentWeek = 'light'; state.dayStatus = { A: 'done', B: 'todo', C: 'todo' }; state.selectedDay = 'B'; state.historyPasses = ['Проход 1: Тяжёлая (3 вып.)']; }
+    else if (p === 'new_heavy') { state.alternating = true; state.passNumber = 1; state.proposedWeek = 'heavy'; state.currentWeek = 'heavy'; state.dayStatus = { A: 'todo', B: 'todo', C: 'todo' }; state.selectedDay = 'A'; state.historyPasses = []; }
+    else if (p === 'last_day') { state.alternating = true; state.passNumber = 1; state.proposedWeek = 'heavy'; state.currentWeek = 'heavy'; state.dayStatus = { A: 'done', B: 'todo', C: 'done' }; state.selectedDay = 'B'; state.historyPasses = []; }
+    render();
+  }
+  function render() {
+    document.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('active', b.dataset.preset === state.preset));
+    const day = DAYS.find(d => d.id === state.selectedDay) || DAYS[0], p = passProgress(), locked = isLocked(), isLight = state.alternating && state.currentWeek === 'light', daySt = state.dayStatus[day.id] || 'todo';
+    let progFooter = '';
+    if (state.alternating) {
+      if (!locked) {
+        progFooter = `<div class="prog-week-divider"><div class="prog-week-meta"><span>Новый проход · ${p.total} дн.</span><span>Смена до старта</span></div><div class="prog-seg"><button class="prog-seg-btn ${!isLight ? 'active-heavy' : ''}" data-set-week="heavy">Тяжёлая${state.proposedWeek === 'heavy' ? ' · план' : ''}</button><button class="prog-seg-btn ${isLight ? 'active-light' : ''}" data-set-week="light">Лёгкая${state.proposedWeek === 'light' ? ' · план' : ''}</button></div></div>`;
+      } else {
+        const dots = DAYS.map(d => `<span class="prog-dot ${state.dayStatus[d.id] || 'todo'} ${isLight ? 'light' : ''}"></span>`).join('');
+        progFooter = `<div class="prog-week-divider"><button class="prog-locked-row" id="btn-locked-week"><span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICONS.lock}<span>${weekLabel(state.currentWeek)}</span></span><span class="prog-dots">${dots}<span style="margin-left:3px;font-weight:600">${p.resolved}/${p.total}</span></span></button></div>`;
+      }
+    }
+    const chips = DAYS.map(d => {
+      const st = state.alternating ? (state.dayStatus[d.id] || 'todo') : 'todo', sel = d.id === day.id;
+      const mark = st === 'done' ? '<span class="chip-mark chip-mark-done">✓</span>' : st === 'skipped' ? '<span class="chip-mark chip-mark-skip">⊘</span>' : '';
+      return `<button class="f-day-chip ${sel ? 'selected' : ''} ${sel && isLight ? 'theme-light' : ''} ${st}" data-select-day="${d.id}"><span class="chip-name">${d.name}</span>${mark}</button>`;
+    }).join('');
+    const cardHead = state.alternating ? `<div class="f-card-head"><div class="f-card-head-title"><span>${day.name}</span><span style="color:var(--f-dim)">· ${day.exercises.length} упр.</span></div>${daySt === 'todo' ? `<button class="f-ghost-btn" id="btn-open-skip">${ICONS.skip}<span>Пропустить день</span></button>` : daySt === 'skipped' ? `<button class="f-restore-pill" data-restore-day="${day.id}">Вернуть в неделю</button>` : '<span style="font-size:11.5px;color:#A7CF64;font-weight:600">Выполнен в проходе</span>'}</div>` : '';
+    const rows = day.exercises.map((ex, idx) => `<div class="f-ex-row ${!state.alternating && idx === 0 ? 'no-top' : ''}"><span class="f-d f-ex-idx">0${idx + 1}</span><span class="f-ex-name">${ex.name}</span><span class="f-tag ${isLight ? 'light-target' : ''}">${isLight ? ex.light : ex.heavy}</span></div>`).join('');
+    const ctaText = !state.alternating ? 'Начать тренировку' : daySt === 'done' ? `Повторить ${day.name}` : daySt === 'skipped' ? `Всё-таки начать ${day.name}` : `Начать · ${day.name}`;
+    let sheetHtml = '';
+    if (state.sheet && state.sheet.type === 'skip') {
+      const willFinish = p.todo === 1 && daySt === 'todo', nextW = weekLabel(oppositeWeek(state.currentWeek)).toLowerCase();
+      sheetHtml = `<div class="f-scrim" id="sheet-scrim"><div class="f-sheet"><div class="f-sheet-handle"></div><h3>Пропустить День ${state.sheet.dayId} в этой неделе?</h3><p>День пропустится только в текущем проходе (${weekLabel(state.currentWeek).toLowerCase()}). В следующей тренировочной неделе он снова будет в плане.</p>${willFinish ? `<div class="f-sheet-callout">Это последний оставшийся день прохода. После пропуска текущая неделя завершится, и Fitty предложит <strong>${nextW}</strong> с Дня A.</div>` : ''}<div class="f-sheet-actions"><button class="f-sheet-confirm" id="sheet-confirm-skip">Пропустить День ${state.sheet.dayId}</button><button class="f-sheet-cancel" id="sheet-close">Отмена</button></div></div></div>`;
+    } else if (state.sheet && state.sheet.type === 'locked_info') {
+      const extraHint = state.currentWeek === 'light' ? 'Если силы вернулись раньше — можно завершить лёгкую неделю досрочно и открыть новую тяжёлую.' : 'Чтобы облегчить только одно занятие, используйте разовое облегчение. Если нужна полноценная разгрузка — можно завершить неделю досрочно.';
+      sheetHtml = `<div class="f-scrim" id="sheet-scrim"><div class="f-sheet"><div class="f-sheet-handle"></div><h3>${weekLabel(state.currentWeek)} уже идёт</h3><p>Пройдено ${p.resolved} из ${p.total} дн. Вариант фиксируется на весь проход, чтобы сохранять чистую историю и подсказки.</p><p>${extraHint}</p><div class="f-sheet-actions"><button class="f-sheet-tonal" id="btn-ask-end-early">Завершить неделю досрочно</button><button class="f-sheet-cancel" id="sheet-close">Понятно</button></div></div></div>`;
+    } else if (state.sheet && state.sheet.type === 'confirm_end_early') {
+      const nextW = weekLabel(oppositeWeek(state.currentWeek)).toLowerCase();
+      sheetHtml = `<div class="f-scrim" id="sheet-scrim"><div class="f-sheet"><div class="f-sheet-handle"></div><h3>Завершить ${weekLabel(state.currentWeek).toLowerCase()} досрочно?</h3><p>Уже выполненные дни останутся в истории как <strong>${weekShort(state.currentWeek).toLowerCase()}</strong>. Оставшиеся дни (${p.todo}) закроются, и сразу откроется новый проход — Fitty предложит <strong>${nextW}</strong>.</p><div class="f-sheet-actions"><button class="f-sheet-confirm" id="btn-confirm-end-early">Завершить и перейти к новой неделе</button><button class="f-sheet-cancel" id="sheet-close">Отмена</button></div></div></div>`;
+    }
+    const snackHtml = state.snack ? `<div class="f-snack"><span>${state.snack.text}</span>${state.undoSnapshot ? '<button class="f-snack-undo" id="btn-snack-undo">Отменить</button>' : ''}</div>` : '';
+    document.getElementById('phone').innerHTML = `<div class="f-status"><span>10:42</span><span>5G · 84%</span></div><div class="f-scroll"><div class="f-brand"><span class="f-d">Fitty</span>${!state.alternating ? '<span style="font-size:11px;font-weight:500;color:var(--f-dim)">чередование выкл.</span>' : ''}</div><div class="f-prog"><div class="f-prog-top"><div><div class="f-prog-label">Мои программы</div><div class="f-prog-name">Базовая силовая</div></div>${ICONS.chevronRight}</div>${progFooter}</div><div class="f-sec-head"><div class="f-sec-title">${state.alternating ? `Тренировочный день · ${p.todo} осталось` : `Тренировочный день · ${DAYS.length}`}</div></div><div class="f-sc">${chips}</div><div class="f-card">${cardHead}${rows}</div><button class="f-pb ${isLight ? 'theme-light' : ''}" id="btn-start">${ctaText}</button></div>${snackHtml}<div class="f-nav"><div class="f-nav-item active">${ICONS.home}<span>Главная</span></div><div class="f-nav-item">${ICONS.history}</div><div class="f-nav-item">${ICONS.settings}</div></div>${sheetHtml}`;
+    const phone = document.getElementById('phone'), on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    phone.querySelectorAll('[data-select-day]').forEach(el => el.addEventListener('click', () => { state.selectedDay = el.dataset.selectDay; state.snack = null; render(); }));
+    phone.querySelectorAll('[data-set-week]').forEach(el => el.addEventListener('click', () => { if (!isLocked()) { state.currentWeek = el.dataset.setWeek; state.snack = null; render(); } }));
+    phone.querySelectorAll('[data-restore-day]').forEach(el => el.addEventListener('click', () => { const id = el.dataset.restoreDay; state.dayStatus[id] = 'todo'; state.selectedDay = id; state.snack = null; render(); }));
+    on('btn-locked-week', () => { state.sheet = { type: 'locked_info' }; render(); });
+    on('btn-ask-end-early', () => { state.sheet = { type: 'confirm_end_early' }; render(); });
+    on('btn-confirm-end-early', () => { const snap = snapshot(), prevW = weekLabel(state.currentWeek).toLowerCase(); state.sheet = null; rolloverPass('досрочно', snap); state.snack = { text: `${prevW[0].toUpperCase() + prevW.slice(1)} завершена досрочно` }; render(); });
+    on('btn-open-skip', () => { state.sheet = { type: 'skip', dayId: state.selectedDay }; render(); });
+    on('sheet-close', () => { state.sheet = null; render(); });
+    on('sheet-confirm-skip', () => { const snap = snapshot(), id = state.sheet.dayId; state.sheet = null; state.dayStatus[id] = 'skipped'; if (passProgress().todo > 0) { state.selectedDay = firstTodo(); state.undoSnapshot = snap; state.snack = { text: `День ${id} пропущен в этой неделе` }; } else { rolloverPass('', snap); state.snack = { text: `День ${id} пропущен` }; } render(); });
+    on('btn-start', () => { state.snack = null; state.undoSnapshot = null; if (!state.alternating) { state.selectedDay = DAYS[(DAYS.findIndex(d => d.id === state.selectedDay) + 1) % DAYS.length].id; render(); return; } state.dayStatus[state.selectedDay] = 'done'; if (passProgress().todo > 0) state.selectedDay = firstTodo(); else rolloverPass('', null); render(); });
+    on('btn-snack-undo', () => { if (state.undoSnapshot) restore(state.undoSnapshot); });
+    const scrim = document.getElementById('sheet-scrim');
+    if (scrim) scrim.addEventListener('click', (e) => { if (e.target === scrim) { state.sheet = null; render(); } });
+    const daySum = DAYS.map(d => `${d.id}:${state.dayStatus[d.id] === 'done' ? '✓' : state.dayStatus[d.id] === 'skipped' ? '⊘' : '○'}`).join('  ');
+    document.getElementById('state-panel').innerHTML = `<h2>Состояние (live)</h2><div class="state-grid"><span class="state-k">Чередование</span><span class="state-v">${state.alternating ? 'ON' : 'OFF'}</span><span class="state-k">Проход</span><span class="state-v">${state.alternating ? `#${state.passNumber} · ${p.resolved}/${p.total}` : '—'}</span><span class="state-k">Вариант</span><span class="state-v">${state.alternating ? `${weekShort(state.currentWeek)}${state.currentWeek !== state.proposedWeek ? ' (вручную)' : ' (план)'}` : '—'}</span><span class="state-k">Дни прохода</span><span class="state-v">${state.alternating ? daySum : 'A  B  C'}</span><span class="state-k">История</span><span class="state-v">${state.historyPasses.length ? state.historyPasses.join('; ') : 'пока нет'}</span></div>`;
+  }
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+  render();
+})();
+</script>
+</body>
+</html>
