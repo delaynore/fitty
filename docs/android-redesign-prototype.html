@@ -992,10 +992,10 @@
   .hist-card.rib-heavy-ease::before, .hd-hero.rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
   .hist-card.rib-light-ease::before, .hd-hero.rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
   .hist-cal-left {
-    width: 72px; flex: none; border-right: 1px solid rgba(255, 255, 255, 0.08);
+    width: 76px; flex: none; border-right: 1px solid rgba(255, 255, 255, 0.08);
     padding-right: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
   }
-  .phone.w360 .hist-cal-left { width: 68px; padding-right: 9px; }
+  .phone.w360 .hist-cal-left { width: 72px; padding-right: 8px; }
   .hist-cal-date { display: flex; align-items: baseline; justify-content: center; gap: 3px; line-height: 1; }
   .hist-cal-day { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 27px; color: var(--f-primary); line-height: 0.95; font-variant-numeric: tabular-nums; }
   .hist-cal-mon { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--f-muted); }
@@ -1041,17 +1041,21 @@
   .hd-hero-prog { font-size: 13px; color: var(--f-muted); margin-top: 4px; }
   .hd-hero-strip {
     margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex; align-items: stretch;
+    display: flex; align-items: stretch; justify-content: space-between; flex-wrap: wrap; row-gap: 10px;
   }
   .hd-hero-cell {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
-    padding: 0 10px; border-left: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 1 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 12px; border-left: 1px solid rgba(255, 255, 255, 0.08);
   }
+  .phone.w360 .hd-hero-cell { padding: 0 9px; }
   .hd-hero-cell:first-child { padding-left: 0; border-left: 0; }
   .hd-hero-cell:last-child { padding-right: 0; }
-  .hd-hero-k { font-size: 10.5px; font-weight: 600; color: var(--f-dim); text-transform: uppercase; letter-spacing: 0.35px; }
-  .hd-hero-v { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 22px; line-height: 1.05; color: var(--f-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hd-hero-k { font-size: 10px; font-weight: 600; color: var(--f-dim); text-transform: uppercase; letter-spacing: 0.25px; white-space: nowrap; }
+  .hd-hero-v { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; line-height: 1.08; color: var(--f-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .phone.w360 .hd-hero-v { font-size: 18.5px; }
   .hd-hero-v.lime { color: var(--f-primary); }
+  .hd-hero-sub { font-size: 11px; font-weight: 500; color: var(--f-dim); line-height: 1.15; white-space: nowrap; }
+  .hd-ex-name { flex: 1; min-width: 0; }
   .hd-set-row:hover { background: rgba(197, 250, 85, 0.05); border-radius: 8px; }
   .hd-set-right { display: inline-flex; align-items: center; gap: 8px; }
   .hd-set-edit { color: var(--f-dim); display: inline-flex; }
@@ -2901,7 +2905,7 @@
             <div class="hd-hero-strip">
               ${tonnage != null ? `<div class="hd-hero-cell"><span class="hd-hero-k">Тоннаж</span><span class="hd-hero-v lime">${fmtNumGrouped(tonnage)} кг</span></div>` : ''}
               ${dur ? `<div class="hd-hero-cell"><span class="hd-hero-k">Длительность</span><span class="hd-hero-v">${dur}</span></div>` : ''}
-              <div class="hd-hero-cell"><span class="hd-hero-k">Подходы</span><span class="hd-hero-v">${totalSets} <small style="font-family:Inter;font-size:11.5px;font-weight:500;color:var(--f-muted)">· ${totalEx} упр.</small></span></div>
+              <div class="hd-hero-cell"><span class="hd-hero-k">Подходы</span><span class="hd-hero-v">${totalSets}</span><span class="hd-hero-sub">${totalEx} упр.</span></div>
             </div>
           </div>
           ${(item.exercises || []).map(ex => `
