@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #118 (итерация 2): Собранный гибрид и точечные развилки</title>
+<!--
+  Throwaway UI prototype v2 for issue #118 ("Как выглядят вкладка «История», детали тренировки, редактирование подхода и пустое состояние в Fitty v2?").
+  Incorporates Daniil's feedback:
+  - Fixed base inside Details: clean Variant A exercise cards & flat set rows + Variant C quiet divider & "Удалить тренировку из истории" at bottom (no heavy hero card, no top-bar trash).
+  - Fixed Set-edit sheet (#1C231C): Variant B ± steppers across all 4 exercise types (including min:sec >= 0:01 and m|km toggle) + compact split footer + Undo snackbar.
+  - Focused toggles for remaining micro-choices:
+      1) Feed card: Calendar C (fixed: time + duration paired together) | Full-width B | Baseline A
+      2) Details header: Open A + subtle metric pills (duration + tonnage) | Plain baseline A
+      3) Empty state: Centered calm icon (A) | Minimal text only (C)
+      4) Delete-workout sheet: Two-part C (loss + week safe) | Compact A
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 28px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center; background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs { display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px; }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, sans-serif); padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .stage { display: grid; grid-template-columns: auto minmax(320px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 880px) {
+    .stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.45px; color: var(--muted-foreground, #525E50);
+  }
+  .ctrl-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #5C6759); }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .hbtn {
+    border: 1px solid var(--border, #CFD6CB); background: var(--secondary, #F4F6F1);
+    color: var(--card-foreground, #222B20); border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, sans-serif); cursor: pointer;
+  }
+  .hbtn:hover { background: var(--accent, #E8EDE3); color: var(--accent-foreground, #1A2018); }
+  .hbtn.active { background: #1B2318; border-color: #1B2318; color: #C5FA55; }
+
+  .fixed-list { margin: 0; padding-left: 16px; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; color: var(--card-foreground, #263024); }
+  .board-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(364px, 1fr));
+    gap: 18px; justify-items: center; align-items: start;
+  }
+  .board-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .board-col-head {
+    width: 100%; max-width: 390px; background: var(--card, #FFFFFF); border: 1px solid var(--border, #D5DBD1);
+    border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .board-col-title { font-size: 13px; font-weight: 700; color: var(--card-foreground, #1B2318); }
+  .board-col-sub { font-size: 11.5px; color: var(--muted-foreground, #5C6759); }
+  .hidden { display: none !important; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-ease: #C09BFF;
+
+    width: 390px; height: 844px;
+    background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative; overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex; flex-direction: column; flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: "Barlow Condensed", Inter, sans-serif; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .m { color: var(--f-muted); }
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
+  .f-scroll-root { flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-root::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-root { padding: 12px 16px 88px; }
+
+  .f-scroll-child { flex: 1; overflow-y: auto; padding: 14px 20px 30px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-child::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-child { padding: 12px 16px 26px; }
+
+  .home-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; }
+
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent; display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center; border-radius: 24px;
+    color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  .f-back-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 0;
+    background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-back-btn:hover { background: var(--f-chip); }
+
+  /* 8dp lamps + 4dp side ribbon (#101) */
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-ease  { background: var(--load-ease);  box-shadow: 0 0 9px rgba(192, 155, 255, 0.88); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+
+  .has-ribbon { position: relative; overflow: hidden; }
+  .has-ribbon::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .rib-heavy::before { background: var(--load-heavy); }
+  .rib-light::before { background: var(--load-light); }
+  .rib-ease::before  { background: var(--load-ease); }
+  .rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
+  .rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
+
+  .hist-badge {
+    display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+    padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    background: var(--f-chip); color: var(--f-muted);
+  }
+
+  /* ==================== FEED CARD OPTIONS ==================== */
+  /* Option C-fixed: Calendar column + time & duration paired together */
+  .fc-card {
+    background: var(--f-surface); border-radius: 20px; padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: stretch; gap: 12px; cursor: pointer; transition: background 120ms;
+  }
+  .fc-card:hover { background: #192019; }
+  .fc-card.has-ribbon { padding-left: 16px; }
+  .fc-cal {
+    width: 52px; flex: none; border-right: 1px solid rgba(255, 255, 255, 0.07);
+    padding-right: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+  }
+  .fc-cal-day { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 29px; line-height: 0.92; color: var(--f-primary); }
+  .fc-cal-mon { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--f-muted); margin-top: 3px; }
+  .fc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .fc-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+  .fc-time-pair { font-size: 12px; font-weight: 600; color: var(--f-muted); white-space: nowrap; }
+  .fc-title { font-size: 20px; line-height: 22px; color: var(--f-text); }
+  .fc-prog { font-size: 12.5px; color: var(--f-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Option B: Full-width title + paired time pill + bottom prog/badge */
+  .fb-card {
+    background: var(--f-surface); border-radius: 20px; padding: 13px 16px; margin-bottom: 8px;
+    cursor: pointer; transition: background 120ms;
+  }
+  .fb-card:hover { background: #192019; }
+  .fb-card.has-ribbon { padding-left: 19px; }
+  .fb-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .fb-date { font-size: 15px; color: var(--f-primary); }
+  .fb-time-pill {
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted);
+    background: var(--f-surface-hi); padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: none;
+  }
+  .fb-title { font-size: 21px; line-height: 23px; color: var(--f-text); margin-top: 5px; }
+  .fb-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 7px; padding-top: 7px; border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .fb-prog { font-size: 12.5px; color: var(--f-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+  /* Option A: Strict Baseline Board 04 */
+  .fa-card {
+    background: var(--f-surface); border-radius: 20px; padding: 14px 18px; margin-bottom: 8px;
+    cursor: pointer; transition: background 120ms;
+  }
+  .fa-card:hover { background: #192019; }
+  .fa-card.has-ribbon { padding-left: 20px; }
+  .fa-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .fa-date { font-size: 16px; color: var(--f-primary); }
+  .fa-time { font-size: 12.5px; color: var(--f-muted); flex: none; }
+  .fa-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 3px; }
+  .fa-title { font-size: 22px; line-height: 24px; color: var(--f-text); flex: 1; min-width: 0; }
+  .fa-prog { font-size: 13px; color: var(--f-muted); margin-top: 3px; }
+
+  /* Empty state options */
+  .empty-center {
+    min-height: 520px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px 20px; gap: 10px;
+  }
+  .empty-ico {
+    width: 50px; height: 50px; border-radius: 17px; background: var(--f-surface);
+    color: var(--f-dim); display: flex; align-items: center; justify-content: center;
+  }
+  .empty-minimal { padding: 18px 2px; display: flex; flex-direction: column; gap: 6px; }
+
+  /* ==================== DETAILS SCREEN (CLEAN BASELINE A + QUIET BOTTOM DELETE C) ==================== */
+  .hd-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .hd-title { margin: 2px 0 0; font-size: 24px; line-height: 1.08; overflow-wrap: anywhere; flex: 1; }
+  .hd-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+  .hd-prog-line { font-size: 13px; color: var(--f-muted); margin-bottom: 10px; }
+
+  /* Subtle highlight chips under open header (no heavy hero card) */
+  .hd-stat-pills {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 2px 0 13px;
+  }
+  .hd-stat-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--f-surface); border-radius: 12px; padding: 6px 11px;
+    font-size: 12px; color: var(--f-muted);
+  }
+  .hd-stat-pill strong {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px;
+    line-height: 1; color: var(--f-text); letter-spacing: 0.2px;
+  }
+  .hd-stat-pill.tonnage { background: #182013; }
+  .hd-stat-pill.tonnage strong { color: var(--f-primary); }
+
+  /* Exercise cards (Clean Baseline A) */
+  .ex-card { background: var(--f-surface); border-radius: 20px; padding: 12px 15px 6px; margin-bottom: 9px; }
+  .ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .ex-name { font-size: 17px; line-height: 1.18; color: var(--f-text); overflow-wrap: anywhere; }
+  .ex-total { font-size: 12.5px; font-weight: 600; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 2px; min-height: 40px; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: left;
+  }
+  .set-row:hover { background: rgba(197, 250, 85, 0.05); border-radius: 8px; }
+  .set-idx { font-size: 13px; color: var(--f-muted); }
+  .set-right { display: inline-flex; align-items: center; gap: 8px; }
+  .set-val { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 0.2px; }
+  .set-edit { color: var(--f-dim); display: inline-flex; }
+
+  /* Quiet bottom delete button behind hairline divider (from Variant C) */
+  .hd-danger-zone {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--f-outline);
+  }
+  .f-text-danger {
+    width: 100%; min-height: 40px; border: 0; border-radius: 999px; background: transparent;
+    color: var(--f-error); opacity: 0.86; font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-text-danger:hover { opacity: 1; background: rgba(54, 28, 26, 0.48); }
+
+  /* ==================== SHARED BUTTONS, SHEETS (#1C231C) & STEPPERS (VARIANT B) ==================== */
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 46px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 15.5px; letter-spacing: 0.5px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-sheet-danger {
+    width: 100%; min-height: 46px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .f-calm-danger {
+    width: 100%; min-height: 44px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.38);
+    color: var(--f-error); font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64);
+    z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 22px; display: flex; flex-direction: column; gap: 11px;
+    max-height: 86%; overflow-y: auto;
+  }
+  .phone.w360 .f-sheet { padding: 10px 16px 20px; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; overflow-wrap: anywhere; }
+  .f-sheet-sub { font-size: 12.5px; color: var(--f-muted); margin-top: 2px; }
+  .f-sheet-x {
+    width: 30px; height: 30px; border-radius: 50%; border: 0;
+    background: var(--f-chip); color: var(--f-muted);
+    display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 15px;
+  }
+
+  .ed-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ed-field { display: flex; flex-direction: column; gap: 4px; }
+  .ed-lbl { font-size: 11.5px; font-weight: 600; color: var(--f-muted); text-align: center; }
+
+  .unit-seg {
+    display: inline-flex; background: var(--f-bg); border: 1px solid var(--f-outline);
+    border-radius: 999px; padding: 2px; gap: 2px;
+  }
+  .unit-seg button {
+    border: 0; background: transparent; color: var(--f-muted);
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; min-width: 42px;
+  }
+  .unit-seg button.active { background: var(--f-primary-container); color: var(--f-primary); }
+
+  .dur-row { display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .dur-col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .dur-colon { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 28px; color: var(--f-dim); padding-top: 16px; }
+
+  .step-box {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--f-bg); border: 1.5px solid var(--f-primary-border);
+    border-radius: 15px; padding: 4px;
+  }
+  .step-box.err { border-color: var(--f-error); }
+  .step-btn {
+    width: 36px; height: 40px; border-radius: 11px; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 18px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .phone.w360 .step-btn { width: 32px; }
+  .step-btn:hover { background: var(--f-primary-container); color: var(--f-primary); }
+  .step-inp {
+    flex: 1; min-width: 0; height: 40px; border: 0; background: transparent;
+    color: var(--f-text); text-align: center; font-size: 22px; font-weight: 700; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ed-split-foot { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .ed-del-pill {
+    height: 46px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.52); color: var(--f-error);
+    font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; flex: none;
+  }
+  .ed-err { font-size: 12px; color: var(--f-error); text-align: center; }
+
+  .last-set-box {
+    background: var(--f-amber-container); border: 1px solid var(--f-amber-border);
+    border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px;
+    font-size: 12.5px; color: var(--f-on-amber-container); line-height: 1.4;
+  }
+  .last-set-box strong { color: var(--f-amber); }
+
+  /* Delete workout sheet options */
+  .del-sum-card { background: var(--f-surface); border-radius: 16px; padding: 11px 14px; display: flex; flex-direction: column; gap: 5px; }
+  .del-split-card { border-radius: 16px; overflow: hidden; border: 1px solid var(--f-outline); background: var(--f-surface); }
+  .del-split-row { padding: 10px 12px; display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; line-height: 1.4; }
+  .del-split-row + .del-split-row { border-top: 1px solid var(--f-outline); }
+  .del-split-row.loss { background: rgba(54, 28, 26, 0.55); }
+  .del-split-ico { width: 30px; height: 30px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; }
+
+  /* Undo snackbar (bottom: 16px on child details screen since no bottom nav per #119) */
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 25;
+    background: #1D2618; border: 1px solid #4E672B; color: var(--f-text);
+    border-radius: 14px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 12.5px; box-shadow: 0 8px 22px rgba(0,0,0,0.52);
+  }
+  .f-snack-msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .f-snack-undo {
+    border: 1px solid #597530; background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700; flex: none;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Fitty 2.0 · Прототип #118 · Итерация 2</span>
+      <div>
+        <h1 class="host-title">Собранный гибрид Истории + точечное сравнение оставшихся деталей</h1>
+        <div class="host-sub">Чистая база A внутри деталей · тихое удаление за чертой (C) · ± степперы в шторке (B) · исправленный календарь C</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="mode-interactive" class="active" type="button">Интерактив</button>
+        <button id="mode-compare-feed" type="button">Сравнить ленту (3 рядом)</button>
+        <button id="mode-compare-hd" type="button">Сравнить шапку деталей (2 рядом)</button>
+      </div>
+      <div class="seg-small">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="view-interactive" class="stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone"></main>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Уже закреплено в гибриде</h2>
+        <ul class="fixed-list">
+          <li><strong>Детали:</strong> чистая база A — карточки <code>#141914</code>, плоские табличные строки подходов, итоги в шапках (<code>#113</code>), без нижнего бара (<code>#119</code>).</li>
+          <li><strong>Удаление тренировки:</strong> тихая текстовая кнопка за чертой внизу деталей (из C), без корзины в топ-баре.</li>
+          <li><strong>Шторка правки подхода:</strong> <code>±</code> степперы (из B) для всех 4 типов, включая <code>мин : сек</code> <code>≥ 0:01</code> и <code>м | км</code>, + <code>Undo</code>-снэкбар.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Точечный выбор оставшихся узлов</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">1. Карточка в ленте «История»</span>
+          <div class="btn-wrap" id="ctrl-feed"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">2. Шапка деталей (без тяжёлой Hero-карточки)</span>
+          <div class="btn-wrap" id="ctrl-hd"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">3. Пустое состояние</span>
+          <div class="btn-wrap" id="ctrl-empty"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">4. Шторка удаления тренировки</span>
+          <div class="btn-wrap" id="ctrl-del"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Быстрые переходы</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Шторки <code>#1C231C</code></span>
+          <div class="btn-wrap" id="ctrl-sheets"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Проверки</span>
+          <div class="btn-wrap" id="ctrl-flags"></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="view-compare" class="hidden">
+    <div class="board-grid" id="compare-grid"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    home: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>',
+    history: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3.5 2"/></svg>',
+    settings: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.25.4-1.51 1z"/></svg>',
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+    clock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
+    weight: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11"/><path d="M4 9v6"/><path d="M20 9v6"/><path d="M7 7v10"/><path d="M17 7v10"/><path d="M7 12h10"/></svg>',
+    shield: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+  };
+
+  function createSeedWorkouts() {
+    return [
+      {
+        id: 'w1', dayNum: '26', monShort: 'НОЯ', date: '26 ноября 2026', time: '19:42', durationSec: 2640,
+        day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса',
+        prog: 'Базовая силовая', week: 'heavy', lightened: true,
+        exercises: [
+          { id: 'e1', type: 'weight_reps', name: 'Жим штанги лёжа', longName: 'Жим штанги лёжа на горизонтальной скамье с паузой на груди', sets: [{ w: 62.5, r: 10 }, { w: 62.5, r: 11 }, { w: 62.5, r: 10 }] },
+          { id: 'e2', type: 'reps', name: 'Подтягивания', longName: 'Подтягивания широким хватом на перекладине до касания грудью', sets: [{ r: 12 }, { r: 12 }, { r: 11 }] },
+          { id: 'e3', type: 'distance', name: 'Фермерская прогулка', longName: 'Фермерская прогулка с тяжёлыми гантелями по коридору зала', sets: [{ m: 40 }, { m: 45 }, { m: 45 }] },
+          { id: 'e4', type: 'distance', name: 'Бег', longName: 'Бег на беговой дорожке в ровном аэробном темпе (интервалы)', sets: [{ m: 1000 }, { m: 1200 }] },
+          { id: 'e5', type: 'duration', name: 'Планка на предплечьях', longName: 'Планка на предплечьях с удержанием нейтральной поясницы', sets: [{ sec: 65 }, { sec: 60 }] }
+        ]
+      },
+      {
+        id: 'w2', dayNum: '23', monShort: 'НОЯ', date: '23 ноября 2026', time: '19:05', durationSec: 4500,
+        day: 'День B: грудь, плечи и трицепс', longDay: 'День B: грудь, плечи и трицепс с длинным названием дня программы',
+        prog: 'Базовая силовая', week: 'heavy', lightened: false,
+        exercises: [
+          { id: 'e21', type: 'weight_reps', name: 'Жим гантелей на наклонной', longName: 'Жим гантелей на наклонной скамье 30°', sets: [{ w: 22, r: 10 }, { w: 22, r: 10 }, { w: 22, r: 9 }] },
+          { id: 'e22', type: 'reps', name: 'Отжимания на брусьях', longName: 'Отжимания на параллельных брусьях', sets: [{ r: 14 }, { r: 12 }] }
+        ]
+      },
+      {
+        id: 'w3', dayNum: '20', monShort: 'НОЯ', date: '20 ноября 2026', time: '18:22', durationSec: 2100,
+        day: 'День C · без веса', longDay: 'День C: Кардио, турник и кор без отягощений',
+        prog: 'Базовая силовая', week: 'light', lightened: false,
+        exercises: [
+          { id: 'e31', type: 'reps', name: 'Подтягивания', longName: 'Подтягивания обратным хватом', sets: [{ r: 10 }, { r: 10 }] },
+          { id: 'e32', type: 'distance', name: 'Бег', longName: 'Бег трусцой в лёгкой зоне пульса', sets: [{ m: 1500 }, { m: 1000 }] },
+          { id: 'e33', type: 'duration', name: 'Планка на предплечьях', longName: 'Планка на предплечьях', sets: [{ sec: 50 }, { sec: 45 }] }
+        ]
+      },
+      {
+        id: 'w4', dayNum: '18', monShort: 'НОЯ', date: '18 ноября 2026', time: '19:15', durationSec: 42,
+        day: 'Короткий тест (1 подход)', longDay: 'Короткий тест: один записанный подход во всей тренировке',
+        prog: 'Базовая силовая', week: 'light', lightened: true,
+        exercises: [
+          { id: 'e41', type: 'weight_reps', name: 'Тяга штанги в наклоне', longName: 'Тяга штанги в наклоне к поясу с прямым хватом', sets: [{ w: 50, r: 10 }] }
+        ]
+      },
+      {
+        id: 'w5', dayNum: '15', monShort: 'НОЯ', date: '15 ноября 2026', time: '10:12', durationSec: 3600,
+        day: 'День B', longDay: 'День B: Базовый жим и вспомогательная работа на плечи',
+        prog: 'Фулбоди без чередования', week: 'regular', lightened: true,
+        exercises: [
+          { id: 'e51', type: 'weight_reps', name: 'Приседания со штангой', longName: 'Приседания со штангой на плечах', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] }
+        ]
+      },
+      {
+        id: 'w6', dayNum: '13', monShort: 'НОЯ', date: '13 ноября 2026', time: '18:50', durationSec: 34000,
+        day: 'День A (забыли закрыть)', longDay: 'День A: Обычная тренировка (> 8 ч — длительность скрыта)',
+        prog: 'Фулбоди без чередования', week: 'regular', lightened: false,
+        exercises: [
+          { id: 'e61', type: 'weight_reps', name: 'Становая тяга', longName: 'Становая тяга классическая со штангой', sets: [{ w: 90, r: 5 }, { w: 90, r: 5 }] }
+        ]
+      }
+    ];
+  }
+
+  const fmtNum = v => {
+    const r = Math.round(v * 100) / 100;
+    const p = String(r).split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+    return p.length > 1 ? `${p[0]},${p[1]}` : p[0];
+  };
+  const fmtRawInput = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  const parsePos = raw => {
+    const n = parseFloat(String(raw ?? '').trim().replace(/\s+/g, '').replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const parseNonNegInt = raw => {
+    const s = String(raw ?? '').trim();
+    return /^\d+$/.test(s) ? parseInt(s, 10) : null;
+  };
+  const fmtSec = s => {
+    const abs = Math.max(0, Math.round(s));
+    return `${Math.floor(abs / 60)}:${abs % 60 < 10 ? '0' : ''}${abs % 60}`;
+  };
+  function fmtDuration(sec) {
+    if (sec == null || sec < 0 || sec > 28800) return null;
+    if (sec < 60) return '< 1 мин';
+    const mins = Math.floor(sec / 60);
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.floor(mins / 60), rem = mins % 60;
+    return rem === 0 ? `${h} ч` : `${h} ч ${rem} мин`;
+  }
+  const fmtTimeAndDur = w => { const d = fmtDuration(w.durationSec); return d ? `${w.time} · ${d}` : w.time; };
+  const fmtSetValue = (type, s) => {
+    if (type === 'weight_reps') return `${fmtNum(s.w)} кг × ${s.r}`;
+    if (type === 'reps') return `${s.r} повт.`;
+    if (type === 'distance') return s.m >= 1000 ? `${fmtNum(s.m / 1000)} км` : `${fmtNum(s.m)} м`;
+    if (type === 'duration') return fmtSec(s.sec);
+    return '';
+  };
+  const calcExerciseTotal = ex => {
+    if (ex.type === 'weight_reps') return `${fmtNum(ex.sets.reduce((a, s) => a + s.w * s.r, 0))} кг`;
+    if (ex.type === 'reps') return `${fmtNum(ex.sets.reduce((a, s) => a + s.r, 0))} повт.`;
+    if (ex.type === 'distance') {
+      const m = ex.sets.reduce((a, s) => a + s.m, 0);
+      return m >= 1000 ? `${fmtNum(m / 1000)} км` : `${fmtNum(m)} м`;
+    }
+    if (ex.type === 'duration') return fmtSec(ex.sets.reduce((a, s) => a + s.sec, 0));
+    return '';
+  };
+  const calcWorkoutTonnage = w => {
+    let has = false, total = 0;
+    for (const ex of w.exercises) {
+      if (ex.type === 'weight_reps' && ex.sets.length) {
+        has = true;
+        for (const s of ex.sets) total += s.w * s.r;
+      }
+    }
+    return has ? total : null;
+  };
+  const countWorkoutSets = w => w.exercises.reduce((a, e) => a + e.sets.length, 0);
+  const plural = (n, o, f, m) => {
+    const a = n % 10, b = n % 100;
+    if (a === 1 && b !== 11) return `${n} ${o}`;
+    if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return `${n} ${f}`;
+    return `${n} ${m}`;
+  };
+  const renderLamps = (week, lightened) => {
+    const arr = [];
+    if (week === 'heavy') arr.push('<span class="lamp lamp-heavy"></span>');
+    if (week === 'light') arr.push('<span class="lamp lamp-light"></span>');
+    if (lightened) arr.push('<span class="lamp lamp-ease"></span>');
+    return arr.length ? `<span class="lamp-group">${arr.join('')}</span>` : '';
+  };
+  const loadBadgeText = w => [w.week === 'heavy' ? 'Тяжёлая' : w.week === 'light' ? 'Лёгкая' : '', w.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
+  const ribbonClass = w => {
+    if (w.week === 'heavy' && w.lightened) return 'has-ribbon rib-heavy-ease';
+    if (w.week === 'light' && w.lightened) return 'has-ribbon rib-light-ease';
+    if (w.week === 'heavy') return 'has-ribbon rib-heavy';
+    if (w.week === 'light') return 'has-ribbon rib-light';
+    if (w.lightened) return 'has-ribbon rib-ease';
+    return '';
+  };
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const st = {
+    mode: 'interactive', // 'interactive' | 'compare-feed' | 'compare-hd'
+    width: 390,
+    longNames: false,
+    feedStyle: 'cal_c',    // 'cal_c' | 'full_b' | 'base_a'
+    hdStyle: 'pills',      // 'pills' | 'plain'
+    emptyStyle: 'center',  // 'center' | 'minimal'
+    delStyle: 'split_c',   // 'split_c' | 'compact_a'
+    workouts: createSeedWorkouts(),
+    screen: 'list',
+    selectedWorkoutId: null,
+    sheet: null,
+    snack: null,
+    snackTimer: null
+  };
+
+  const getWorkout = (id, list = st.workouts) => list.find(w => w.id === id) || null;
+  function buildEditDraft(ex, setObj) {
+    if (ex.type === 'weight_reps') return { w: fmtRawInput(setObj.w), r: String(setObj.r) };
+    if (ex.type === 'reps') return { r: String(setObj.r) };
+    if (ex.type === 'distance') {
+      const unit = setObj.m >= 1000 ? 'km' : 'm';
+      return { unit, val: unit === 'km' ? fmtRawInput(setObj.m / 1000) : fmtRawInput(setObj.m) };
+    }
+    if (ex.type === 'duration') {
+      const m = Math.floor(setObj.sec / 60), s = setObj.sec % 60;
+      return { min: String(m), sec: s < 10 ? `0${s}` : String(s) };
+    }
+    return {};
+  }
+  function parseDraftToSet(type, draft) {
+    if (type === 'weight_reps') {
+      const w = parsePos(draft.w), r = parseNonNegInt(draft.r);
+      if (w == null) return { err: 'Введите вес больше 0 кг' };
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { w: Math.round(w * 100) / 100, r } };
+    }
+    if (type === 'reps') {
+      const r = parseNonNegInt(draft.r);
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { r } };
+    }
+    if (type === 'distance') {
+      const v = parsePos(draft.val);
+      if (v == null) return { err: 'Введите дистанцию больше 0' };
+      const m = draft.unit === 'km' ? Math.round(v * 1000 * 100) / 100 : Math.round(v * 100) / 100;
+      return { val: { m } };
+    }
+    if (type === 'duration') {
+      const m = parseNonNegInt(draft.min === '' ? '0' : draft.min);
+      const s = parseNonNegInt(draft.sec === '' ? '0' : draft.sec);
+      if (m == null || s == null || s > 59) return { err: 'Секунды должны быть от 00 до 59' };
+      const total = m * 60 + s;
+      if (total < 1) return { err: 'Минимальная длительность — 0:01 (≥ 1 с)' };
+      return { val: { sec: total } };
+    }
+    return { err: 'Ошибка' };
+  }
+
+  function renderList(ctx) {
+    const { workouts, longNames, feedStyle, emptyStyle } = ctx;
+    let body = '';
+    if (workouts.length === 0) {
+      body = emptyStyle === 'center' ? `
+        <div class="empty-center">
+          <div class="empty-ico">${ICO.history}</div>
+          <div style="font-size:16px;font-weight:600;color:var(--f-text)">Завершённых тренировок пока нет</div>
+          <div style="font-size:13px;color:var(--f-dim);max-width:260px;line-height:1.45">Когда вы завершите тренировку, запись и её результаты появятся здесь.</div>
+        </div>` : `
+        <div class="empty-minimal">
+          <div style="font-size:16px;font-weight:600;color:var(--f-muted)">Завершённых тренировок пока нет</div>
+          <div style="font-size:13px;color:var(--f-dim);max-width:300px;line-height:1.45">Завершите первую тренировку — она появится здесь в хронологическом порядке.</div>
+        </div>`;
+    } else {
+      body = workouts.map(w => {
+        const title = longNames ? w.longDay : w.day;
+        const hasLamps = w.week !== 'regular' || w.lightened;
+        const badge = hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(loadBadgeText(w))}</span></span>` : '';
+        const rib = ribbonClass(w);
+        const timeDur = fmtTimeAndDur(w);
+
+        if (feedStyle === 'cal_c') {
+          return `
+            <div class="fc-card ${rib}" data-act="open-detail" data-id="${w.id}">
+              <div class="fc-cal">
+                <span class="fc-cal-day tnum">${esc(w.dayNum)}</span>
+                <span class="fc-cal-mon">${esc(w.monShort)}</span>
+              </div>
+              <div class="fc-body">
+                <div class="fc-top">
+                  <span class="fc-time-pair tnum">${esc(timeDur)}</span>
+                  ${badge}
+                </div>
+                <div class="d fc-title clamp-2">${esc(title)}</div>
+                <div class="fc-prog">${esc(w.prog)}</div>
+              </div>
+            </div>`;
+        }
+        if (feedStyle === 'full_b') {
+          return `
+            <div class="fb-card ${rib}" data-act="open-detail" data-id="${w.id}">
+              <div class="fb-top">
+                <span class="d fb-date">${esc(w.date)}</span>
+                <span class="fb-time-pill tnum">${esc(timeDur)}</span>
+              </div>
+              <div class="d fb-title clamp-2">${esc(title)}</div>
+              <div class="fb-foot">
+                <span class="fb-prog">${esc(w.prog)}</span>
+                ${badge}
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="fa-card ${rib}" data-act="open-detail" data-id="${w.id}">
+            <div class="fa-top">
+              <span class="d fa-date">${esc(w.date)}</span>
+              <span class="fa-time tnum">${esc(timeDur)}</span>
+            </div>
+            <div class="fa-main">
+              <div class="d fa-title clamp-2">${esc(title)}</div>
+              ${hasLamps ? `<span class="hist-badge" style="margin-top:2px">${renderLamps(w.week, w.lightened)}<span>${esc(loadBadgeText(w))}</span></span>` : ''}
+            </div>
+            <div class="fa-prog">${esc(w.prog)}</div>
+          </div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="f-scroll-root" data-scroll="root">
+        <h1 class="d home-h1">История</h1>
+        ${body}
+      </div>
+      <nav class="f-nav">
+        <button class="f-nav-btn" type="button">${ICO.home}</button>
+        <button class="f-nav-btn active" type="button" data-act="scroll-top">${ICO.history}<span>История</span></button>
+        <button class="f-nav-btn" type="button">${ICO.settings}</button>
+      </nav>`;
+  }
+
+  function renderDetail(ctx) {
+    const { workout: w, longNames, hdStyle } = ctx;
+    if (!w) return renderList(ctx);
+    const title = longNames ? w.longDay : w.day;
+    const hasLamps = w.week !== 'regular' || w.lightened;
+    const badge = hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(loadBadgeText(w))}</span></span>` : '';
+    const durOnly = fmtDuration(w.durationSec);
+    const timeDur = fmtTimeAndDur(w);
+    const tonnage = calcWorkoutTonnage(w);
+
+    let headerSub = '';
+    if (hdStyle === 'pills') {
+      const pills = [];
+      if (durOnly) pills.push(`<span class="hd-stat-pill">${ICO.clock}<strong class="tnum">${esc(durOnly)}</strong></span>`);
+      if (tonnage != null) pills.push(`<span class="hd-stat-pill tonnage">${ICO.weight}<strong class="tnum">${esc(fmtNum(tonnage))} кг</strong><span>тоннаж</span></span>`);
+      headerSub = `
+        <div class="hd-meta-row">
+          <span class="d" style="color:var(--f-primary);font-size:15px">${esc(w.date)}</span>
+          <span class="m tnum" style="font-size:13px">${esc(w.time)}</span>
+          ${badge}
+        </div>
+        <div class="hd-prog-line" style="margin-bottom:${pills.length ? '8px' : '12px'}">${esc(w.prog)}</div>
+        ${pills.length ? `<div class="hd-stat-pills">${pills.join('')}</div>` : ''}`;
+    } else {
+      const subParts = [w.prog, tonnage != null ? `тоннаж ${fmtNum(tonnage)} кг` : null].filter(Boolean).join(' · ');
+      headerSub = `
+        <div class="hd-meta-row">
+          <span class="d" style="color:var(--f-primary);font-size:15px">${esc(w.date)}</span>
+          <span class="m tnum" style="font-size:13px">${esc(timeDur)}</span>
+          ${badge}
+        </div>
+        <div class="hd-prog-line tnum">${esc(subParts)}</div>`;
+    }
+
+    return `
+      <div class="f-scroll-child">
+        <div class="hd-top">
+          <button class="f-back-btn" type="button" data-act="close-detail" aria-label="Назад">${ICO.back}</button>
+          <h2 class="d hd-title">${esc(title)}</h2>
+        </div>
+        ${headerSub}
+
+        ${w.exercises.map(ex => `
+          <div class="ex-card">
+            <div class="ex-head">
+              <div class="d ex-name">${esc(longNames ? ex.longName : ex.name)}</div>
+              <span class="ex-total tnum">${esc(calcExerciseTotal(ex))}</span>
+            </div>
+            ${ex.sets.map((s, idx) => `
+              <button class="set-row" type="button" data-act="edit-set" data-wid="${w.id}" data-exid="${ex.id}" data-idx="${idx}">
+                <span class="set-idx">Подход ${idx + 1}</span>
+                <span class="set-right">
+                  <span class="set-val tnum">${esc(fmtSetValue(ex.type, s))}</span>
+                  <span class="set-edit">${ICO.edit}</span>
+                </span>
+              </button>`).join('')}
+          </div>`).join('')}
+
+        <div class="hd-danger-zone">
+          <button class="f-text-danger" type="button" data-act="open-del-workout" data-wid="${w.id}">
+            ${ICO.trash}<span>Удалить тренировку из истории</span>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  function renderEditSheet(ctx) {
+    const { sheet, workouts, longNames } = ctx;
+    const w = getWorkout(sheet.workoutId, workouts);
+    const ex = w && w.exercises.find(e => e.id === sheet.exId);
+    if (!ex) return '';
+    const isLastInWorkout = countWorkoutSets(w) <= 1;
+    const isLastInExercise = ex.sets.length <= 1 && !isLastInWorkout;
+    const d = sheet.draft;
+
+    let fields = '';
+    if (ex.type === 'weight_reps') {
+      fields = `
+        <div class="ed-grid-2">
+          <div class="ed-field">
+            <span class="ed-lbl">Вес, кг</span>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="w" data-delta="-2.5">−</button>
+              <input class="step-inp" data-ed-field="w" value="${esc(d.w)}" inputmode="decimal">
+              <button class="step-btn" type="button" data-act="step" data-field="w" data-delta="2.5">+</button>
+            </div>
+          </div>
+          <div class="ed-field">
+            <span class="ed-lbl">Повторения</span>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="-1">−</button>
+              <input class="step-inp" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric">
+              <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="1">+</button>
+            </div>
+          </div>
+        </div>`;
+    } else if (ex.type === 'reps') {
+      fields = `
+        <div class="ed-field">
+          <span class="ed-lbl">Повторения</span>
+          <div class="step-box ${sheet.error ? 'err' : ''}">
+            <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="-1">−</button>
+            <input class="step-inp" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric">
+            <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="1">+</button>
+          </div>
+        </div>`;
+    } else if (ex.type === 'distance') {
+      const delta = d.unit === 'km' ? 0.1 : 5;
+      fields = `
+        <div class="ed-field">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <span class="ed-lbl">Дистанция (${d.unit === 'km' ? 'км' : 'м'})</span>
+            <div class="unit-seg">
+              <button type="button" class="${d.unit === 'm' ? 'active' : ''}" data-act="set-unit" data-u="m">м</button>
+              <button type="button" class="${d.unit === 'km' ? 'active' : ''}" data-act="set-unit" data-u="km">км</button>
+            </div>
+          </div>
+          <div class="step-box ${sheet.error ? 'err' : ''}">
+            <button class="step-btn" type="button" data-act="step" data-field="val" data-delta="${-delta}">−</button>
+            <input class="step-inp" data-ed-field="val" value="${esc(d.val)}" inputmode="decimal">
+            <button class="step-btn" type="button" data-act="step" data-field="val" data-delta="${delta}">+</button>
+          </div>
+        </div>`;
+    } else if (ex.type === 'duration') {
+      fields = `
+        <div class="dur-row">
+          <div class="dur-col">
+            <span class="ed-lbl">Минуты</span>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="min" data-delta="-1">−</button>
+              <input class="step-inp" data-ed-field="min" value="${esc(d.min)}" inputmode="numeric">
+              <button class="step-btn" type="button" data-act="step" data-field="min" data-delta="1">+</button>
+            </div>
+          </div>
+          <span class="dur-colon">:</span>
+          <div class="dur-col">
+            <span class="ed-lbl">Секунды</span>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="sec" data-delta="-5">−</button>
+              <input class="step-inp" data-ed-field="sec" value="${esc(d.sec)}" inputmode="numeric">
+              <button class="step-btn" type="button" data-act="step" data-field="sec" data-delta="5">+</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="f-scrim" data-act="close-sheet-scrim">
+        <div class="f-sheet" data-stop="1">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head">
+            <div style="min-width:0;flex:1">
+              <h3>${esc(longNames ? ex.longName : ex.name)}</h3>
+              <div class="f-sheet-sub">Подход ${sheet.setIdx + 1} из ${ex.sets.length}</div>
+            </div>
+            <button class="f-sheet-x" type="button" data-act="close-sheet">✕</button>
+          </div>
+          ${fields}
+          ${sheet.error ? `<div class="ed-err">${esc(sheet.error)}</div>` : ''}
+          ${isLastInWorkout ? `
+            <div class="last-set-box">
+              <div><strong>Последний подход в тренировке</strong></div>
+              <div>Отдельно удалить его нельзя — в истории хранятся только тренировки с подходами. Можно исправить значения или удалить тренировку целиком.</div>
+            </div>
+            <button class="pb" type="button" data-act="save-set">Сохранить</button>
+            <button class="f-calm-danger" type="button" data-act="open-del-workout" data-wid="${w.id}">${ICO.trash}<span>Удалить всю тренировку</span></button>
+          ` : `
+            ${isLastInExercise ? `<div style="font-size:11.5px;color:var(--f-dim);text-align:center">Последний подход этого упражнения — при удалении карточка скроется (можно отменить).</div>` : ''}
+            <div class="ed-split-foot">
+              <button class="ed-del-pill" type="button" data-act="delete-set">${ICO.trash}<span>Удалить</span></button>
+              <button class="pb" style="flex:1" type="button" data-act="save-set">Сохранить</button>
+            </div>
+          `}
+        </div>
+      </div>`;
+  }
+
+  function renderDeleteSheet(ctx) {
+    const { sheet, workouts, longNames, delStyle } = ctx;
+    const w = getWorkout(sheet.workoutId, workouts);
+    if (!w) return '';
+    const title = longNames ? w.longDay : w.day;
+    const hasLamps = w.week !== 'regular' || w.lightened;
+    const badge = hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(loadBadgeText(w))}</span></span>` : '';
+    const totalSets = countWorkoutSets(w);
+    const timeDur = fmtTimeAndDur(w);
+
+    const body = delStyle === 'split_c' ? `
+      <div class="del-split-card">
+        <div class="del-split-row loss">
+          <span class="del-split-ico" style="background:var(--f-error-bg);color:var(--f-error)">${ICO.trash}</span>
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;color:var(--f-text);overflow-wrap:anywhere">${esc(title)}</div>
+            <div style="color:var(--f-muted);margin-top:2px" class="tnum">${esc(w.date)} · ${esc(timeDur)} · ${plural(totalSets, 'подход', 'подхода', 'подходов')}</div>
+            ${badge ? `<div style="margin-top:5px">${badge}</div>` : ''}
+          </div>
+        </div>
+        <div class="del-split-row">
+          <span class="del-split-ico" style="background:var(--f-chip);color:var(--f-muted)">${ICO.shield}</span>
+          <div style="color:var(--f-muted)">Удалится навсегда без «Отменить», но <strong style="color:var(--f-text)">прогресс тренировочной недели не изменится</strong>.</div>
+        </div>
+      </div>` : `
+      <div class="del-sum-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <strong style="font-size:15px;overflow-wrap:anywhere">${esc(title)}</strong>
+          ${badge}
+        </div>
+        <div style="font-size:12.5px;color:var(--f-muted)" class="tnum">${esc(w.date)} · ${esc(timeDur)}</div>
+        <div style="font-size:12.5px;color:var(--f-dim)">${esc(w.prog)} · ${plural(totalSets, 'подход', 'подхода', 'подходов')}</div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.42">Запись будет удалена навсегда без возможности отмены. Статус тренировочной недели не изменится.</p>`;
+
+    return `
+      <div class="f-scrim" data-act="close-sheet-scrim">
+        <div class="f-sheet" data-stop="1">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head">
+            <h3>Удалить тренировку?</h3>
+            <button class="f-sheet-x" type="button" data-act="close-sheet">✕</button>
+          </div>
+          ${body}
+          <button class="f-sheet-danger" type="button" data-act="confirm-del-workout" data-wid="${w.id}">Удалить тренировку</button>
+          <button class="ob" type="button" data-act="close-sheet">Оставить</button>
+        </div>
+      </div>`;
+  }
+
+  function renderPhone(ctx) {
+    const main = ctx.screen === 'detail' ? renderDetail(ctx) : renderList(ctx);
+    const sh = ctx.sheet ? (ctx.sheet.kind === 'edit_set' ? renderEditSheet(ctx) : renderDeleteSheet(ctx)) : '';
+    const sn = ctx.snack ? `
+      <div class="f-snack">
+        <span class="f-snack-msg">${esc(ctx.snack.msg)}</span>
+        <button class="f-snack-undo" type="button" data-act="undo-delete-set">Отменить</button>
+      </div>` : '';
+    return main + sn + sh;
+  }
+
+  function renderAll() {
+    document.getElementById('mode-interactive').classList.toggle('active', st.mode === 'interactive');
+    document.getElementById('mode-compare-feed').classList.toggle('active', st.mode === 'compare-feed');
+    document.getElementById('mode-compare-hd').classList.toggle('active', st.mode === 'compare-hd');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+
+    document.getElementById('view-interactive').classList.toggle('hidden', st.mode !== 'interactive');
+    document.getElementById('view-compare').classList.toggle('hidden', st.mode === 'interactive');
+
+    if (st.mode === 'interactive') {
+      const phone = document.getElementById('phone-live');
+      phone.classList.toggle('w360', st.width === 360);
+      const activeWorkout = st.selectedWorkoutId ? getWorkout(st.selectedWorkoutId) : null;
+      phone.innerHTML = renderPhone({
+        screen: st.screen, workouts: st.workouts, workout: activeWorkout,
+        longNames: st.longNames, feedStyle: st.feedStyle, hdStyle: st.hdStyle,
+        emptyStyle: st.emptyStyle, delStyle: st.delStyle, sheet: st.sheet, snack: st.snack
+      });
+      document.getElementById('phone-caption').textContent =
+        `${st.width} dp · Тап по карточке → детали, тап по подходу → шторка со степперами`;
+
+      document.getElementById('ctrl-feed').innerHTML = [
+        ['cal_c', 'Календарь C (время+длит. рядом)'],
+        ['full_b', 'Свободный заголовок B'],
+        ['base_a', 'База доски 04 (A)']
+      ].map(([k, l]) => `<button class="hbtn ${st.feedStyle === k ? 'active' : ''}" type="button" data-h="feed" data-v="${k}">${l}</button>`).join('');
+
+      document.getElementById('ctrl-hd').innerHTML = [
+        ['pills', 'Чистая база + лёгкие пилюли (длит., тоннаж)'],
+        ['plain', 'Строгая база A (одна строка)']
+      ].map(([k, l]) => `<button class="hbtn ${st.hdStyle === k ? 'active' : ''}" type="button" data-h="hd" data-v="${k}">${l}</button>`).join('');
+
+      document.getElementById('ctrl-empty').innerHTML = [
+        ['center', 'По центру с иконкой (A)'],
+        ['minimal', 'Тихий текст сверху (C)']
+      ].map(([k, l]) => `<button class="hbtn ${st.emptyStyle === k ? 'active' : ''}" type="button" data-h="empty" data-v="${k}">${l}</button>`).join('');
+
+      document.getElementById('ctrl-del').innerHTML = [
+        ['split_c', 'Двухчастная (C)'],
+        ['compact_a', 'Компактная (A)']
+      ].map(([k, l]) => `<button class="hbtn ${st.delStyle === k ? 'active' : ''}" type="button" data-h="del" data-v="${k}">${l}</button>`).join('');
+
+      const curScr = st.screen === 'list' ? (st.workouts.length === 0 ? 'empty' : 'list')
+        : st.selectedWorkoutId === 'w3' ? 'detail_noweight'
+        : st.selectedWorkoutId === 'w4' ? 'detail_last' : 'detail_all';
+      document.getElementById('ctrl-screen').innerHTML = [
+        ['list', 'Лента'], ['empty', 'Пусто'], ['detail_all', 'Детали (4 типа)'],
+        ['detail_noweight', 'Детали (без веса)'], ['detail_last', 'Детали (1 подход)']
+      ].map(([k, l]) => `<button class="hbtn ${curScr === k ? 'active' : ''}" type="button" data-h="scr" data-v="${k}">${l}</button>`).join('');
+
+      document.getElementById('ctrl-sheets').innerHTML = [
+        ['wr', 'Вес × повт.'], ['reps', 'Повторения'], ['dist_m', 'Дистанция (м)'],
+        ['dist_km', 'Дистанция (км)'], ['dur', 'Длительность (мин:сек)'],
+        ['last', 'Последний подход'], ['delw', 'Удаление тренировки']
+      ].map(([k, l]) => `<button class="hbtn" type="button" data-h="sh" data-v="${k}">${l}</button>`).join('');
+
+      document.getElementById('ctrl-flags').innerHTML = `
+        <button class="hbtn ${st.longNames ? 'active' : ''}" type="button" data-h="long">Длинные названия (#94)</button>
+        <button class="hbtn" type="button" data-h="reset">Сбросить данные</button>`;
+    } else if (st.mode === 'compare-feed') {
+      const seed = createSeedWorkouts();
+      const cols = [
+        { k: 'cal_c', t: 'Календарь C (исправленный)', s: '26 НОЯ слева, 19:42 · 44 мин вместе справа наверху' },
+        { k: 'full_b', t: 'Свободный заголовок B', s: 'Дата + капсула 19:42 · 44 мин, день на всю ширину, бейдж внизу' },
+        { k: 'base_a', t: 'База доски 04 (A)', s: 'Классическая доска 04, день и бейдж в одной строке' }
+      ];
+      document.getElementById('compare-grid').innerHTML = cols.map(c => `
+        <div class="board-col">
+          <div class="board-col-head">
+            <div><div class="board-col-title">${c.t}</div><div class="board-col-sub">${c.s}</div></div>
+            <button class="hbtn ${st.feedStyle === c.k ? 'active' : ''}" type="button" data-h="pick-feed" data-v="${c.k}">Выбрать</button>
+          </div>
+          <div class="phone ${st.width === 360 ? 'w360' : ''}">
+            ${renderPhone({ screen: 'list', workouts: seed, workout: null, longNames: st.longNames, feedStyle: c.k, hdStyle: st.hdStyle, emptyStyle: st.emptyStyle, delStyle: st.delStyle, sheet: null, snack: null })}
+          </div>
+        </div>`).join('');
+    } else {
+      const seed = createSeedWorkouts();
+      const cols = [
+        { k: 'pills', t: 'Чистая база + лёгкие пилюли', s: 'Без тяжёлой Hero-карточки, длительность и тоннаж отдельно' },
+        { k: 'plain', t: 'Строгая база A', s: 'Только текстовые строки метаданных без пилюль' }
+      ];
+      document.getElementById('compare-grid').innerHTML = cols.map(c => `
+        <div class="board-col">
+          <div class="board-col-head">
+            <div><div class="board-col-title">${c.t}</div><div class="board-col-sub">${c.s}</div></div>
+            <button class="hbtn ${st.hdStyle === c.k ? 'active' : ''}" type="button" data-h="pick-hd" data-v="${c.k}">Выбрать</button>
+          </div>
+          <div class="phone ${st.width === 360 ? 'w360' : ''}">
+            ${renderPhone({ screen: 'detail', workouts: seed, workout: seed[0], longNames: st.longNames, feedStyle: st.feedStyle, hdStyle: c.k, emptyStyle: st.emptyStyle, delStyle: st.delStyle, sheet: null, snack: null })}
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  function openEdit(wid, exid, idx) {
+    const w = getWorkout(wid), ex = w && w.exercises.find(e => e.id === exid);
+    if (!ex || !ex.sets[idx]) return;
+    st.screen = 'detail'; st.selectedWorkoutId = wid;
+    st.sheet = { kind: 'edit_set', workoutId: wid, exId: exid, setIdx: idx, draft: buildEditDraft(ex, ex.sets[idx]), error: null };
+    renderAll();
+  }
+
+  document.getElementById('mode-interactive').addEventListener('click', () => { st.mode = 'interactive'; renderAll(); });
+  document.getElementById('mode-compare-feed').addEventListener('click', () => { st.mode = 'compare-feed'; renderAll(); });
+  document.getElementById('mode-compare-hd').addEventListener('click', () => { st.mode = 'compare-hd'; renderAll(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; renderAll(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; renderAll(); });
+
+  document.addEventListener('click', e => {
+    const hb = e.target.closest('[data-h]');
+    if (hb) {
+      const h = hb.dataset.h, v = hb.dataset.v;
+      if (h === 'feed') { st.feedStyle = v; st.screen = 'list'; st.sheet = null; if (!st.workouts.length) st.workouts = createSeedWorkouts(); }
+      else if (h === 'pick-feed') { st.feedStyle = v; st.mode = 'interactive'; st.screen = 'list'; st.sheet = null; }
+      else if (h === 'hd') { st.hdStyle = v; st.screen = 'detail'; if (!st.selectedWorkoutId) st.selectedWorkoutId = 'w1'; st.sheet = null; }
+      else if (h === 'pick-hd') { st.hdStyle = v; st.mode = 'interactive'; st.screen = 'detail'; st.selectedWorkoutId = 'w1'; st.sheet = null; }
+      else if (h === 'empty') { st.emptyStyle = v; st.workouts = []; st.screen = 'list'; st.sheet = null; }
+      else if (h === 'del') { st.delStyle = v; if (!getWorkout('w1')) st.workouts = createSeedWorkouts(); st.screen = 'detail'; st.selectedWorkoutId = 'w1'; st.sheet = { kind: 'delete_workout', workoutId: 'w1' }; }
+      else if (h === 'long') { st.longNames = !st.longNames; }
+      else if (h === 'reset') { st.workouts = createSeedWorkouts(); st.screen = 'list'; st.selectedWorkoutId = null; st.sheet = null; st.snack = null; }
+      else if (h === 'scr') {
+        st.sheet = null; st.snack = null;
+        if (v === 'empty') { st.workouts = []; st.screen = 'list'; st.selectedWorkoutId = null; }
+        else {
+          if (!st.workouts.length) st.workouts = createSeedWorkouts();
+          if (v === 'list') { st.screen = 'list'; st.selectedWorkoutId = null; }
+          else if (v === 'detail_all') { if (!getWorkout('w1')) st.workouts = createSeedWorkouts(); st.screen = 'detail'; st.selectedWorkoutId = 'w1'; }
+          else if (v === 'detail_noweight') { if (!getWorkout('w3')) st.workouts = createSeedWorkouts(); st.screen = 'detail'; st.selectedWorkoutId = 'w3'; }
+          else if (v === 'detail_last') { if (!getWorkout('w4')) st.workouts = createSeedWorkouts(); st.screen = 'detail'; st.selectedWorkoutId = 'w4'; }
+        }
+      } else if (h === 'sh') {
+        st.snack = null;
+        if (!getWorkout('w1') || !getWorkout('w4')) st.workouts = createSeedWorkouts();
+        if (v === 'wr') openEdit('w1', 'e1', 0);
+        else if (v === 'reps') openEdit('w1', 'e2', 0);
+        else if (v === 'dist_m') openEdit('w1', 'e3', 0);
+        else if (v === 'dist_km') openEdit('w1', 'e4', 0);
+        else if (v === 'dur') openEdit('w1', 'e5', 0);
+        else if (v === 'last') openEdit('w4', 'e41', 0);
+        else if (v === 'delw') { st.screen = 'detail'; st.selectedWorkoutId = 'w1'; st.sheet = { kind: 'delete_workout', workoutId: 'w1' }; renderAll(); }
+        return;
+      }
+      renderAll();
+      return;
+    }
+
+    const live = document.getElementById('phone-live');
+    if (!live || !live.contains(e.target)) return;
+    if (e.target.closest('[data-stop]') && !e.target.closest('[data-act]')) return;
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+
+    if (act === 'open-detail') { st.screen = 'detail'; st.selectedWorkoutId = el.dataset.id; st.sheet = null; renderAll(); }
+    else if (act === 'close-detail') { st.screen = 'list'; st.selectedWorkoutId = null; st.sheet = null; renderAll(); }
+    else if (act === 'scroll-top') { const sc = live.querySelector('[data-scroll="root"]'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' }); }
+    else if (act === 'edit-set') { openEdit(el.dataset.wid, el.dataset.exid, parseInt(el.dataset.idx, 10)); }
+    else if (act === 'close-sheet' || act === 'close-sheet-scrim') { if (act === 'close-sheet-scrim' && e.target !== el) return; st.sheet = null; renderAll(); }
+    else if (act === 'set-unit' && st.sheet && st.sheet.kind === 'edit_set') {
+      const tu = el.dataset.u, cu = st.sheet.draft.unit;
+      if (tu !== cu) {
+        const cv = parsePos(st.sheet.draft.val);
+        if (cv != null) {
+          const m = cu === 'km' ? cv * 1000 : cv;
+          st.sheet.draft.val = tu === 'km' ? fmtRawInput(m / 1000) : fmtRawInput(m);
+        }
+        st.sheet.draft.unit = tu; st.sheet.error = null; renderAll();
+      }
+    } else if (act === 'step' && st.sheet && st.sheet.kind === 'edit_set') {
+      const f = el.dataset.field, delta = parseFloat(el.dataset.delta), d = st.sheet.draft;
+      if (f === 'min' || f === 'sec') {
+        const m = parseNonNegInt(d.min === '' ? '0' : d.min) ?? 0;
+        const s = parseNonNegInt(d.sec === '' ? '0' : d.sec) ?? 0;
+        const total = Math.max(1, m * 60 + s + (f === 'min' ? delta * 60 : delta));
+        d.min = String(Math.floor(total / 60));
+        const rem = total % 60;
+        d.sec = rem < 10 ? `0${rem}` : String(rem);
+      } else if (f === 'r') {
+        d.r = String(Math.max(1, (parseNonNegInt(d.r) ?? 1) + delta));
+      } else {
+        const cur = parsePos(d[f]) ?? 0;
+        const floor = f === 'val' && d.unit === 'km' ? 0.1 : 1;
+        d[f] = fmtRawInput(Math.max(floor, Math.round((cur + delta) * 100) / 100));
+      }
+      st.sheet.error = null; renderAll();
+    } else if (act === 'save-set' && st.sheet && st.sheet.kind === 'edit_set') {
+      const w = getWorkout(st.sheet.workoutId), ex = w && w.exercises.find(x => x.id === st.sheet.exId);
+      if (!ex) return;
+      const res = parseDraftToSet(ex.type, st.sheet.draft);
+      if (res.err) { st.sheet.error = res.err; renderAll(); return; }
+      ex.sets[st.sheet.setIdx] = res.val; st.sheet = null; renderAll();
+    } else if (act === 'delete-set' && st.sheet && st.sheet.kind === 'edit_set') {
+      const w = getWorkout(st.sheet.workoutId);
+      if (!w || countWorkoutSets(w) <= 1) return;
+      const exIdx = w.exercises.findIndex(x => x.id === st.sheet.exId);
+      if (exIdx < 0) return;
+      const ex = w.exercises[exIdx], setIdx = st.sheet.setIdx;
+      const removedSet = { ...ex.sets[setIdx] };
+      const removedExCard = ex.sets.length === 1;
+      const exSnap = removedExCard ? { ...ex, sets: [removedSet] } : null;
+      ex.sets.splice(setIdx, 1);
+      if (removedExCard) w.exercises.splice(exIdx, 1);
+      st.sheet = null;
+      if (st.snackTimer) clearTimeout(st.snackTimer);
+      st.snack = { msg: `Удалён подход · ${st.longNames ? ex.longName : ex.name}`, undoSnap: { workoutId: w.id, exIdx, exId: ex.id, setIdx, removedSet, removedExCard, exSnap } };
+      st.snackTimer = setTimeout(() => { st.snack = null; st.snackTimer = null; renderAll(); }, 6000);
+      renderAll();
+    } else if (act === 'undo-delete-set' && st.snack && st.snack.undoSnap) {
+      const u = st.snack.undoSnap, w = getWorkout(u.workoutId);
+      if (w) {
+        if (u.removedExCard) w.exercises.splice(Math.min(u.exIdx, w.exercises.length), 0, u.exSnap);
+        else { const ex = w.exercises.find(x => x.id === u.exId); if (ex) ex.sets.splice(Math.min(u.setIdx, ex.sets.length), 0, u.removedSet); }
+      }
+      if (st.snackTimer) clearTimeout(st.snackTimer);
+      st.snack = null; st.snackTimer = null; renderAll();
+    } else if (act === 'open-del-workout') {
+      st.sheet = { kind: 'delete_workout', workoutId: el.dataset.wid }; renderAll();
+    } else if (act === 'confirm-del-workout') {
+      st.workouts = st.workouts.filter(w => w.id !== el.dataset.wid);
+      st.sheet = null; st.snack = null; st.screen = 'list'; st.selectedWorkoutId = null; renderAll();
+    }
+  });
+
+  document.addEventListener('input', e => {
+    const inp = e.target.closest('[data-ed-field]');
+    if (!inp || !st.sheet || st.sheet.kind !== 'edit_set') return;
+    st.sheet.draft[inp.dataset.edField] = inp.value;
+    st.sheet.error = null;
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

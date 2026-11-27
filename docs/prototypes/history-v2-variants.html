@@ -1,0 +1,1959 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #118: Вкладка «История», детали тренировки, правка подхода и пустое состояние (A / B / C)</title>
+<!--
+  Throwaway UI prototype for issue #118 ("Как выглядят вкладка «История», детали тренировки, редактирование подхода и пустое состояние в Fitty v2?").
+  Plan: Three structurally different variants (A: Baseline Board 04 + Classic List & Stacked Editor, B: Full-Width Titles + Metric Hero & Stepper Split-Footer Editor, C: Editorial Calendar-Column Ledger + Compact Set Tiles & Live-Preview Editor) on the real Fitty v2 History tab, switchable via ?variant=A|B|C, floating bottom bar, and side-by-side comparison.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 88px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(310px, 1fr); gap: 18px; align-items: start;
+  }
+  @media (max-width: 880px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 8px; font-size: 12.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.45px; color: var(--muted-foreground, #525E50);
+  }
+  .ctrl-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 9px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #5C6759); }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .hbtn {
+    border: 1px solid var(--border, #CFD6CB);
+    background: var(--secondary, #F4F6F1);
+    color: var(--card-foreground, #222B20);
+    border-radius: 9px; padding: 5px 10px; font: 600 12px var(--font-sans, Inter, sans-serif);
+    cursor: pointer; transition: background 120ms, border-color 120ms;
+  }
+  .hbtn:hover { background: var(--accent, #E8EDE3); color: var(--accent-foreground, #1A2018); }
+  .hbtn.active { background: #1B2318; border-color: #1B2318; color: #C5FA55; }
+  .hbtn.danger { border-color: #E2B8B4; color: #8A2C24; background: #FDF2F1; }
+
+  .var-desc-list { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--card-foreground, #263024); display: flex; flex-direction: column; gap: 4px; }
+  .state-box {
+    font-family: var(--font-mono, ui-monospace, Consolas, monospace);
+    font-size: 11.5px; line-height: 1.45;
+    background: var(--secondary, #F3F5F0); color: var(--card-foreground, #242E22);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 10px; padding: 8px 10px;
+  }
+
+  /* Side-by-side board */
+  .board-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .board-controls {
+    background: var(--card, #FFFFFF); border: 1px solid var(--border, #D5DBD1);
+    border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .board-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(364px, 1fr));
+    gap: 18px; justify-items: center; align-items: start;
+  }
+  .board-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .board-col-head {
+    width: 100%; max-width: 390px;
+    background: var(--card, #FFFFFF); border: 1px solid var(--border, #D5DBD1);
+    border-radius: 12px; padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .board-col-title { font-size: 13px; font-weight: 700; color: var(--card-foreground, #1B2318); }
+  .board-col-sub { font-size: 11.5px; color: var(--muted-foreground, #5C6759); }
+
+  /* Floating bottom variant switcher (prototype/UI.md) */
+  .proto-switcher {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 90;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #141A13; color: #F0F3EA;
+    border: 1px solid #3C4D36; border-radius: 999px;
+    padding: 5px 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  }
+  .proto-sw-btn {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid #334030;
+    background: #202A1E; color: #C5FA55; font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-sw-btn:hover { background: #2D3B29; }
+  .proto-sw-lbl {
+    font-size: 12.5px; font-weight: 600; padding: 0 6px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .proto-sw-key {
+    background: #C5FA55; color: #1A2506; font-weight: 800; font-size: 11.5px;
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .proto-sw-kbd { font-size: 11px; color: #8FA08B; margin-left: 2px; }
+  .hidden { display: none !important; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (EXACT BASELINE) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-ease: #C09BFF;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: "Barlow Condensed", Inter, sans-serif; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .d {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .f-num {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .m { color: var(--f-muted); }
+  .clamp-2 {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; overflow-wrap: anywhere;
+  }
+
+  /* Scroll containers */
+  .f-scroll-root { flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-root::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-root { padding: 12px 16px 88px; }
+
+  .f-scroll-child { flex: 1; overflow-y: auto; padding: 14px 20px 32px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-child::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-child { padding: 12px 16px 28px; }
+
+  .home-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+
+  /* Exact baseline bottom nav (64px, root tabs only per #119) */
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent;
+    display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center;
+    border-radius: 24px; color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  /* Back button */
+  .f-back-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 0;
+    background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-back-btn:hover { background: var(--f-chip); }
+
+  /* Approved 8dp glowing lamps (#101) */
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-ease  { background: var(--load-ease);  box-shadow: 0 0 9px rgba(192, 155, 255, 0.88); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+
+  /* 4dp left ribbon shared helper (#101) */
+  .has-ribbon { position: relative; overflow: hidden; }
+  .has-ribbon::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .rib-heavy::before { background: var(--load-heavy); }
+  .rib-light::before { background: var(--load-light); }
+  .rib-ease::before  { background: var(--load-ease); }
+  .rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
+  .rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
+
+  /* Shared non-truncating load badge (#94 + #101) */
+  .hist-badge {
+    display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+    padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    background: var(--f-chip); color: var(--f-muted);
+  }
+
+  /* ==================== VARIANT A: BASELINE BOARD 04 + CLASSIC LIST ==================== */
+  .va-card {
+    background: var(--f-surface); border-radius: 20px; padding: 14px 18px; margin-bottom: 8px;
+    cursor: pointer; transition: background 120ms;
+  }
+  .va-card:hover { background: #192019; }
+  .va-card.has-ribbon { padding-left: 20px; }
+  .va-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .va-date { font-size: 16px; color: var(--f-primary); }
+  .va-time { font-size: 12.5px; color: var(--f-muted); flex: none; }
+  .va-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 3px; }
+  .va-title { font-size: 22px; line-height: 24px; color: var(--f-text); flex: 1; min-width: 0; }
+  .va-prog { font-size: 13px; color: var(--f-muted); margin-top: 3px; }
+
+  .va-empty {
+    min-height: 540px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px 20px; gap: 10px;
+  }
+  .va-empty-ico {
+    width: 52px; height: 52px; border-radius: 18px; background: var(--f-surface);
+    color: var(--f-dim); display: flex; align-items: center; justify-content: center; margin-bottom: 2px;
+  }
+  .va-empty-title { font-size: 16px; font-weight: 600; color: var(--f-text); margin: 0; }
+  .va-empty-sub { font-size: 13px; color: var(--f-dim); margin: 0; max-width: 260px; line-height: 1.45; }
+
+  .va-hd-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .va-hd-title { margin: 2px 0 0; font-size: 24px; line-height: 1.1; overflow-wrap: anywhere; flex: 1; }
+  .va-hd-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .va-hd-sub { font-size: 13px; color: var(--f-muted); margin-bottom: 12px; }
+  .va-ex-card { background: var(--f-surface); border-radius: 20px; padding: 12px 15px 6px; margin-bottom: 9px; }
+  .va-ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .va-ex-name { font-size: 17px; line-height: 1.18; color: var(--f-text); overflow-wrap: anywhere; }
+  .va-ex-total { font-size: 12px; font-weight: 600; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .va-set-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 2px; min-height: 40px; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: left;
+  }
+  .va-set-row:hover { background: rgba(197, 250, 85, 0.05); border-radius: 8px; }
+  .va-set-idx { font-size: 13px; color: var(--f-muted); }
+  .va-set-right { display: inline-flex; align-items: center; gap: 8px; }
+  .va-set-val { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 0.2px; }
+  .va-set-edit { color: var(--f-dim); display: inline-flex; }
+
+  /* ==================== VARIANT B: FULL-WIDTH TITLES + METRIC HERO + STEPPER ==================== */
+  .vb-card {
+    background: var(--f-surface); border-radius: 20px; padding: 13px 16px; margin-bottom: 8px;
+    cursor: pointer; transition: background 120ms;
+  }
+  .vb-card:hover { background: #192019; }
+  .vb-card.has-ribbon { padding-left: 19px; }
+  .vb-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .vb-date { font-size: 15px; color: var(--f-primary); }
+  .vb-time-pill {
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted);
+    background: var(--f-surface-hi); padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex: none;
+  }
+  .vb-title { font-size: 21px; line-height: 23px; color: var(--f-text); margin-top: 5px; }
+  .vb-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 7px; padding-top: 7px; border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .vb-prog { font-size: 12.5px; color: var(--f-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+  .vb-empty-card {
+    margin-top: 8px; background: var(--f-surface); border-radius: 20px; padding: 22px 18px;
+    display: flex; align-items: flex-start; gap: 13px;
+  }
+  .vb-empty-ico {
+    width: 40px; height: 40px; border-radius: 13px; background: var(--f-chip);
+    color: var(--f-dim); display: flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  .vb-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .vb-topbar-lbl { font-size: 13px; font-weight: 600; color: var(--f-muted); }
+  .vb-trash-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--f-error-border);
+    background: rgba(54, 28, 26, 0.45); color: var(--f-error);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .vb-trash-btn:hover { background: var(--f-error-bg); }
+  .vb-hero {
+    background: var(--f-surface); border-radius: 20px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .vb-hero.has-ribbon { padding-left: 19px; }
+  .vb-hero-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .vb-hero-title { margin: 0; font-size: 24px; line-height: 1.08; overflow-wrap: anywhere; }
+  .vb-hero-prog { font-size: 13px; color: var(--f-muted); margin-top: 4px; }
+  .vb-metrics {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 7px; margin-top: 11px;
+  }
+  .vb-metric {
+    background: var(--f-bg); border-radius: 13px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .vb-metric-k { font-size: 10.5px; color: var(--f-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.35px; }
+  .vb-metric-v { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 18px; line-height: 1.1; color: var(--f-text); }
+  .vb-metric-v.accent { color: var(--f-primary); }
+
+  .vb-ex-card { background: var(--f-surface); border-radius: 20px; padding: 12px 14px 8px; margin-bottom: 9px; }
+  .vb-ex-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .vb-ex-name { font-size: 16.5px; line-height: 1.18; color: var(--f-text); overflow-wrap: anywhere; }
+  .vb-ex-total {
+    font-size: 12px; font-weight: 700; color: var(--f-on-primary-container);
+    background: var(--f-primary-container); padding: 3px 9px; border-radius: 999px; white-space: nowrap; flex: none;
+  }
+  .vb-set-row {
+    width: 100%; border: 0; background: var(--f-bg); color: var(--f-text);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 10px; border-radius: 12px; margin-bottom: 5px; text-align: left;
+  }
+  .vb-set-row:last-child { margin-bottom: 2px; }
+  .vb-set-row:hover { background: #192218; }
+  .vb-set-left { display: inline-flex; align-items: center; gap: 10px; }
+  .vb-set-num {
+    width: 24px; height: 24px; border-radius: 8px; background: var(--f-chip); color: var(--f-muted);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .vb-set-val { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 19px; letter-spacing: 0.2px; }
+  .vb-set-act {
+    font-size: 11.5px; font-weight: 600; color: var(--f-dim);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* ==================== VARIANT C: CALENDAR LEDGER + COMPACT SET TILES ==================== */
+  .vc-card {
+    background: var(--f-surface); border-radius: 20px; padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: stretch; gap: 12px; cursor: pointer; transition: background 120ms;
+  }
+  .vc-card:hover { background: #192019; }
+  .vc-card.has-ribbon { padding-left: 16px; }
+  .vc-cal {
+    width: 56px; flex: none; border-right: 1px solid rgba(255, 255, 255, 0.07);
+    padding-right: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+  }
+  .vc-cal-day { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 28px; line-height: 0.95; color: var(--f-primary); }
+  .vc-cal-mon { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--f-muted); margin-top: 2px; }
+  .vc-cal-time { font-size: 11px; color: var(--f-dim); margin-top: 4px; }
+  .vc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .vc-title { font-size: 20px; line-height: 22px; color: var(--f-text); }
+  .vc-prog { font-size: 12.5px; color: var(--f-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vc-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .vc-dur { font-size: 11.5px; font-weight: 600; color: var(--f-dim); }
+
+  .vc-empty {
+    padding: 20px 2px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .vc-empty-title { font-size: 16px; font-weight: 600; color: var(--f-muted); margin: 0; }
+  .vc-empty-sub { font-size: 13px; color: var(--f-dim); margin: 0; line-height: 1.48; max-width: 300px; }
+
+  .vc-hd-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .vc-hd-top { display: flex; align-items: center; gap: 10px; }
+  .vc-hd-date { font-size: 14px; color: var(--f-primary); }
+  .vc-hd-title { margin: 2px 0 0; font-size: 26px; line-height: 1.06; overflow-wrap: anywhere; }
+  .vc-hd-strip {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    padding: 9px 12px; border-radius: 14px; background: var(--f-surface); font-size: 12.5px; color: var(--f-muted);
+  }
+  .vc-hd-strip strong { color: var(--f-text); font-weight: 600; }
+
+  .vc-ex-card { background: var(--f-surface); border-radius: 18px; padding: 12px 13px; margin-bottom: 9px; }
+  .vc-ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+  .vc-ex-name { font-size: 15.5px; font-weight: 700; line-height: 1.25; color: var(--f-text); overflow-wrap: anywhere; }
+  .vc-ex-total {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+    color: var(--f-primary); white-space: nowrap; flex: none;
+  }
+  .vc-tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .vc-set-tile {
+    border: 1px solid var(--f-outline); background: var(--f-bg); color: var(--f-text);
+    border-radius: 12px; padding: 8px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left;
+  }
+  .vc-set-tile:hover { border-color: var(--f-primary-border); background: #151E10; }
+  .vc-tile-n { font-size: 11px; font-weight: 600; color: var(--f-dim); flex: none; }
+  .vc-tile-v { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 17px; color: var(--f-text); white-space: nowrap; }
+
+  /* ==================== SHARED BUTTONS, SHEETS (#1C231C), SNACKBAR ==================== */
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 46px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .pb:disabled { opacity: 0.42; cursor: not-allowed; }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 15.5px; letter-spacing: 0.5px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-calm-danger {
+    width: 100%; min-height: 44px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.35);
+    color: var(--f-error); font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    margin-top: 8px;
+  }
+  .f-calm-danger:hover { background: var(--f-error-bg); }
+  .f-text-danger {
+    width: 100%; min-height: 40px; border: 0; border-radius: 999px; background: transparent;
+    color: var(--f-error); font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .f-text-danger:hover { background: rgba(54, 28, 26, 0.5); }
+  .f-sheet-danger {
+    width: 100%; min-height: 46px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+
+  /* Modal Bottom Sheet (#1C231C) */
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.64);
+    z-index: 30; display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 20px 22px; display: flex; flex-direction: column; gap: 11px;
+    max-height: 86%; overflow-y: auto;
+  }
+  .phone.w360 .f-sheet { padding: 10px 16px 20px; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; overflow-wrap: anywhere; }
+  .f-sheet-sub { font-size: 12.5px; color: var(--f-muted); margin-top: 2px; }
+  .f-sheet-x {
+    width: 30px; height: 30px; border-radius: 50%; border: 0;
+    background: var(--f-chip); color: var(--f-muted);
+    display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 15px;
+  }
+  .f-sheet-icon-danger {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--f-error-border);
+    background: rgba(54, 28, 26, 0.55); color: var(--f-error);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  /* Inputs inside set-edit sheet */
+  .ed-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ed-field { display: flex; flex-direction: column; gap: 4px; }
+  .ed-lbl { font-size: 11.5px; font-weight: 600; color: var(--f-muted); text-align: center; }
+  .ed-input {
+    width: 100%; height: 50px; border-radius: 14px;
+    border: 1.5px solid var(--f-primary-border); background: var(--f-bg); color: var(--f-text);
+    text-align: center; font-size: 24px; font-weight: 700; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .ed-input:focus { border-color: var(--f-primary); box-shadow: 0 0 0 2px rgba(197, 250, 85, 0.16); }
+  .ed-input.err { border-color: var(--f-error); color: var(--f-error); }
+
+  /* Unit segmented toggle (м | км) matching #113 */
+  .unit-seg {
+    display: inline-flex; background: var(--f-bg); border: 1px solid var(--f-outline);
+    border-radius: 999px; padding: 2px; gap: 2px;
+  }
+  .unit-seg button {
+    border: 0; background: transparent; color: var(--f-muted);
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; min-width: 42px;
+  }
+  .unit-seg button.active { background: var(--f-primary-container); color: var(--f-primary); }
+
+  /* Duration min : sec box */
+  .dur-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .dur-col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .dur-colon {
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 30px;
+    color: var(--f-dim); padding-top: 16px;
+  }
+
+  /* Stepper controls (Variant B) */
+  .step-box {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--f-bg); border: 1.5px solid var(--f-primary-border);
+    border-radius: 15px; padding: 4px;
+  }
+  .step-box.err { border-color: var(--f-error); }
+  .step-btn {
+    width: 38px; height: 40px; border-radius: 11px; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 18px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .step-btn:hover { background: var(--f-primary-container); color: var(--f-primary); }
+  .step-inp {
+    flex: 1; min-width: 0; height: 40px; border: 0; background: transparent;
+    color: var(--f-text); text-align: center; font-size: 23px; font-weight: 700; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Split footer (Variant B) */
+  .ed-split-foot { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .ed-del-pill {
+    height: 46px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: rgba(54, 28, 26, 0.52); color: var(--f-error);
+    font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; flex: none;
+  }
+
+  /* Live preview strip (Variant C) */
+  .ed-preview-bar {
+    background: var(--f-surface); border-radius: 13px; padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;
+  }
+  .ed-preview-bar span { color: var(--f-muted); }
+  .ed-preview-bar strong { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 16px; color: var(--f-primary); }
+
+  .ed-err { font-size: 12px; color: var(--f-error); text-align: center; }
+
+  /* Last-set notice box */
+  .last-set-box {
+    background: var(--f-amber-container); border: 1px solid var(--f-amber-border);
+    border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+    font-size: 12.5px; color: var(--f-on-amber-container); line-height: 1.4;
+  }
+  .last-set-box strong { color: var(--f-amber); }
+
+  /* Delete workout sheet cards */
+  .del-sum-card {
+    background: var(--f-surface); border-radius: 16px; padding: 11px 14px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .del-sum-card.has-ribbon { padding-left: 18px; }
+  .del-warn-box {
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border);
+    border-radius: 13px; padding: 9px 12px; font-size: 12.5px; color: var(--f-error); line-height: 1.4;
+  }
+  .del-split-card {
+    border-radius: 16px; overflow: hidden; border: 1px solid var(--f-outline); background: var(--f-surface);
+  }
+  .del-split-row { padding: 10px 12px; display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; line-height: 1.4; }
+  .del-split-row + .del-split-row { border-top: 1px solid var(--f-outline); }
+  .del-split-row.loss { background: rgba(54, 28, 26, 0.55); }
+  .del-split-ico {
+    width: 30px; height: 30px; border-radius: 10px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Floating Undo Snackbar (bottom: 16px on child details screen since no bottom nav per #119) */
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 25;
+    background: #1D2618; border: 1px solid #4E672B; color: var(--f-text);
+    border-radius: 14px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 12.5px; box-shadow: 0 8px 22px rgba(0,0,0,0.52);
+  }
+  .f-snack-msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .f-snack-undo {
+    border: 1px solid #597530; background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700; flex: none;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Fitty 2.0 · Прототип #118</span>
+      <div>
+        <h1 class="host-title">Вкладка «История», детали тренировки, правка подхода и пустое состояние</h1>
+        <div class="host-sub">База доски 04 + решения #117, #113, #101, #94 и #119 (нижний бар только на корневой ленте)</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="mode-interactive" class="active" type="button">Интерактив</button>
+        <button id="mode-board" type="button">Сравнение A / B / C</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- INTERACTIVE VIEW -->
+  <section id="view-interactive" class="interactive-stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone" aria-label="Интерактивный макет вкладки История"></main>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Вариант интерфейса</h2>
+        <div class="btn-wrap" id="ctrl-variant"></div>
+        <ul class="var-desc-list" id="variant-notes" style="margin-top:9px"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Сценарии и экраны</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Быстро открыть шторку `#1C231C`</span>
+          <div class="btn-wrap" id="ctrl-sheets"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Проверки границ</span>
+          <div class="btn-wrap" id="ctrl-flags"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние прототипа</h2>
+        <div class="state-box" id="state-dump"></div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- SIDE-BY-SIDE COMPARISON VIEW -->
+  <section id="view-board" class="board-wrap hidden">
+    <div class="board-controls">
+      <span class="ctrl-lbl" style="margin-right:4px">Показать рядом:</span>
+      <div class="btn-wrap" id="ctrl-board-scene"></div>
+    </div>
+    <div class="board-grid" id="board-grid"></div>
+  </section>
+</div>
+
+<!-- FLOATING VARIANT SWITCHER -->
+<div class="proto-switcher" id="proto-switcher" role="region" aria-label="Переключатель вариантов">
+  <button class="proto-sw-btn" id="sw-prev" type="button" title="Предыдущий вариант (←)">←</button>
+  <span class="proto-sw-lbl">
+    <span class="proto-sw-key" id="sw-key">A</span>
+    <span id="sw-name">Чистая база 04</span>
+    <span class="proto-sw-kbd">← / →</span>
+  </span>
+  <button class="proto-sw-btn" id="sw-next" type="button" title="Следующий вариант (→)">→</button>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    home: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>',
+    history: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3.5 2"/></svg>',
+    settings: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.25.4-1.51 1z"/></svg>',
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    shield: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+  };
+
+  const VARIANTS = [
+    {
+      key: 'A', name: 'Чистая база 04',
+      short: 'Максимум близости к доске 04 · классический список и вертикальная шторка',
+      notes: [
+        '<strong>Лента:</strong> точная структура доски 04 — лаймовая дата и <code>19:42 · 44 мин</code> сверху, название дня (до 2 строк) с бейджем ламп справа, программа внизу.',
+        '<strong>Пустое состояние:</strong> спокойный центрированный блок с тихой иконкой и текстом без CTA-кнопки.',
+        '<strong>Детали:</strong> лёгкая открытая шапка (без нижнего бара по #119), плоские табличные строки подходов с карандашиком, спокойная кнопка удаления тренировки внизу после скролла.',
+        '<strong>Шторки #1C231C:</strong> чистые крупные поля ввода и стек «Сохранить» / «Удалить подход»; удаление тренировки с компактной сводкой.'
+      ]
+    },
+    {
+      key: 'B', name: 'Карточка-метрики + степперы',
+      short: 'Свободные заголовки на 360dp · плитки метрик в деталях и ± степперы в шторке',
+      notes: [
+        '<strong>Лента:</strong> время + длительность в капсуле справа от даты, название дня на всю ширину (не спорит с бейджем на 360dp), нижняя строка объединяет программу и бейдж ламп.',
+        '<strong>Пустое состояние:</strong> аккуратная карточка-заглушка <code>#141914</code> в верхней части экрана в ритме ленты.',
+        '<strong>Детали:</strong> иконка корзины сразу в шапке справа + карточка-герой с <code>4 dp</code> ленточкой и плитками метрик (Дата, Длительность, Тоннаж); подходы с номерными квадратами.',
+        '<strong>Шторки #1C231C:</strong> встроенные <code>±</code> степперы для правки одной рукой и однострочный низ «🗑 Удалить | Сохранить».'
+      ]
+    },
+    {
+      key: 'C', name: 'Календарный журнал + плитки',
+      short: 'Левая колонка даты в ленте · компактная 2-колоночная сетка подходов и живой пересчёт',
+      notes: [
+        '<strong>Лента:</strong> левая колонка даты (<code>26 НОЯ</code> + время) упрощает сканирование без заголовков месяцев; справа день, программа, длительность и лампы.',
+        '<strong>Пустое состояние:</strong> минималистичная тихая типографика под заголовком <code>ИСТОРИЯ</code> без рамок и иконок.',
+        '<strong>Детали:</strong> редакционная шапка + полоса сводки, а подходы внутри карточки упражнения — кликабельные 2-колоночные плитки (меньше скролла).',
+        '<strong>Шторки #1C231C:</strong> живой предпросмотр нового итога упражнения прямо в шторке + двухчастная шторка удаления («Удалится» / «Неделя не изменится»).'
+      ]
+    }
+  ];
+
+  function createSeedWorkouts() {
+    return [
+      {
+        id: 'w1', dayNum: '26', monShort: 'НОЯ', date: '26 ноября 2026', time: '19:42', durationSec: 2640, // 44 мин
+        day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса',
+        prog: 'Базовая силовая', week: 'heavy', lightened: true,
+        exercises: [
+          {
+            id: 'e1', type: 'weight_reps', name: 'Жим штанги лёжа',
+            longName: 'Жим штанги лёжа на горизонтальной скамье с паузой на груди',
+            sets: [{ w: 62.5, r: 10 }, { w: 62.5, r: 11 }, { w: 62.5, r: 10 }]
+          },
+          {
+            id: 'e2', type: 'reps', name: 'Подтягивания',
+            longName: 'Подтягивания широким хватом на перекладине до касания грудью',
+            sets: [{ r: 12 }, { r: 12 }, { r: 11 }]
+          },
+          {
+            id: 'e3', type: 'distance', name: 'Фермерская прогулка',
+            longName: 'Фермерская прогулка с тяжёлыми гантелями по коридору зала',
+            sets: [{ m: 40 }, { m: 45 }, { m: 45 }]
+          },
+          {
+            id: 'e4', type: 'distance', name: 'Бег',
+            longName: 'Бег на беговой дорожке в ровном аэробном темпе (интервалы)',
+            sets: [{ m: 1000 }, { m: 1200 }]
+          },
+          {
+            id: 'e5', type: 'duration', name: 'Планка на предплечьях',
+            longName: 'Планка на предплечьях с удержанием нейтральной поясницы',
+            sets: [{ sec: 65 }, { sec: 60 }]
+          }
+        ]
+      },
+      {
+        id: 'w2', dayNum: '23', monShort: 'НОЯ', date: '23 ноября 2026', time: '19:05', durationSec: 4500, // 1 ч 15 мин
+        day: 'День B: грудь, плечи и трицепс', longDay: 'День B: грудь, плечи и трицепс с длинным названием дня программы',
+        prog: 'Базовая силовая', week: 'heavy', lightened: false,
+        exercises: [
+          { id: 'e21', type: 'weight_reps', name: 'Жим гантелей на наклонной', longName: 'Жим гантелей на наклонной скамье 30° с контролем нижней точки', sets: [{ w: 22, r: 10 }, { w: 22, r: 10 }, { w: 22, r: 9 }] },
+          { id: 'e22', type: 'reps', name: 'Отжимания на брусьях', longName: 'Отжимания на параллельных брусьях с наклоном корпуса вперёд', sets: [{ r: 14 }, { r: 12 }] }
+        ]
+      },
+      {
+        id: 'w3', dayNum: '20', monShort: 'НОЯ', date: '20 ноября 2026', time: '18:22', durationSec: 2100, // 35 мин
+        day: 'День C · без веса', longDay: 'День C: Кардио, турник и кор без отягощений',
+        prog: 'Базовая силовая', week: 'light', lightened: false,
+        exercises: [
+          { id: 'e31', type: 'reps', name: 'Подтягивания', longName: 'Подтягивания обратным хватом', sets: [{ r: 10 }, { r: 10 }] },
+          { id: 'e32', type: 'distance', name: 'Бег', longName: 'Бег трусцой в лёгкой зоне пульса', sets: [{ m: 1500 }, { m: 1000 }] },
+          { id: 'e33', type: 'duration', name: 'Планка на предплечьях', longName: 'Планка на предплечьях', sets: [{ sec: 50 }, { sec: 45 }] }
+        ]
+      },
+      {
+        id: 'w4', dayNum: '18', monShort: 'НОЯ', date: '18 ноября 2026', time: '19:15', durationSec: 42, // < 1 мин
+        day: 'Короткий тест (1 подход)', longDay: 'Короткий тест: один записанный подход во всей тренировке',
+        prog: 'Базовая силовая', week: 'light', lightened: true,
+        exercises: [
+          { id: 'e41', type: 'weight_reps', name: 'Тяга штанги в наклоне', longName: 'Тяга штанги в наклоне к поясу с прямым хватом', sets: [{ w: 50, r: 10 }] }
+        ]
+      },
+      {
+        id: 'w5', dayNum: '15', monShort: 'НОЯ', date: '15 ноября 2026', time: '10:12', durationSec: 3600, // 1 ч
+        day: 'День B', longDay: 'День B: Базовый жим и вспомогательная работа на плечи',
+        prog: 'Фулбоди без чередования', week: 'regular', lightened: true,
+        exercises: [
+          { id: 'e51', type: 'weight_reps', name: 'Приседания со штангой', longName: 'Приседания со штангой на плечах', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] }
+        ]
+      },
+      {
+        id: 'w6', dayNum: '13', monShort: 'НОЯ', date: '13 ноября 2026', time: '18:50', durationSec: 34000, // > 8 ч → длительность скрыта!
+        day: 'День A (забыли закрыть)', longDay: 'День A: Обычная тренировка с забытым таймером (> 8 ч — без длительности)',
+        prog: 'Фулбоди без чередования', week: 'regular', lightened: false,
+        exercises: [
+          { id: 'e61', type: 'weight_reps', name: 'Становая тяга', longName: 'Становая тяга классическая со штангой', sets: [{ w: 90, r: 5 }, { w: 90, r: 5 }] }
+        ]
+      }
+    ];
+  }
+
+  /* ==================== FORMATTING & CALCULATIONS (#117 + #113) ==================== */
+  const fmtNum = v => {
+    const r = Math.round(v * 100) / 100;
+    const parts = String(r).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+    return parts.length > 1 ? `${parts[0]},${parts[1]}` : parts[0];
+  };
+  const fmtRawInput = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  const parsePos = raw => {
+    const n = parseFloat(String(raw ?? '').trim().replace(/\s+/g, '').replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const parseNonNegInt = raw => {
+    const s = String(raw ?? '').trim();
+    if (!/^\d+$/.test(s)) return null;
+    return parseInt(s, 10);
+  };
+  const fmtSec = s => {
+    const abs = Math.max(0, Math.round(s));
+    const m = Math.floor(abs / 60), sec = abs % 60;
+    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+  };
+  function fmtDuration(sec) {
+    if (sec == null || sec < 0 || sec > 28800) return null; // #117: omit < 0 or > 8h
+    if (sec < 60) return '< 1 мин';
+    const mins = Math.floor(sec / 60);
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem === 0 ? `${h} ч` : `${h} ч ${rem} мин`;
+  }
+  function fmtTimeAndDur(w) {
+    const d = fmtDuration(w.durationSec);
+    return d ? `${w.time} · ${d}` : w.time;
+  }
+  function fmtDistanceSet(m) {
+    return m >= 1000 ? `${fmtNum(m / 1000)} км` : `${fmtNum(m)} м`;
+  }
+  function fmtSetValue(type, set) {
+    if (type === 'weight_reps') return `${fmtNum(set.w)} кг × ${set.r}`;
+    if (type === 'reps') return `${set.r} повт.`;
+    if (type === 'distance') return fmtDistanceSet(set.m);
+    if (type === 'duration') return fmtSec(set.sec);
+    return '';
+  }
+  function calcExerciseTotal(ex) {
+    if (ex.type === 'weight_reps') {
+      const kg = ex.sets.reduce((sum, s) => sum + s.w * s.r, 0);
+      return `${fmtNum(kg)} кг`;
+    }
+    if (ex.type === 'reps') {
+      const r = ex.sets.reduce((sum, s) => sum + s.r, 0);
+      return `${fmtNum(r)} повт.`;
+    }
+    if (ex.type === 'distance') {
+      const m = ex.sets.reduce((sum, s) => sum + s.m, 0);
+      return m >= 1000 ? `${fmtNum(m / 1000)} км` : `${fmtNum(m)} м`;
+    }
+    if (ex.type === 'duration') {
+      const sec = ex.sets.reduce((sum, s) => sum + s.sec, 0);
+      return fmtSec(sec);
+    }
+    return '';
+  }
+  function calcWorkoutTonnage(w) {
+    let hasWeighted = false, total = 0;
+    for (const ex of w.exercises) {
+      if (ex.type === 'weight_reps' && ex.sets.length > 0) {
+        hasWeighted = true;
+        for (const s of ex.sets) total += s.w * s.r;
+      }
+    }
+    return hasWeighted ? total : null;
+  }
+  function countWorkoutSets(w) {
+    return w.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+  }
+  function plural(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return `${n} ${one}`;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} ${few}`;
+    return `${n} ${many}`;
+  }
+  function renderLamps(week, lightened) {
+    const arr = [];
+    if (week === 'heavy') arr.push('<span class="lamp lamp-heavy" title="Тяжёлая неделя"></span>');
+    if (week === 'light') arr.push('<span class="lamp lamp-light" title="Лёгкая неделя"></span>');
+    if (lightened) arr.push('<span class="lamp lamp-ease" title="Облегчённая тренировка"></span>');
+    return arr.length ? `<span class="lamp-group">${arr.join('')}</span>` : '';
+  }
+  function loadBadgeText(w) {
+    return [w.week === 'heavy' ? 'Тяжёлая' : w.week === 'light' ? 'Лёгкая' : '', w.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
+  }
+  function ribbonClass(w) {
+    if (w.week === 'heavy' && w.lightened) return 'has-ribbon rib-heavy-ease';
+    if (w.week === 'light' && w.lightened) return 'has-ribbon rib-light-ease';
+    if (w.week === 'heavy') return 'has-ribbon rib-heavy';
+    if (w.week === 'light') return 'has-ribbon rib-light';
+    if (w.lightened) return 'has-ribbon rib-ease';
+    return '';
+  }
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  /* ==================== STATE ==================== */
+  const urlParams = new URLSearchParams(window.location.search);
+  const initVar = ['A', 'B', 'C'].includes((urlParams.get('variant') || '').toUpperCase())
+    ? urlParams.get('variant').toUpperCase() : 'A';
+
+  const st = {
+    mode: 'interactive', // 'interactive' | 'board'
+    boardScene: 'list',  // 'list' | 'empty' | 'detail' | 'edit_dist' | 'edit_dur' | 'edit_last' | 'delete_workout'
+    variant: initVar,
+    width: 390,
+    longNames: false,
+    workouts: createSeedWorkouts(),
+    screen: 'list', // 'list' | 'detail'
+    selectedWorkoutId: null,
+    sheet: null, // null | { kind: 'edit_set', workoutId, exId, setIdx, draft, error } | { kind: 'delete_workout', workoutId }
+    snack: null, // null | { msg, undoSnap }
+    snackTimer: null
+  };
+
+  function setVariant(v, pushUrl = true) {
+    st.variant = v;
+    if (pushUrl) {
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.set('variant', v);
+        window.history.replaceState(null, '', u.toString());
+      } catch (_) {}
+    }
+    renderAll();
+  }
+
+  function getWorkout(id, list = st.workouts) {
+    return list.find(w => w.id === id) || null;
+  }
+
+  function buildEditDraft(ex, setObj) {
+    if (ex.type === 'weight_reps') return { w: fmtRawInput(setObj.w), r: String(setObj.r) };
+    if (ex.type === 'reps') return { r: String(setObj.r) };
+    if (ex.type === 'distance') {
+      const unit = setObj.m >= 1000 ? 'km' : 'm'; // #117 default unit rule
+      return { unit, val: unit === 'km' ? fmtRawInput(setObj.m / 1000) : fmtRawInput(setObj.m) };
+    }
+    if (ex.type === 'duration') {
+      const m = Math.floor(setObj.sec / 60), s = setObj.sec % 60;
+      return { min: String(m), sec: s < 10 ? `0${s}` : String(s) };
+    }
+    return {};
+  }
+
+  function openEditSheet(workoutId, exId, setIdx) {
+    const w = getWorkout(workoutId);
+    if (!w) return;
+    const ex = w.exercises.find(e => e.id === exId);
+    if (!ex || !ex.sets[setIdx]) return;
+    st.screen = 'detail';
+    st.selectedWorkoutId = workoutId;
+    st.sheet = {
+      kind: 'edit_set',
+      workoutId, exId, setIdx,
+      draft: buildEditDraft(ex, ex.sets[setIdx]),
+      error: null
+    };
+    renderAll();
+  }
+
+  function parseDraftToSet(type, draft) {
+    if (type === 'weight_reps') {
+      const w = parsePos(draft.w);
+      const r = parseNonNegInt(draft.r);
+      if (w == null) return { err: 'Введите вес больше 0 кг' };
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { w: Math.round(w * 100) / 100, r } };
+    }
+    if (type === 'reps') {
+      const r = parseNonNegInt(draft.r);
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { r } };
+    }
+    if (type === 'distance') {
+      const v = parsePos(draft.val);
+      if (v == null) return { err: 'Введите дистанцию больше 0' };
+      const m = draft.unit === 'km' ? Math.round(v * 1000 * 100) / 100 : Math.round(v * 100) / 100;
+      return { val: { m } };
+    }
+    if (type === 'duration') {
+      const m = parseNonNegInt(draft.min === '' ? '0' : draft.min);
+      const s = parseNonNegInt(draft.sec === '' ? '0' : draft.sec);
+      if (m == null || s == null || s > 59) return { err: 'Секунды должны быть от 00 до 59' };
+      const total = m * 60 + s;
+      if (total < 1) return { err: 'Минимальная длительность — 0:01 (≥ 1 с)' };
+      return { val: { sec: total } };
+    }
+    return { err: 'Неизвестный тип' };
+  }
+
+  function showUndoSnack(msg, undoSnap) {
+    if (st.snackTimer) clearTimeout(st.snackTimer);
+    st.snack = { msg, undoSnap };
+    st.snackTimer = setTimeout(() => {
+      st.snack = null;
+      st.snackTimer = null;
+      renderAll();
+    }, 6000);
+  }
+
+  /* ==================== RENDERERS PER VARIANT ==================== */
+  function renderBottomNav() {
+    return `
+      <nav class="f-nav" aria-label="Нижняя навигация">
+        <button class="f-nav-btn" type="button" data-act="noop-tab">${ICO.home}</button>
+        <button class="f-nav-btn active" type="button" data-act="scroll-top">${ICO.history}<span>История</span></button>
+        <button class="f-nav-btn" type="button" data-act="noop-tab">${ICO.settings}</button>
+      </nav>`;
+  }
+
+  function renderListScreen(variant, ctx) {
+    const { workouts, longNames } = ctx;
+    let content = '';
+    if (workouts.length === 0) {
+      if (variant === 'A') {
+        content = `
+          <div class="va-empty">
+            <div class="va-empty-ico">${ICO.history}</div>
+            <p class="va-empty-title">Завершённых тренировок пока нет</p>
+            <p class="va-empty-sub">Когда вы завершите тренировку, запись и её результаты появятся в этой ленте.</p>
+          </div>`;
+      } else if (variant === 'B') {
+        content = `
+          <div class="vb-empty-card">
+            <div class="vb-empty-ico">${ICO.history}</div>
+            <div>
+              <div style="font-size:15px;font-weight:600;color:var(--f-text)">Завершённых тренировок пока нет</div>
+              <div style="font-size:12.5px;color:var(--f-dim);margin-top:4px;line-height:1.45">Здесь будет хронологический список всех завершённых занятий с длительностью и подходами.</div>
+            </div>
+          </div>`;
+      } else {
+        content = `
+          <div class="vc-empty">
+            <p class="vc-empty-title">Завершённых тренировок пока нет</p>
+            <p class="vc-empty-sub">Завершите первую тренировку — запись появится здесь в хронологическом порядке.</p>
+          </div>`;
+      }
+    } else {
+      content = workouts.map(w => {
+        const title = longNames ? w.longDay : w.day;
+        const hasLamps = w.week !== 'regular' || w.lightened;
+        const badgeTxt = loadBadgeText(w);
+        const rib = ribbonClass(w);
+        const timeDur = fmtTimeAndDur(w);
+        const durOnly = fmtDuration(w.durationSec);
+
+        if (variant === 'A') {
+          return `
+            <div class="va-card ${rib}" data-act="open-detail" data-id="${w.id}">
+              <div class="va-top">
+                <span class="d va-date">${esc(w.date)}</span>
+                <span class="va-time tnum">${esc(timeDur)}</span>
+              </div>
+              <div class="va-main">
+                <div class="d va-title clamp-2">${esc(title)}</div>
+                ${hasLamps ? `<span class="hist-badge" style="margin-top:2px">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+              </div>
+              <div class="va-prog">${esc(w.prog)}</div>
+            </div>`;
+        }
+        if (variant === 'B') {
+          return `
+            <div class="vb-card ${rib}" data-act="open-detail" data-id="${w.id}">
+              <div class="vb-top">
+                <span class="d vb-date">${esc(w.date)}</span>
+                <span class="vb-time-pill tnum">${esc(timeDur)}</span>
+              </div>
+              <div class="d vb-title clamp-2">${esc(title)}</div>
+              <div class="vb-foot">
+                <span class="vb-prog">${esc(w.prog)}</span>
+                ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="vc-card ${rib}" data-act="open-detail" data-id="${w.id}">
+            <div class="vc-cal">
+              <span class="vc-cal-day tnum">${esc(w.dayNum)}</span>
+              <span class="vc-cal-mon">${esc(w.monShort)}</span>
+              <span class="vc-cal-time tnum">${esc(w.time)}</span>
+            </div>
+            <div class="vc-body">
+              <div class="d vc-title clamp-2">${esc(title)}</div>
+              <div class="vc-prog">${esc(w.prog)}</div>
+              ${(durOnly || hasLamps) ? `
+                <div class="vc-meta">
+                  ${durOnly ? `<span class="vc-dur tnum">${esc(durOnly)}</span>` : ''}
+                  ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+                </div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="f-scroll-root" data-scroll="root">
+        <h1 class="d home-h1">История</h1>
+        ${content}
+      </div>
+      ${renderBottomNav()}`;
+  }
+
+  function renderDetailScreen(variant, ctx) {
+    const { workout: w, longNames } = ctx;
+    if (!w) return renderListScreen(variant, ctx);
+    const title = longNames ? w.longDay : w.day;
+    const hasLamps = w.week !== 'regular' || w.lightened;
+    const badgeTxt = loadBadgeText(w);
+    const rib = ribbonClass(w);
+    const timeDur = fmtTimeAndDur(w);
+    const durOnly = fmtDuration(w.durationSec);
+    const tonnage = calcWorkoutTonnage(w);
+    const totalSets = countWorkoutSets(w);
+
+    if (variant === 'A') {
+      const subParts = [w.prog, tonnage != null ? `тоннаж ${fmtNum(tonnage)} кг` : null].filter(Boolean).join(' · ');
+      return `
+        <div class="f-scroll-child">
+          <div class="va-hd-top">
+            <button class="f-back-btn" type="button" data-act="close-detail" aria-label="Назад">${ICO.back}</button>
+            <h2 class="d va-hd-title">${esc(title)}</h2>
+          </div>
+          <div class="va-hd-meta-row">
+            <span class="d" style="color:var(--f-primary);font-size:15px">${esc(w.date)}</span>
+            <span class="m tnum" style="font-size:13px">${esc(timeDur)}</span>
+            ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+          </div>
+          <div class="va-hd-sub tnum">${esc(subParts)}</div>
+
+          ${w.exercises.map(ex => `
+            <div class="va-ex-card">
+              <div class="va-ex-head">
+                <div class="d va-ex-name">${esc(longNames ? ex.longName : ex.name)}</div>
+                <span class="va-ex-total tnum">${esc(calcExerciseTotal(ex))}</span>
+              </div>
+              ${ex.sets.map((s, idx) => `
+                <button class="va-set-row" type="button" data-act="edit-set" data-wid="${w.id}" data-exid="${ex.id}" data-idx="${idx}">
+                  <span class="va-set-idx">Подход ${idx + 1}</span>
+                  <span class="va-set-right">
+                    <span class="va-set-val tnum">${esc(fmtSetValue(ex.type, s))}</span>
+                    <span class="va-set-edit">${ICO.edit}</span>
+                  </span>
+                </button>`).join('')}
+            </div>`).join('')}
+
+          <button class="f-calm-danger" type="button" data-act="open-del-workout" data-wid="${w.id}">
+            ${ICO.trash}<span>Удалить тренировку</span>
+          </button>
+        </div>`;
+    }
+
+    if (variant === 'B') {
+      return `
+        <div class="f-scroll-child">
+          <div class="vb-topbar">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="f-back-btn" type="button" data-act="close-detail" aria-label="Назад">${ICO.back}</button>
+              <span class="vb-topbar-lbl">Детали тренировки</span>
+            </div>
+            <button class="vb-trash-btn" type="button" data-act="open-del-workout" data-wid="${w.id}" title="Удалить тренировку" aria-label="Удалить тренировку">${ICO.trash}</button>
+          </div>
+
+          <div class="vb-hero ${rib}">
+            <div class="vb-hero-head">
+              <h2 class="d vb-hero-title">${esc(title)}</h2>
+              ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+            </div>
+            <div class="vb-hero-prog">${esc(w.prog)}</div>
+            <div class="vb-metrics">
+              <div class="vb-metric">
+                <span class="vb-metric-k">Завершена</span>
+                <span class="vb-metric-v tnum">${esc(w.dayNum)} ${esc(w.monShort)} · ${esc(w.time)}</span>
+              </div>
+              ${durOnly ? `
+                <div class="vb-metric">
+                  <span class="vb-metric-k">Длительность</span>
+                  <span class="vb-metric-v tnum">${esc(durOnly)}</span>
+                </div>` : ''}
+              ${tonnage != null ? `
+                <div class="vb-metric">
+                  <span class="vb-metric-k">Тоннаж</span>
+                  <span class="vb-metric-v accent tnum">${esc(fmtNum(tonnage))} кг</span>
+                </div>` : `
+                <div class="vb-metric">
+                  <span class="vb-metric-k">Подходы</span>
+                  <span class="vb-metric-v tnum">${totalSets}</span>
+                </div>`}
+            </div>
+          </div>
+
+          ${w.exercises.map(ex => `
+            <div class="vb-ex-card">
+              <div class="vb-ex-head">
+                <div class="d vb-ex-name">${esc(longNames ? ex.longName : ex.name)}</div>
+                <span class="vb-ex-total tnum">${esc(calcExerciseTotal(ex))}</span>
+              </div>
+              ${ex.sets.map((s, idx) => `
+                <button class="vb-set-row" type="button" data-act="edit-set" data-wid="${w.id}" data-exid="${ex.id}" data-idx="${idx}">
+                  <span class="vb-set-left">
+                    <span class="vb-set-num">${idx + 1}</span>
+                    <span class="vb-set-val tnum">${esc(fmtSetValue(ex.type, s))}</span>
+                  </span>
+                  <span class="vb-set-act">${ICO.edit}</span>
+                </button>`).join('')}
+            </div>`).join('')}
+        </div>`;
+    }
+
+    // Variant C
+    const rightSummary = tonnage != null
+      ? `<strong>${esc(fmtNum(tonnage))} кг</strong> · ${plural(totalSets, 'подход', 'подхода', 'подходов')}`
+      : `<strong>${plural(totalSets, 'подход', 'подхода', 'подходов')}</strong>`;
+    return `
+      <div class="f-scroll-child">
+        <div class="vc-hd-head">
+          <div class="vc-hd-top">
+            <button class="f-back-btn" type="button" data-act="close-detail" aria-label="Назад">${ICO.back}</button>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="d vc-hd-date tnum">${esc(w.date)} · ${esc(timeDur)}</span>
+              ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+            </div>
+          </div>
+          <h2 class="d vc-hd-title">${esc(title)}</h2>
+          <div class="vc-hd-strip">
+            <span>${esc(w.prog)}</span>
+            <span class="tnum">${rightSummary}</span>
+          </div>
+        </div>
+
+        ${w.exercises.map(ex => `
+          <div class="vc-ex-card">
+            <div class="vc-ex-head">
+              <div class="vc-ex-name">${esc(longNames ? ex.longName : ex.name)}</div>
+              <span class="vc-ex-total tnum">${esc(calcExerciseTotal(ex))}</span>
+            </div>
+            <div class="vc-tile-grid">
+              ${ex.sets.map((s, idx) => `
+                <button class="vc-set-tile" type="button" data-act="edit-set" data-wid="${w.id}" data-exid="${ex.id}" data-idx="${idx}">
+                  <span class="vc-tile-n">#${idx + 1}</span>
+                  <span class="vc-tile-v tnum">${esc(fmtSetValue(ex.type, s))}</span>
+                </button>`).join('')}
+            </div>
+          </div>`).join('')}
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--f-outline)">
+          <button class="f-text-danger" type="button" data-act="open-del-workout" data-wid="${w.id}">
+            ${ICO.trash}<span>Удалить тренировку из истории</span>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  function renderEditSetSheet(variant, ctx) {
+    const { sheet, workouts, longNames } = ctx;
+    const w = getWorkout(sheet.workoutId, workouts);
+    if (!w) return '';
+    const ex = w.exercises.find(e => e.id === sheet.exId);
+    if (!ex) return '';
+    const totalSetsInWorkout = countWorkoutSets(w);
+    const isLastInWorkout = totalSetsInWorkout <= 1;
+    const isLastInExercise = ex.sets.length <= 1 && !isLastInWorkout;
+    const exName = longNames ? ex.longName : ex.name;
+    const d = sheet.draft;
+
+    // Live preview for Variant C
+    let previewTotal = calcExerciseTotal(ex);
+    const parsedPreview = parseDraftToSet(ex.type, d);
+    if (parsedPreview.val) {
+      const cloneEx = { ...ex, sets: ex.sets.map((s, i) => i === sheet.setIdx ? parsedPreview.val : s) };
+      previewTotal = calcExerciseTotal(cloneEx);
+    }
+
+    let fieldsHtml = '';
+    if (variant === 'B') {
+      // Variant B: built-in ± steppers
+      if (ex.type === 'weight_reps') {
+        fieldsHtml = `
+          <div class="ed-grid-2">
+            <div class="ed-field">
+              <span class="ed-lbl">Вес, кг</span>
+              <div class="step-box ${sheet.error ? 'err' : ''}">
+                <button class="step-btn" type="button" data-act="step" data-field="w" data-delta="-2.5">−</button>
+                <input class="step-inp" data-ed-field="w" value="${esc(d.w)}" inputmode="decimal" aria-label="Вес, кг">
+                <button class="step-btn" type="button" data-act="step" data-field="w" data-delta="2.5">+</button>
+              </div>
+            </div>
+            <div class="ed-field">
+              <span class="ed-lbl">Повторения</span>
+              <div class="step-box ${sheet.error ? 'err' : ''}">
+                <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="-1">−</button>
+                <input class="step-inp" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric" aria-label="Повторения">
+                <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="1">+</button>
+              </div>
+            </div>
+          </div>`;
+      } else if (ex.type === 'reps') {
+        fieldsHtml = `
+          <div class="ed-field">
+            <span class="ed-lbl">Повторения</span>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="-1">−</button>
+              <input class="step-inp" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric" aria-label="Повторения">
+              <button class="step-btn" type="button" data-act="step" data-field="r" data-delta="1">+</button>
+            </div>
+          </div>`;
+      } else if (ex.type === 'distance') {
+        const delta = d.unit === 'km' ? 0.1 : 5;
+        fieldsHtml = `
+          <div class="ed-field">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+              <span class="ed-lbl">Дистанция (${d.unit === 'km' ? 'км' : 'м'})</span>
+              <div class="unit-seg">
+                <button type="button" class="${d.unit === 'm' ? 'active' : ''}" data-act="set-unit" data-u="m">м</button>
+                <button type="button" class="${d.unit === 'km' ? 'active' : ''}" data-act="set-unit" data-u="km">км</button>
+              </div>
+            </div>
+            <div class="step-box ${sheet.error ? 'err' : ''}">
+              <button class="step-btn" type="button" data-act="step" data-field="val" data-delta="${-delta}">−</button>
+              <input class="step-inp" data-ed-field="val" value="${esc(d.val)}" inputmode="decimal" aria-label="Дистанция">
+              <button class="step-btn" type="button" data-act="step" data-field="val" data-delta="${delta}">+</button>
+            </div>
+          </div>`;
+      } else if (ex.type === 'duration') {
+        fieldsHtml = `
+          <div class="dur-row">
+            <div class="dur-col">
+              <span class="ed-lbl">Минуты</span>
+              <div class="step-box ${sheet.error ? 'err' : ''}">
+                <button class="step-btn" type="button" data-act="step" data-field="min" data-delta="-1">−</button>
+                <input class="step-inp" data-ed-field="min" value="${esc(d.min)}" inputmode="numeric" aria-label="Минуты">
+                <button class="step-btn" type="button" data-act="step" data-field="min" data-delta="1">+</button>
+              </div>
+            </div>
+            <span class="dur-colon">:</span>
+            <div class="dur-col">
+              <span class="ed-lbl">Секунды</span>
+              <div class="step-box ${sheet.error ? 'err' : ''}">
+                <button class="step-btn" type="button" data-act="step" data-field="sec" data-delta="-5">−</button>
+                <input class="step-inp" data-ed-field="sec" value="${esc(d.sec)}" inputmode="numeric" aria-label="Секунды">
+                <button class="step-btn" type="button" data-act="step" data-field="sec" data-delta="5">+</button>
+              </div>
+            </div>
+          </div>`;
+      }
+    } else {
+      // Variants A & C: crisp direct numeric inputs
+      if (ex.type === 'weight_reps') {
+        fieldsHtml = `
+          <div class="ed-grid-2">
+            <div class="ed-field">
+              <label class="ed-lbl">Вес, кг</label>
+              <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="w" value="${esc(d.w)}" inputmode="decimal">
+            </div>
+            <div class="ed-field">
+              <label class="ed-lbl">Повторения</label>
+              <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric">
+            </div>
+          </div>`;
+      } else if (ex.type === 'reps') {
+        fieldsHtml = `
+          <div class="ed-field">
+            <label class="ed-lbl">Повторения</label>
+            <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="r" value="${esc(d.r)}" inputmode="numeric">
+          </div>`;
+      } else if (ex.type === 'distance') {
+        fieldsHtml = `
+          <div class="ed-field">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+              <label class="ed-lbl">Дистанция</label>
+              <div class="unit-seg">
+                <button type="button" class="${d.unit === 'm' ? 'active' : ''}" data-act="set-unit" data-u="m">м</button>
+                <button type="button" class="${d.unit === 'km' ? 'active' : ''}" data-act="set-unit" data-u="km">км</button>
+              </div>
+            </div>
+            <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="val" value="${esc(d.val)}" inputmode="decimal">
+          </div>`;
+      } else if (ex.type === 'duration') {
+        fieldsHtml = `
+          <div class="dur-row">
+            <div class="dur-col">
+              <label class="ed-lbl">Мин</label>
+              <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="min" value="${esc(d.min)}" inputmode="numeric">
+            </div>
+            <span class="dur-colon">:</span>
+            <div class="dur-col">
+              <label class="ed-lbl">Сек</label>
+              <input class="ed-input ${sheet.error ? 'err' : ''}" data-ed-field="sec" value="${esc(d.sec)}" inputmode="numeric">
+            </div>
+          </div>`;
+      }
+    }
+
+    const lastSetNotice = isLastInWorkout ? `
+      <div class="last-set-box">
+        <div><strong>Последний подход в тренировке</strong></div>
+        <div>Отдельно удалить его нельзя — в истории сохраняются только тренировки с подходами. Вы можете исправить значения или удалить всю тренировку.</div>
+      </div>` : (isLastInExercise ? `
+      <div style="font-size:11.5px;color:var(--f-dim);text-align:center">
+        Это последний подход этого упражнения — при удалении карточка упражнения скроется (можно отменить).
+      </div>` : '');
+
+    let footerHtml = '';
+    if (isLastInWorkout) {
+      footerHtml = `
+        <button class="pb" type="button" data-act="save-set">Сохранить</button>
+        <button class="f-calm-danger" style="margin-top:0" type="button" data-act="open-del-workout" data-wid="${w.id}">
+          ${ICO.trash}<span>Удалить всю тренировку</span>
+        </button>`;
+    } else if (variant === 'B') {
+      footerHtml = `
+        <div class="ed-split-foot">
+          <button class="ed-del-pill" type="button" data-act="delete-set">${ICO.trash}<span>Удалить</span></button>
+          <button class="pb" style="flex:1" type="button" data-act="save-set">Сохранить</button>
+        </div>`;
+    } else if (variant === 'C') {
+      footerHtml = `<button class="pb" type="button" data-act="save-set">Сохранить изменения</button>`;
+    } else {
+      footerHtml = `
+        <button class="pb" type="button" data-act="save-set">Сохранить</button>
+        <button class="f-text-danger" type="button" data-act="delete-set">${ICO.trash}<span>Удалить подход</span></button>`;
+    }
+
+    return `
+      <div class="f-scrim" data-act="close-sheet-scrim">
+        <div class="f-sheet" data-stop="1" role="dialog" aria-label="Редактирование подхода">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head">
+            <div style="min-width:0;flex:1">
+              <h3>${esc(exName)}</h3>
+              <div class="f-sheet-sub">Подход ${sheet.setIdx + 1} из ${ex.sets.length}</div>
+            </div>
+            ${variant === 'C' && !isLastInWorkout
+              ? `<button class="f-sheet-icon-danger" type="button" data-act="delete-set" title="Удалить подход" aria-label="Удалить подход">${ICO.trash}</button>`
+              : `<button class="f-sheet-x" type="button" data-act="close-sheet" aria-label="Закрыть">✕</button>`}
+          </div>
+
+          ${variant === 'C' ? `
+            <div class="ed-preview-bar">
+              <span>Итог упражнения после правки</span>
+              <strong class="tnum">${esc(previewTotal)}</strong>
+            </div>` : ''}
+
+          ${fieldsHtml}
+          ${sheet.error ? `<div class="ed-err">${esc(sheet.error)}</div>` : ''}
+          ${lastSetNotice}
+          ${footerHtml}
+        </div>
+      </div>`;
+  }
+
+  function renderDeleteWorkoutSheet(variant, ctx) {
+    const { sheet, workouts, longNames } = ctx;
+    const w = getWorkout(sheet.workoutId, workouts);
+    if (!w) return '';
+    const title = longNames ? w.longDay : w.day;
+    const hasLamps = w.week !== 'regular' || w.lightened;
+    const badgeTxt = loadBadgeText(w);
+    const rib = ribbonClass(w);
+    const totalSets = countWorkoutSets(w);
+    const totalEx = w.exercises.length;
+    const timeDur = fmtTimeAndDur(w);
+
+    let bodyHtml = '';
+    if (variant === 'A') {
+      bodyHtml = `
+        <div class="del-sum-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:15px;overflow-wrap:anywhere">${esc(title)}</strong>
+            ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+          </div>
+          <div style="font-size:12.5px;color:var(--f-muted)" class="tnum">${esc(w.date)} · ${esc(timeDur)}</div>
+          <div style="font-size:12.5px;color:var(--f-dim)">${esc(w.prog)} · ${plural(totalEx, 'упражнение', 'упражнения', 'упражнений')}, ${plural(totalSets, 'подход', 'подхода', 'подходов')}</div>
+        </div>
+        <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.42">Запись будет удалена навсегда без возможности отмены. Статус тренировочной недели не изменится.</p>`;
+    } else if (variant === 'B') {
+      bodyHtml = `
+        <div class="del-sum-card ${rib}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span class="d" style="font-size:14px;color:var(--f-primary)">${esc(w.date)}</span>
+            <span class="m tnum" style="font-size:12px">${esc(timeDur)}</span>
+          </div>
+          <div class="d" style="font-size:20px;line-height:1.12;overflow-wrap:anywhere">${esc(title)}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:2px">
+            <span style="font-size:12px;color:var(--f-muted)">${plural(totalSets, 'подход', 'подхода', 'подходов')} · ${esc(w.prog)}</span>
+            ${hasLamps ? `<span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span>` : ''}
+          </div>
+        </div>
+        <div class="del-warn-box">Удаление окончательное (без «Отменить»). Текущая тренировочная неделя останется прежней.</div>`;
+    } else {
+      bodyHtml = `
+        <div class="del-split-card">
+          <div class="del-split-row loss">
+            <span class="del-split-ico" style="background:var(--f-error-bg);color:var(--f-error)">${ICO.trash}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font-weight:600;color:var(--f-text);overflow-wrap:anywhere">${esc(title)}</div>
+              <div style="color:var(--f-muted);margin-top:2px" class="tnum">${esc(w.date)} · ${esc(timeDur)} · ${plural(totalSets, 'подход', 'подхода', 'подходов')}</div>
+              ${hasLamps ? `<div style="margin-top:5px"><span class="hist-badge">${renderLamps(w.week, w.lightened)}<span>${esc(badgeTxt)}</span></span></div>` : ''}
+            </div>
+          </div>
+          <div class="del-split-row">
+            <span class="del-split-ico" style="background:var(--f-chip);color:var(--f-muted)">${ICO.shield}</span>
+            <div style="color:var(--f-muted)">Удалится навсегда без «Отменить», но <strong style="color:var(--f-text)">прогресс тренировочной недели не изменится</strong>.</div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="f-scrim" data-act="close-sheet-scrim">
+        <div class="f-sheet" data-stop="1" role="dialog" aria-label="Удаление тренировки">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head">
+            <h3>Удалить тренировку?</h3>
+            <button class="f-sheet-x" type="button" data-act="close-sheet" aria-label="Закрыть">✕</button>
+          </div>
+          ${bodyHtml}
+          <button class="f-sheet-danger" type="button" data-act="confirm-del-workout" data-wid="${w.id}">Удалить тренировку</button>
+          <button class="ob" type="button" data-act="close-sheet">Оставить</button>
+        </div>
+      </div>`;
+  }
+
+  function renderPhoneHtml(variant, ctx) {
+    const mainHtml = ctx.screen === 'detail'
+      ? renderDetailScreen(variant, ctx)
+      : renderListScreen(variant, ctx);
+
+    let sheetHtml = '';
+    if (ctx.sheet) {
+      if (ctx.sheet.kind === 'edit_set') sheetHtml = renderEditSetSheet(variant, ctx);
+      else if (ctx.sheet.kind === 'delete_workout') sheetHtml = renderDeleteWorkoutSheet(variant, ctx);
+    }
+
+    const snackHtml = ctx.snack ? `
+      <div class="f-snack" role="status">
+        <span class="f-snack-msg">${esc(ctx.snack.msg)}</span>
+        <button class="f-snack-undo" type="button" data-act="undo-delete-set">Отменить</button>
+      </div>` : '';
+
+    return mainHtml + snackHtml + sheetHtml;
+  }
+
+  /* ==================== BOARD SCENES FOR SIDE-BY-SIDE ==================== */
+  const BOARD_SCENES = [
+    { id: 'list', label: 'Лента «История»' },
+    { id: 'empty', label: 'Пустое состояние' },
+    { id: 'detail', label: 'Детали (все 4 типа)' },
+    { id: 'edit_dist', label: 'Шторка: Дистанция (м|км)' },
+    { id: 'edit_dur', label: 'Шторка: Длительность' },
+    { id: 'edit_last', label: 'Шторка: Последний подход' },
+    { id: 'delete_workout', label: 'Шторка: Удаление тренировки' }
+  ];
+
+  function buildBoardCtx(sceneId) {
+    const seed = createSeedWorkouts();
+    if (sceneId === 'empty') {
+      return { screen: 'list', workouts: [], workout: null, longNames: st.longNames, sheet: null, snack: null };
+    }
+    if (sceneId === 'detail') {
+      return { screen: 'detail', workouts: seed, workout: seed[0], longNames: st.longNames, sheet: null, snack: null };
+    }
+    if (sceneId === 'edit_dist') {
+      const w = seed[0], ex = w.exercises[3]; // Бег 1000m (opens in км)
+      return {
+        screen: 'detail', workouts: seed, workout: w, longNames: st.longNames, snack: null,
+        sheet: { kind: 'edit_set', workoutId: w.id, exId: ex.id, setIdx: 0, draft: buildEditDraft(ex, ex.sets[0]), error: null }
+      };
+    }
+    if (sceneId === 'edit_dur') {
+      const w = seed[0], ex = w.exercises[4]; // Планка 1:05
+      return {
+        screen: 'detail', workouts: seed, workout: w, longNames: st.longNames, snack: null,
+        sheet: { kind: 'edit_set', workoutId: w.id, exId: ex.id, setIdx: 0, draft: buildEditDraft(ex, ex.sets[0]), error: null }
+      };
+    }
+    if (sceneId === 'edit_last') {
+      const w = seed[3], ex = w.exercises[0]; // 1 set in entire workout
+      return {
+        screen: 'detail', workouts: seed, workout: w, longNames: st.longNames, snack: null,
+        sheet: { kind: 'edit_set', workoutId: w.id, exId: ex.id, setIdx: 0, draft: buildEditDraft(ex, ex.sets[0]), error: null }
+      };
+    }
+    if (sceneId === 'delete_workout') {
+      return {
+        screen: 'detail', workouts: seed, workout: seed[0], longNames: st.longNames, snack: null,
+        sheet: { kind: 'delete_workout', workoutId: seed[0].id }
+      };
+    }
+    return { screen: 'list', workouts: seed, workout: null, longNames: st.longNames, sheet: null, snack: null };
+  }
+
+  /* ==================== FULL RENDER ==================== */
+  function renderAll() {
+    document.getElementById('mode-interactive').classList.toggle('active', st.mode === 'interactive');
+    document.getElementById('mode-board').classList.toggle('active', st.mode === 'board');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+    document.getElementById('view-interactive').classList.toggle('hidden', st.mode !== 'interactive');
+    document.getElementById('view-board').classList.toggle('hidden', st.mode !== 'board');
+    document.getElementById('proto-switcher').classList.toggle('hidden', st.mode !== 'interactive');
+
+    const vMeta = VARIANTS.find(v => v.key === st.variant) || VARIANTS[0];
+    document.getElementById('sw-key').textContent = vMeta.key;
+    document.getElementById('sw-name').textContent = vMeta.name;
+
+    if (st.mode === 'interactive') {
+      const phone = document.getElementById('phone-live');
+      phone.classList.toggle('w360', st.width === 360);
+      const activeWorkout = st.selectedWorkoutId ? getWorkout(st.selectedWorkoutId) : null;
+      const ctx = {
+        screen: st.screen,
+        workouts: st.workouts,
+        workout: activeWorkout,
+        longNames: st.longNames,
+        sheet: st.sheet,
+        snack: st.snack
+      };
+      phone.innerHTML = renderPhoneHtml(st.variant, ctx);
+      document.getElementById('phone-caption').textContent =
+        `Вариант ${vMeta.key} (${vMeta.name}) · ${st.width} dp · Тап по карточке открывает детали, тап по подходу — шторку правки`;
+
+      // Variant buttons & notes
+      document.getElementById('ctrl-variant').innerHTML = VARIANTS.map(v =>
+        `<button class="hbtn ${st.variant === v.key ? 'active' : ''}" type="button" data-host="variant" data-v="${v.key}">${v.key} · ${v.name}</button>`
+      ).join('');
+      document.getElementById('variant-notes').innerHTML = vMeta.notes.map(n => `<li>${n}</li>`).join('');
+
+      // Screen quick jumps
+      const scrBtns = [
+        ['list', 'Лента (6 записей)'],
+        ['empty', 'Пустое состояние'],
+        ['detail_all', 'Детали (все 4 типа)'],
+        ['detail_noweight', 'Детали (без веса)'],
+        ['detail_last', 'Детали (1 подход)']
+      ];
+      const curScrKey = st.screen === 'list' ? (st.workouts.length === 0 ? 'empty' : 'list')
+        : st.selectedWorkoutId === 'w3' ? 'detail_noweight'
+        : st.selectedWorkoutId === 'w4' ? 'detail_last' : 'detail_all';
+      document.getElementById('ctrl-screen').innerHTML = scrBtns.map(([k, lbl]) =>
+        `<button class="hbtn ${curScrKey === k ? 'active' : ''}" type="button" data-host="scene" data-v="${k}">${lbl}</button>`
+      ).join('');
+
+      // Quick sheets
+      const shBtns = [
+        ['edit_wr', 'Вес × повт.'],
+        ['edit_reps', 'Повторения'],
+        ['edit_dist_m', 'Дистанция (м)'],
+        ['edit_dist_km', 'Дистанция (км)'],
+        ['edit_dur', 'Длительность (мин:сек)'],
+        ['edit_last', 'Последний подход'],
+        ['del_w', 'Удаление тренировки']
+      ];
+      document.getElementById('ctrl-sheets').innerHTML = shBtns.map(([k, lbl]) =>
+        `<button class="hbtn" type="button" data-host="sheet" data-v="${k}">${lbl}</button>`
+      ).join('');
+
+      // Flags
+      document.getElementById('ctrl-flags').innerHTML = `
+        <button class="hbtn ${st.longNames ? 'active' : ''}" type="button" data-host="toggle-long">Длинные названия (#94)</button>
+        <button class="hbtn" type="button" data-host="reset-data">Сбросить данные</button>
+      `;
+
+      // State dump (prototype rule #5)
+      const dump = [
+        `variant: ${st.variant} (${vMeta.name}) | width: ${st.width}dp | longNames: ${st.longNames}`,
+        `screen: ${st.screen}${activeWorkout ? ` (${activeWorkout.id}: ${activeWorkout.day})` : ''} | workouts: ${st.workouts.length}`,
+        activeWorkout ? `exercises: ${activeWorkout.exercises.length} | sets: ${countWorkoutSets(activeWorkout)} | tonnage: ${calcWorkoutTonnage(activeWorkout) != null ? fmtNum(calcWorkoutTonnage(activeWorkout)) + ' кг' : 'скрыт (нет силовых)'}` : 'bottomBar: visible (root tab)',
+        `sheet: ${st.sheet ? st.sheet.kind : 'none'} | snackbar: ${st.snack ? st.snack.msg : 'none'}`
+      ];
+      document.getElementById('state-dump').textContent = dump.join('\n');
+    } else {
+      // Board mode
+      document.getElementById('ctrl-board-scene').innerHTML = BOARD_SCENES.map(sc =>
+        `<button class="hbtn ${st.boardScene === sc.id ? 'active' : ''}" type="button" data-host="board-scene" data-v="${sc.id}">${sc.label}</button>`
+      ).join('') + `<button class="hbtn ${st.longNames ? 'active' : ''}" type="button" data-host="toggle-long" style="margin-left:auto">Длинные названия (#94)</button>`;
+
+      const ctx = buildBoardCtx(st.boardScene);
+      document.getElementById('board-grid').innerHTML = VARIANTS.map(v => `
+        <div class="board-col">
+          <div class="board-col-head">
+            <div>
+              <div class="board-col-title">Вариант ${v.key} — ${v.name}</div>
+              <div class="board-col-sub">${v.short}</div>
+            </div>
+            <button class="hbtn" type="button" data-host="pick-from-board" data-v="${v.key}">Открыть</button>
+          </div>
+          <div class="phone ${st.width === 360 ? 'w360' : ''}">${renderPhoneHtml(v.key, ctx)}</div>
+        </div>
+      `).join('');
+    }
+  }
+
+  /* ==================== EVENTS ==================== */
+  document.getElementById('mode-interactive').addEventListener('click', () => { st.mode = 'interactive'; renderAll(); });
+  document.getElementById('mode-board').addEventListener('click', () => { st.mode = 'board'; renderAll(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; renderAll(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; renderAll(); });
+
+  function cycleVariant(dir) {
+    const idx = VARIANTS.findIndex(v => v.key === st.variant);
+    const next = VARIANTS[(idx + dir + VARIANTS.length) % VARIANTS.length].key;
+    setVariant(next);
+  }
+  document.getElementById('sw-prev').addEventListener('click', () => cycleVariant(-1));
+  document.getElementById('sw-next').addEventListener('click', () => cycleVariant(1));
+
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+    if (st.mode !== 'interactive') return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cycleVariant(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); cycleVariant(1); }
+    else if (e.key === 'Escape' && st.sheet) { st.sheet = null; renderAll(); }
+  });
+
+  // Host controls
+  document.addEventListener('click', e => {
+    const hostBtn = e.target.closest('[data-host]');
+    if (hostBtn) {
+      const h = hostBtn.dataset.host, v = hostBtn.dataset.v;
+      if (h === 'variant') setVariant(v);
+      else if (h === 'board-scene') { st.boardScene = v; renderAll(); }
+      else if (h === 'pick-from-board') { st.mode = 'interactive'; setVariant(v); }
+      else if (h === 'toggle-long') { st.longNames = !st.longNames; renderAll(); }
+      else if (h === 'reset-data') {
+        st.workouts = createSeedWorkouts();
+        st.screen = 'list'; st.selectedWorkoutId = null; st.sheet = null; st.snack = null;
+        renderAll();
+      } else if (h === 'scene') {
+        st.sheet = null; st.snack = null;
+        if (v === 'empty') { st.workouts = []; st.screen = 'list'; st.selectedWorkoutId = null; }
+        else {
+          if (st.workouts.length === 0) st.workouts = createSeedWorkouts();
+          if (v === 'list') { st.screen = 'list'; st.selectedWorkoutId = null; }
+          else if (v === 'detail_all') {
+            if (!getWorkout('w1')) st.workouts = createSeedWorkouts();
+            st.screen = 'detail'; st.selectedWorkoutId = 'w1';
+          } else if (v === 'detail_noweight') {
+            if (!getWorkout('w3')) st.workouts = createSeedWorkouts();
+            st.screen = 'detail'; st.selectedWorkoutId = 'w3';
+          } else if (v === 'detail_last') {
+            if (!getWorkout('w4')) st.workouts = createSeedWorkouts();
+            st.screen = 'detail'; st.selectedWorkoutId = 'w4';
+          }
+        }
+        renderAll();
+      } else if (h === 'sheet') {
+        st.snack = null;
+        if (!getWorkout('w1') || !getWorkout('w4')) st.workouts = createSeedWorkouts();
+        if (v === 'edit_wr') openEditSheet('w1', 'e1', 0);
+        else if (v === 'edit_reps') openEditSheet('w1', 'e2', 0);
+        else if (v === 'edit_dist_m') openEditSheet('w1', 'e3', 0);
+        else if (v === 'edit_dist_km') openEditSheet('w1', 'e4', 0);
+        else if (v === 'edit_dur') openEditSheet('w1', 'e5', 0);
+        else if (v === 'edit_last') openEditSheet('w4', 'e41', 0);
+        else if (v === 'del_w') {
+          st.screen = 'detail'; st.selectedWorkoutId = 'w1';
+          st.sheet = { kind: 'delete_workout', workoutId: 'w1' };
+          renderAll();
+        }
+      }
+      return;
+    }
+
+    // In-phone interactive actions (only inside live phone)
+    const livePhone = document.getElementById('phone-live');
+    if (!livePhone || !livePhone.contains(e.target)) return;
+
+    if (e.target.closest('[data-stop]') && !e.target.closest('[data-act]')) return;
+    const actEl = e.target.closest('[data-act]');
+    if (!actEl) return;
+    const act = actEl.dataset.act;
+
+    if (act === 'open-detail') {
+      st.screen = 'detail';
+      st.selectedWorkoutId = actEl.dataset.id;
+      st.sheet = null;
+      renderAll();
+    } else if (act === 'close-detail') {
+      st.screen = 'list';
+      st.selectedWorkoutId = null;
+      st.sheet = null;
+      renderAll();
+    } else if (act === 'scroll-top') {
+      const sc = livePhone.querySelector('[data-scroll="root"]');
+      if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (act === 'edit-set') {
+      openEditSheet(actEl.dataset.wid, actEl.dataset.exid, parseInt(actEl.dataset.idx, 10));
+    } else if (act === 'close-sheet' || act === 'close-sheet-scrim') {
+      if (act === 'close-sheet-scrim' && e.target !== actEl) return;
+      st.sheet = null;
+      renderAll();
+    } else if (act === 'set-unit' && st.sheet && st.sheet.kind === 'edit_set') {
+      const targetUnit = actEl.dataset.u;
+      const curUnit = st.sheet.draft.unit;
+      if (targetUnit !== curUnit) {
+        const curVal = parsePos(st.sheet.draft.val);
+        if (curVal != null) {
+          const meters = curUnit === 'km' ? curVal * 1000 : curVal;
+          st.sheet.draft.val = targetUnit === 'km' ? fmtRawInput(meters / 1000) : fmtRawInput(meters);
+        }
+        st.sheet.draft.unit = targetUnit;
+        st.sheet.error = null;
+        renderAll();
+      }
+    } else if (act === 'step' && st.sheet && st.sheet.kind === 'edit_set') {
+      const f = actEl.dataset.field;
+      const delta = parseFloat(actEl.dataset.delta);
+      const d = st.sheet.draft;
+      if (f === 'min' || f === 'sec') {
+        let m = parseNonNegInt(d.min === '' ? '0' : d.min) ?? 0;
+        let s = parseNonNegInt(d.sec === '' ? '0' : d.sec) ?? 0;
+        let total = Math.max(1, m * 60 + s + (f === 'min' ? delta * 60 : delta));
+        d.min = String(Math.floor(total / 60));
+        const rem = total % 60;
+        d.sec = rem < 10 ? `0${rem}` : String(rem);
+      } else if (f === 'r') {
+        const cur = parseNonNegInt(d.r) ?? 1;
+        d.r = String(Math.max(1, cur + delta));
+      } else {
+        const cur = parsePos(d[f]) ?? 0;
+        const next = Math.max(delta > 0 ? delta : (f === 'val' && d.unit === 'km' ? 0.1 : 1), Math.round((cur + delta) * 100) / 100);
+        d[f] = fmtRawInput(next);
+      }
+      st.sheet.error = null;
+      renderAll();
+    } else if (act === 'save-set' && st.sheet && st.sheet.kind === 'edit_set') {
+      const w = getWorkout(st.sheet.workoutId);
+      const ex = w && w.exercises.find(e => e.id === st.sheet.exId);
+      if (!ex) return;
+      const res = parseDraftToSet(ex.type, st.sheet.draft);
+      if (res.err) {
+        st.sheet.error = res.err;
+        renderAll();
+        return;
+      }
+      ex.sets[st.sheet.setIdx] = res.val;
+      st.sheet = null;
+      renderAll();
+    } else if (act === 'delete-set' && st.sheet && st.sheet.kind === 'edit_set') {
+      const w = getWorkout(st.sheet.workoutId);
+      if (!w || countWorkoutSets(w) <= 1) return;
+      const exIdx = w.exercises.findIndex(e => e.id === st.sheet.exId);
+      if (exIdx < 0) return;
+      const ex = w.exercises[exIdx];
+      const setIdx = st.sheet.setIdx;
+      const removedSet = { ...ex.sets[setIdx] };
+      const removedExCard = ex.sets.length === 1;
+      const exSnap = removedExCard ? { ...ex, sets: [removedSet] } : null;
+
+      ex.sets.splice(setIdx, 1);
+      if (removedExCard) w.exercises.splice(exIdx, 1);
+
+      const labelName = st.longNames ? ex.longName : ex.name;
+      st.sheet = null;
+      showUndoSnack(`Удалён подход · ${labelName}`, {
+        workoutId: w.id, exIdx, exId: ex.id, setIdx, removedSet, removedExCard, exSnap
+      });
+      renderAll();
+    } else if (act === 'undo-delete-set' && st.snack && st.snack.undoSnap) {
+      const u = st.snack.undoSnap;
+      const w = getWorkout(u.workoutId);
+      if (w) {
+        if (u.removedExCard) {
+          w.exercises.splice(Math.min(u.exIdx, w.exercises.length), 0, u.exSnap);
+        } else {
+          const ex = w.exercises.find(e => e.id === u.exId);
+          if (ex) ex.sets.splice(Math.min(u.setIdx, ex.sets.length), 0, u.removedSet);
+        }
+      }
+      if (st.snackTimer) clearTimeout(st.snackTimer);
+      st.snack = null; st.snackTimer = null;
+      renderAll();
+    } else if (act === 'open-del-workout') {
+      st.sheet = { kind: 'delete_workout', workoutId: actEl.dataset.wid };
+      renderAll();
+    } else if (act === 'confirm-del-workout') {
+      const wid = actEl.dataset.wid;
+      st.workouts = st.workouts.filter(w => w.id !== wid);
+      st.sheet = null;
+      st.snack = null;
+      st.screen = 'list';
+      st.selectedWorkoutId = null;
+      renderAll();
+    }
+  });
+
+  // Live input sync inside edit-set sheet
+  document.addEventListener('input', e => {
+    const inp = e.target.closest('[data-ed-field]');
+    if (!inp || !st.sheet || st.sheet.kind !== 'edit_set') return;
+    st.sheet.draft[inp.dataset.edField] = inp.value;
+    st.sheet.error = null;
+    // Update live preview bar in Variant C without losing cursor focus
+    const livePhone = document.getElementById('phone-live');
+    const prevStrong = livePhone && livePhone.querySelector('.ed-preview-bar strong');
+    if (prevStrong) {
+      const w = getWorkout(st.sheet.workoutId);
+      const ex = w && w.exercises.find(e => e.id === st.sheet.exId);
+      if (ex) {
+        const res = parseDraftToSet(ex.type, st.sheet.draft);
+        if (res.val) {
+          const cloneEx = { ...ex, sets: ex.sets.map((s, i) => i === st.sheet.setIdx ? res.val : s) };
+          prevStrong.textContent = calcExerciseTotal(cloneEx);
+        } else {
+          prevStrong.textContent = '—';
+        }
+      }
+    }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
