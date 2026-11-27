@@ -968,35 +968,156 @@
   .mix-rep-pill.dipped { background: var(--f-amber-container); color: var(--f-amber); border: 1px solid var(--f-amber-border); }
   .mix-prev { margin-top: 5px; font-size: 12px; color: var(--f-dim); }
 
-  /* ==================== EXACT BASELINE HISTORY SCREEN (Board 04 + #101 lamps & side ribbon + #94) ==================== */
+  /* ==================== APPROVED HISTORY SCREEN (#117 + #118 + #113 + #101 + #94 + #119) ==================== */
+  .f-scroll-child { flex: 1; overflow-y: auto; padding: 14px 20px 32px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-child::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-child { padding: 12px 16px 28px; }
+  .f-snack.no-nav { bottom: 16px; }
+  .f-snack-msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Calendar 1 feed card: 3-tier left column (date + rule + time + duration), clean right column */
   .hist-card {
-    background: var(--f-surface); border-radius: 20px; padding: 14px 18px; margin-bottom: 8px;
+    background: var(--f-surface); border-radius: 20px; padding: 12px 14px; margin-bottom: 8px;
     position: relative; overflow: hidden;
+    display: flex; align-items: stretch; gap: 12px; cursor: pointer; transition: background 120ms;
   }
-  .hist-card.has-ribbon { padding-left: 20px; }
-  .hist-card.has-ribbon::before {
+  .hist-card:hover { background: #192019; }
+  .hist-card.has-ribbon { padding-left: 16px; }
+  .hist-card.has-ribbon::before, .hd-hero.has-ribbon::before {
     content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
   }
-  .hist-card.rib-heavy::before { background: var(--load-heavy); }
-  .hist-card.rib-light::before { background: var(--load-light); }
-  .hist-card.rib-ease::before { background: var(--load-ease); }
-  .hist-card.rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
-  .hist-card.rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
-  .hist-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .hist-date { font-size: 16px; color: var(--f-primary); }
-  .hist-time { font-size: 13px; color: var(--f-muted); flex: none; }
-  .hist-row-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 3px; }
+  .hist-card.rib-heavy::before, .hd-hero.rib-heavy::before { background: var(--load-heavy); }
+  .hist-card.rib-light::before, .hd-hero.rib-light::before { background: var(--load-light); }
+  .hist-card.rib-ease::before, .hd-hero.rib-ease::before { background: var(--load-ease); }
+  .hist-card.rib-heavy-ease::before, .hd-hero.rib-heavy-ease::before { background: linear-gradient(to bottom, var(--load-heavy) 0 50%, var(--load-ease) 50% 100%); }
+  .hist-card.rib-light-ease::before, .hd-hero.rib-light-ease::before { background: linear-gradient(to bottom, var(--load-light) 0 50%, var(--load-ease) 50% 100%); }
+  .hist-cal-left {
+    width: 72px; flex: none; border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding-right: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+  }
+  .phone.w360 .hist-cal-left { width: 68px; padding-right: 9px; }
+  .hist-cal-date { display: flex; align-items: baseline; justify-content: center; gap: 3px; line-height: 1; }
+  .hist-cal-day { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 27px; color: var(--f-primary); line-height: 0.95; font-variant-numeric: tabular-nums; }
+  .hist-cal-mon { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--f-muted); }
+  .hist-cal-rule { width: 22px; height: 1px; background: rgba(255, 255, 255, 0.1); margin: 5px 0 4px; }
+  .hist-cal-time { font-size: 12px; font-weight: 600; color: var(--f-text); line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .hist-cal-dur { font-size: 11px; color: var(--f-dim); line-height: 1.25; margin-top: 1px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hist-cal-right { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
   .hist-title {
-    font-size: 22px; line-height: 24px; color: var(--f-text);
+    font-size: 20px; line-height: 22px; color: var(--f-text);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
-    flex: 1; min-width: 0;
   }
   .hist-badge {
     display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
     padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
-    background: var(--f-chip); color: var(--f-muted); margin-top: 2px;
+    background: var(--f-chip); color: var(--f-muted);
   }
-  .hist-prog { font-size: 13px; color: var(--f-muted); margin-top: 3px; }
+  .hist-prog { font-size: 12.5px; color: var(--f-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-badge-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  /* Centered calm empty state without CTA (Variant A · #117 + #118) */
+  .hist-empty {
+    min-height: 520px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px 20px; gap: 10px;
+  }
+  .hist-empty-ico {
+    width: 52px; height: 52px; border-radius: 18px; background: var(--f-surface);
+    color: var(--f-dim); display: flex; align-items: center; justify-content: center; margin-bottom: 2px;
+  }
+
+  /* Hero 2 Details Header + Baseline A exercise cards + quiet divider delete */
+  .hd-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .hd-topbar-lbl { font-size: 13.5px; font-weight: 600; color: var(--f-muted); }
+  .hd-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(150deg, #192116 0%, #141914 68%);
+    border-radius: 20px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .hd-hero.has-ribbon { padding-left: 19px; }
+  .hd-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+  .hd-hero-date { font-size: 14.5px; color: var(--f-primary); }
+  .hd-hero-time { font-size: 12.5px; color: var(--f-muted); margin-left: 5px; font-family: Inter, sans-serif; font-weight: 500; text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .hd-hero-title { margin: 0; font-size: 24px; line-height: 1.08; overflow-wrap: anywhere; color: var(--f-text); }
+  .hd-hero-prog { font-size: 13px; color: var(--f-muted); margin-top: 4px; }
+  .hd-hero-strip {
+    margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex; align-items: stretch;
+  }
+  .hd-hero-cell {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px; border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .hd-hero-cell:first-child { padding-left: 0; border-left: 0; }
+  .hd-hero-cell:last-child { padding-right: 0; }
+  .hd-hero-k { font-size: 10.5px; font-weight: 600; color: var(--f-dim); text-transform: uppercase; letter-spacing: 0.35px; }
+  .hd-hero-v { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 22px; line-height: 1.05; color: var(--f-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hd-hero-v.lime { color: var(--f-primary); }
+  .hd-set-row:hover { background: rgba(197, 250, 85, 0.05); border-radius: 8px; }
+  .hd-set-right { display: inline-flex; align-items: center; gap: 8px; }
+  .hd-set-edit { color: var(--f-dim); display: inline-flex; }
+  .hd-danger-zone { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--f-outline); }
+
+  /* Set-edit sheet (#118: live preview + crisp inputs + #113 quick chips + duration min:sec steppers) */
+  .hist-ed-preview {
+    background: var(--f-surface); border-radius: 13px; padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;
+  }
+  .hist-ed-preview span { color: var(--f-muted); }
+  .hist-ed-preview strong { font-family: "Barlow Condensed", Inter, sans-serif; font-size: 17px; color: var(--f-primary); font-variant-numeric: tabular-nums; }
+  .hist-ed-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hist-ed-field { display: flex; flex-direction: column; gap: 5px; }
+  .hist-ed-lbl { font-size: 11.5px; font-weight: 600; color: var(--f-muted); text-align: center; }
+  .hist-ed-inp {
+    width: 100%; height: 48px; border-radius: 14px;
+    border: 1.5px solid var(--f-primary-border); background: var(--f-bg); color: var(--f-text);
+    text-align: center; font-size: 24px; font-weight: 700; outline: none; font-variant-numeric: tabular-nums;
+  }
+  .hist-ed-inp:focus { border-color: var(--f-primary); box-shadow: 0 0 0 2px rgba(197, 250, 85, 0.16); }
+  .hist-ed-inp.err { border-color: var(--f-error); color: var(--f-error); }
+  .hist-qchips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 2px; }
+  .hist-qchips.two { grid-template-columns: repeat(2, 1fr); }
+  .hist-qchip {
+    height: 30px; border-radius: 9px; border: 1px solid var(--f-outline);
+    background: var(--f-surface); color: var(--f-muted);
+    font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .hist-qchip:hover { border-color: var(--f-primary-border); color: var(--f-on-primary-container); background: var(--f-primary-container); }
+  .hist-unit-seg {
+    display: inline-flex; background: var(--f-bg); border: 1px solid var(--f-outline);
+    border-radius: 999px; padding: 2px; gap: 2px;
+  }
+  .hist-unit-seg button {
+    border: 0; background: transparent; color: var(--f-muted);
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; min-width: 42px;
+  }
+  .hist-unit-seg button.active { background: var(--f-primary-container); color: var(--f-primary); }
+  .hist-dur-row { display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+  .hist-dur-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .hist-dur-colon { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 28px; color: var(--f-dim); padding-bottom: 10px; flex: none; }
+  .hist-step-box {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--f-bg); border: 1.5px solid var(--f-primary-border);
+    border-radius: 15px; padding: 4px;
+  }
+  .hist-step-box.err { border-color: var(--f-error); }
+  .hist-step-btn {
+    min-width: 34px; width: 34px; height: 40px; border-radius: 11px; border: 0;
+    background: var(--f-chip); color: var(--f-text); font-size: 18px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .phone.w360 .hist-step-btn { min-width: 30px; width: 30px; }
+  .hist-step-btn:hover { background: var(--f-primary-container); color: var(--f-primary); }
+  .hist-step-inp {
+    flex: 1; min-width: 0; height: 40px; border: 0; background: transparent;
+    color: var(--f-text); text-align: center; font-size: 24px; font-weight: 700; outline: none; font-variant-numeric: tabular-nums;
+  }
+  .hist-ed-split { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .hist-last-box {
+    background: var(--f-amber-container); border: 1px solid var(--f-amber-border);
+    border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px;
+    font-size: 12.5px; color: var(--f-on-amber-container); line-height: 1.4;
+  }
+  .hist-last-box strong { color: var(--f-amber); }
 
   /* ==================== EXACT BASELINE LOCK SCREEN (Board 18 + #83 + #94) ==================== */
   .lock-screen {
@@ -1312,6 +1433,8 @@
     list: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
     swap: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
     warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
     fittyIcon: '<svg viewBox="0 0 108 108" aria-hidden="true"><defs><radialGradient id="fgBgProto" cx="50%" cy="46%" r="58%"><stop offset="0%" stop-color="#1D2619"/><stop offset="100%" stop-color="#0E110E"/></radialGradient></defs><rect x="0" y="0" width="108" height="108" fill="url(#fgBgProto)"/><polygon points="56,0 108,0 92,108 40,108" fill="#172013" opacity="0.65"/><circle cx="54" cy="54" r="46" fill="none" stroke="#232D1F" stroke-width="1" opacity="0.55"/><path fill="#C5FA55" d="M38.5,31H75.5L73.2,41H48.5L47.4,49.5H68.5L66.3,59H46.2L43.8,77H32.5Z"/><circle cx="64.5" cy="70.5" r="6.5" fill="#F0F3EA"/></svg>'
   };
 
@@ -1404,13 +1527,134 @@
   ];
 
   const INITIAL_HISTORY = [
-    { date: '26 ноября 2026', time: '18:40', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Базовая силовая', week: 'heavy', lightened: true },
-    { date: '23 ноября 2026', time: '19:05', day: 'День B: грудь, плечи и трицепс с длинным названием', longDay: 'День B: грудь, плечи и трицепс с длинным названием', prog: 'Базовая силовая', week: 'heavy', lightened: false },
-    { date: '20 ноября 2026', time: '18:22', day: 'День C', longDay: 'День C: Силовая становая тяга и подтягивания', prog: 'Базовая силовая', week: 'light', lightened: false },
-    { date: '18 ноября 2026', time: '19:15', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Базовая силовая', week: 'light', lightened: true },
-    { date: '15 ноября 2026', time: '10:12', day: 'День B', longDay: 'День B: грудь, плечи и трицепс с длинным названием', prog: 'Фулбоди без чередования', week: 'regular', lightened: true },
-    { date: '13 ноября 2026', time: '18:50', day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса', prog: 'Фулбоди без чередования', week: 'regular', lightened: false }
+    {
+      id: 'h1', dayNum: '26', monShort: 'НОЯ', date: '26 ноября 2026', time: '19:42', durationSec: 2640,
+      day: 'День A', longDay: 'День A: Верх тела — грудь, спина и стабилизация корпуса',
+      prog: 'Базовая силовая', week: 'heavy', lightened: true,
+      exercises: [
+        { id: 'he1', type: 'weight_reps', name: 'Жим штанги лёжа', longName: 'Жим штанги лёжа на горизонтальной скамье с паузой на груди', sets: [{ w: 62.5, r: 10 }, { w: 62.5, r: 11 }, { w: 62.5, r: 10 }] },
+        { id: 'he2', type: 'reps', name: 'Подтягивания', longName: 'Подтягивания широким хватом на перекладине до касания грудью', sets: [{ r: 12 }, { r: 12 }, { r: 11 }] },
+        { id: 'he3', type: 'distance', name: 'Фермерская прогулка', longName: 'Фермерская прогулка с тяжёлыми гантелями по коридору зала', sets: [{ m: 40 }, { m: 45 }, { m: 45 }] },
+        { id: 'he4', type: 'distance', name: 'Бег', longName: 'Бег на беговой дорожке в ровном аэробном темпе (интервалы)', sets: [{ m: 1000 }, { m: 1200 }] },
+        { id: 'he5', type: 'duration', name: 'Планка на предплечьях', longName: 'Планка на предплечьях с удержанием нейтральной поясницы', sets: [{ sec: 65 }, { sec: 60 }] }
+      ]
+    },
+    {
+      id: 'h2', dayNum: '23', monShort: 'НОЯ', date: '23 ноября 2026', time: '19:05', durationSec: 4500,
+      day: 'День B: грудь, плечи и трицепс', longDay: 'День B: грудь, плечи и трицепс с длинным названием дня программы',
+      prog: 'Базовая силовая', week: 'heavy', lightened: false,
+      exercises: [
+        { id: 'he21', type: 'weight_reps', name: 'Жим гантелей на наклонной', longName: 'Жим гантелей на наклонной скамье 30°', sets: [{ w: 22, r: 10 }, { w: 22, r: 10 }, { w: 22, r: 9 }] },
+        { id: 'he22', type: 'reps', name: 'Отжимания на брусьях', longName: 'Отжимания на параллельных брусьях', sets: [{ r: 14 }, { r: 12 }] }
+      ]
+    },
+    {
+      id: 'h3', dayNum: '20', monShort: 'НОЯ', date: '20 ноября 2026', time: '18:22', durationSec: 2100,
+      day: 'День C · без веса', longDay: 'День C: Кардио, турник и кор без отягощений',
+      prog: 'Базовая силовая', week: 'light', lightened: false,
+      exercises: [
+        { id: 'he31', type: 'reps', name: 'Подтягивания', longName: 'Подтягивания обратным хватом', sets: [{ r: 10 }, { r: 10 }] },
+        { id: 'he32', type: 'distance', name: 'Бег', longName: 'Бег трусцой в лёгкой зоне пульса', sets: [{ m: 1500 }, { m: 1000 }] },
+        { id: 'he33', type: 'duration', name: 'Планка на предплечьях', longName: 'Планка на предплечьях', sets: [{ sec: 50 }, { sec: 45 }] }
+      ]
+    },
+    {
+      id: 'h4', dayNum: '18', monShort: 'НОЯ', date: '18 ноября 2026', time: '19:15', durationSec: 42,
+      day: 'Короткий тест (1 подход)', longDay: 'Короткий тест: один записанный подход во всей тренировке',
+      prog: 'Базовая силовая', week: 'light', lightened: true,
+      exercises: [
+        { id: 'he41', type: 'weight_reps', name: 'Тяга штанги в наклоне', longName: 'Тяга штанги в наклоне к поясу с прямым хватом', sets: [{ w: 50, r: 10 }] }
+      ]
+    },
+    {
+      id: 'h5', dayNum: '15', monShort: 'НОЯ', date: '15 ноября 2026', time: '10:12', durationSec: 3600,
+      day: 'День B', longDay: 'День B: Базовый жим и вспомогательная работа на плечи',
+      prog: 'Фулбоди без чередования', week: 'regular', lightened: true,
+      exercises: [
+        { id: 'he51', type: 'weight_reps', name: 'Приседания со штангой', longName: 'Приседания со штангой на плечах', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] }
+      ]
+    },
+    {
+      id: 'h6', dayNum: '13', monShort: 'НОЯ', date: '13 ноября 2026', time: '18:50', durationSec: 34000,
+      day: 'День A', longDay: 'День A: Верх тела (> 8 ч — длительность скрыта)',
+      prog: 'Фулбоди без чередования', week: 'regular', lightened: false,
+      exercises: [
+        { id: 'he61', type: 'weight_reps', name: 'Становая тяга', longName: 'Становая тяга классическая со штангой', sets: [{ w: 90, r: 5 }, { w: 90, r: 5 }] }
+      ]
+    }
   ];
+  const cloneHistoryList = list => list.map(w => ({ ...w, exercises: (w.exercises || []).map(ex => ({ ...ex, sets: ex.sets.map(s => ({ ...s })) })) }));
+  const fmtNumGrouped = v => {
+    const r = Math.round(v * 100) / 100;
+    const p = String(r).split('.');
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+    return p.length > 1 ? `${p[0]},${p[1]}` : p[0];
+  };
+  const parseNonNegInt = raw => { const s = String(raw ?? '').trim(); return /^\d+$/.test(s) ? parseInt(s, 10) : null; };
+  function fmtHistoryDur(sec) {
+    if (sec == null || sec < 0 || sec > 28800) return null;
+    if (sec < 60) return '< 1 мин';
+    const mins = Math.floor(sec / 60);
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.floor(mins / 60), rem = mins % 60;
+    return rem === 0 ? `${h} ч` : `${h} ч ${rem} мин`;
+  }
+  const fmtHistTimeDur = w => { const d = fmtHistoryDur(w.durationSec); return d ? `${w.time} · ${d}` : w.time; };
+  const fmtHistSet = (type, s) => {
+    if (type === 'weight_reps') return `${fmtNumGrouped(s.w)} кг × ${s.r}`;
+    if (type === 'reps') return `${s.r} повт.`;
+    if (type === 'distance') return s.m >= 1000 ? `${fmtNumGrouped(s.m / 1000)} км` : `${fmtNumGrouped(s.m)} м`;
+    if (type === 'duration') return fmtSec(s.sec);
+    return '';
+  };
+  const calcHistExTotal = ex => {
+    if (ex.type === 'weight_reps') return `${fmtNumGrouped(ex.sets.reduce((a, s) => a + s.w * s.r, 0))} кг`;
+    if (ex.type === 'reps') return `${fmtNumGrouped(ex.sets.reduce((a, s) => a + s.r, 0))} повт.`;
+    if (ex.type === 'distance') { const m = ex.sets.reduce((a, s) => a + s.m, 0); return m >= 1000 ? `${fmtNumGrouped(m / 1000)} км` : `${fmtNumGrouped(m)} м`; }
+    if (ex.type === 'duration') return fmtSec(ex.sets.reduce((a, s) => a + s.sec, 0));
+    return '';
+  };
+  const calcHistTonnage = w => {
+    let has = false, t = 0;
+    for (const ex of (w.exercises || [])) {
+      if (ex.type === 'weight_reps' && ex.sets.length) { has = true; for (const s of ex.sets) t += s.w * s.r; }
+    }
+    return has ? t : null;
+  };
+  const countHistSets = w => (w.exercises || []).reduce((a, e) => a + e.sets.length, 0);
+  const pluralRu = (n, o, f, m) => { const a = n % 10, b = n % 100; if (a === 1 && b !== 11) return `${n} ${o}`; if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return `${n} ${f}`; return `${n} ${m}`; };
+  function buildHistDraft(ex, s) {
+    if (ex.type === 'weight_reps') return { w: fmtNum(s.w), r: String(s.r) };
+    if (ex.type === 'reps') return { r: String(s.r) };
+    if (ex.type === 'distance') { const u = s.m >= 1000 ? 'km' : 'm'; return { unit: u, val: u === 'km' ? fmtNum(s.m / 1000) : fmtNum(s.m) }; }
+    if (ex.type === 'duration') { const m = Math.floor(s.sec / 60), sc = s.sec % 60; return { min: String(m), sec: sc < 10 ? `0${sc}` : String(sc) }; }
+    return {};
+  }
+  function parseHistDraft(type, d) {
+    if (type === 'weight_reps') {
+      const w = parsePosNum(d.w), r = parseNonNegInt(d.r);
+      if (w == null) return { err: 'Введите вес больше 0 кг' };
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { w: Math.round(w * 100) / 100, r } };
+    }
+    if (type === 'reps') {
+      const r = parseNonNegInt(d.r);
+      if (r == null || r < 1) return { err: 'Введите повторения (минимум 1)' };
+      return { val: { r } };
+    }
+    if (type === 'distance') {
+      const v = parsePosNum(d.val);
+      if (v == null) return { err: 'Введите дистанцию больше 0' };
+      return { val: { m: d.unit === 'km' ? Math.round(v * 1000 * 100) / 100 : Math.round(v * 100) / 100 } };
+    }
+    if (type === 'duration') {
+      const m = parseNonNegInt(d.min === '' ? '0' : d.min), sc = parseNonNegInt(d.sec === '' ? '0' : d.sec);
+      if (m == null || sc == null || sc > 59) return { err: 'Секунды должны быть от 00 до 59' };
+      if (m * 60 + sc < 1) return { err: 'Минимальная длительность — 0:01 (≥ 1 с)' };
+      return { val: { sec: m * 60 + sc } };
+    }
+    return { err: 'Ошибка ввода' };
+  }
 
   const fmtSec = s => { const abs = Math.abs(Math.round(s)); return `${Math.floor(abs / 60)}:${abs % 60 < 10 ? '0' : ''}${abs % 60}`; };
   const round5 = sec => sec <= 5 ? sec : Math.max(5, Math.min(sec - 5, Math.round((sec * 0.8) / 5) * 5));
@@ -1509,6 +1753,7 @@
       drafts: { bench: { w: '', r: '' }, row: { w: '', r: '' }, incline: { w: '', r: '' }, pullup: { val: '' }, walk: { val: '' }, run: { val: '' } },
       distUnit: { walk: 'm', run: 'km' },
       historyDetailIdx: null,
+      histEdit: null, histDelIdx: null, histSnack: null,
       calibratedSuggestion: null, dismissedPrompts: {},
       plankOffset: -15, plankRunning: false, plankElapsed: 0,
       restDefault: 120, restAutoStart: true, restRunning: true, restLeft: 102,
@@ -1519,7 +1764,7 @@
       calFeelW: '18', calFeelR: '10', calFeelAnswer: null, calCalcW: '26', calCalcR: '8',
       sheet: null, snack: null, undoSnap: null,
       finishHintUntil: 0, finishHintScope: null, holdPreviewPct: 0, finishHintStatic: false,
-      history: INITIAL_HISTORY.slice(), lockPlankState: 'overtime',
+      history: cloneHistoryList(INITIAL_HISTORY), lockPlankState: 'overtime',
       installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0
     };
   }
@@ -2464,67 +2709,258 @@
       <div class="f-bottom-nav"><button class="pb" data-act="save-to-history">Готово</button></div>`;
   }
 
-  /* ==================== EXACT BASELINE HISTORY SCREEN (Board 04 + #101 lamps & ribbon + #94 + #113 details) ==================== */
+  /* ==================== APPROVED HISTORY SCREEN (#117 + #118 + #113 + #101 + #94 + #119) ==================== */
   function renderHistoryHTML(s) {
+    const ribFor = item => item.week === 'heavy' && item.lightened ? 'has-ribbon rib-heavy-ease'
+      : item.week === 'light' && item.lightened ? 'has-ribbon rib-light-ease'
+      : item.week === 'heavy' ? 'has-ribbon rib-heavy'
+      : item.week === 'light' ? 'has-ribbon rib-light'
+      : item.lightened ? 'has-ribbon rib-ease' : '';
+    const badgeFor = item => {
+      const has = item.week !== 'regular' || item.lightened;
+      if (!has) return '';
+      const txt = [item.week === 'heavy' ? 'Тяжёлая' : item.week === 'light' ? 'Лёгкая' : '', item.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
+      return `<span class="hist-badge">${renderLamps(item.week, item.lightened)}<span>${txt}</span></span>`;
+    };
+
     if (s.historyDetailIdx != null && s.history[s.historyDetailIdx]) {
-      const item = s.history[s.historyDetailIdx];
-      const hasLamps = item.week !== 'regular' || item.lightened;
-      const badgeTxt = [item.week === 'heavy' ? 'Тяжёлая' : item.week === 'light' ? 'Лёгкая' : '', item.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
-      const blocks = [
-        { name: 'Жим штанги лёжа', total: '1 937,5 кг', sets: ['62,5 кг × 10', '62,5 кг × 11', '62,5 кг × 10'] },
-        { name: 'Подтягивания', total: '35 повт.', sets: ['12 повт.', '12 повт.', '11 повт.'] },
-        { name: 'Фермерская прогулка', total: '130 м', sets: ['40 м', '45 м', '45 м'] },
-        { name: 'Бег', total: '2,2 км', sets: ['1 км', '1,2 км'] },
-        { name: 'Планка на предплечьях', total: '2:05', sets: ['1:05', '1:00'] }
-      ];
+      const idxW = s.historyDetailIdx;
+      const item = s.history[idxW];
+      const badge = badgeFor(item);
+      const ribCls = ribFor(item);
+      const dur = fmtHistoryDur(item.durationSec);
+      const tonnage = calcHistTonnage(item);
+      const totalSets = countHistSets(item);
+      const totalEx = (item.exercises || []).length;
+
+      let sheetHtml = '';
+      if (s.histEdit && s.histEdit.workoutIdx === idxW) {
+        const ed = s.histEdit;
+        const ex = (item.exercises || []).find(e => e.id === ed.exId);
+        if (ex) {
+          const isLastInWorkout = totalSets <= 1;
+          const isLastInEx = ex.sets.length <= 1 && !isLastInWorkout;
+          const d = ed.draft;
+          let prevTotal = calcHistExTotal(ex);
+          const parsedPrev = parseHistDraft(ex.type, d);
+          if (parsedPrev.val) {
+            prevTotal = calcHistExTotal({ ...ex, sets: ex.sets.map((sv, si) => si === ed.setIdx ? parsedPrev.val : sv) });
+          }
+
+          let fieldsHtml = '';
+          if (ex.type === 'weight_reps') {
+            fieldsHtml = `
+              <div class="hist-ed-grid2">
+                <div class="hist-ed-field">
+                  <span class="hist-ed-lbl">Вес, кг</span>
+                  <input class="hist-ed-inp ${ed.error ? 'err' : ''}" data-hist-ed="w" value="${d.w}" inputmode="decimal">
+                  <div class="hist-qchips two">
+                    <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="w:-2.5">−2,5</button>
+                    <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="w:2.5">+2,5</button>
+                  </div>
+                </div>
+                <div class="hist-ed-field">
+                  <span class="hist-ed-lbl">Повторения</span>
+                  <input class="hist-ed-inp ${ed.error ? 'err' : ''}" data-hist-ed="r" value="${d.r}" inputmode="numeric">
+                  <div class="hist-qchips two">
+                    <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:-1">−1</button>
+                    <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:1">+1</button>
+                  </div>
+                </div>
+              </div>`;
+          } else if (ex.type === 'reps') {
+            fieldsHtml = `
+              <div class="hist-ed-field">
+                <span class="hist-ed-lbl">Повторения</span>
+                <input class="hist-ed-inp ${ed.error ? 'err' : ''}" data-hist-ed="r" value="${d.r}" inputmode="numeric">
+                <div class="hist-qchips">
+                  <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:-2">−2</button>
+                  <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:-1">−1</button>
+                  <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:1">+1</button>
+                  <button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="r:2">+2</button>
+                </div>
+              </div>`;
+          } else if (ex.type === 'distance') {
+            const chips = d.unit === 'km'
+              ? [[-0.5, '−0,5'], [-0.1, '−0,1'], [0.1, '+0,1'], [0.5, '+0,5']]
+              : [[-10, '−10'], [-5, '−5'], [5, '+5'], [10, '+10']];
+            fieldsHtml = `
+              <div class="hist-ed-field">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span class="hist-ed-lbl" style="text-align:left">Дистанция</span>
+                  <div class="hist-unit-seg">
+                    <button type="button" class="${d.unit === 'm' ? 'active' : ''}" data-act="hist-ed-unit" data-v="m">м</button>
+                    <button type="button" class="${d.unit === 'km' ? 'active' : ''}" data-act="hist-ed-unit" data-v="km">км</button>
+                  </div>
+                </div>
+                <input class="hist-ed-inp ${ed.error ? 'err' : ''}" data-hist-ed="val" value="${d.val}" inputmode="decimal">
+                <div class="hist-qchips">
+                  ${chips.map(([dl, lb]) => `<button class="hist-qchip" type="button" data-act="hist-ed-step" data-v="val:${dl}">${lb}</button>`).join('')}
+                </div>
+              </div>`;
+          } else if (ex.type === 'duration') {
+            fieldsHtml = `
+              <div class="hist-dur-row">
+                <div class="hist-dur-col">
+                  <span class="hist-ed-lbl">Минуты</span>
+                  <div class="hist-step-box ${ed.error ? 'err' : ''}">
+                    <button class="hist-step-btn" type="button" data-act="hist-ed-step" data-v="min:-1">−</button>
+                    <input class="hist-step-inp" data-hist-ed="min" value="${d.min}" inputmode="numeric">
+                    <button class="hist-step-btn" type="button" data-act="hist-ed-step" data-v="min:1">+</button>
+                  </div>
+                </div>
+                <span class="hist-dur-colon">:</span>
+                <div class="hist-dur-col">
+                  <span class="hist-ed-lbl">Секунды</span>
+                  <div class="hist-step-box ${ed.error ? 'err' : ''}">
+                    <button class="hist-step-btn" type="button" data-act="hist-ed-step" data-v="sec:-5">−</button>
+                    <input class="hist-step-inp" data-hist-ed="sec" value="${d.sec}" inputmode="numeric">
+                    <button class="hist-step-btn" type="button" data-act="hist-ed-step" data-v="sec:5">+</button>
+                  </div>
+                </div>
+              </div>`;
+          }
+
+          sheetHtml = `
+            <div class="f-scrim" data-act="hist-close-sheet">
+              <div class="f-sheet" onclick="event.stopPropagation()">
+                <div class="f-sheet-handle"></div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                  <div style="min-width:0;flex:1">
+                    <h3 style="overflow-wrap:anywhere">${s.longNames ? ex.longName : ex.name}</h3>
+                    <div style="font-size:12.5px;color:var(--f-muted);margin-top:2px">Подход ${ed.setIdx + 1} из ${ex.sets.length}</div>
+                  </div>
+                  <button class="prog-strip-x" type="button" data-act="hist-close-sheet">${ICO.x}</button>
+                </div>
+                <div class="hist-ed-preview">
+                  <span>Итог упражнения после правки</span>
+                  <strong>${prevTotal}</strong>
+                </div>
+                ${fieldsHtml}
+                ${ed.error ? `<div style="font-size:12px;color:var(--f-error);text-align:center">${ed.error}</div>` : ''}
+                ${isLastInWorkout ? `
+                  <div class="hist-last-box">
+                    <div><strong>Последний подход в тренировке</strong></div>
+                    <div>Отдельно удалить его нельзя — в истории хранятся только тренировки с подходами. Можно исправить значения или удалить тренировку целиком.</div>
+                  </div>
+                  <button class="pb" type="button" data-act="hist-save-set">Сохранить</button>
+                  <button class="f-calm-cancel" type="button" data-act="hist-open-del-workout" data-v="${idxW}">${ICO.trash}<span>Удалить тренировку из истории</span></button>
+                ` : `
+                  ${isLastInEx ? `<div style="font-size:11.5px;color:var(--f-dim);text-align:center">Последний подход этого упражнения — при удалении карточка скроется (можно отменить).</div>` : ''}
+                  <div class="hist-ed-split">
+                    <button class="f-calm-cancel-pill" style="height:46px;gap:6px" type="button" data-act="hist-del-set">${ICO.trash}<span>Удалить</span></button>
+                    <button class="pb" style="flex:1;min-height:46px" type="button" data-act="hist-save-set">Сохранить</button>
+                  </div>
+                `}
+              </div>
+            </div>`;
+        }
+      } else if (s.histDelIdx === idxW) {
+        sheetHtml = `
+          <div class="f-scrim" data-act="hist-close-sheet">
+            <div class="f-sheet" onclick="event.stopPropagation()">
+              <div class="f-sheet-handle"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <h3>Удалить тренировку?</h3>
+                <button class="prog-strip-x" type="button" data-act="hist-close-sheet">${ICO.x}</button>
+              </div>
+              <div class="f-sheet-summary">
+                <strong style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere">
+                  <span>${s.longNames ? item.longDay : item.day}</span>
+                  ${badge}
+                </strong>
+                <span class="f-sheet-summary-sub">${item.date} · ${fmtHistTimeDur(item)}</span>
+                <span class="f-sheet-summary-sub">${item.prog} · ${pluralRu(totalSets, 'подход', 'подхода', 'подходов')}</span>
+              </div>
+              <p>Запись удалится навсегда без возможности отмены. Статус тренировочной недели не изменится.</p>
+              <button class="f-sheet-danger" type="button" data-act="hist-confirm-del-workout" data-v="${idxW}">Удалить тренировку</button>
+              <button class="f-sheet-cancel" type="button" data-act="hist-close-sheet">Оставить тренировку</button>
+            </div>
+          </div>`;
+      }
+
+      const snackHtml = s.histSnack ? `
+        <div class="f-snack no-nav">
+          <span class="f-snack-msg">${s.histSnack.msg}</span>
+          <button class="f-snack-undo" type="button" data-act="hist-undo-del-set">Отменить</button>
+        </div>` : '';
+
       return `
-        <div class="f-scroll-home">
-          <div class="hd-top">
+        <div class="f-scroll-child">
+          <div class="hd-topbar">
             <button class="f-back-btn" data-act="close-hist-detail" type="button" aria-label="Назад">${ICO.back}</button>
-            <h2 class="d" style="margin:0;font-size:24px;line-height:1.08">${s.longNames ? item.longDay : item.day}</h2>
+            <span class="hd-topbar-lbl">Детали тренировки</span>
           </div>
-          <div class="hd-date-row">
-            <span class="d" style="color:var(--f-primary);font-size:15px">${item.date}</span>
-            <span class="m" style="font-size:13px">${item.time}</span>
-            ${hasLamps ? `<span class="hist-badge" style="margin-top:0">${renderLamps(item.week, item.lightened)}<span>${badgeTxt}</span></span>` : ''}
+          <div class="hd-hero ${ribCls}">
+            <div class="hd-hero-top">
+              <span class="d hd-hero-date">${item.date}<span class="hd-hero-time">· ${item.time}</span></span>
+              ${badge}
+            </div>
+            <h2 class="d hd-hero-title">${s.longNames ? item.longDay : item.day}</h2>
+            <div class="hd-hero-prog">${item.prog}</div>
+            <div class="hd-hero-strip">
+              ${tonnage != null ? `<div class="hd-hero-cell"><span class="hd-hero-k">Тоннаж</span><span class="hd-hero-v lime">${fmtNumGrouped(tonnage)} кг</span></div>` : ''}
+              ${dur ? `<div class="hd-hero-cell"><span class="hd-hero-k">Длительность</span><span class="hd-hero-v">${dur}</span></div>` : ''}
+              <div class="hd-hero-cell"><span class="hd-hero-k">Подходы</span><span class="hd-hero-v">${totalSets} <small style="font-family:Inter;font-size:11.5px;font-weight:500;color:var(--f-muted)">· ${totalEx} упр.</small></span></div>
+            </div>
           </div>
-          <div class="m" style="font-size:12.5px">${item.prog} · тоннаж 1 937,5 кг</div>
-          ${blocks.map(b => `
+          ${(item.exercises || []).map(ex => `
             <div class="hd-card">
-              <div class="hd-ex-head"><div class="d hd-ex-name">${b.name}</div><span class="hd-ex-meta">${b.total}</span></div>
-              ${b.sets.map((val, i) => `<div class="hd-set-row"><span class="hd-set-idx">Подход ${i + 1}</span><span class="hd-set-val">${val}</span></div>`).join('')}
+              <div class="hd-ex-head">
+                <div class="d hd-ex-name" style="overflow-wrap:anywhere">${s.longNames ? ex.longName : ex.name}</div>
+                <span class="hd-ex-meta">${calcHistExTotal(ex)}</span>
+              </div>
+              ${ex.sets.map((sv, si) => `
+                <button class="hd-set-row" type="button" data-act="hist-edit-set" data-v="${idxW}:${ex.id}:${si}">
+                  <span class="hd-set-idx">Подход ${si + 1}</span>
+                  <span class="hd-set-right">
+                    <span class="hd-set-val">${fmtHistSet(ex.type, sv)}</span>
+                    <span class="hd-set-edit">${ICO.edit}</span>
+                  </span>
+                </button>`).join('')}
             </div>`).join('')}
+          <div class="hd-danger-zone">
+            <button class="f-calm-cancel" type="button" data-act="hist-open-del-workout" data-v="${idxW}">
+              ${ICO.trash}<span>Удалить тренировку из истории</span>
+            </button>
+          </div>
         </div>
-        <nav class="f-nav">
-          <button class="f-nav-btn" data-act="go-screen" data-v="home">${ICO.home}</button>
-          <button class="f-nav-btn active" data-act="close-hist-detail">${ICO.history}<span>История</span></button>
-          <button class="f-nav-btn" data-act="go-screen" data-v="settings" title="Настройки">${ICO.settings}</button>
-        </nav>`;
+        ${snackHtml}
+        ${sheetHtml}`;
     }
 
-    const cards = s.history.map((item, idx) => {
-      const hasLamps = item.week !== 'regular' || item.lightened;
-      const badgeTxt = [item.week === 'heavy' ? 'Тяжёлая' : item.week === 'light' ? 'Лёгкая' : '', item.lightened ? 'Облегчена' : ''].filter(Boolean).join(' · ');
-      const ribCls = item.week === 'heavy' && item.lightened ? 'has-ribbon rib-heavy-ease'
-        : item.week === 'light' && item.lightened ? 'has-ribbon rib-light-ease'
-        : item.week === 'heavy' ? 'has-ribbon rib-heavy'
-        : item.week === 'light' ? 'has-ribbon rib-light'
-        : item.lightened ? 'has-ribbon rib-ease' : '';
+    const bodyHtml = s.history.length === 0 ? `
+      <div class="hist-empty">
+        <div class="hist-empty-ico">${ICO.history}</div>
+        <div style="font-size:16px;font-weight:600;color:var(--f-text)">Завершённых тренировок пока нет</div>
+        <div style="font-size:13px;color:var(--f-dim);max-width:260px;line-height:1.45">Когда вы завершите тренировку, запись и её результаты появятся здесь.</div>
+      </div>` : s.history.map((item, idx) => {
+      const badge = badgeFor(item);
+      const ribCls = ribFor(item);
+      const dur = fmtHistoryDur(item.durationSec);
       return `
-        <div class="hist-card ${ribCls}" data-act="open-hist-detail" data-v="${idx}" style="cursor:pointer">
-          <div class="hist-top"><span class="d hist-date">${item.date}</span><span class="hist-time">${item.time}</span></div>
-          <div class="hist-row-main">
-            <div class="d hist-title">${s.longNames ? item.longDay : item.day}</div>
-            ${hasLamps ? `<span class="hist-badge">${renderLamps(item.week, item.lightened)}<span>${badgeTxt}</span></span>` : ''}
+        <div class="hist-card ${ribCls}" data-act="open-hist-detail" data-v="${idx}">
+          <div class="hist-cal-left">
+            <div class="hist-cal-date">
+              <span class="hist-cal-day">${item.dayNum || '26'}</span>
+              <span class="hist-cal-mon">${item.monShort || 'НОЯ'}</span>
+            </div>
+            <div class="hist-cal-rule"></div>
+            <div class="hist-cal-time">${item.time}</div>
+            ${dur ? `<div class="hist-cal-dur">${dur}</div>` : ''}
           </div>
-          <div class="hist-prog">${item.prog}</div>
+          <div class="hist-cal-right">
+            <div class="d hist-title">${s.longNames ? item.longDay : item.day}</div>
+            <div class="hist-prog">${item.prog}</div>
+            ${badge ? `<div class="hist-badge-row">${badge}</div>` : ''}
+          </div>
         </div>`;
     }).join('');
 
     return `
       <div class="f-scroll-home">
         <h1 class="d home-h1">История</h1>
-        ${cards}
+        ${bodyHtml}
       </div>
       <nav class="f-nav">
         <button class="f-nav-btn" data-act="go-screen" data-v="home">${ICO.home}</button>
@@ -2779,7 +3215,7 @@
       home: 'Кликайте «Тяжёлая/Лёгкая», замок 🔒, «Устал · облегчить», чипы дней, «Пропустить день» и «Начать тренировку».',
       workout: 'Листайте упражнения (№1 прибавить, №2 снизить, №3 Подобрать вес, №4 Планка 280px). Правый клик по кругу отдыха → шторка.',
       summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
-      history: 'Точный стиль Истории из дизайн-системы (лаймовая дата UPPERCASE, название 22px, без рамок) + 8dp-лампы и бейдж недели.',
+      history: 'Согласованная История (#117 + #118 + #119): календарь с датой, временем и длительностью слева, Hero 2 детали без нижнего бара, правка подходов с живым итогом, Undo и удаление тренировки.',
       settings: 'Согласованные Настройки (#106 + #115/#116): 3 темы, плитки «Таймер отдыха» и «Формула 1RM», строка и шторка «Сигнал таймеров» (вариант A) с предпрослушкой, фиксированная карточка обновлений.',
       lock: 'Точный стиль доски 18 (#0B0E0B, часы 96px, Fitty · сейчас) + согласованные в #83 кнопки «■ Стоп» и «+30 с / Сброс».'
     };
@@ -2828,8 +3264,85 @@
         }
         else if (act === 'open-replace') { st.sheet = null; st.snack = { text: 'Выбор замены упражнения на сегодня (#110)' }; }
         else if (act === 'dismiss-prompt') { st.dismissedPrompts[v] = true; }
-        else if (act === 'open-hist-detail') { st.historyDetailIdx = parseInt(v, 10); }
-        else if (act === 'close-hist-detail') { st.historyDetailIdx = null; }
+        else if (act === 'open-hist-detail') { st.historyDetailIdx = parseInt(v, 10); st.histEdit = null; st.histDelIdx = null; st.histSnack = null; }
+        else if (act === 'close-hist-detail') { st.historyDetailIdx = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; }
+        else if (act === 'hist-close-sheet') { st.histEdit = null; st.histDelIdx = null; }
+        else if (act === 'hist-edit-set') {
+          const [wIdxStr, exId, sIdxStr] = v.split(':');
+          const wIdx = parseInt(wIdxStr, 10), sIdx = parseInt(sIdxStr, 10);
+          const item = st.history[wIdx], ex = item && (item.exercises || []).find(e => e.id === exId);
+          if (ex && ex.sets[sIdx]) {
+            st.histDelIdx = null;
+            st.histEdit = { workoutIdx: wIdx, exId, setIdx: sIdx, draft: buildHistDraft(ex, ex.sets[sIdx]), error: null };
+          }
+        }
+        else if (act === 'hist-ed-unit' && st.histEdit) {
+          const curU = st.histEdit.draft.unit;
+          if (v !== curU) {
+            const curV = parsePosNum(st.histEdit.draft.val);
+            if (curV !== null) {
+              const meters = curU === 'km' ? curV * 1000 : curV;
+              st.histEdit.draft.val = v === 'km' ? fmtNum(meters / 1000) : fmtNum(meters);
+            }
+            st.histEdit.draft.unit = v; st.histEdit.error = null;
+          }
+        }
+        else if (act === 'hist-ed-step' && st.histEdit) {
+          const [f, dStr] = v.split(':'), delta = parseFloat(dStr), d = st.histEdit.draft;
+          if (f === 'min' || f === 'sec') {
+            const m = parseNonNegInt(d.min === '' ? '0' : d.min) ?? 0;
+            const sc = parseNonNegInt(d.sec === '' ? '0' : d.sec) ?? 0;
+            const total = Math.max(1, m * 60 + sc + (f === 'min' ? delta * 60 : delta));
+            d.min = String(Math.floor(total / 60));
+            const rem = total % 60;
+            d.sec = rem < 10 ? `0${rem}` : String(rem);
+          } else if (f === 'r') {
+            d.r = String(Math.max(1, (parseNonNegInt(d.r) ?? 1) + delta));
+          } else {
+            const cur = parsePosNum(d[f]) ?? 0;
+            const floor = f === 'val' && d.unit === 'km' ? 0.1 : (f === 'w' ? 0.5 : 1);
+            d[f] = fmtNum(Math.max(floor, Math.round((cur + delta) * 100) / 100));
+          }
+          st.histEdit.error = null;
+        }
+        else if (act === 'hist-save-set' && st.histEdit) {
+          const item = st.history[st.histEdit.workoutIdx], ex = item && (item.exercises || []).find(e => e.id === st.histEdit.exId);
+          if (ex) {
+            const res = parseHistDraft(ex.type, st.histEdit.draft);
+            if (res.err) { st.histEdit.error = res.err; }
+            else { ex.sets[st.histEdit.setIdx] = res.val; st.histEdit = null; }
+          }
+        }
+        else if (act === 'hist-del-set' && st.histEdit) {
+          const wIdx = st.histEdit.workoutIdx, item = st.history[wIdx];
+          if (item && countHistSets(item) > 1) {
+            const exIdx = item.exercises.findIndex(e => e.id === st.histEdit.exId);
+            if (exIdx >= 0) {
+              const ex = item.exercises[exIdx], setIdx = st.histEdit.setIdx;
+              const removedSet = { ...ex.sets[setIdx] };
+              const removedEx = ex.sets.length === 1;
+              const exSnap = removedEx ? { ...ex, sets: [removedSet] } : null;
+              ex.sets.splice(setIdx, 1);
+              if (removedEx) item.exercises.splice(exIdx, 1);
+              st.histEdit = null;
+              st.histSnack = { msg: `Удалён подход · ${st.longNames ? ex.longName : ex.name}`, snap: { wIdx, exIdx, exId: ex.id, setIdx, removedSet, removedEx, exSnap } };
+            }
+          }
+        }
+        else if (act === 'hist-undo-del-set' && st.histSnack && st.histSnack.snap) {
+          const u = st.histSnack.snap, item = st.history[u.wIdx];
+          if (item) {
+            if (u.removedEx) item.exercises.splice(Math.min(u.exIdx, item.exercises.length), 0, u.exSnap);
+            else { const ex = item.exercises.find(e => e.id === u.exId); if (ex) ex.sets.splice(Math.min(u.setIdx, ex.sets.length), 0, u.removedSet); }
+          }
+          st.histSnack = null;
+        }
+        else if (act === 'hist-open-del-workout') { st.histEdit = null; st.histDelIdx = parseInt(v, 10); }
+        else if (act === 'hist-confirm-del-workout') {
+          const wIdx = parseInt(v, 10);
+          st.history.splice(wIdx, 1);
+          st.histDelIdx = null; st.histEdit = null; st.histSnack = null; st.historyDetailIdx = null;
+        }
         else if (act === 'm3-set-unit') {
           const ex = getEx(), curU = (st.distUnit && st.distUnit[ex.id]) || ex.defaultUnit || 'm';
           if (v !== curU) {
@@ -2941,7 +3454,24 @@
         }
         else if (act === 'save-to-history') {
           const day = getDay();
-          st.history.unshift({ date: '26 ноября 2026', time: '19:24', day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(), lightened: st.easeMode !== 'none' || st.sessionMarkedLightened });
+          const savedExercises = day.exercises.map(ex => {
+            const raw = st.logged[ex.id] || [];
+            if (!raw.length) return null;
+            const sets = raw.map(entry => {
+              if (ex.type === 'weight_reps') return { w: parsePosNum(entry.w) || 60, r: parseInt(entry.r, 10) || 10 };
+              if (ex.type === 'reps') return { r: Math.round(entry) };
+              if (ex.type === 'distance') return { m: entry };
+              return { sec: Math.round(entry) };
+            });
+            return { id: `saved_${ex.id}_${Date.now()}`, type: ex.type, name: ex.name, longName: ex.longName, sets };
+          }).filter(Boolean);
+          if (savedExercises.length) {
+            st.history.unshift({
+              id: `h_${Date.now()}`, dayNum: '27', monShort: 'НОЯ', date: '27 ноября 2026', time: '19:24', durationSec: 2520,
+              day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(),
+              lightened: st.easeMode !== 'none' || st.sessionMarkedLightened, exercises: savedExercises
+            });
+          }
           if (st.alternating) st.dayStatus[day.id] = 'done';
           st.activeWorkoutDayId = null;
           st.screen = 'home';
@@ -3111,6 +3641,22 @@
         if (inp.dataset.cal === 'calcR') st.calCalcR = inp.value;
       });
     });
+    phone.querySelectorAll('input[data-hist-ed]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        if (!st.histEdit) return;
+        st.histEdit.draft[inp.dataset.histEd] = inp.value;
+        st.histEdit.error = null;
+        const prev = phone.querySelector('.hist-ed-preview strong');
+        const item = st.history[st.histEdit.workoutIdx];
+        const ex = item && (item.exercises || []).find(e => e.id === st.histEdit.exId);
+        if (prev && ex) {
+          const res = parseHistDraft(ex.type, st.histEdit.draft);
+          prev.textContent = res.val
+            ? calcHistExTotal({ ...ex, sets: ex.sets.map((sv, si) => si === st.histEdit.setIdx ? res.val : sv) })
+            : '—';
+        }
+      });
+    });
   }
 
   function renderLive() {
@@ -3158,13 +3704,17 @@
         ]
       },
       {
-        title: '3. Итоги, История (доска 04) и Экран блокировки (доска 18)',
-        sub: 'Точная база Истории и Экрана блокировки + согласованные лампы #101, дельты #99, тоннаж в деталях #113 и карточки #83',
+        title: '3. Итоги, История (#117 + #118 + #119) и Экран блокировки (доска 18)',
+        sub: 'Календарь 1 с датой/временем/длительностью слева, пустое состояние A, Hero 2 детали без нижнего бара, правка подходов с живым итогом, Undo и удаление в палитре #105',
         cards: [
           { title: 'Итоги · Обычная / тяжёлая с прогрессом (#99 + #101 + #113)', note: 'Hero-прирост, все 4 типа с итогами («Всего: 35 повт.», «Всего: 130 м»), цветные капсулы.', state: snap({ screen: 'summary', currentWeek: 'heavy', easeMode: 'none' }) },
           { title: 'Итоги · Облегчённая (две лампы)', note: 'Фактические подходы без негативных дельт, двойная лампа (янтарь + лаванда).', state: snap({ screen: 'summary', currentWeek: 'heavy', easeMode: 'fewerSets', sessionMarkedLightened: true }) },
-          { title: 'История · База доски 04 + лампы (#101) и бейджи (#94)', note: 'Без рамок, лаймовая дата UPPERCASE 16px, день 22px UPPERCASE, одиночные и парные 8dp-лампы. Тап открывает детали.', state: snap({ screen: 'history' }) },
-          { title: 'История · Детали тренировки с тоннажем (#113)', note: 'Компактные табличные строки по всем 4 типам, тоннаж (1 937,5 кг) у силовых упражнений и в шапке тренировки.', state: snap({ screen: 'history', historyDetailIdx: 0 }) },
+          { title: 'История · Календарь 1 (#118 + #101 + #94)', note: '3-этажная левая колонка (26 НОЯ / 19:42 / 44 мин; > 8 ч без длительности), 4dp-ленточка, название дня до 2 строк и бейдж ламп. Тап открывает детали.', state: snap({ screen: 'history' }) },
+          { title: 'История · Пустое состояние (A · #117 + #118)', note: 'Спокойная иконка и текст по центру без CTA-кнопки.', state: snap({ screen: 'history', history: [] }) },
+          { title: 'История · Детали Hero 2 (#118 + #113 + #119)', note: 'Без нижнего бара (#119), Hero 2 с полосой «Тоннаж / Длительность / Подходы», карточки всех 4 типов и тихая кнопка удаления за чертой внизу.', state: snap({ screen: 'history', historyDetailIdx: 0 }) },
+          { title: 'История · Правка подхода с живым итогом (#118)', note: 'Шторка #1C231C: живой пересчёт итога упражнения сверху, поля + быстрые чипы (#113) и однострочный низ «🗑 Удалить | Сохранить».', state: snap({ screen: 'history', historyDetailIdx: 0, histEdit: { workoutIdx: 0, exId: 'he1', setIdx: 0, draft: { w: '62,5', r: '10' }, error: null } }) },
+          { title: 'История · Правка длительности (мин : сек · #118)', note: 'Степперы ±1 мин / ±5 с с минимумом 0:01 и живым пересчётом суммарного времени.', state: snap({ screen: 'history', historyDetailIdx: 0, histEdit: { workoutIdx: 0, exId: 'he5', setIdx: 0, draft: { min: '1', sec: '05' }, error: null } }) },
+          { title: 'История · Удаление тренировки (#118 + #105)', note: 'Компактная шторка A в единой палитре #105 (сводка, #FFB4AB «Удалить тренировку», спокойная «Оставить тренировку»).', state: snap({ screen: 'history', historyDetailIdx: 0, histDelIdx: 0 }) },
           { title: 'Экран блокировки · База доски 18 + #83 + #94', note: 'Фон #0B0E0B, часы 96px, «Fitty · сейчас», Планка с «■ Стоп» и Отдых с «+30 с / Сброс».', state: snap({ screen: 'lock', longNames: true, lockPlankState: 'overtime', restLeft: 102 }) }
         ]
       },
