@@ -1,0 +1,1466 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #107 (финальный кандидат): Аккордеон, симметричные зоны и контекстное меню ⋮</title>
+<!--
+  Final-candidate throwaway UI prototype for issue #107 ("Как выглядит экран «Мои программы» в Fitty v2?").
+  Approved direction from Daniil:
+  - Variant A card style with three symmetrical full-height zones on the card header:
+    * Left full-height strip (hairline divider): radio/check to select program for Home (returns to Home per #119).
+    * Center zone: program title (up to 2 lines), metadata, days preview; tap expands/collapses inline accordion with all days and their exercises.
+    * Right full-height strip (matching hairline divider): ⋮ opens an anchored #1C231C dropdown context menu ("Редактировать", "Удалить").
+  - "Удалить" opens a #1C231C destructive confirmation sheet (matching #105 / #118).
+  - Bottom sticky lime "+ Создать программу" button.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 28px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center; background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs { display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px; }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small { display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0); padding: 2px; border-radius: 9px; gap: 2px; }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage { display: grid; grid-template-columns: auto minmax(310px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 880px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px; font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .zone-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .zone-pill {
+    border: 1px solid var(--border, #D8DDD5); background: var(--secondary, #F6F8F4);
+    border-radius: 10px; padding: 7px 9px; font-size: 11.5px; line-height: 1.32;
+  }
+  .zone-pill strong { display: block; font-size: 11.5px; color: var(--card-foreground, #1B2318); margin-bottom: 2px; }
+  .zone-pill span { color: var(--muted-foreground, #5A6557); }
+
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 44%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  .board-wrap { display: flex; flex-direction: column; gap: 20px; }
+  .board-section-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border, #D4DAD0); padding-bottom: 6px;
+  }
+  .board-section-head h2 { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--foreground, #1A2018); }
+  .board-section-head span { font-size: 12px; color: var(--muted-foreground, #5B6658); }
+  .board-grid { display: flex; flex-wrap: wrap; gap: 20px 18px; align-items: flex-start; }
+  .board-card { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+  .board-card-cap { max-width: 390px; display: flex; flex-direction: column; gap: 2px; }
+  .board-card-title { font-size: 13px; font-weight: 700; color: var(--foreground, #1B2219); }
+  .board-card-note { font-size: 11.5px; color: var(--muted-foreground, #5C6759); line-height: 1.35; }
+  .board-card-jump {
+    border: 0; background: transparent; padding: 0; color: var(--primary, #2E5210);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer; text-decoration: underline; align-self: flex-start; margin-top: 1px;
+  }
+  .hidden { display: none !important; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-border: #2A526B;
+    --load-light-text: #BFE9FF;
+    --f-amber-border: #554524;
+    --f-on-amber-container: #FFE0A3;
+
+    width: 390px; height: 844px;
+    background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative; overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex; flex-direction: column; flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: Inter, sans-serif; }
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .m { color: var(--f-muted); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pb.theme-light { background: var(--load-light); color: #07202D; }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    background: var(--f-chip); font-size: 12px; font-weight: 500; color: var(--f-muted);
+    white-space: nowrap; flex: none;
+  }
+  .tag.light-target { background: var(--load-light-bg); color: var(--load-light-text); box-shadow: inset 0 0 0 1px var(--load-light-border); }
+
+  .f-nav {
+    position: absolute; left: 16px; right: 16px; bottom: 12px; height: 64px;
+    background: var(--f-surface-hi); border-radius: 32px;
+    display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10;
+  }
+  .f-nav-btn {
+    border: 0; background: transparent; display: flex; align-items: center; gap: 6px;
+    height: 48px; min-width: 48px; justify-content: center; border-radius: 24px;
+    color: var(--f-muted); font-weight: 600; font-size: 14px; padding: 0 12px;
+  }
+  .f-nav-btn.active { background: var(--f-primary); color: var(--f-on-primary); padding: 0 18px; }
+
+  .f-scroll-home { flex: 1; overflow-y: auto; padding: 14px 20px 92px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-home::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-home { padding: 12px 16px 88px; }
+
+  .f-scroll-child { flex: 1; overflow-y: auto; padding: 14px 20px 28px; scrollbar-width: none; min-height: 0; }
+  .f-scroll-child::-webkit-scrollbar { display: none; }
+  .phone.w360 .f-scroll-child { padding: 12px 16px 24px; }
+  .f-scroll-child.has-sticky { padding-bottom: 92px; }
+
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .lamp-heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245, 158, 66, 0.8); }
+  .lamp-light { background: var(--load-light); box-shadow: 0 0 8px rgba(92, 200, 250, 0.8); }
+  .lamp-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+  .live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); flex: none;
+    box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); animation: livePulse 2s ease-out infinite;
+  }
+  @keyframes livePulse {
+    0% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0.55); }
+    70% { box-shadow: 0 0 0 5px rgba(197, 250, 85, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(197, 250, 85, 0); }
+  }
+
+  /* ==================== HOME SCREEN ==================== */
+  .home-h1 { margin: 8px 0 14px; font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: space-between; }
+  .home-prog { background: var(--f-primary-container); border-radius: 18px; padding: 14px 18px; color: var(--f-on-primary-container); }
+  .home-prog-btn { width: 100%; border: 0; background: transparent; padding: 0; color: inherit; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .home-prog-name { font-size: 22px; line-height: 1.15; margin-top: 2px; }
+  .prog-week-divider { margin-top: 11px; padding-top: 10px; border-top: 1px solid rgba(221, 255, 152, 0.16); }
+  .prog-week-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: rgba(221, 255, 152, 0.8); margin-bottom: 6px; }
+  .prog-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(11, 14, 11, 0.42); border: 1px solid rgba(221, 255, 152, 0.14); border-radius: 12px; padding: 3px; }
+  .prog-seg-btn { border: 0; border-radius: 9px; min-height: 34px; font-size: 12.5px; font-weight: 600; background: transparent; color: rgba(240, 243, 234, 0.74); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .prog-seg-btn.active-heavy { background: var(--f-primary); color: var(--f-on-primary); }
+  .prog-seg-btn.active-light { background: var(--load-light); color: #07202D; }
+  .prog-locked-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .prog-locked-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: rgba(11, 14, 11, 0.34); border: 1px solid rgba(221, 255, 152, 0.22); color: #EEFFCA; }
+  .prog-locked-pill.is-light { background: rgba(19, 37, 49, 0.88); border-color: rgba(92, 200, 250, 0.46); color: var(--load-light-text); }
+  .prog-dots { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(221, 255, 152, 0.88); }
+  .prog-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(221, 255, 152, 0.48); }
+  .prog-dot.done { background: var(--load-heavy); border-color: var(--load-heavy); }
+  .prog-dot.done.light { background: var(--load-light); border-color: var(--load-light); }
+  .prog-dot.active-run { border-color: var(--f-primary); background: rgba(197, 250, 85, 0.35); }
+
+  .hero-a2 { background: linear-gradient(155deg, #192415 0%, #141914 72%); border: 1.5px solid var(--f-primary-border); border-radius: 20px; padding: 13px 15px 14px; margin-bottom: 12px; }
+  .a2-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
+  .a2-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.55px; color: var(--f-on-primary-container); }
+  .a2-cancel-btn { border: 0; background: transparent; padding: 5px 8px; margin: -5px -8px -5px 0; border-radius: 8px; color: var(--f-error); font-size: 12px; font-weight: 600; opacity: 0.9; }
+  .a2-head { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .a2-id { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .a2-day { font-size: 23px; line-height: 1.06; color: var(--f-text); }
+  .a2-load-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; line-height: 16px; color: var(--f-muted); }
+  .a2-other-prog { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 8px; border-radius: 999px; background: rgba(197, 250, 85, 0.12); border: 1px solid rgba(197, 250, 85, 0.26); color: var(--f-on-primary-container); font-size: 11px; font-weight: 600; }
+  .a2-timer-tile { flex: none; min-width: 82px; padding: 7px 10px; border-radius: 13px; background: rgba(11, 14, 11, 0.56); border: 1px solid rgba(197, 250, 85, 0.24); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .a2-timer-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.45px; color: var(--f-muted); }
+  .a2-timer-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 26px; line-height: 0.96; color: var(--f-primary); }
+  .a2-prog-wrap { margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+  .a2-prog-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .a2-ex-cur { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--f-text); font-weight: 500; }
+  .a2-ex-step { flex: none; font-size: 12px; font-weight: 600; color: var(--f-dim); }
+  .a2-sets-count { flex: none; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--f-on-primary-container); }
+  .h-segs { display: flex; gap: 4px; margin-top: 7px; }
+  .h-seg { flex: 1; height: 3.5px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); }
+  .h-seg.done { background: var(--f-primary); }
+  .h-seg.cur { background: rgba(197, 250, 85, 0.45); }
+  .a2-cta { margin-top: 12px; min-height: 46px; }
+
+  .home-sec-title { font-size: 14px; margin: 16px 0 8px; }
+  .sc { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-right: -20px; padding-right: 20px; }
+  .sc::-webkit-scrollbar { display: none; }
+  .f-day-chip {
+    flex: none; min-height: 44px; max-width: 220px; padding: 0 18px; border-radius: 14px;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 18px;
+    text-transform: uppercase; letter-spacing: 0.6px; border: 1.5px solid var(--f-outline);
+    background: transparent; color: var(--f-text); display: inline-flex; align-items: center; gap: 7px;
+  }
+  .f-day-chip.selected { border: 0; background: var(--f-primary); color: var(--f-on-primary); }
+  .f-day-chip.selected.theme-light { background: var(--load-light); color: #07202D; }
+  .f-day-chip.selected.browse-muted { background: var(--f-surface-hi); color: var(--f-text); border: 1.5px solid var(--f-outline-hi); }
+  .home-ex-card { margin-top: 12px; padding: 0 16px; }
+  .home-ex-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--f-chip); }
+  .home-ex-row.no-top { border-top: 0; }
+  .home-ex-idx { font-size: 16px; color: var(--f-dim); width: 22px; flex: none; }
+  .home-ex-name { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; line-height: 20px; color: var(--f-text); }
+  .browse-lock-note { margin-top: 10px; padding: 9px 12px; border-radius: 13px; background: var(--f-surface); color: var(--f-dim); font-size: 11.5px; line-height: 1.35; text-align: center; }
+
+  /* ==================== MY PROGRAMS: FINAL SYMMETRICAL 3-ZONE ACCORDION CARD ==================== */
+  .child-topbar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 10px; flex: none; }
+  .f-back-btn { width: 34px; height: 34px; margin-left: -6px; border-radius: 50%; border: 0; background: transparent; color: var(--f-text); display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+  .f-back-btn:hover { background: var(--f-surface-hi); }
+  .child-title { margin: 0; font-size: 25px; line-height: 1.08; color: var(--f-text); flex: 1; min-width: 0; }
+  .phone.w360 .child-title { font-size: 23px; }
+
+  .active-workout-strip {
+    display: flex; align-items: flex-start; gap: 9px;
+    background: #172114; border: 1px solid var(--f-primary-border);
+    border-radius: 15px; padding: 10px 12px; margin-bottom: 12px;
+    font-size: 12px; line-height: 1.38; color: var(--f-muted);
+  }
+  .active-workout-strip.is-locked { background: #1E1C14; border-color: var(--f-amber-border); color: var(--f-on-amber-container); }
+  .active-workout-strip strong { color: var(--f-text); font-weight: 600; }
+
+  .prog-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .pcard {
+    background: var(--f-surface); border-radius: 20px;
+    border: 1.5px solid transparent; overflow: hidden;
+    transition: background 120ms, border-color 120ms;
+  }
+  .pcard.selected { background: #1A2413; border-color: var(--f-primary-border); }
+  .pcard.locked-switch:not(.selected) .pcard-left { opacity: 0.62; }
+
+  .pcard-top { display: flex; align-items: stretch; min-height: 78px; }
+
+  /* SYMMETRICAL FULL-HEIGHT LEFT & RIGHT ZONES */
+  .pcard-left, .pcard-right-btn {
+    width: 48px; flex: none; border: 0; background: transparent; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 120ms, color 120ms;
+  }
+  .phone.w360 .pcard-left, .phone.w360 .pcard-right-btn { width: 44px; }
+
+  .pcard-left { border-right: 1px solid rgba(255, 255, 255, 0.06); }
+  .pcard.selected .pcard-left { border-right-color: rgba(221, 255, 152, 0.14); }
+  .pcard-left:hover { background: rgba(197, 250, 85, 0.08); }
+  .pcard-left:active { background: rgba(197, 250, 85, 0.15); }
+
+  .pcard-right-btn {
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--f-muted);
+  }
+  .pcard.selected .pcard-right-btn {
+    border-left-color: rgba(221, 255, 152, 0.14);
+    color: var(--f-on-primary-container);
+  }
+  .pcard-right-btn:hover, .pcard-right-btn.menu-open {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--f-text);
+  }
+  .pcard.selected .pcard-right-btn:hover, .pcard.selected .pcard-right-btn.menu-open {
+    background: rgba(197, 250, 85, 0.12);
+    color: var(--f-primary);
+  }
+
+  .pcard-radio {
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
+    border: 2px solid var(--f-outline-hi); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--f-on-primary); transition: all 120ms;
+  }
+  .pcard.selected .pcard-radio { border-color: var(--f-primary); background: var(--f-primary); }
+  .pcard.locked-switch:not(.selected) .pcard-radio { border-color: var(--f-outline); background: var(--f-chip); color: var(--f-dim); }
+
+  /* CENTER ZONE (ACCORDION TRIGGER) */
+  .pcard-center {
+    flex: 1; min-width: 0; border: 0; background: transparent; text-align: left; color: inherit;
+    padding: 12px 11px;
+    display: flex; flex-direction: column; justify-content: center; gap: 4px;
+    transition: background 120ms;
+  }
+  .phone.w360 .pcard-center { padding: 11px 9px; }
+  .pcard-center:hover { background: rgba(255, 255, 255, 0.025); }
+  .pcard-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .home-pill {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.25px; text-transform: uppercase;
+  }
+  .running-badge {
+    display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 2px 7px; border-radius: 999px;
+    background: rgba(197, 250, 85, 0.14); border: 1px solid var(--f-primary-border);
+    color: var(--f-on-primary-container); font-size: 10.5px; font-weight: 600; white-space: nowrap;
+  }
+  .pcard-name { font-size: 19.5px; line-height: 1.12; color: var(--f-text); }
+  .phone.w360 .pcard-name { font-size: 18px; }
+  .pcard-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--f-muted); line-height: 1.3; }
+  .pcard-hint-row { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--f-dim); }
+  .pcard-chev { display: inline-flex; align-items: center; color: var(--f-dim); transition: transform 160ms; flex: none; }
+  .pcard.expanded .pcard-chev { transform: rotate(180deg); color: var(--f-primary); }
+
+  /* EXPANDED INLINE DAYS + EXERCISES ACCORDION */
+  .pcard-drawer {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 10px 12px 12px;
+    background: rgba(11, 14, 11, 0.28);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pcard.selected .pcard-drawer {
+    border-top-color: rgba(221, 255, 152, 0.14);
+    background: rgba(11, 14, 11, 0.34);
+  }
+  .day-block {
+    background: rgba(255, 255, 255, 0.03); border-radius: 14px; padding: 9px 11px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .day-block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .day-block-title { font-size: 15px; color: var(--f-primary); line-height: 1.15; overflow-wrap: anywhere; }
+  .day-block-cnt { font-size: 11px; color: var(--f-dim); flex: none; white-space: nowrap; }
+  .day-ex-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding-top: 5px; border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 13px; line-height: 1.3; color: var(--f-text);
+  }
+  .day-ex-row:first-of-type { border-top: 0; padding-top: 2px; }
+  .day-ex-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .day-ex-plan { font-size: 11.5px; color: var(--f-muted); flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* ANCHORED CONTEXT MENU (DROPDOWN POPOVER FOR ⋮) */
+  .ctx-backdrop { position: absolute; inset: 0; z-index: 34; background: transparent; }
+  .ctx-menu {
+    position: absolute; z-index: 35; min-width: 196px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi);
+    border-radius: 16px; padding: 5px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.56), 0 2px 6px rgba(0, 0, 0, 0.35);
+    display: flex; flex-direction: column; gap: 2px;
+    animation: ctxPop 110ms ease-out;
+  }
+  @keyframes ctxPop {
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .ctx-item {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    border-radius: 11px; padding: 10px 11px;
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    font-size: 14px; font-weight: 600;
+  }
+  .ctx-item:hover { background: rgba(255, 255, 255, 0.07); }
+  .ctx-item.danger { color: var(--f-error); }
+  .ctx-item.danger:hover { background: rgba(255, 180, 171, 0.1); }
+  .ctx-item.disabled { color: var(--f-dim); opacity: 0.65; }
+  .ctx-sep { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 2px 8px; }
+
+  .sticky-cta {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 12;
+    padding: 12px 20px 16px;
+    background: linear-gradient(180deg, rgba(11, 14, 11, 0) 0%, rgba(11, 14, 11, 0.94) 28%, #0B0E0B 100%);
+  }
+  .phone.w360 .sticky-cta { padding: 10px 16px 14px; }
+
+  .empty-box { min-height: 470px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px; gap: 10px; }
+  .empty-ico { width: 56px; height: 56px; border-radius: 18px; background: var(--f-surface); color: var(--f-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+  .empty-title { margin: 0; font-size: 20px; line-height: 1.15; color: var(--f-text); }
+  .empty-sub { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.42; max-width: 270px; }
+
+  /* ==================== EDITOR STUB ==================== */
+  .ed-field-card { background: var(--f-surface); border-radius: 18px; padding: 13px 14px; margin-bottom: 10px; }
+  .ed-lbl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .ed-lbl { font-size: 12px; font-weight: 600; color: var(--f-muted); }
+  .ed-counter { font-size: 11.5px; font-weight: 600; color: var(--f-dim); }
+  .ed-counter.err { color: var(--f-error); }
+  .ed-input { width: 100%; min-height: 44px; border-radius: 12px; border: 1.5px solid var(--f-outline); background: var(--f-bg); color: var(--f-text); padding: 9px 12px; font-size: 15px; font-weight: 500; outline: none; }
+  .ed-input:focus { border-color: var(--f-primary); }
+  .ed-input.err { border-color: var(--f-error); background: rgba(54, 28, 26, 0.35); }
+  .ed-err-msg { margin-top: 5px; font-size: 11.5px; color: var(--f-error); }
+  .ed-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .f-switch { width: 44px; height: 26px; border-radius: 999px; border: 0; padding: 3px; background: var(--f-chip); position: relative; flex: none; }
+  .f-switch.on { background: var(--f-primary); }
+  .f-switch::after { content: ""; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform 140ms; }
+  .f-switch.on::after { background: var(--f-on-primary); transform: translateX(18px); }
+  .ed-day-item { background: var(--f-surface); border-radius: 16px; padding: 11px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sec-kicker { font-size: 12px; color: var(--f-muted); margin: 12px 0 7px 2px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ==================== #1C231C CONFIRMATION SHEETS & SNACKBAR ==================== */
+  .f-scrim { position: absolute; inset: 0; background: rgba(5, 7, 5, 0.72); z-index: 40; display: flex; flex-direction: column; justify-content: flex-end; }
+  .f-sheet { background: var(--f-surface-hi); border-radius: 26px 26px 0 0; padding: 10px 18px 20px; display: flex; flex-direction: column; gap: 11px; max-height: 85%; overflow-y: auto; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); align-self: center; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--f-text); line-height: 1.25; overflow-wrap: anywhere; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.4; }
+  .f-sheet-summary { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--f-text); }
+  .f-sheet-cancel { border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%; }
+  .f-sheet-danger { width: 100%; min-height: 46px; border-radius: 999px; border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error); font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase; }
+
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 84px; z-index: 25;
+    background: #1D2618; border: 1px solid #4E672B; color: var(--f-text);
+    border-radius: 14px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 12px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.48);
+  }
+  .f-snack.no-nav { bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #107 · Финальный кандидат</span>
+      <div>
+        <h1 class="host-title">«Мои программы»: аккордеон + симметричные зоны + контекстное меню ⋮</h1>
+        <div class="host-sub">Левая зона = выбрать на Главную · Центр = раскрыть дни и упражнения · Правая зона ⋮ = контекстное меню</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button type="button" id="tab-interactive" class="active">Интерактив</button>
+        <button type="button" id="tab-board">Все состояния рядом</button>
+      </div>
+      <div class="seg-small">
+        <button type="button" id="w-390" class="active">390 dp</button>
+        <button type="button" id="w-360">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="view-interactive" class="interactive-stage">
+    <div class="phone-slot">
+      <div class="phone" id="live-phone"></div>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Три симметричные зоны карточки</h2>
+        <div class="zone-legend">
+          <div class="zone-pill"><strong>← Левая зона</strong><span>Во всю высоту: выбрать программу и вернуться на Главную</span></div>
+          <div class="zone-pill"><strong>Центр карточки</strong><span>Аккордеон: раскрывает дни и упражнения на месте</span></div>
+          <div class="zone-pill"><strong>Правая зона ⋮ →</strong><span>Во всю высоту: контекстное меню («Редактировать» / «Удалить»)</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Сценарии проверки</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Набор программ</span>
+          <div class="btn-wrap" id="ctrl-dataset"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Активная тренировка</span>
+          <div class="btn-wrap" id="ctrl-workout"></div>
+        </div>
+        <div class="ctrl-row" id="row-policy">
+          <span class="ctrl-lbl">Переключение во время тренировки</span>
+          <div class="btn-wrap" id="ctrl-policy"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Текущее состояние</h2>
+        <table class="state-tbl" id="state-table"></table>
+      </div>
+    </aside>
+  </main>
+
+  <section id="view-board" class="board-wrap hidden"></section>
+</div>
+
+<script>
+(() => {
+  const ICO = {
+    home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>',
+    history: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    settings: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    chevR: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    chevD: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    check: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    moreV: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>',
+    edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>',
+    plus: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    lock: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    play: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>',
+    folder: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h5l2 2h9a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1Z"/><path d="M12 11v5M9.5 13.5h5"/></svg>',
+    info: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+  };
+
+  function clonePrograms(list) {
+    return list.map(p => ({ ...p, days: p.days.map(d => ({ ...d, exercises: d.exercises.map(e => ({ ...e })) })) }));
+  }
+
+  const DATASETS = {
+    multi: [
+      {
+        id: 'p1', name: 'Базовая силовая', alternating: true, currentWeek: 'heavy', passResolved: 1, historyCount: 14,
+        days: [
+          { id: 'd1', name: 'День A · Верх', exercises: [
+            { name: 'Жим штанги лёжа', plan: '4 × 8–10' },
+            { name: 'Тяга штанги в наклоне', plan: '4 × 8–10' },
+            { name: 'Жим гантелей сидя', plan: '3 × 10–12' },
+            { name: 'Планка на предплечьях', plan: '3 × 1:00' }
+          ]},
+          { id: 'd2', name: 'День B · Низ', exercises: [
+            { name: 'Приседания со штангой', plan: '4 × 6–8' },
+            { name: 'Румынская тяга', plan: '3 × 8–10' },
+            { name: 'Выпады с гантелями', plan: '3 × 10' }
+          ]},
+          { id: 'd3', name: 'День C · Фулбоди', exercises: [
+            { name: 'Подтягивания широким хватом', plan: '4 × 8' },
+            { name: 'Жим ногами', plan: '3 × 10–12' },
+            { name: 'Фермерская прогулка', plan: '3 × 40 м' }
+          ]}
+        ]
+      },
+      {
+        id: 'p2', name: 'Фулбоди 2 раза в неделю', alternating: false, currentWeek: 'heavy', passResolved: 0, historyCount: 5,
+        days: [
+          { id: 'd4', name: 'День 1', exercises: [
+            { name: 'Приседания в Смите', plan: '3 × 8–12' },
+            { name: 'Жим гантелей на наклонной', plan: '3 × 8–12' },
+            { name: 'Тяга верхнего блока', plan: '3 × 10–12' }
+          ]},
+          { id: 'd5', name: 'День 2', exercises: [
+            { name: 'Становая тяга', plan: '3 × 5' },
+            { name: 'Отжимания на брусьях', plan: '3 × 8–10' },
+            { name: 'Подъём ног в висе', plan: '3 × 12' }
+          ]}
+        ]
+      },
+      {
+        id: 'p3', name: 'Верх / Низ · гипертрофия', alternating: true, currentWeek: 'light', passResolved: 2, historyCount: 8,
+        days: [
+          { id: 'd6', name: 'Верх 1', exercises: [
+            { name: 'Жим лёжа', plan: '4 × 6–8' },
+            { name: 'Тяга горизонтального блока', plan: '4 × 8–10' },
+            { name: 'Махи гантелями в стороны', plan: '3 × 12–15' }
+          ]},
+          { id: 'd7', name: 'Низ 1', exercises: [
+            { name: 'Фронтальный присед', plan: '4 × 6–8' },
+            { name: 'Сгибания ног лёжа', plan: '3 × 10–12' }
+          ]},
+          { id: 'd8', name: 'Верх 2', exercises: [
+            { name: 'Армейский жим', plan: '3 × 8–10' },
+            { name: 'Подтягивания обратным хватом', plan: '3 × 8–10' }
+          ]},
+          { id: 'd9', name: 'Низ 2', exercises: [
+            { name: 'Болгарские выпады', plan: '3 × 8–10' },
+            { name: 'Ягодичный мост', plan: '3 × 10–12' }
+          ]}
+        ]
+      },
+      {
+        id: 'p4', name: 'Домашняя с гантелями', alternating: false, currentWeek: 'heavy', passResolved: 0, historyCount: 0,
+        days: [
+          { id: 'd10', name: 'Круг A', exercises: [
+            { name: 'Кубковые приседания', plan: '3 × 12' },
+            { name: 'Отжимания от пола', plan: '3 × 15' }
+          ]},
+          { id: 'd11', name: 'Круг B', exercises: [
+            { name: 'Тяга гантели одной рукой', plan: '3 × 12' },
+            { name: 'Планка', plan: '3 × 0:45' }
+          ]}
+        ]
+      }
+    ],
+    single: [
+      {
+        id: 'p1', name: 'Базовая силовая', alternating: true, currentWeek: 'heavy', passResolved: 1,
+        days: [
+          { id: 'd1', name: 'День A · Верх', exercises: [
+            { name: 'Жим штанги лёжа', plan: '4 × 8–10' },
+            { name: 'Тяга штанги в наклоне', plan: '4 × 8–10' },
+            { name: 'Планка на предплечьях', plan: '3 × 1:00' }
+          ]},
+          { id: 'd2', name: 'День B · Низ', exercises: [
+            { name: 'Приседания со штангой', plan: '4 × 6–8' },
+            { name: 'Румынская тяга', plan: '3 × 8–10' }
+          ]}
+        ]
+      }
+    ],
+    long: [
+      {
+        id: 'p1', name: 'Базовая силовая программа на 3 дня с чередованием тяжёлых н.', alternating: true, currentWeek: 'heavy', passResolved: 2,
+        days: [
+          { id: 'd1', name: 'День A · Жим и верх тела с акцентом на плечи', exercises: [
+            { name: 'Жим штанги лёжа на горизонтальной скамье', plan: '4 × 8–10' },
+            { name: 'Тяга штанги в наклоне к поясу', plan: '4 × 8–10' }
+          ]},
+          { id: 'd2', name: 'День B · Ноги, спина и стабилизаторы корпуса', exercises: [
+            { name: 'Приседания со штангой на плечах', plan: '4 × 6–8' },
+            { name: 'Румынская тяга с гантелями', plan: '3 × 8–10' }
+          ]}
+        ]
+      },
+      {
+        id: 'p2', name: 'ГипертрофияВерхНизБезПробеловДляПроверкиПереносаНа360dpМакс60', alternating: true, currentWeek: 'light', passResolved: 0,
+        days: [
+          { id: 'd4', name: 'Верх 1 (жимовой акцент)', exercises: [
+            { name: 'Жим гантелей под углом 30°', plan: '3 × 8–12' },
+            { name: 'Тяга верхнего блока', plan: '3 × 10–12' }
+          ]},
+          { id: 'd5', name: 'Низ 1 (квадрицепсы)', exercises: [
+            { name: 'Жим ногами в тренажёре', plan: '4 × 10–12' }
+          ]}
+        ]
+      },
+      {
+        id: 'p3', name: 'Короткая поддерживающая программа на время командировок (2 дн)', alternating: false, currentWeek: 'heavy', passResolved: 0,
+        days: [
+          { id: 'd6', name: 'День 1 · Отель', exercises: [{ name: 'Отжимания', plan: '4 × 15' }] },
+          { id: 'd7', name: 'День 2 · Парк', exercises: [{ name: 'Подтягивания', plan: '4 × 8' }] }
+        ]
+      }
+    ],
+    empty: []
+  };
+
+  const st = {
+    mode: 'interactive',
+    width: 390,
+    screen: 'programs',
+    dataset: 'multi',
+    programs: clonePrograms(DATASETS.multi),
+    selectedProgramId: 'p1',
+    selectedDayIdx: 0,
+    expandedId: 'p2',
+    activeWorkout: null,
+    activePolicy: 'allow', // 'allow' | 'lock'
+    ctxMenu: null, // null | { programId, top, right }
+    editor: null,
+    sheet: null, // null | { type: 'delete_confirm'|'switch_locked'|'discard_editor'|'cancel_workout', programId }
+    snack: null
+  };
+
+  function esc(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function totalExCount(p) { return p.days.reduce((s, d) => s + d.exercises.length, 0); }
+  function dayWord(n) { const m = n % 10, m100 = n % 100; if (m === 1 && m100 !== 11) return 'день'; if (m >= 2 && m <= 4 && (m100 < 12 || m100 > 14)) return 'дня'; return 'дней'; }
+  function getProgram(s, id) { return s.programs.find(p => p.id === id) || null; }
+  function getSelectedProgram(s) { return getProgram(s, s.selectedProgramId) || s.programs[0] || null; }
+  function renderLamp(w) { return w ? `<span class="lamp ${w === 'light' ? 'lamp-light' : 'lamp-heavy'}"></span>` : ''; }
+  function weekShort(w) { return w === 'light' ? 'Лёгкая' : 'Тяжёлая'; }
+  function weekFull(w) { return w === 'light' ? 'Лёгкая неделя' : 'Тяжёлая неделя'; }
+
+  function setSnack(msg) {
+    st.snack = msg;
+    clearTimeout(setSnack._t);
+    setSnack._t = setTimeout(() => { st.snack = null; renderLive(); }, 2600);
+  }
+
+  function seedActiveWorkout() {
+    const p = st.programs[0];
+    if (!p) { st.activeWorkout = null; return; }
+    const d = p.days[0];
+    st.activeWorkout = {
+      programId: p.id, programName: p.name, dayId: d.id, dayName: d.name,
+      week: p.alternating ? p.currentWeek : null, exIdx: 1, exTotal: d.exercises.length,
+      exName: d.exercises[Math.min(1, d.exercises.length - 1)].name, totalSets: 5, restLeft: '1:18'
+    };
+  }
+
+  function applyDataset(dsKey) {
+    st.dataset = dsKey;
+    st.programs = clonePrograms(DATASETS[dsKey]);
+    st.selectedProgramId = st.programs[0] ? st.programs[0].id : null;
+    st.selectedDayIdx = 0;
+    st.expandedId = st.programs[1] ? st.programs[1].id : (st.programs[0] ? st.programs[0].id : null);
+    st.ctxMenu = null;
+    st.sheet = null;
+    if (dsKey === 'empty') {
+      st.activeWorkout = null;
+      if (st.screen === 'editor') st.screen = 'programs';
+    } else if (st.activeWorkout) {
+      seedActiveWorkout();
+    }
+  }
+
+  /* ==================== HOME SCREEN ==================== */
+  function renderHomeHTML(s) {
+    const prog = getSelectedProgram(s);
+    const aw = s.activeWorkout;
+    const isOtherProg = aw && prog && aw.programId !== prog.id;
+
+    let heroHtml = '';
+    if (aw) {
+      const awProg = getProgram(s, aw.programId);
+      const awProgName = awProg ? awProg.name : aw.programName;
+      heroHtml = `
+        <div class="hero-a2">
+          <div class="a2-top">
+            <span class="a2-kicker"><span class="live-dot"></span><span>Идёт тренировка</span></span>
+            <button type="button" class="a2-cancel-btn" data-act="open-cancel-workout">Отменить</button>
+          </div>
+          <div class="a2-head">
+            <div class="a2-id">
+              <div class="d a2-day clamp-2">${esc(aw.dayName)}</div>
+              <div class="a2-load-row">
+                ${aw.week ? `<span class="lamp-group">${renderLamp(aw.week)}</span><span>${weekFull(aw.week)}</span>` : ''}
+                ${isOtherProg ? `<span class="a2-other-prog clamp-1">из «${esc(awProgName)}»</span>` : ''}
+              </div>
+            </div>
+            <div class="a2-timer-tile"><span class="a2-timer-lbl">Отдых</span><span class="a2-timer-num">${aw.restLeft}</span></div>
+          </div>
+          <div class="a2-prog-wrap">
+            <div class="a2-prog-row">
+              <div class="a2-ex-cur"><span class="a2-ex-step tnum">${aw.exIdx + 1}/${aw.exTotal}</span><span class="clamp-1">${esc(aw.exName)}</span></div>
+              <span class="a2-sets-count tnum">${aw.totalSets} подходов</span>
+            </div>
+            <div class="h-segs"><span class="h-seg done"></span><span class="h-seg cur"></span><span class="h-seg"></span><span class="h-seg"></span></div>
+          </div>
+          <button type="button" class="pb a2-cta" data-act="resume-stub">${ICO.play}<span>Продолжить тренировку</span></button>
+        </div>`;
+    }
+
+    let bodyHtml = '';
+    if (!prog) {
+      bodyHtml = `
+        <div class="empty-box" style="min-height:490px">
+          <div class="empty-ico">${ICO.folder}</div>
+          <h2 class="d empty-title">Нет тренировочной программы</h2>
+          <p class="empty-sub">Создайте программу с тренировочными днями, чтобы начать записывать тренировки в зале.</p>
+          <button type="button" class="pb" style="margin-top:8px;max-width:260px" data-act="create-program" data-from="home">${ICO.plus}<span>Создать программу</span></button>
+          <button type="button" class="ob" style="max-width:260px;min-height:40px;font-size:14px" data-act="open-programs">Открыть «Мои программы»</button>
+        </div>`;
+    } else {
+      const isLight = prog.alternating && prog.currentWeek === 'light';
+      const dayIdx = Math.min(s.selectedDayIdx, Math.max(0, prog.days.length - 1));
+      const day = prog.days[dayIdx];
+      let progFooter = '';
+      if (prog.alternating) {
+        if (prog.passResolved === 0 && !aw) {
+          progFooter = `
+            <div class="prog-week-divider">
+              <div class="prog-week-meta"><span>Новый проход · ${prog.days.length} дн.</span><span>Смена до старта</span></div>
+              <div class="prog-seg">
+                <button type="button" class="prog-seg-btn ${!isLight ? 'active-heavy' : ''}" data-act="home-week" data-v="heavy">${renderLamp('heavy')}<span>Тяжёлая</span></button>
+                <button type="button" class="prog-seg-btn ${isLight ? 'active-light' : ''}" data-act="home-week" data-v="light">${renderLamp('light')}<span>Лёгкая</span></button>
+              </div>
+            </div>`;
+        } else {
+          const dots = prog.days.map((_, idx) => `<span class="prog-dot ${idx < prog.passResolved ? `done ${isLight ? 'light' : ''}` : (aw && !isOtherProg && idx === 0 ? 'active-run' : '')}"></span>`).join('');
+          progFooter = `
+            <div class="prog-week-divider">
+              <div class="prog-locked-row">
+                <span class="prog-locked-pill ${isLight ? 'is-light' : ''}">${ICO.lock}${renderLamp(prog.currentWeek)}<span>${weekFull(prog.currentWeek)}</span></span>
+                <span class="prog-dots tnum">${dots}<span style="margin-left:3px;font-weight:700">${prog.passResolved}/${prog.days.length}</span></span>
+              </div>
+            </div>`;
+        }
+      }
+
+      const chips = prog.days.map((d, idx) => {
+        const sel = idx === dayIdx;
+        const isRunningChip = aw && !isOtherProg && d.id === aw.dayId;
+        const cls = sel ? (aw ? 'selected browse-muted' : `selected ${isLight ? 'theme-light' : ''}`) : '';
+        return `<button type="button" class="f-day-chip ${cls}" data-act="home-day" data-v="${idx}"><span class="clamp-1">${esc(d.name)}</span>${isRunningChip ? '<span class="live-dot"></span>' : ''}</button>`;
+      }).join('');
+
+      const rows = day ? day.exercises.map((ex, i) => `
+        <div class="home-ex-row ${i === 0 ? 'no-top' : ''}">
+          <span class="d home-ex-idx">0${i + 1}</span>
+          <span class="home-ex-name clamp-2">${esc(ex.name)}</span>
+          <span class="tag ${isLight ? 'light-target' : ''}">${esc(ex.plan)}</span>
+        </div>`).join('') : '';
+
+      bodyHtml = `
+        ${heroHtml}
+        <div class="home-prog">
+          <button type="button" class="home-prog-btn" data-act="open-programs">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:12px;opacity:.9">Мои программы · ${s.programs.length}</div>
+              <div class="d home-prog-name clamp-2">${esc(prog.name)}</div>
+            </div>
+            ${ICO.chevR}
+          </button>
+          ${progFooter}
+        </div>
+        <div class="m d home-sec-title">${aw ? 'Дни программы · просмотр' : `Тренировочный день · ${prog.days.length}`}</div>
+        <div class="sc">${chips}</div>
+        <div class="cd home-ex-card">${rows}</div>
+        ${!aw
+          ? `<button type="button" class="pb ${isLight ? 'theme-light' : ''}" style="margin-top:12px" data-act="start-stub">Начать тренировку</button>`
+          : `<div class="browse-lock-note">Режим просмотра · чтобы начать новый день, завершите или отмените текущую тренировку</div>`}`;
+    }
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1"><span>Fitty</span></h1>
+        ${bodyHtml}
+      </div>
+      ${s.snack ? `<div class="f-snack"><span>${esc(s.snack)}</span></div>` : ''}
+      <nav class="f-nav">
+        <button type="button" class="f-nav-btn active">${ICO.home}<span>Главная</span></button>
+        <button type="button" class="f-nav-btn" title="История">${ICO.history}</button>
+        <button type="button" class="f-nav-btn" title="Настройки">${ICO.settings}</button>
+      </nav>
+      ${renderSheetHTML(s)}`;
+  }
+
+  /* ==================== MY PROGRAMS SCREEN (FINAL CANDIDATE) ==================== */
+  function renderProgramsHTML(s) {
+    const aw = s.activeWorkout;
+    const isSwitchLocked = !!(aw && s.activePolicy === 'lock');
+    const topBar = `
+      <div class="child-topbar">
+        <button type="button" class="f-back-btn" data-act="go-home" aria-label="Назад на Главную">${ICO.back}</button>
+        <h1 class="d child-title">Мои программы</h1>
+      </div>`;
+
+    if (s.programs.length === 0) {
+      return `
+        <div class="f-scroll-child">
+          ${topBar}
+          <div class="empty-box">
+            <div class="empty-ico">${ICO.folder}</div>
+            <h2 class="d empty-title">Программ пока нет</h2>
+            <p class="empty-sub">Создайте первую программу — добавьте тренировочные дни и упражнения.</p>
+            <button type="button" class="pb" style="margin-top:10px;max-width:260px" data-act="create-program" data-from="programs">${ICO.plus}<span>Создать программу</span></button>
+          </div>
+        </div>
+        ${s.snack ? `<div class="f-snack no-nav"><span>${esc(s.snack)}</span></div>` : ''}
+        ${renderSheetHTML(s)}`;
+    }
+
+    let bannerHtml = '';
+    if (aw) {
+      const awProg = getProgram(s, aw.programId);
+      const awProgName = awProg ? awProg.name : aw.programName;
+      bannerHtml = s.activePolicy === 'lock'
+        ? `<div class="active-workout-strip is-locked"><span style="margin-top:2px;flex:none">${ICO.lock}</span><div><strong>Идёт тренировка (${esc(aw.dayName)}).</strong> Сменить активную программу можно после завершения или отмены. Редактировать и создавать программы можно.</div></div>`
+        : `<div class="active-workout-strip"><span class="live-dot" style="margin-top:5px"></span><div><strong>Идёт тренировка</strong> в «${esc(awProgName)}». Можно переключить программу на Главной — текущая тренировка останется в Hero-карточке с пометкой.</div></div>`;
+    }
+
+    const cards = s.programs.map(p => {
+      const isSel = p.id === s.selectedProgramId;
+      const isRun = aw && aw.programId === p.id;
+      const lockedOther = isSwitchLocked && !isSel;
+      const isExp = s.expandedId === p.id;
+      const menuOpen = s.ctxMenu && s.ctxMenu.programId === p.id;
+      const daysSummary = p.days.map(d => d.name).join(' · ');
+
+      const drawerHtml = isExp ? `
+        <div class="pcard-drawer">
+          ${p.days.map(d => `
+            <div class="day-block">
+              <div class="day-block-head">
+                <span class="d day-block-title">${esc(d.name)}</span>
+                <span class="day-block-cnt tnum">${d.exercises.length} упр.</span>
+              </div>
+              ${d.exercises.map(ex => `
+                <div class="day-ex-row">
+                  <span class="day-ex-name">${esc(ex.name)}</span>
+                  <span class="day-ex-plan">${esc(ex.plan)}</span>
+                </div>`).join('')}
+            </div>`).join('')}
+        </div>` : '';
+
+      return `
+        <div class="pcard ${isSel ? 'selected' : ''} ${lockedOther ? 'locked-switch' : ''} ${isExp ? 'expanded' : ''}">
+          <div class="pcard-top">
+            <button type="button" class="pcard-left" data-act="select-program" data-id="${p.id}" aria-label="${isSel ? 'Выбрана на Главной' : 'Выбрать программу ' + esc(p.name)}">
+              <span class="pcard-radio">${isSel ? ICO.check : (lockedOther ? ICO.lock : '')}</span>
+            </button>
+            <button type="button" class="pcard-center" data-act="toggle-expand" data-id="${p.id}">
+              ${(isSel || isRun) ? `<span class="pcard-badges">${isSel ? '<span class="home-pill">На Главной</span>' : ''}${isRun ? '<span class="running-badge"><span class="live-dot"></span>Идёт тренировка</span>' : ''}</span>` : ''}
+              <span class="d pcard-name clamp-2">${esc(p.name)}</span>
+              <span class="pcard-meta tnum">
+                <span>${p.days.length} ${dayWord(p.days.length)} · ${totalExCount(p)} упр.</span>
+                ${p.alternating ? `<span>·</span><span style="display:inline-flex;align-items:center;gap:5px">${renderLamp(p.currentWeek)}${weekShort(p.currentWeek)} ${p.passResolved}/${p.days.length}</span>` : ''}
+              </span>
+              <span class="pcard-hint-row">
+                <span class="clamp-1">${isExp ? 'Свернуть состав дней' : esc(daysSummary)}</span>
+                <span class="pcard-chev">${ICO.chevD}</span>
+              </span>
+            </button>
+            <button type="button" class="pcard-right-btn ${menuOpen ? 'menu-open' : ''}" data-act="open-ctx" data-id="${p.id}" aria-label="Меню программы ${esc(p.name)}">
+              ${ICO.moreV}
+            </button>
+          </div>
+          ${drawerHtml}
+        </div>`;
+    }).join('');
+
+    let ctxHtml = '';
+    if (s.ctxMenu) {
+      const p = getProgram(s, s.ctxMenu.programId);
+      if (p) {
+        ctxHtml = `
+          <div class="ctx-backdrop" data-act="close-ctx"></div>
+          <div class="ctx-menu" style="top:${s.ctxMenu.top}px;right:${s.ctxMenu.right}px" role="menu">
+            <button type="button" class="ctx-item" data-act="edit-program" data-id="${p.id}" data-from="programs">
+              ${ICO.edit}<span>Редактировать</span>
+            </button>
+            <div class="ctx-sep"></div>
+            <button type="button" class="ctx-item danger" data-act="ask-delete" data-id="${p.id}">
+              ${ICO.trash}<span>Удалить</span>
+            </button>
+          </div>`;
+      }
+    }
+
+    return `
+      <div class="f-scroll-child has-sticky">
+        ${topBar}
+        ${bannerHtml}
+        <div class="prog-list">${cards}</div>
+      </div>
+      <div class="sticky-cta">
+        <button type="button" class="pb" data-act="create-program" data-from="programs">${ICO.plus}<span>Создать программу</span></button>
+      </div>
+      ${ctxHtml}
+      ${s.snack ? `<div class="f-snack no-nav"><span>${esc(s.snack)}</span></div>` : ''}
+      ${renderSheetHTML(s)}`;
+  }
+
+  /* ==================== EDITOR STUB ==================== */
+  function renderEditorHTML(s) {
+    const ed = s.editor;
+    if (!ed) return renderProgramsHTML(s);
+    const len = [...ed.name.trim()].length;
+    const over = len > 60;
+    const showCounter = len >= 48 || over;
+    const hasErr = over || !!ed.error;
+
+    return `
+      <div class="f-scroll-child has-sticky">
+        <div class="child-topbar">
+          <button type="button" class="f-back-btn" data-act="editor-back" aria-label="Назад">${ICO.back}</button>
+          <h1 class="d child-title">${ed.mode === 'create' ? 'Новая программа' : 'Редактор программы'}</h1>
+        </div>
+        ${s.activeWorkout ? `
+          <div class="active-workout-strip" style="margin-bottom:10px">
+            <span style="margin-top:1px;flex:none;color:var(--f-primary)">${ICO.info}</span>
+            <div>Сейчас идёт тренировка. Изменения применятся к будущим тренировкам — текущая сессия работает по своему снимку.</div>
+          </div>` : ''}
+        <div class="ed-field-card">
+          <div class="ed-lbl-row">
+            <label class="ed-lbl" for="ed-name-input">Название программы</label>
+            ${showCounter ? `<span class="ed-counter tnum ${over ? 'err' : ''}">${len} / 60</span>` : ''}
+          </div>
+          <input id="ed-name-input" class="ed-input ${hasErr ? 'err' : ''}" type="text" value="${esc(ed.name)}" placeholder="Например, Базовая силовая">
+          ${over ? '<div class="ed-err-msg">Максимум 60 символов — сократите название.</div>' : (ed.error ? `<div class="ed-err-msg">${esc(ed.error)}</div>` : '')}
+        </div>
+        <div class="ed-field-card">
+          <div class="ed-toggle-row">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--f-text)">Чередовать тяжёлые и лёгкие недели</div>
+              <div style="font-size:12px;color:var(--f-muted);margin-top:2px">Парные цели в редакторе дня</div>
+            </div>
+            <button type="button" class="f-switch ${ed.alternating ? 'on' : ''}" data-act="editor-toggle-alt" aria-label="Чередование недель"></button>
+          </div>
+        </div>
+        <div class="d sec-kicker"><span>Тренировочные дни</span><span>${ed.days.length}</span></div>
+        ${ed.days.map(d => `
+          <div class="ed-day-item">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:14.5px;font-weight:600;color:var(--f-text)" class="clamp-2">${esc(d.name)}</div>
+              <div style="font-size:12px;color:var(--f-dim);margin-top:2px">${d.exercises.length} упр.</div>
+            </div>
+            <span style="color:var(--f-dim)">${ICO.chevR}</span>
+          </div>`).join('')}
+      </div>
+      <div class="sticky-cta">
+        <button type="button" class="pb" data-act="editor-save">Сохранить программу</button>
+      </div>
+      ${renderSheetHTML(s)}`;
+  }
+
+  /* ==================== CONFIRMATION SHEETS (#1C231C) ==================== */
+  function renderSheetHTML(s) {
+    if (!s.sheet) return '';
+    const sh = s.sheet;
+    if (sh.type === 'delete_confirm') {
+      const p = getProgram(s, sh.programId);
+      if (!p) return '';
+      const isSel = p.id === s.selectedProgramId;
+      const nextProg = s.programs.find(x => x.id !== p.id) || null;
+      const isRun = s.activeWorkout && s.activeWorkout.programId === p.id;
+      const hc = p.historyCount || 0;
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Удалить программу?</h3>
+            <div class="f-sheet-summary">
+              <strong>${esc(p.name)}</strong>
+              <span style="font-size:12px;color:var(--f-muted)">${p.days.length} ${dayWord(p.days.length)} · ${totalExCount(p)} упр.</span>
+            </div>
+            <p>${hc > 0 ? `Завершённые тренировки (${hc}) останутся в Истории — накопленные подсказки по упражнениям не пропадут.` : 'История тренировок не затрагивается.'}${isSel && nextProg ? ` На Главной автоматически откроется «${esc(nextProg.name)}».` : isSel ? ' После удаления список программ станет пустым.' : ''}</p>
+            ${isRun ? `<p style="color:var(--f-on-amber-container)">Сейчас идёт тренировка по этой программе — она доработает по своему снимку и при завершении сохранится в Историю (или её можно отменить на Главной).</p>` : ''}
+            <button type="button" class="f-sheet-danger" data-act="confirm-delete" data-id="${p.id}">Удалить программу</button>
+            <button type="button" class="f-sheet-cancel" data-act="close-sheet">Оставить программу</button>
+          </div>
+        </div>`;
+    }
+    if (sh.type === 'switch_confirm') {
+      const aw = s.activeWorkout;
+      const target = getProgram(s, sh.programId);
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Переключить программу на Главной?</h3>
+            <div class="f-sheet-summary">
+              <strong>${esc(target ? target.name : '')}</strong>
+              <span style="font-size:12px;color:var(--f-muted)">Сейчас идёт: ${esc(aw ? aw.dayName : '')} (${esc(aw ? aw.programName : '')})</span>
+            </div>
+            <p>Текущая тренировка продолжит идти по своему снимку (отменить её можно на Главной), а для следующих тренировок на Главной откроется выбранная программа. История и проход недели прежней программы сохранятся.</p>
+            <button type="button" class="pb" data-act="confirm-switch" data-id="${sh.programId}">Переключить на Главной</button>
+            <button type="button" class="f-sheet-cancel" data-act="close-sheet">Оставить текущую</button>
+          </div>
+        </div>`;
+    }
+    if (sh.type === 'switch_locked') {
+      const aw = s.activeWorkout;
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Идёт тренировка</h3>
+            <div class="f-sheet-summary">
+              <strong>${esc(aw ? aw.dayName : 'Тренировка')}</strong>
+              <span style="font-size:12px;color:var(--f-muted)">${esc(aw ? aw.programName : '')} · ${aw ? aw.totalSets : 0} подходов</span>
+            </div>
+            <p>Сменить активную программу на Главной можно после того, как текущая тренировка будет завершена или отменена.</p>
+            <button type="button" class="pb" data-act="go-home">На Главную к тренировке</button>
+            <button type="button" class="f-sheet-cancel" data-act="close-sheet">Понятно</button>
+          </div>
+        </div>`;
+    }
+    if (sh.type === 'discard_editor') {
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Выйти без сохранения?</h3>
+            <p>Внесённые изменения в программе не сохранятся.</p>
+            <button type="button" class="pb" data-act="close-sheet">Продолжить редактирование</button>
+            <button type="button" class="f-sheet-danger" data-act="editor-discard">Выйти без сохранения</button>
+          </div>
+        </div>`;
+    }
+    if (sh.type === 'cancel_workout') {
+      const aw = s.activeWorkout;
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3>Отменить тренировку?</h3>
+            <div class="f-sheet-summary">
+              <strong>${esc(aw ? aw.dayName : '')}</strong>
+              <span style="font-size:12px;color:var(--f-muted)">Записано подходов: ${aw ? aw.totalSets : 0} · удалятся без сохранения в историю</span>
+            </div>
+            <button type="button" class="f-sheet-danger" data-act="confirm-cancel-workout">Отменить тренировку</button>
+            <button type="button" class="f-sheet-cancel" data-act="close-sheet">Оставить тренировку</button>
+          </div>
+        </div>`;
+    }
+    return '';
+  }
+
+  /* ==================== ACTIONS ==================== */
+  function openEditor(mode, programId, returnTo) {
+    if (mode === 'create') {
+      st.editor = {
+        mode: 'create', programId: null, returnTo, name: '', alternating: false,
+        days: [{ id: 'dn1', name: 'День A', exercises: [{ name: 'Жим штанги лёжа', plan: '3 × 8–12' }] }],
+        dirty: false, error: null
+      };
+    } else {
+      const p = getProgram(st, programId);
+      if (!p) return;
+      st.editor = {
+        mode: 'edit', programId: p.id, returnTo, name: p.name, alternating: p.alternating,
+        days: p.days.map(d => ({ ...d, exercises: d.exercises.map(e => ({ ...e })) })),
+        dirty: false, error: null
+      };
+    }
+    st.ctxMenu = null;
+    st.sheet = null;
+    st.screen = 'editor';
+    renderAll();
+  }
+
+  function handlePhoneAction(act, el) {
+    const id = el.dataset.id, val = el.dataset.v;
+    if (act === 'open-programs') { st.screen = 'programs'; st.ctxMenu = null; st.sheet = null; }
+    else if (act === 'go-home') { st.screen = 'home'; st.ctxMenu = null; st.sheet = null; }
+    else if (act === 'home-day') { st.selectedDayIdx = Number(val); }
+    else if (act === 'home-week') { const p = getSelectedProgram(st); if (p) p.currentWeek = val; }
+    else if (act === 'start-stub') { seedActiveWorkout(); setSnack('Запущена тренировка'); }
+    else if (act === 'resume-stub') { setSnack('Переход на экран активной тренировки'); }
+    else if (act === 'open-cancel-workout') { st.sheet = { type: 'cancel_workout' }; }
+    else if (act === 'confirm-cancel-workout') { st.activeWorkout = null; st.sheet = null; setSnack('Тренировка отменена'); }
+    else if (act === 'select-program') {
+      st.ctxMenu = null;
+      if (id === st.selectedProgramId) {
+        st.screen = 'home'; st.sheet = null;
+      } else if (st.activeWorkout && st.activePolicy === 'lock') {
+        st.sheet = { type: 'switch_locked' };
+      } else if (st.activeWorkout) {
+        st.sheet = { type: 'switch_confirm', programId: id };
+      } else {
+        st.selectedProgramId = id; st.selectedDayIdx = 0; st.screen = 'home'; st.sheet = null;
+        const p = getSelectedProgram(st);
+        if (p) setSnack(`Выбрана: ${p.name}`);
+      }
+    } else if (act === 'confirm-switch') {
+      st.selectedProgramId = id; st.selectedDayIdx = 0; st.screen = 'home'; st.sheet = null;
+      const p = getSelectedProgram(st);
+      if (p) setSnack(`Выбрана: ${p.name}`);
+    } else if (act === 'toggle-expand') {
+      st.ctxMenu = null;
+      st.expandedId = st.expandedId === id ? null : id;
+    } else if (act === 'open-ctx') {
+      if (st.ctxMenu && st.ctxMenu.programId === id) {
+        st.ctxMenu = null;
+      } else {
+        const phone = document.getElementById('live-phone');
+        const pr = phone.getBoundingClientRect();
+        const br = el.getBoundingClientRect();
+        const menuH = 104;
+        const spaceBelow = pr.bottom - br.bottom - 86;
+        const top = spaceBelow >= menuH
+          ? Math.round(br.bottom - pr.top + 4)
+          : Math.max(58, Math.round(br.top - pr.top - menuH - 4));
+        const right = Math.max(14, Math.round(pr.right - br.right));
+        st.ctxMenu = { programId: id, top, right };
+      }
+    } else if (act === 'close-ctx') {
+      st.ctxMenu = null;
+    } else if (act === 'ask-delete') {
+      st.ctxMenu = null;
+      st.sheet = { type: 'delete_confirm', programId: id };
+    } else if (act === 'confirm-delete') {
+      const idx = st.programs.findIndex(p => p.id === id);
+      if (idx >= 0) {
+        const removed = st.programs.splice(idx, 1)[0];
+        if (st.selectedProgramId === id) {
+          st.selectedProgramId = st.programs[0] ? st.programs[0].id : null;
+          st.selectedDayIdx = 0;
+        }
+        if (st.expandedId === id) st.expandedId = null;
+        setSnack(`Удалена: ${removed.name}`);
+      }
+      st.sheet = null;
+    } else if (act === 'edit-program') {
+      openEditor('edit', id, el.dataset.from || 'programs'); return;
+    } else if (act === 'create-program') {
+      openEditor('create', null, el.dataset.from || 'programs'); return;
+    } else if (act === 'editor-toggle-alt') {
+      if (st.editor) { st.editor.alternating = !st.editor.alternating; st.editor.dirty = true; }
+    } else if (act === 'editor-back') {
+      if (st.editor && st.editor.dirty) st.sheet = { type: 'discard_editor' };
+      else if (st.editor) { st.screen = st.editor.returnTo; st.editor = null; }
+    } else if (act === 'editor-discard') {
+      const ret = st.editor ? st.editor.returnTo : 'programs';
+      st.editor = null; st.sheet = null; st.screen = ret;
+    } else if (act === 'editor-save') {
+      if (!st.editor) return;
+      const trimmed = st.editor.name.trim(), len = [...trimmed].length;
+      if (!trimmed) st.editor.error = 'Введите название программы';
+      else if (len > 60) st.editor.error = 'Максимум 60 символов';
+      else {
+        if (st.editor.mode === 'create') {
+          const newId = 'p_' + Date.now();
+          st.programs.push({ id: newId, name: trimmed, alternating: st.editor.alternating, currentWeek: 'heavy', passResolved: 0, days: st.editor.days });
+          if (!st.selectedProgramId) st.selectedProgramId = newId;
+          setSnack(`Создана «${trimmed}»`);
+        } else {
+          const p = getProgram(st, st.editor.programId);
+          if (p) { p.name = trimmed; p.alternating = st.editor.alternating; setSnack('Программа сохранена'); }
+        }
+        const ret = st.editor.returnTo;
+        st.editor = null; st.sheet = null; st.screen = ret;
+      }
+    } else if (act === 'close-sheet') {
+      st.sheet = null;
+    }
+    renderAll();
+  }
+
+  /* ==================== RENDERERS ==================== */
+  function renderLive() {
+    const phone = document.getElementById('live-phone');
+    const prevScroll = phone.querySelector('.f-scroll-child, .f-scroll-home')?.scrollTop || 0;
+    phone.className = 'phone' + (st.width === 360 ? ' w360' : '');
+    let html = '';
+    if (st.screen === 'home') html = renderHomeHTML(st);
+    else if (st.screen === 'programs') html = renderProgramsHTML(st);
+    else html = renderEditorHTML(st);
+    phone.innerHTML = html;
+    const sc = phone.querySelector('.f-scroll-child, .f-scroll-home');
+    if (sc && prevScroll) sc.scrollTop = prevScroll;
+
+    const edInput = phone.querySelector('#ed-name-input');
+    if (edInput) {
+      edInput.addEventListener('input', e => {
+        if (!st.editor) return;
+        st.editor.name = e.target.value.replace(/[\r\n]+/g, ' ');
+        st.editor.dirty = true; st.editor.error = null;
+        const len = [...st.editor.name.trim()].length, over = len > 60;
+        const lblRow = phone.querySelector('.ed-lbl-row');
+        let cnt = phone.querySelector('.ed-counter');
+        if (len >= 48 || over) {
+          if (!cnt) { cnt = document.createElement('span'); lblRow.appendChild(cnt); }
+          cnt.className = 'ed-counter tnum' + (over ? ' err' : '');
+          cnt.textContent = `${len} / 60`;
+        } else if (cnt) cnt.remove();
+        e.target.classList.toggle('err', over);
+      });
+    }
+
+    const cap = document.getElementById('phone-caption');
+    cap.textContent = st.screen === 'programs'
+      ? `Финальный кандидат (${st.width} dp) · тапни по правой зоне ⋮, чтобы открыть контекстное меню`
+      : st.screen === 'home'
+        ? 'Утверждённая Главная · нажмите на зелёную карточку для перехода в «Мои программы»'
+        : 'Редактор программы (заглушка #119)';
+  }
+
+  function renderInspector() {
+    document.getElementById('ctrl-screen').innerHTML = [
+      ['home', 'Главная'], ['programs', 'Мои программы'], ['editor', 'Редактор']
+    ].map(([k, l]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${l}</button>`).join('');
+
+    document.getElementById('ctrl-dataset').innerHTML = [
+      ['multi', 'Несколько (4)'], ['single', 'Одна (1)'], ['long', 'Длинные названия (60)'], ['empty', 'Пусто (0)']
+    ].map(([k, l]) => `<button type="button" class="cbtn ${st.dataset === k ? 'active' : ''}" data-host="dataset" data-v="${k}">${l}</button>`).join('');
+
+    document.getElementById('ctrl-workout').innerHTML = [
+      ['off', 'Нет активной'], ['on', 'Идёт тренировка']
+    ].map(([k, l]) => `<button type="button" class="cbtn ${(!!st.activeWorkout === (k === 'on')) ? 'active' : ''}" data-host="workout" data-v="${k}">${l}</button>`).join('');
+
+    document.getElementById('row-policy').classList.toggle('hidden', !st.activeWorkout);
+    document.getElementById('ctrl-policy').innerHTML = [
+      ['allow', 'Разрешить (пометка в Hero #105)'], ['lock', 'Заблокировать (как неделю)']
+    ].map(([k, l]) => `<button type="button" class="cbtn ${st.activePolicy === k ? 'active' : ''}" data-host="policy" data-v="${k}">${l}</button>`).join('');
+
+    const sel = getSelectedProgram(st);
+    const aw = st.activeWorkout;
+    document.getElementById('state-table').innerHTML = [
+      ['Выбрана на Главной', sel ? sel.name : '— (нет программ)'],
+      ['Раскрыта (аккордеон)', st.expandedId ? (getProgram(st, st.expandedId)?.name || '—') : 'Свёрнуты все'],
+      ['Контекстное меню ⋮', st.ctxMenu ? (getProgram(st, st.ctxMenu.programId)?.name || '—') : 'Закрыто'],
+      ['Активная тренировка', aw ? `${aw.dayName} (${st.activePolicy === 'allow' ? 'переключение разрешено' : 'переключение 🔒'})` : 'Нет']
+    ].map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('');
+  }
+
+  function makeBoardState(ov) {
+    const base = {
+      programs: clonePrograms(DATASETS[ov.dataset || 'multi']),
+      selectedProgramId: null, selectedDayIdx: 0, expandedId: ov.expandedId || null,
+      activeWorkout: null, activePolicy: ov.activePolicy || 'allow',
+      ctxMenu: ov.ctxMenu || null, sheet: ov.sheet || null, snack: null
+    };
+    base.selectedProgramId = base.programs[0] ? base.programs[0].id : null;
+    if (ov.activeWorkout && base.programs[0]) {
+      const p = base.programs[0], d = p.days[0];
+      base.activeWorkout = { programId: p.id, programName: p.name, dayId: d.id, dayName: d.name, week: p.alternating ? p.currentWeek : null, exIdx: 1, exTotal: d.exercises.length, exName: d.exercises[1].name, totalSets: 5, restLeft: '1:18' };
+    }
+    return base;
+  }
+
+  function renderBoard() {
+    const board = document.getElementById('view-board');
+    const wCls = st.width === 360 ? ' w360' : '';
+    const cards = [
+      {
+        title: 'Основной вид · Аккордеон + контекстное меню ⋮',
+        note: 'Вторая программа раскрыта, на первой открыто контекстное меню справа',
+        jump: { screen: 'programs', dataset: 'multi', openCtx: 'p1' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'multi', expandedId: 'p2', ctxMenu: { programId: 'p1', top: 154, right: 20 } }))
+      },
+      {
+        title: 'Длинные названия (60 симв., включая без пробелов)',
+        note: `Симметричные левая и правая зоны на ${st.width} dp без наползания`,
+        jump: { screen: 'programs', dataset: 'long' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'long' }))
+      },
+      {
+        title: 'Одна программа и пустой список (0)',
+        note: 'Пустой список со спокойным плейсхолдером и кнопкой создания',
+        jump: { screen: 'programs', dataset: 'empty' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'empty' }))
+      },
+      {
+        title: 'Подтверждение удаления программы',
+        note: 'Шторка #1C231C после нажатия «Удалить» в контекстном меню',
+        jump: { screen: 'programs', dataset: 'multi', deleteSheet: 'p1' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'multi', sheet: { type: 'delete_confirm', programId: 'p1' } }))
+      },
+      {
+        title: 'Активная тренировка · Переключение разрешено',
+        note: 'Живая точка на текущей программе; переключение оставляет пометку в Hero (#105)',
+        jump: { screen: 'programs', dataset: 'multi', workout: true, policy: 'allow' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'multi', activeWorkout: true, activePolicy: 'allow' }))
+      },
+      {
+        title: 'Активная тренировка · Переключение заблокировано',
+        note: 'Левая зона других программ под замком 🔒; аккордеон и ⋮ доступны',
+        jump: { screen: 'programs', dataset: 'multi', workout: true, policy: 'lock' },
+        html: renderProgramsHTML(makeBoardState({ dataset: 'multi', activeWorkout: true, activePolicy: 'lock' }))
+      }
+    ];
+
+    board.innerHTML = `
+      <div>
+        <div class="board-section-head">
+          <h2>«Мои программы» — финальный кандидат (${st.width} dp)</h2>
+          <span>Левая зона = выбор · Центр = аккордеон дней · Правая зона ⋮ = контекстное меню</span>
+        </div>
+        <div class="board-grid" style="margin-top:12px">
+          ${cards.map(c => `
+            <div class="board-card">
+              <div class="board-card-cap">
+                <span class="board-card-title">${c.title}</span>
+                <span class="board-card-note">${c.note}</span>
+                <button type="button" class="board-card-jump" data-jump='${JSON.stringify(c.jump)}'>Открыть в интерактиве →</button>
+              </div>
+              <div class="phone${wCls}" style="pointer-events:none">${c.html}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function renderAll() {
+    document.getElementById('tab-interactive').classList.toggle('active', st.mode === 'interactive');
+    document.getElementById('tab-board').classList.toggle('active', st.mode === 'board');
+    document.getElementById('w-390').classList.toggle('active', st.width === 390);
+    document.getElementById('w-360').classList.toggle('active', st.width === 360);
+    document.getElementById('view-interactive').classList.toggle('hidden', st.mode !== 'interactive');
+    document.getElementById('view-board').classList.toggle('hidden', st.mode !== 'board');
+    if (st.mode === 'interactive') { renderLive(); renderInspector(); } else renderBoard();
+  }
+
+  document.getElementById('live-phone').addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]');
+    if (btn) handlePhoneAction(btn.dataset.act, btn);
+  });
+
+  document.querySelector('.inspector').addEventListener('click', e => {
+    const btn = e.target.closest('[data-host]');
+    if (!btn) return;
+    const h = btn.dataset.host, v = btn.dataset.v;
+    st.ctxMenu = null;
+    if (h === 'screen') {
+      if (v === 'editor') { const p = getSelectedProgram(st); openEditor(p ? 'edit' : 'create', p ? p.id : null, 'programs'); return; }
+      st.screen = v; st.sheet = null; renderAll();
+    } else if (h === 'dataset') { applyDataset(v); renderAll(); }
+    else if (h === 'workout') {
+      if (v === 'on') { if (st.dataset === 'empty') applyDataset('multi'); seedActiveWorkout(); }
+      else st.activeWorkout = null;
+      st.sheet = null; renderAll();
+    } else if (h === 'policy') {
+      st.activePolicy = v;
+      if (v === 'lock' && st.activeWorkout) st.selectedProgramId = st.activeWorkout.programId;
+      st.sheet = null; renderAll();
+    }
+  });
+
+  document.getElementById('view-board').addEventListener('click', e => {
+    const btn = e.target.closest('[data-jump]');
+    if (!btn) return;
+    const j = JSON.parse(btn.dataset.jump);
+    st.mode = 'interactive';
+    applyDataset(j.dataset || 'multi');
+    if (j.workout) seedActiveWorkout(); else st.activeWorkout = null;
+    if (j.policy) st.activePolicy = j.policy;
+    st.screen = j.screen || 'programs';
+    st.sheet = j.deleteSheet ? { type: 'delete_confirm', programId: j.deleteSheet } : null;
+    st.ctxMenu = j.openCtx ? { programId: j.openCtx, top: 154, right: 20 } : null;
+    renderAll();
+  });
+
+  document.getElementById('tab-interactive').addEventListener('click', () => { st.mode = 'interactive'; renderAll(); });
+  document.getElementById('tab-board').addEventListener('click', () => { st.mode = 'board'; renderAll(); });
+  document.getElementById('w-390').addEventListener('click', () => { st.width = 390; renderAll(); });
+  document.getElementById('w-360').addEventListener('click', () => { st.width = 360; renderAll(); });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
