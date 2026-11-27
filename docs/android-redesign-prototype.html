@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #100, #101, #102, #104, #105, #106, #113, #114, #115/#116, #117/#118, #119.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #100, #101, #102, #104, #105, #106, #107, #113, #114, #115/#116, #117/#118, #119.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2428,10 +2428,14 @@
 
     const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span>${s.undoSnap ? '<button class="f-snack-undo" data-act="undo-snack">Отменить</button>' : ''}</div>` : '';
 
-    return `
-      <div class="f-scroll-home">
-        <h1 class="d home-h1"><span>Fitty</span></h1>
-        ${heroHtml}
+    const homeMainHtml = !selProg ? `
+        <div class="mp-empty" style="min-height:430px">
+          <div class="mp-empty-ico">${ICO.mpFolder}</div>
+          <h2 class="d" style="margin:0;font-size:20px;line-height:1.15">Нет тренировочной программы</h2>
+          <p class="m" style="margin:0;font-size:13px;max-width:270px;line-height:1.42">Создайте программу с тренировочными днями, чтобы начать записывать тренировки.</p>
+          <button type="button" class="pb" style="margin-top:8px;max-width:260px" data-act="mp-create">${ICO.mpPlus}<span>Создать программу</span></button>
+          <button type="button" class="ob" style="max-width:260px;min-height:40px;font-size:14px" data-act="go-screen" data-v="programs">Открыть «Мои программы»</button>
+        </div>` : `
         <div class="home-prog">
           <button type="button" class="home-prog-top-btn" data-act="go-screen" data-v="programs">
             <div style="min-width:0;flex:1">
@@ -2446,7 +2450,13 @@
         <div class="m d home-sec-title">${hasActive ? 'Дни программы · просмотр' : s.alternating ? `Тренировочный день · ${p.todo} осталось` : `Тренировочный день · ${DAYS.length}`}</div>
         <div class="sc">${chips}</div>
         <div class="cd home-ex-card">${cardHead}${rows}</div>
-        ${bottomActionHtml}
+        ${bottomActionHtml}`;
+
+    return `
+      <div class="f-scroll-home">
+        <h1 class="d home-h1"><span>Fitty</span></h1>
+        ${heroHtml}
+        ${homeMainHtml}
       </div>
       ${snackHtml}
       <nav class="f-nav">
@@ -3584,7 +3594,7 @@
 
         <button type="button" class="ob" style="margin-top:4px">+ Добавить день</button>
       </div>
-      <div class="pe-foot"><button type="button" class="pb" data-act="go-screen" data-v="${s.peReturnTo || 'home'}">Сохранить программу</button></div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="pe-save">Сохранить программу</button></div>
       ${ruleSheet}
     `;
   }
@@ -3984,10 +3994,28 @@
         else if (act === 'mp-edit') {
           const target = (st.programs || []).find(x => x.id === v);
           if (target) { st.progEditor.programName = target.name; st.alternating = !!target.alternating; }
-          st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
+          st.peEditingProgramId = v; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
         }
         else if (act === 'mp-create') {
-          st.progEditor.programName = ''; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
+          st.progEditor.programName = ''; st.peEditingProgramId = '__new__'; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
+        }
+        else if (act === 'pe-save') {
+          const trimmed = (st.progEditor.programName || '').trim();
+          if (!trimmed || [...trimmed].length > 60) { st.snack = { text: !trimmed ? 'Введите название программы' : 'Название не длиннее 60 символов' }; }
+          else {
+            if (st.peEditingProgramId === '__new__') {
+              const nid = 'p_' + Date.now();
+              st.programs.push({ id: nid, name: trimmed, longName: trimmed, alternating: !!st.alternating, currentWeek: 'heavy', passResolved: 0, historyCount: 0, days: [{ name: 'День A', exercises: [{ name: 'Жим штанги лёжа', plan: '3 × 8–12' }] }] });
+              if (!st.selectedProgramId) st.selectedProgramId = nid;
+              st.snack = { text: `Создана «${trimmed}»` };
+            } else if (st.peEditingProgramId) {
+              const target = (st.programs || []).find(x => x.id === st.peEditingProgramId);
+              if (target) { target.name = trimmed; target.longName = trimmed; target.alternating = !!st.alternating; }
+              st.snack = { text: 'Программа сохранена' };
+            }
+            st.peEditingProgramId = null;
+            st.screen = st.peReturnTo || 'home';
+          }
         }
         else if (act === 'mp-ask-del') { st.mpCtxMenu = null; st.mpSheet = { type: 'delete_confirm', programId: v }; }
         else if (act === 'mp-confirm-del') {
@@ -4498,14 +4526,14 @@
 
   function renderLive() {
     const phone = document.getElementById('phone-live');
-    const prevPeScroll = phone.querySelector('.pe-scroll');
-    const savedPeTop = prevPeScroll ? prevPeScroll.scrollTop : 0;
+    const prevScrollEl = phone.querySelector('.pe-scroll, .mp-scroll');
+    const savedScrollTop = prevScrollEl ? prevScrollEl.scrollTop : 0;
     const prevScreen = phone.dataset.screen;
     phone.dataset.screen = st.screen;
     phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
     phone.innerHTML = renderPhoneContent(st);
-    const nextPeScroll = phone.querySelector('.pe-scroll');
-    if (nextPeScroll && prevScreen === st.screen) nextPeScroll.scrollTop = savedPeTop;
+    const nextScrollEl = phone.querySelector('.pe-scroll, .mp-scroll');
+    if (nextScrollEl && prevScreen === st.screen) nextScrollEl.scrollTop = savedScrollTop;
     bindPhoneEvents(phone);
     renderInspector();
   }
