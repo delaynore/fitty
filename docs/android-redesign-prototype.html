@@ -1569,6 +1569,12 @@
     play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13l11-6.5z"/></svg>',
     stopSq: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>',
     trendUp: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
+    mpMoreV: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>',
+    mpChevD: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    mpEdit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    mpTrash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>',
+    mpPlus: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    mpFolder: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h5l2 2h9a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1Z"/><path d="M12 11v5M9.5 13.5h5"/></svg>',
     trendDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></svg>',
     home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>',
     history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -1899,11 +1905,52 @@
     </svg>`;
   }
 
+  const INITIAL_PROGRAMS = [
+    {
+      id: 'p1', name: 'Базовая силовая', longName: 'Базовая силовая программа на 3 дня с чередованием тяжёлых н.',
+      alternating: true, currentWeek: 'heavy', passResolved: 1, historyCount: 14,
+      days: [
+        { name: 'День A', exercises: [{ name: 'Жим штанги лёжа', plan: '3 × 8–12' }, { name: 'Тяга штанги в наклоне', plan: '3 × 8–12' }, { name: 'Жим гантелей на наклонной', plan: '3 × 10' }, { name: 'Планка', plan: '3 × 1:00' }] },
+        { name: 'День B', exercises: [{ name: 'Присед со штангой на груди', plan: '3 × 8–10' }, { name: 'Румынская тяга с гантелями', plan: '3 × 8–10' }, { name: 'Подъём на носки стоя', plan: '3 × 12–15' }] },
+        { name: 'День C', exercises: [{ name: 'Становая тяга классическая', plan: '3 × 1–3' }, { name: 'Подтягивания', plan: '4 × 8–12 повт.' }, { name: 'Фермерская прогулка', plan: '4 × 40 м' }, { name: 'Бег', plan: '3 × 1 км' }] }
+      ]
+    },
+    {
+      id: 'p2', name: 'Фулбоди 2 раза в неделю', longName: 'ГипертрофияВерхНизБезПробеловДляПроверкиПереносаНа360dpМакс60',
+      alternating: false, currentWeek: 'heavy', passResolved: 0, historyCount: 5,
+      days: [
+        { name: 'День 1', exercises: [{ name: 'Приседания в Смите', plan: '3 × 8–12' }, { name: 'Жим гантелей на наклонной', plan: '3 × 8–12' }, { name: 'Тяга верхнего блока', plan: '3 × 10–12' }] },
+        { name: 'День 2', exercises: [{ name: 'Становая тяга', plan: '3 × 5' }, { name: 'Отжимания на брусьях', plan: '3 × 8–10' }, { name: 'Подъём ног в висе', plan: '3 × 12' }] }
+      ]
+    },
+    {
+      id: 'p3', name: 'Верх / Низ · гипертрофия', longName: 'Короткая поддерживающая программа на время командировок (4 дн)',
+      alternating: true, currentWeek: 'light', passResolved: 2, historyCount: 8,
+      days: [
+        { name: 'Верх 1', exercises: [{ name: 'Жим лёжа', plan: '4 × 6–8' }, { name: 'Тяга горизонтального блока', plan: '4 × 8–10' }] },
+        { name: 'Низ 1', exercises: [{ name: 'Фронтальный присед', plan: '4 × 6–8' }, { name: 'Сгибания ног лёжа', plan: '3 × 10–12' }] },
+        { name: 'Верх 2', exercises: [{ name: 'Армейский жим', plan: '3 × 8–10' }, { name: 'Подтягивания обратным хватом', plan: '3 × 8–10' }] },
+        { name: 'Низ 2', exercises: [{ name: 'Болгарские выпады', plan: '3 × 8–10' }, { name: 'Ягодичный мост', plan: '3 × 10–12' }] }
+      ]
+    },
+    {
+      id: 'p4', name: 'Домашняя с гантелями', longName: 'Домашняя программа с гантелями и собственным весом на 2 дня',
+      alternating: false, currentWeek: 'heavy', passResolved: 0, historyCount: 0,
+      days: [
+        { name: 'Круг A', exercises: [{ name: 'Кубковые приседания', plan: '3 × 12' }, { name: 'Отжимания от пола', plan: '3 × 15' }] },
+        { name: 'Круг B', exercises: [{ name: 'Тяга гантели одной рукой', plan: '3 × 12' }, { name: 'Планка', plan: '3 × 0:45' }] }
+      ]
+    }
+  ];
+  const cloneProgramList = list => list.map(p => ({ ...p, days: p.days.map(d => ({ ...d, exercises: d.exercises.map(e => ({ ...e })) })) }));
+
   function createInitialState() {
     return {
       hostMode: 'interactive', width: 390, screen: 'home', preset: 'mid_heavy',
       alternating: true, passNumber: 2, proposedWeek: 'heavy', currentWeek: 'heavy',
       dayStatus: { A: 'todo', B: 'done', C: 'todo' }, selectedDay: 'A', activeWorkoutDayId: null,
+      programs: cloneProgramList(INITIAL_PROGRAMS), selectedProgramId: 'p1', activeWorkoutProgramId: 'p1',
+      mpExpandedId: null, mpCtxMenu: null, mpSheet: null, peReturnTo: 'home',
       longNames: false, checkinEnabled: true, loadPromptsEnabled: true,
       checkinAnswer: 'none', easeMode: 'none', sessionMarkedLightened: false,
       exIndex: 0,
@@ -2164,10 +2211,13 @@
   function renderHomeHTML(s) {
     const p = passInfo(s), locked = isWeekLocked(s), wk = activeWeekKey(s), isLight = wk === 'light';
     const day = getDay(s), daySt = s.alternating ? (s.dayStatus[day.id] || 'todo') : 'todo';
-    const progName = s.longNames ? 'Базовая силовая программа на 3 дня с чередованием нагрузки' : 'Базовая силовая';
+    const selProg = (s.programs || []).find(x => x.id === s.selectedProgramId) || (s.programs || [])[0] || null;
+    const progName = selProg ? mpProgName(selProg, s) : (s.longNames ? 'Базовая силовая программа на 3 дня с чередованием нагрузки' : 'Базовая силовая');
     const hasActive = !!s.activeWorkoutDayId;
     const activeDay = hasActive ? (DAYS.find(d => d.id === s.activeWorkoutDayId) || DAYS[0]) : null;
-    const isViewingActive = hasActive && day.id === activeDay.id;
+    const isOtherProg = hasActive && s.activeWorkoutProgramId && s.activeWorkoutProgramId !== s.selectedProgramId;
+    const activeProgObj = hasActive ? ((s.programs || []).find(x => x.id === s.activeWorkoutProgramId) || null) : null;
+    const isViewingActive = hasActive && !isOtherProg && day.id === activeDay.id;
     const activeIsEased = s.easeMode !== 'none' || s.sessionMarkedLightened;
 
     let heroHtml = '';
@@ -2191,8 +2241,9 @@
       const loadParts = [];
       if (s.alternating) loadParts.push(weekLabel(wk));
       if (activeIsEased) loadParts.push('Облегчена');
-      const loadLine = (lamps || loadParts.length)
-        ? `<div class="a2-load-row">${lamps}${loadParts.length ? `<span>${loadParts.join(' · ')}</span>` : ''}</div>`
+      const otherBadge = isOtherProg ? `<span class="a2-other-prog">из «${activeProgObj ? mpProgName(activeProgObj, s) : 'Базовая силовая'}»</span>` : '';
+      const loadLine = (lamps || loadParts.length || otherBadge)
+        ? `<div class="a2-load-row">${lamps}${loadParts.length ? `<span>${loadParts.join(' · ')}</span>` : ''}${otherBadge}</div>`
         : '';
 
       let timerTile = '';
@@ -2382,13 +2433,13 @@
         <h1 class="d home-h1"><span>Fitty</span></h1>
         ${heroHtml}
         <div class="home-prog">
-          <div class="home-prog-top">
+          <button type="button" class="home-prog-top-btn" data-act="go-screen" data-v="programs">
             <div style="min-width:0;flex:1">
               <div style="font-size:12px">Мои программы</div>
               <div class="d home-prog-name">${progName}</div>
             </div>
             ${ICO.chevR}
-          </div>
+          </button>
           ${progFooter}
         </div>
         ${rcHtml}
@@ -3469,7 +3520,7 @@
     return `
       <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
       <div class="pe-top">
-        <button type="button" class="pe-back" data-act="go-screen" data-v="home" aria-label="Назад">${ICO.back}</button>
+        <button type="button" class="pe-back" data-act="go-screen" data-v="${s.peReturnTo || 'home'}" aria-label="Назад">${ICO.back}</button>
         ${s.alternating ? `<span class="pe-top-tag">${renderLamps('heavy', false)}${renderLamps('light', false)}Тяжёлая / Лёгкая</span>` : ''}
       </div>
       <div class="pe-scroll">
@@ -3533,9 +3584,116 @@
 
         <button type="button" class="ob" style="margin-top:4px">+ Добавить день</button>
       </div>
-      <div class="pe-foot"><button type="button" class="pb" data-act="go-screen" data-v="home">Сохранить программу</button></div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="go-screen" data-v="${s.peReturnTo || 'home'}">Сохранить программу</button></div>
       ${ruleSheet}
     `;
+  }
+
+  /* ==================== APPROVED MY PROGRAMS SCREEN (#107) ==================== */
+  function mpProgName(p, s) { return s.longNames && p.longName ? p.longName : p.name; }
+  function mpTotalEx(p) { return (p.days || []).reduce((sum, d) => sum + (d.exercises || []).length, 0); }
+  function renderProgramsHTML(s) {
+    const progs = s.programs || [];
+    const hasActive = !!s.activeWorkoutDayId;
+    const activeProg = hasActive ? (progs.find(p => p.id === s.activeWorkoutProgramId) || progs[0]) : null;
+    const topBar = `
+      <div class="mp-topbar">
+        <button type="button" class="f-back-btn" data-act="go-screen" data-v="home" aria-label="Назад на Главную">${ICO.back}</button>
+        <h1 class="d mp-title">Мои программы</h1>
+      </div>`;
+
+    let sheetHtml = '';
+    if (s.mpSheet && s.mpSheet.type === 'switch_confirm') {
+      const target = progs.find(p => p.id === s.mpSheet.programId);
+      const actDay = DAYS.find(d => d.id === s.activeWorkoutDayId) || DAYS[0];
+      sheetHtml = `<div class="f-scrim" data-act="mp-close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Переключить программу на Главной?</h3><div class="f-sheet-summary"><strong>${target ? mpProgName(target, s) : ''}</strong><span class="f-sheet-summary-sub">Сейчас идёт: ${actDay.name} (${activeProg ? mpProgName(activeProg, s) : 'Базовая силовая'})</span></div><p>Текущая тренировка продолжит идти по своему снимку (отменить её можно на Главной), а для следующих тренировок на Главной откроется выбранная программа. История и проход недели прежней программы сохранятся.</p><button type="button" class="pb" data-act="mp-confirm-switch" data-v="${s.mpSheet.programId}">Переключить на Главной</button><button type="button" class="f-sheet-cancel" data-act="mp-close-sheet">Оставить текущую</button></div></div>`;
+    } else if (s.mpSheet && s.mpSheet.type === 'delete_confirm') {
+      const target = progs.find(p => p.id === s.mpSheet.programId);
+      if (target) {
+        const isSel = target.id === s.selectedProgramId;
+        const nextP = progs.find(x => x.id !== target.id) || null;
+        const isRun = hasActive && s.activeWorkoutProgramId === target.id;
+        const hc = target.historyCount || 0;
+        sheetHtml = `<div class="f-scrim" data-act="mp-close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Удалить программу?</h3><div class="f-sheet-summary"><strong>${mpProgName(target, s)}</strong><span class="f-sheet-summary-sub">${pluralRu(target.days.length, 'день', 'дня', 'дней')} · ${mpTotalEx(target)} упр.</span></div><p>${hc > 0 ? `Завершённые тренировки (${hc}) останутся в Истории — накопленные подсказки по упражнениям не пропадут.` : 'История тренировок не затрагивается.'}${isSel && nextP ? ` На Главной автоматически откроется «${mpProgName(nextP, s)}».` : isSel ? ' После удаления список программ станет пустым.' : ''}</p>${isRun ? '<p style="color:var(--f-on-amber-container)">Сейчас идёт тренировка по этой программе — она доработает по своему снимку и при завершении сохранится в Историю (или её можно отменить на Главной).</p>' : ''}<button type="button" class="f-sheet-danger" data-act="mp-confirm-del" data-v="${target.id}">Удалить программу</button><button type="button" class="f-sheet-cancel" data-act="mp-close-sheet">Оставить программу</button></div></div>`;
+      }
+    }
+
+    if (progs.length === 0) {
+      return `
+        <div class="mp-scroll" style="padding-bottom:28px">
+          ${topBar}
+          <div class="mp-empty">
+            <div class="mp-empty-ico">${ICO.mpFolder}</div>
+            <h2 class="d" style="margin:0;font-size:20px;line-height:1.15">Программ пока нет</h2>
+            <p class="m" style="margin:0;font-size:13px;max-width:270px;line-height:1.42">Создайте первую программу — добавьте тренировочные дни и упражнения.</p>
+            <button type="button" class="pb" style="margin-top:8px;max-width:260px" data-act="mp-create">${ICO.mpPlus}<span>Создать программу</span></button>
+          </div>
+        </div>
+        ${s.snack ? `<div class="f-snack no-nav"><span>${s.snack.text}</span></div>` : ''}
+        ${sheetHtml}`;
+    }
+
+    const activeBanner = hasActive
+      ? `<div class="mp-active-strip"><span class="live-dot" style="margin-top:5px"></span><div><strong>Идёт тренировка</strong> в «${activeProg ? mpProgName(activeProg, s) : 'Базовая силовая'}». Можно переключить программу на Главной (с подтверждением) или редактировать планы для будущих тренировок.</div></div>`
+      : '';
+
+    const cards = progs.map(p => {
+      const isSel = p.id === s.selectedProgramId;
+      const isRun = hasActive && s.activeWorkoutProgramId === p.id;
+      const isExp = s.mpExpandedId === p.id;
+      const menuOpen = s.mpCtxMenu && s.mpCtxMenu.programId === p.id;
+      const daysSummary = p.days.map(d => d.name).join(' · ');
+      const drawer = isExp ? `<div class="mp-drawer">${p.days.map(d => `<div class="mp-day-block"><div class="mp-day-head"><span class="d mp-day-title">${d.name}</span><span class="mp-day-cnt">${d.exercises.length} упр.</span></div>${d.exercises.map(ex => `<div class="mp-ex-row"><span class="mp-ex-name">${ex.name}</span><span class="mp-ex-plan">${ex.plan}</span></div>`).join('')}</div>`).join('')}</div>` : '';
+      return `
+        <div class="mp-card ${isSel ? 'selected' : ''} ${isExp ? 'expanded' : ''}">
+          <div class="mp-top">
+            <button type="button" class="mp-left" data-act="mp-select" data-v="${p.id}" aria-label="${isSel ? 'Выбрана на Главной' : 'Выбрать программу ' + mpProgName(p, s)}">
+              <span class="mp-radio">${isSel ? ICO.checkSm : ''}</span>
+            </button>
+            <button type="button" class="mp-center" data-act="mp-toggle-exp" data-v="${p.id}">
+              ${(isSel || isRun) ? `<span class="mp-badges">${isSel ? '<span class="mp-home-pill">На Главной</span>' : ''}${isRun ? '<span class="mp-run-badge"><span class="live-dot"></span>Идёт тренировка</span>' : ''}</span>` : ''}
+              <span class="d mp-name">${mpProgName(p, s)}</span>
+              <span class="mp-meta">
+                <span>${pluralRu(p.days.length, 'день', 'дня', 'дней')} · ${mpTotalEx(p)} упр.</span>
+                ${p.alternating ? `<span>·</span><span style="display:inline-flex;align-items:center;gap:5px">${renderLamps(p.currentWeek, false)}${weekShort(p.currentWeek)} ${p.passResolved}/${p.days.length}</span>` : ''}
+              </span>
+              <span class="mp-hint">
+                <span class="mp-hint-txt">${isExp ? 'Свернуть состав дней' : daysSummary}</span>
+                <span class="mp-chev">${ICO.mpChevD}</span>
+              </span>
+            </button>
+            <button type="button" class="mp-right ${menuOpen ? 'menu-open' : ''}" data-act="mp-open-ctx" data-v="${p.id}" aria-label="Меню программы ${mpProgName(p, s)}">${ICO.mpMoreV}</button>
+          </div>
+          ${drawer}
+        </div>`;
+    }).join('');
+
+    let ctxHtml = '';
+    if (s.mpCtxMenu) {
+      const target = progs.find(p => p.id === s.mpCtxMenu.programId);
+      if (target) {
+        ctxHtml = `
+          <div class="mp-ctx-backdrop" data-act="mp-close-ctx"></div>
+          <div class="mp-ctx-menu" style="top:${s.mpCtxMenu.top}px;right:${s.mpCtxMenu.right}px" role="menu">
+            <button type="button" class="mp-ctx-item" data-act="mp-edit" data-v="${target.id}">${ICO.mpEdit}<span>Редактировать</span></button>
+            <div class="mp-ctx-sep"></div>
+            <button type="button" class="mp-ctx-item danger" data-act="mp-ask-del" data-v="${target.id}">${ICO.mpTrash}<span>Удалить</span></button>
+          </div>`;
+      }
+    }
+
+    return `
+      <div class="mp-scroll">
+        ${topBar}
+        ${activeBanner}
+        <div class="mp-list">${cards}</div>
+      </div>
+      <div class="mp-sticky-cta">
+        <button type="button" class="pb" data-act="mp-create">${ICO.mpPlus}<span>Создать программу</span></button>
+      </div>
+      ${ctxHtml}
+      ${s.snack ? `<div class="f-snack no-nav"><span>${s.snack.text}</span></div>` : ''}
+      ${sheetHtml}`;
   }
 
   function renderPeTargetControl(ex, side, light) {
@@ -3717,6 +3875,7 @@
 
   function renderPhoneContent(s) {
     if (s.screen === 'home') return renderHomeHTML(s);
+    if (s.screen === 'programs') return renderProgramsHTML(s);
     if (s.screen === 'workout') return renderWorkoutHTML(s);
     if (s.screen === 'summary') return renderSummaryHTML(s);
     if (s.screen === 'history') return renderHistoryHTML(s);
@@ -3739,7 +3898,7 @@
 
   function renderInspector() {
     document.getElementById('ctrl-screen').innerHTML = [
-      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['program_editor', 'Редактор программы'], ['day_editor', 'Редактор дня'], ['lock', 'Экран блокировки']
+      ['home', 'Главная'], ['programs', 'Мои программы'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['program_editor', 'Редактор программы'], ['day_editor', 'Редактор дня'], ['lock', 'Экран блокировки']
     ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
 
     document.getElementById('ctrl-preset').innerHTML = [
@@ -3767,7 +3926,8 @@
       <tr><td>Формула 1RM / версия</td><td>${(FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0]).name} · v${st.installedVer} (${st.installedCode})</td></tr>`;
 
     const hints = {
-      home: 'Кликайте «Тяжёлая/Лёгкая», замок 🔒, «Устал · облегчить», чипы дней, «Пропустить день» и «Начать тренировку».',
+      home: 'Кликайте зелёную карточку программы («Мои программы»), «Тяжёлая/Лёгкая», замок 🔒, «Устал · облегчить», чипы дней, «Пропустить день» и «Начать тренировку».',
+      programs: 'Согласованные «Мои программы» (#107 + #119): левая зона выбирает на Главную (при активной тренировке — шторка подтверждения), центр раскрывает дни и упражнения аккордеоном, правая зона ⋮ открывает контекстное меню («Редактировать» / «Удалить»).',
       workout: 'Листайте упражнения (№1 прибавить, №2 снизить, №3 Подобрать вес, №4 Планка 280px). Правый клик по кругу отдыха → шторка.',
       summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
       history: 'Согласованная История (#117 + #118 + #119): календарь с датой, временем и длительностью слева, Hero 2 детали без нижнего бара, правка подходов с живым итогом, Undo и удаление тренировки.',
@@ -3790,8 +3950,55 @@
             return;
           }
           st.screen = v; st.sheet = null; st.snack = null; st.restGuardArmed = null;
-          st.histEdit = null; st.histDelIdx = null; st.histSnack = null;
+          st.histEdit = null; st.histDelIdx = null; st.histSnack = null; st.mpCtxMenu = null; st.mpSheet = null;
           if (v !== 'history') st.historyDetailIdx = null;
+        }
+        else if (act === 'mp-select') {
+          st.mpCtxMenu = null;
+          if (v === st.selectedProgramId) { st.screen = 'home'; st.mpSheet = null; }
+          else if (st.activeWorkoutDayId) { st.mpSheet = { type: 'switch_confirm', programId: v }; }
+          else {
+            st.selectedProgramId = v; st.screen = 'home'; st.mpSheet = null;
+            const selP = (st.programs || []).find(x => x.id === v);
+            if (selP) { st.alternating = !!selP.alternating; st.currentWeek = selP.currentWeek || 'heavy'; st.snack = { text: `Выбрана: ${mpProgName(selP, st)}` }; }
+          }
+        }
+        else if (act === 'mp-confirm-switch') {
+          st.selectedProgramId = v; st.screen = 'home'; st.mpSheet = null; st.mpCtxMenu = null;
+          const selP = (st.programs || []).find(x => x.id === v);
+          if (selP) { st.alternating = !!selP.alternating; st.currentWeek = selP.currentWeek || 'heavy'; st.snack = { text: `Выбрана: ${mpProgName(selP, st)}` }; }
+        }
+        else if (act === 'mp-toggle-exp') { st.mpCtxMenu = null; st.mpExpandedId = st.mpExpandedId === v ? null : v; }
+        else if (act === 'mp-open-ctx') {
+          if (st.mpCtxMenu && st.mpCtxMenu.programId === v) { st.mpCtxMenu = null; }
+          else {
+            const pr = phone.getBoundingClientRect(), br = el.getBoundingClientRect(), menuH = 104;
+            const spaceBelow = pr.bottom - br.bottom - 86;
+            const top = spaceBelow >= menuH ? Math.round(br.bottom - pr.top + 4) : Math.max(58, Math.round(br.top - pr.top - menuH - 4));
+            const right = Math.max(14, Math.round(pr.right - br.right));
+            st.mpCtxMenu = { programId: v, top, right };
+          }
+        }
+        else if (act === 'mp-close-ctx') { st.mpCtxMenu = null; }
+        else if (act === 'mp-close-sheet') { st.mpSheet = null; }
+        else if (act === 'mp-edit') {
+          const target = (st.programs || []).find(x => x.id === v);
+          if (target) { st.progEditor.programName = target.name; st.alternating = !!target.alternating; }
+          st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
+        }
+        else if (act === 'mp-create') {
+          st.progEditor.programName = ''; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
+        }
+        else if (act === 'mp-ask-del') { st.mpCtxMenu = null; st.mpSheet = { type: 'delete_confirm', programId: v }; }
+        else if (act === 'mp-confirm-del') {
+          const idx = (st.programs || []).findIndex(x => x.id === v);
+          if (idx >= 0) {
+            const rem = st.programs.splice(idx, 1)[0];
+            if (st.selectedProgramId === v) st.selectedProgramId = st.programs[0] ? st.programs[0].id : null;
+            if (st.mpExpandedId === v) st.mpExpandedId = null;
+            st.snack = { text: `Удалена: ${rem.name}` };
+          }
+          st.mpSheet = null;
         }
         else if (act === 'set-week') { if (!isWeekLocked()) { st.currentWeek = v; st.snack = null; } }
         else if (act === 'select-day') { st.selectedDay = v; if (!st.activeWorkoutDayId) st.exIndex = 0; st.snack = null; st.restGuardArmed = null; }
@@ -3819,7 +4026,7 @@
           st.snack = { text: `${prevW} завершена досрочно` };
         }
         else if (act === 'undo-snack' && st.undoSnap) { Object.assign(st, st.undoSnap, { dayStatus: { ...st.undoSnap.dayStatus }, snack: null, undoSnap: null }); }
-        else if (act === 'start-workout') { st.activeWorkoutDayId = st.selectedDay; st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.restGuardArmed = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
+        else if (act === 'start-workout') { st.activeWorkoutDayId = st.selectedDay; st.activeWorkoutProgramId = st.selectedProgramId; st.screen = 'workout'; st.exIndex = 0; st.sheet = null; st.snack = null; st.restGuardArmed = null; st.sessionMarkedLightened = st.easeMode !== 'none'; }
         else if (act === 'resume-workout' && st.activeWorkoutDayId) { st.selectedDay = st.activeWorkoutDayId; st.screen = 'workout'; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
         else if (act === 'confirm-cancel-workout') {
           st.activeWorkoutDayId = null; st.screen = 'home'; st.sheet = null; st.restRunning = false; st.plankRunning = false;
@@ -4310,6 +4517,7 @@
       logged: Object.assign({}, b.logged, ov.logged || {}),
       drafts: Object.assign({}, b.drafts, ov.drafts || {}),
       distUnit: Object.assign({}, b.distUnit, ov.distUnit || {}),
+      programs: ov.programs ? cloneProgramList(ov.programs) : cloneProgramList(INITIAL_PROGRAMS),
       progEditor: ov.progEditor ? peClone(ov.progEditor) : peCreateInitial()
     });
   }
@@ -4371,7 +4579,17 @@
         ]
       },
       {
-        title: '5. Редактор программы и дня — база доски 05 + парные цели недель и пресет 8–12 (#97 + #100 + #119)',
+        title: '5. Мои программы — 3 симметричные зоны, аккордеон дней и контекстное меню ⋮ (#107 + #105 + #119)',
+        sub: 'Вход с зелёной карточки Главной без нижнего бара; левая зона — выбор (при активной тренировке через шторку подтверждения), центр — аккордеон дней и упражнений, правая зона ⋮ — контекстное меню «Редактировать» / «Удалить» (история сохраняется, 1+A)',
+        cards: [
+          { title: 'Мои программы · Аккордеон + контекстное меню ⋮ (#107)', note: 'Симметричные левая/правая зоны, раскрытый аккордеон второй программы и выпадающее меню ⋮ на первой.', state: snap({ screen: 'programs', mpExpandedId: 'p2', mpCtxMenu: { programId: 'p1', top: 156, right: 20 } }) },
+          { title: 'Мои программы · Длинные названия (#94 + #107)', note: 'Названия до 60 символов (включая слово без пробелов) до 2 строк + «…» без наползания на зоны.', state: snap({ screen: 'programs', longNames: true }) },
+          { title: 'Мои программы · Пустой список (0 программ)', note: 'Спокойный плейсхолдер с основной кнопкой «+ Создать программу».', state: snap({ screen: 'programs', programs: [], selectedProgramId: null }) },
+          { title: 'Мои программы · Переключение при активной тренировке (#105 + #107)', note: 'Шторка #1C231C подтверждения переключения (текущая сессия идёт дальше по снимку, на Главной появится пометка «из …»).', state: snap({ screen: 'programs', activeWorkoutDayId: 'A', activeWorkoutProgramId: 'p1', mpSheet: { type: 'switch_confirm', programId: 'p2' } }) }
+        ]
+      },
+      {
+        title: '6. Редактор программы и дня — база доски 05 + парные цели недель и пресет 8–12 (#97 + #100 + #119)',
         sub: 'Единая карточка «Недели и нагрузка» в стиле Настроек со шторкой правила #1C231C, инлайн-редактор дня без скачков (тумблер «Прогрессия» сверху, [Точно | Диапазон | Без цели] + фиксированная кнопка 8–12, скрытие дубля при выкл. прогрессии)',
         cards: [
           { title: 'Редактор программы · Чередование вкл. (#100 + #119)', note: 'Без нижнего бара и ⚙, карточка «Недели и нагрузка» с разделителем #252D24 и строкой «Правило лёгкой недели · Легче подходы · 1 вручную ›».', state: snap({ screen: 'program_editor', alternating: true }) },
@@ -4406,6 +4624,7 @@
         st = Object.assign(createInitialState(), target, {
           hostMode: 'interactive', width: w,
           history: cloneHistoryList(target.history || INITIAL_HISTORY),
+          programs: cloneProgramList(target.programs || INITIAL_PROGRAMS),
           histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null,
           progEditor: peClone(target.progEditor)
         });
@@ -4433,10 +4652,10 @@
   document.querySelector('.inspector').addEventListener('click', e => {
     const btn = e.target.closest('[data-host]'); if (!btn) return;
     const h = btn.dataset.host, v = btn.dataset.v;
-    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; if (v !== 'history') st.historyDetailIdx = null; renderLive(); }
+    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; st.mpCtxMenu = null; st.mpSheet = null; if (v !== 'history') st.historyDetailIdx = null; renderLive(); }
     else if (h === 'preset') { applyPreset(v); }
     else if (h === 'toggle') {
-      if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.sheet = null; }
+      if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.activeWorkoutProgramId = st.selectedProgramId; st.sheet = null; st.mpSheet = null; }
       if (v === 'checkin') st.checkinEnabled = !st.checkinEnabled;
       if (v === 'prompts') st.loadPromptsEnabled = !st.loadPromptsEnabled;
       if (v === 'phoneSoundMode') {
