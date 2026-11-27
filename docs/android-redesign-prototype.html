@@ -3230,7 +3230,16 @@
     phone.querySelectorAll('[data-act]').forEach(el => {
       el.addEventListener('click', () => {
         const act = el.dataset.act, v = el.dataset.v;
-        if (act === 'go-screen') { st.screen = v; st.sheet = null; st.snack = null; st.restGuardArmed = null; }
+        if (act === 'go-screen') {
+          if (st.screen === v && v === 'history' && st.historyDetailIdx == null) {
+            const sc = phone.querySelector('.f-scroll-home');
+            if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+          st.screen = v; st.sheet = null; st.snack = null; st.restGuardArmed = null;
+          st.histEdit = null; st.histDelIdx = null; st.histSnack = null;
+          if (v !== 'history') st.historyDetailIdx = null;
+        }
         else if (act === 'set-week') { if (!isWeekLocked()) { st.currentWeek = v; st.snack = null; } }
         else if (act === 'select-day') { st.selectedDay = v; if (!st.activeWorkoutDayId) st.exIndex = 0; st.snack = null; st.restGuardArmed = null; }
         else if (act === 'set-checkin') {
@@ -3755,7 +3764,11 @@
       btn.addEventListener('click', () => {
         const target = sections[parseInt(btn.dataset.jumpSec, 10)].cards[parseInt(btn.dataset.jumpCard, 10)].state;
         const w = st.width;
-        st = Object.assign(createInitialState(), target, { hostMode: 'interactive', width: w });
+        st = Object.assign(createInitialState(), target, {
+          hostMode: 'interactive', width: w,
+          history: cloneHistoryList(target.history || INITIAL_HISTORY),
+          histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null
+        });
         syncHostTabs(); renderLive(); window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
@@ -3780,7 +3793,7 @@
   document.querySelector('.inspector').addEventListener('click', e => {
     const btn = e.target.closest('[data-host]'); if (!btn) return;
     const h = btn.dataset.host, v = btn.dataset.v;
-    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; renderLive(); }
+    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; if (v !== 'history') st.historyDetailIdx = null; renderLive(); }
     else if (h === 'preset') { applyPreset(v); }
     else if (h === 'toggle') {
       if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.sheet = null; }
