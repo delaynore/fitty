@@ -1,0 +1,2011 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #100: Парные цели тяжёлой/лёгкой недели и пресет 8–12 (A / B / C)</title>
+<!--
+  Throwaway UI prototype for issue #100 ("Как выглядят парные цели тяжёлой/лёгкой недели и быстрый пресет 8–12 в редакторе программы?").
+  Plan: Three structurally different variants (A: Side-by-Side Split Columns in Accordion + Radio Cards, B: Full-Width Stacked Heavy/Light Pair Rows with Auto-Link + Segmented Preview, C: Compact 2-Column Summary Cards + Focused #1C231C Exercise Target Bottom Sheet) across Program Editor and Day Editor, switchable via ?variant=A|B|C, floating bottom bar, and side-by-side comparison.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1380px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(300px, 1fr); gap: 18px; align-items: start;
+  }
+  @media (max-width: 860px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F4F6F1); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #E5EAE0); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .var-desc { font-size: 12.5px; color: var(--card-foreground, #2C342A); line-height: 1.5; margin: 0; }
+  .var-desc ul { margin: 6px 0 0; padding-left: 16px; }
+  .var-desc li { margin-bottom: 4px; }
+  .var-desc code {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    font-size: 11px; background: var(--secondary, #EFF3EC); padding: 1px 5px; border-radius: 5px;
+  }
+
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  /* Side-by-side grid */
+  .compare-grid {
+    display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: flex-start;
+  }
+  .compare-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .compare-head {
+    width: 100%; max-width: 390px;
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 12px;
+    padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .compare-head strong { font-size: 13px; }
+  .compare-head span { font-size: 11.5px; color: var(--muted-foreground, #5B6658); display: block; }
+  .hidden { display: none !important; }
+
+  /* ==================== FLOATING BOTTOM SWITCHER ==================== */
+  .proto-bar {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 9999;
+    background: #141914; color: #F0F3EA;
+    border: 1px solid #394637;
+    border-radius: 999px;
+    padding: 6px 8px;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.34);
+  }
+  .proto-bar button {
+    border: 0; background: #252D24; color: #F0F3EA;
+    width: 32px; height: 32px; border-radius: 50%;
+    font: 700 15px Inter, sans-serif; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .proto-bar button:hover { background: #303E1B; color: #C5FA55; }
+  .proto-bar .pb-label {
+    padding: 0 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .proto-bar .pb-key {
+    background: #C5FA55; color: #1A2506; font-weight: 800; font-size: 11px;
+    padding: 2px 7px; border-radius: 999px;
+  }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (SCOPED TO .phone) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-placeholder: #728070;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+
+    --load-heavy: #F59E42;
+    --load-heavy-bg: #261C11;
+    --load-heavy-border: #5E401F;
+    --load-heavy-text: #FFD8AA;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-border: #2A526B;
+    --load-light-text: #BFE9FF;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    border-radius: 34px;
+    box-shadow: 0 18px 46px rgba(10, 14, 10, 0.28), 0 0 0 6px #1A2019;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .phone.w360 { width: 360px; }
+  .phone * { box-sizing: border-box; }
+  .phone button, .phone input { font-family: Inter, system-ui, sans-serif; }
+  .phone button { cursor: pointer; }
+
+  /* Status bar */
+  .f-status {
+    height: 28px; padding: 8px 20px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted);
+    flex-shrink: 0;
+  }
+  .f-top {
+    height: 48px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    flex-shrink: 0;
+  }
+  .f-back {
+    width: 38px; height: 38px; border-radius: 12px; border: 0;
+    background: transparent; color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: -8px;
+  }
+  .f-back:hover { background: var(--f-surface); }
+  .f-top-tag {
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted);
+    background: var(--f-surface); padding: 4px 10px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  .f-scroll {
+    flex: 1; overflow-y: auto; padding: 2px 18px 96px;
+    scrollbar-width: thin; scrollbar-color: #2B352A transparent;
+  }
+  .phone.w360 .f-scroll { padding: 2px 14px 96px; }
+
+  .f-h1 {
+    margin: 2px 0 14px;
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 700; font-size: 24px; line-height: 1.08;
+    text-transform: uppercase; letter-spacing: 0.3px; color: var(--f-text);
+  }
+  .phone.w360 .f-h1 { font-size: 22px; }
+  .f-kicker {
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 700; font-size: 12px; letter-spacing: 0.65px;
+    text-transform: uppercase; color: var(--f-muted);
+    margin: 18px 0 9px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .num { font-family: "Barlow Condensed", Inter, sans-serif; font-variant-numeric: tabular-nums; }
+
+  /* Lamps */
+  .lamp { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .lamp.heavy { background: var(--load-heavy); box-shadow: 0 0 7px rgba(245,158,66,0.55); }
+  .lamp.light { background: var(--load-light); box-shadow: 0 0 7px rgba(92,200,250,0.55); }
+
+  /* Baseline cards & inputs */
+  .f-card {
+    background: var(--f-surface);
+    border-radius: 18px;
+    padding: 14px 15px;
+  }
+  .phone.w360 .f-card { padding: 13px 13px; }
+  .f-field-lbl {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12.5px; color: var(--f-muted); margin: 0 0 6px;
+  }
+  .f-counter { font-size: 11px; font-weight: 600; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .f-counter.over { color: var(--f-error); }
+  .f-input {
+    width: 100%; height: 48px;
+    background: var(--f-bg); color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 14px;
+    padding: 0 14px; font-size: 15px; font-weight: 600; outline: none;
+  }
+  .f-input:focus { border-color: var(--f-primary); }
+  .f-input.err { border-color: var(--f-error); }
+  .f-err-msg { font-size: 11.5px; color: var(--f-error); margin-top: 5px; }
+
+  /* Android Switch */
+  .f-switch {
+    width: 46px; height: 28px; border-radius: 999px; border: 1.5px solid var(--f-outline-hi);
+    background: var(--f-chip); position: relative; padding: 0; flex-shrink: 0;
+    transition: background .15s, border-color .15s;
+  }
+  .f-switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--f-muted); transition: transform .15s, background .15s;
+  }
+  .f-switch.on { background: var(--f-primary); border-color: var(--f-primary); }
+  .f-switch.on::after { transform: translateX(18px); background: var(--f-on-primary); }
+  .f-switch.sm { width: 38px; height: 22px; }
+  .f-switch.sm::after { width: 14px; height: 14px; top: 2.5px; left: 2.5px; }
+  .f-switch.sm.on::after { transform: translateX(16px); }
+
+  /* Primary & outline buttons */
+  .f-foot {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 12px 18px 18px;
+    background: linear-gradient(180deg, rgba(11,14,11,0) 0%, rgba(11,14,11,0.92) 28%, #0B0E0B 100%);
+    pointer-events: none;
+  }
+  .phone.w360 .f-foot { padding: 12px 14px 16px; }
+  .f-pb {
+    pointer-events: auto;
+    width: 100%; height: 48px; border: 0; border-radius: 999px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 700; font-size: 14px; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .f-ob {
+    width: 100%; height: 44px; border-radius: 999px;
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline);
+    font-weight: 700; font-size: 13px; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .f-ob:hover { border-color: var(--f-outline-hi); background: rgba(255,255,255,0.03); }
+
+  /* Day row in Program Editor */
+  .day-card {
+    width: 100%; text-align: left; border: 0;
+    background: var(--f-surface); color: var(--f-text);
+    border-radius: 18px; padding: 14px 16px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .day-card:hover { background: #192019; }
+  .day-title {
+    font-weight: 700; font-size: 16px; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .day-sub { font-size: 12px; color: var(--f-muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 999px;
+    background: var(--f-chip); font-size: 11.5px; font-weight: 600; color: var(--f-muted);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .tag.lime { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .tag.light { background: var(--load-light-bg); color: var(--load-light-text); border: 1px solid var(--load-light-border); }
+  .tag.heavy { background: var(--load-heavy-bg); color: var(--load-heavy-text); border: 1px solid var(--load-heavy-border); }
+  .tag.manual { background: rgba(92,200,250,0.16); color: #9CE0FF; border: 1px solid #3C7DA3; }
+  .tag.auto { background: transparent; color: #89BBD4; border: 1px dashed #2E546B; }
+  .tag.muted { background: #1E241E; color: var(--f-dim); }
+
+  /* Program Editor Rule Selectors */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .toggle-title { font-size: 14.5px; font-weight: 600; color: var(--f-text); line-height: 1.28; }
+  .toggle-sub { font-size: 12px; color: var(--f-muted); margin-top: 2px; line-height: 1.35; }
+
+  /* Variant A radio cards */
+  .radio-stack { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  .radio-card {
+    width: 100%; text-align: left;
+    background: #0F140F; border: 1.5px solid var(--f-outline); border-radius: 14px;
+    padding: 10px 12px; color: var(--f-text);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .radio-card.on { background: #162119; border-color: var(--load-light); }
+  .radio-dot {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--f-outline-hi);
+    margin-top: 1px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .radio-card.on .radio-dot { border-color: var(--load-light); }
+  .radio-card.on .radio-dot::after {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--load-light);
+  }
+  .rc-title { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rc-desc { font-size: 11.5px; color: var(--f-muted); margin-top: 2px; line-height: 1.32; }
+
+  /* Variant B segmented rule + live preview */
+  .seg-rule {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    background: #0B0E0B; padding: 4px; border-radius: 13px; border: 1px solid var(--f-outline);
+    margin-top: 12px;
+  }
+  .seg-rule button {
+    border: 0; background: transparent; color: var(--f-muted);
+    padding: 8px 4px; border-radius: 9px; font-size: 11.5px; font-weight: 600; line-height: 1.2;
+    text-align: center;
+  }
+  .seg-rule button.on { background: var(--load-light-bg); color: var(--load-light-text); box-shadow: inset 0 0 0 1px var(--load-light-border); }
+  .rule-preview {
+    margin-top: 10px; background: #0E130F; border: 1px solid #242E24; border-radius: 12px;
+    padding: 9px 11px; font-size: 11.5px; color: var(--f-muted);
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .rp-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .rp-pair { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+
+  /* Variant C compact summary row */
+  .prog-rule-btn {
+    width: 100%; margin-top: 11px; border: 1px solid var(--load-light-border);
+    background: var(--load-light-bg); color: var(--f-text);
+    border-radius: 13px; padding: 10px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left;
+  }
+  .prog-rule-btn small { display: block; font-size: 11px; color: var(--load-light-text); opacity: 0.85; }
+  .prog-rule-btn strong { font-size: 13.5px; font-weight: 700; color: #FFFFFF; }
+
+  /* Exercise Cards in Day Editor */
+  .ex-list { display: flex; flex-direction: column; gap: 8px; }
+  .ex-card {
+    background: var(--f-surface); border-radius: 16px; overflow: hidden;
+    border: 1.5px solid transparent;
+  }
+  .ex-card.expanded { border-color: #2E3A2D; background: #161C16; }
+
+  .ex-head {
+    display: flex; align-items: center; gap: 8px; padding: 11px 10px 11px 13px;
+  }
+  .ex-head-main {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit;
+    text-align: left; padding: 0;
+  }
+  .ex-name {
+    font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .ex-type-sub { font-size: 11px; color: var(--f-dim); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ex-summary-pills { display: flex; align-items: center; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+
+  .pill-val {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; line-height: 1.2;
+  }
+  .pill-val.heavy { background: var(--load-heavy-bg); color: var(--load-heavy-text); }
+  .pill-val.light-auto { background: rgba(19,37,49,0.55); color: #9BD5F3; border: 1px dashed #2E5A75; }
+  .pill-val.light-manual { background: var(--load-light-bg); color: #D7F2FF; border: 1px solid #4589B3; }
+  .pill-val.plain { background: var(--f-chip); color: var(--f-text); }
+
+  .drag-handle {
+    width: 32px; height: 34px; border-radius: 9px; border: 0;
+    background: var(--f-primary-container); color: var(--f-primary);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-size: 15px; letter-spacing: -1px;
+  }
+  .icon-del {
+    width: 32px; height: 34px; border-radius: 9px; border: 0;
+    background: transparent; color: var(--f-dim);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .icon-del:hover { color: var(--f-error); background: var(--f-error-bg); }
+
+  /* Quick preset chips (8-12 etc.) */
+  .preset-bar {
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .pchip {
+    border: 1px solid var(--f-outline); background: #101510; color: var(--f-muted);
+    border-radius: 999px; padding: 4px 10px;
+    font-size: 11.5px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pchip.preset-main {
+    border-color: var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+  }
+  .pchip.preset-main.active {
+    background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary);
+  }
+  .pchip.active { background: var(--f-chip); color: var(--f-text); border-color: var(--f-outline-hi); }
+
+  /* Compact numeric inputs inside cards */
+  .mini-in {
+    width: 100%; height: 38px;
+    background: #0B0E0B; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 10px;
+    text-align: center; font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 20px; padding: 0 4px; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .mini-in:focus { border-color: var(--f-primary); }
+  .mini-in.auto-in {
+    background: rgba(11,14,11,0.55);
+    border: 1.5px dashed #315D78;
+    color: #9ED6F3;
+  }
+  .mini-in.auto-in:focus { border-style: solid; border-color: var(--load-light); color: #FFFFFF; }
+  .mini-in.manual-in {
+    background: #0D1922;
+    border: 1.5px solid #4A92BE;
+    color: #E5F6FF;
+  }
+  .mini-in::placeholder { color: var(--f-placeholder); font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; }
+
+  .range-pair { display: flex; align-items: center; gap: 3px; width: 100%; }
+  .range-pair .dash { color: var(--f-dim); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+
+  .unit-seg {
+    display: inline-flex; background: #0B0E0B; border: 1px solid var(--f-outline);
+    border-radius: 9px; padding: 2px; gap: 2px; flex-shrink: 0;
+  }
+  .unit-seg button {
+    border: 0; background: transparent; color: var(--f-muted);
+    font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px;
+  }
+  .unit-seg button.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+
+  .step-box {
+    display: flex; align-items: center; gap: 3px; width: 100%;
+  }
+  .step-btn {
+    width: 30px; height: 36px; border-radius: 9px; border: 1px solid var(--f-outline);
+    background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .step-btn:hover { border-color: var(--f-outline-hi); }
+
+  /* ==================== VARIANT A: 2-COLUMN SPLIT INSIDE ACCORDION ==================== */
+  .va-body { padding: 0 12px 12px; border-top: 1px solid #232C23; padding-top: 10px; }
+  .phone.w360 .va-body { padding: 10px 9px 11px; }
+  .va-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .phone.w360 .va-cols { gap: 6px; }
+  .va-col {
+    border-radius: 13px; padding: 9px 8px;
+    display: flex; flex-direction: column; gap: 7px; min-width: 0;
+  }
+  .va-col.heavy { background: #131611; border: 1px solid #3D311E; }
+  .va-col.light-auto { background: #0E171E; border: 1.5px dashed #2A526B; }
+  .va-col.light-manual { background: #10202B; border: 1.5px solid #4A92BE; }
+  .va-col-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 4px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+  }
+  .va-col-head .left { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+  .va-col-badge {
+    font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 5px; text-transform: uppercase;
+  }
+  .va-col-badge.auto { background: rgba(92,200,250,0.14); color: #8ACCEB; }
+  .va-col-badge.manual { background: #5CC8FA; color: #0B1922; }
+  .va-field-grid { display: grid; grid-template-columns: 44px 1fr; gap: 5px; align-items: end; }
+  .phone.w360 .va-field-grid { grid-template-columns: 38px 1fr; gap: 4px; }
+  .va-lbl { font-size: 10px; color: var(--f-dim); margin-bottom: 3px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .va-hint { font-size: 10.5px; color: #8DC6E3; line-height: 1.3; background: rgba(92,200,250,0.08); padding: 4px 6px; border-radius: 7px; }
+  .va-footer {
+    margin-top: 9px; padding-top: 8px; border-top: 1px solid #222B22;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  }
+  .prog-inline { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--f-muted); }
+  .reset-link {
+    border: 1px solid #356785; background: rgba(92,200,250,0.12); color: #AEE2FF;
+    border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .reset-link:hover { background: rgba(92,200,250,0.22); }
+
+  /* ==================== VARIANT B: FULL-WIDTH STACKED HEAVY + AUTO-LINKED LIGHT ==================== */
+  .vb-body { padding: 10px 12px 12px; border-top: 1px solid #232C23; }
+  .phone.w360 .vb-body { padding: 10px 10px 11px; }
+  .vb-row {
+    border-radius: 13px; padding: 9px 10px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .vb-row.heavy { background: #141712; border: 1px solid #3E3220; }
+  .vb-connector {
+    display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+    font-size: 11px; color: #7EB3CF;
+  }
+  .vb-row.light-auto { background: #0E171E; border: 1.5px dashed #2B536D; }
+  .vb-row.light-manual { background: #11222E; border: 1.5px solid #5CC8FA; }
+  .vb-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .vb-row-title { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+  .vb-inputs { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: end; }
+  .vb-inputs-unit { display: grid; grid-template-columns: 66px 1fr auto; gap: 7px; align-items: end; }
+  .vb-prog-row {
+    margin-top: 9px; background: #101510; border-radius: 11px; padding: 8px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+
+  /* ==================== VARIANT C: COMPACT 2-COL SUMMARY CARDS + #1C231C BOTTOM SHEET ==================== */
+  .vc-card {
+    background: var(--f-surface); border-radius: 16px; padding: 11px 11px 11px 13px;
+    display: flex; flex-direction: column; gap: 8px;
+    border: 1.5px solid transparent;
+  }
+  .vc-card:hover { background: #181E18; }
+  .vc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .vc-tap { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 0; }
+  .vc-pair-bar {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    border: 0; background: transparent; padding: 0; text-align: left; width: 100%;
+  }
+  .vc-cell {
+    border-radius: 10px; padding: 6px 9px;
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  }
+  .vc-cell.heavy { background: #1B1710; border: 1px solid #3A2E1C; }
+  .vc-cell.light-auto { background: #0E1820; border: 1px dashed #2B536D; }
+  .vc-cell.light-manual { background: #122431; border: 1px solid #5CC8FA; }
+  .vc-cell.single { grid-column: 1 / -1; background: #1A201A; border: 1px solid #2A3329; flex-direction: row; align-items: center; justify-content: space-between; }
+  .vc-cell-k { font-size: 10px; font-weight: 700; color: var(--f-muted); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .vc-cell-v { font-size: 14px; font-weight: 700; color: var(--f-text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vc-cell-v.auto { color: #9ED6F3; }
+
+  /* Bottom Sheet (#1C231C) */
+  .f-scrim {
+    position: absolute; inset: 0; background: rgba(5,8,5,0.68);
+    display: flex; align-items: flex-end; z-index: 40;
+  }
+  .f-sheet {
+    width: 100%; max-height: 86%;
+    background: var(--f-surface-hi);
+    border-radius: 24px 24px 0 0;
+    padding: 10px 16px 18px;
+    display: flex; flex-direction: column; gap: 11px;
+    overflow-y: auto;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
+  }
+  .sheet-grab { width: 38px; height: 4px; border-radius: 999px; background: #3D493C; margin: 0 auto 2px; flex-shrink: 0; }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .sheet-title { font-size: 17px; font-weight: 700; line-height: 1.25; color: var(--f-text); margin: 0; }
+  .sheet-foot { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 2px; }
+  .btn-del-sheet {
+    height: 46px; padding: 0 16px; border-radius: 999px;
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error);
+    font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-done-sheet {
+    height: 46px; border: 0; border-radius: 999px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+
+  /* Toast / snackbar inside phone */
+  .f-snack {
+    position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 30;
+    background: #252D24; color: #F0F3EA; border: 1px solid #3D4B3B;
+    border-radius: 14px; padding: 10px 14px; font-size: 12.5px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  }
+  .f-snack b { color: var(--f-primary); cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #100</span>
+      <div>
+        <h1 class="host-title">Редактор программы и дня: тяжёлая / лёгкая неделя и пресет 8–12</h1>
+        <div class="host-sub">Все 4 типа упражнений · Авторасчёт vs Ручная правка · Сброс к правилу · Переключатель «Прогрессия» · Клавиши ← / →</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" id="viewTabs">
+        <button data-view="interactive" class="active">Интерактив</button>
+        <button data-view="compare">Все 3 рядом (A / B / C)</button>
+      </div>
+      <div class="seg-small" id="screenTabs">
+        <button data-screen="program">Редактор программы</button>
+        <button data-screen="day" class="active">Редактор дня (День А)</button>
+      </div>
+      <div class="seg-small" id="widthTabs">
+        <button data-w="390" class="active">390 dp</button>
+        <button data-w="360">360 dp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE SINGLE VIEW -->
+  <div id="interactiveStage" class="interactive-stage">
+    <div class="phone-slot">
+      <div id="mainPhoneMount"></div>
+      <div class="phone-caption" id="mainCaption"></div>
+    </div>
+
+    <div class="inspector">
+      <div class="panel">
+        <h2 id="varHeading">Вариант</h2>
+        <div class="var-desc" id="varDescription"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Быстрые сценарии для проверки</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Состояние программы и чередования</span>
+          <div class="btn-wrap" id="scenarioBtns">
+            <button class="cbtn active" data-sc="default">Чередование вкл · Легче подходы</button>
+            <button class="cbtn" data-sc="fewer">Правило: Меньше подходов (−1)</button>
+            <button class="cbtn" data-sc="manual">Правило: Вручную</button>
+            <button class="cbtn" data-sc="off">Чередование выкл (база)</button>
+            <button class="cbtn" data-sc="distance">Distance: 1 км → 800 м</button>
+            <button class="cbtn" data-sc="long">Длинные названия (#94)</button>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Быстрые действия</span>
+          <div class="btn-wrap">
+            <button class="cbtn" id="btnResetDemo">Сбросить демо-данные</button>
+            <button class="cbtn" id="btnToggleAlt">Переключить чередование</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Живое состояние модели (проверка формул #97)</h2>
+        <table class="state-tbl" id="stateTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE-BY-SIDE COMPARE VIEW -->
+  <div id="compareStage" class="compare-grid hidden"></div>
+</div>
+
+<!-- FLOATING VARIANT SWITCHER BAR -->
+<div class="proto-bar" role="region" aria-label="Переключатель вариантов прототипа">
+  <button id="prevVar" title="Предыдущий вариант (←)" aria-label="Предыдущий вариант">←</button>
+  <div class="pb-label">
+    <span class="pb-key" id="pbKey">A</span>
+    <span id="pbName">Две колонки в аккордеоне</span>
+  </div>
+  <button id="nextVar" title="Следующий вариант (→)" aria-label="Следующий вариант">→</button>
+</div>
+
+<script>
+(function() {
+  const VARIANTS = [
+    {
+      key: 'A',
+      name: 'Две колонки в аккордеоне',
+      short: 'Split 2-col + радио-карточки',
+      desc: `<p><strong>Идея:</strong> тяжёлая и лёгкая цели редактируются <em>буквально рядом</em> в двух колонках внутри раскрытой строки упражнения. В редакторе программы — подробные радио-карточки с примерами пересчёта.</p>
+      <ul>
+        <li><strong>Сильная сторона:</strong> мгновенное визуальное сравнение «было → станет» на одной высоте.</li>
+        <li><strong>Что проверить на <code>360 dp</code>:</strong> хватает ли ширины в двух колонках под поля <code>Подходы + От–До</code> и <code>м | км</code>.</li>
+        <li><strong>Авто vs Вручную:</strong> пунктирная голубая рамка <code>АВТО</code> → при любом вводе становится сплошной <code>ВРУЧНУЮ</code>, появляется чип <code>↺ Сбросить к правилу</code>.</li>
+      </ul>`
+    },
+    {
+      key: 'B',
+      name: 'Две широкие строки со связью',
+      short: 'Stacked pair + сегмент с превью',
+      desc: `<p><strong>Идея:</strong> вместо сжатия двух колонок по горизонтали раскрытая карточка даёт <strong>две полные по ширине строки</strong> — сверху <code>🟠 Тяжёлая</code>, снизу связанная <code>↳ 🔵 Лёгкая</code>. В редакторе программы — компактный 3-сегментный выбор правила + живое мини-превью.</p>
+      <ul>
+        <li><strong>Сильная сторона:</strong> ничего не теснится даже на <code>360 dp</code>; удобно вводить диапазоны <code>От–До</code>, <code>±5 с</code> и переключать <code>м | км</code>.</li>
+        <li><strong>Пресет <code>8–12</code>:</strong> вынесен в отдельную верхнюю полосу быстрых чипов (1 тап ставит диапазон сразу и пересчитывает лёгкую строку).</li>
+        <li><strong>Авто vs Вручную:</strong> связь <code>↳ по правилу программы</code> и пунктирные поля снимаются сразу при правке; кнопка <code>↺ Сбросить</code> прямо в шапке лёгкой строки.</li>
+      </ul>`
+    },
+    {
+      key: 'C',
+      name: 'Компактные пары + шторка цели',
+      short: 'Чистый список + шторка #1C231C',
+      desc: `<p><strong>Идея:</strong> список дня вообще <strong>не раскрывается аккордеоном</strong> — каждая строка всегда компактна с двумя ячейками <code>🟠 Тяжёлая | 🔵 Лёгкая</code> (легко читать и перетаскивать за <code>⠿</code>). Тап по упражнению открывает фокусную нижнюю шторку <code>#1C231C</code> (как правка подхода в Истории <code>#118</code>).</p>
+      <ul>
+        <li><strong>Сильная сторона:</strong> весь день и все парные цели видны на одном экране, drag-and-drop не спотыкается о раскрытые формы, а в шторке максимум воздуха под все контролы.</li>
+        <li><strong>Редактор программы:</strong> правило скрыто в компактную голубую строку-триггер, открывающую шторку выбора правила (как в Настройках <code>#106</code>).</li>
+        <li><strong>Что проверить:</strong> комфортен ли лишний тап «открыть шторку → Готово» при быстрой настройке 5–6 упражнений подряд.</li>
+      </ul>`
+    }
+  ];
+
+  const RULES = [
+    { id: 'easier_sets', short: 'Легче подходы', title: 'Легче подходы', badge: 'По умолчанию', desc: '−2 повтора (для коротких ≤ 4 — снижение веса), ~80% времени и дистанции' },
+    { id: 'fewer_sets', short: '−1 подход', title: 'Меньше подходов (−1)', badge: '', desc: 'Минус 1 подход при ≥ 2 подходах; целевые повторы, время и дистанция те же' },
+    { id: 'manual', short: 'Вручную', title: 'Вручную', badge: '', desc: 'Копирует тяжёлые цели при включении, без авторасчёта и кнопки сброса' }
+  ];
+
+  function createInitialState(scenario = 'default') {
+    const longNames = scenario === 'long';
+    const baseExercises = [
+      {
+        id: 'ex1',
+        name: longNames ? 'Жим штанги на наклонной скамье широким хватом с паузой внизу' : 'Жим штанги лёжа',
+        type: 'weight_reps',
+        progression: true,
+        heavySets: 3,
+        heavyMode: 'range', // 'range' | 'exact' | 'empty'
+        heavyMin: 8, heavyMax: 12, heavyExact: 10,
+        lightManual: false,
+        manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8
+      },
+      {
+        id: 'ex2',
+        name: longNames ? 'Подтягивания на турнике средним прямым хватом до касания грудью' : 'Подтягивания',
+        type: 'reps',
+        progression: true,
+        heavySets: 3,
+        heavyMode: 'exact',
+        heavyMin: 8, heavyMax: 12, heavyExact: 10,
+        lightManual: true, // demonstrates manual override out of the box!
+        manualSets: 2, manualMode: 'range', manualMin: 6, manualMax: 8, manualExact: 7
+      },
+      {
+        id: 'ex3',
+        name: 'Становая тяга',
+        type: 'weight_reps',
+        progression: true,
+        heavySets: 3,
+        heavyMode: 'exact',
+        heavyMin: 1, heavyMax: 3, heavyExact: 3, // short target <= 4 -> weight-by-feel hint
+        lightManual: false,
+        manualSets: 3, manualMode: 'exact', manualMin: 1, manualMax: 3, manualExact: 3
+      },
+      {
+        id: 'ex4',
+        name: 'Планка на предплечьях',
+        type: 'duration',
+        progression: false, // default OFF for Duration (#97)
+        heavySets: 3,
+        heavySec: 45, // null = Без цели
+        lightManual: false,
+        manualSets: 3, manualSec: 45
+      },
+      {
+        id: 'ex5',
+        name: 'Бег на дорожке',
+        type: 'distance',
+        progression: scenario === 'distance', // OFF by default, ON in distance scenario to showcase 1 км -> 800 м
+        heavySets: 1,
+        heavyMeters: 1000, // 1 км -> 800 м when progression ON!
+        heavyUnit: 'km',
+        lightManual: false,
+        manualSets: 1, manualMeters: 1000, manualUnit: 'm'
+      }
+    ];
+
+    const state = {
+      programName: longNames
+        ? 'Силовая периодизация Верх / Низ на 12 недель с чередованием'
+        : 'База Верх / Низ',
+      alternating: scenario !== 'off',
+      rule: scenario === 'fewer' ? 'fewer_sets' : scenario === 'manual' ? 'manual' : 'easier_sets',
+      dayName: longNames ? 'День А · Грудь, спина, тяга и разминочный бег' : 'День А · Верх и тяга',
+      exercises: baseExercises,
+      expandedId: scenario === 'distance' ? 'ex5' : 'ex1',
+      sheetExId: null, // for Variant C
+      ruleSheetOpen: false, // for Variant C Program Editor
+      snack: null
+    };
+    if (state.rule === 'manual') {
+      state.exercises.forEach(ex => {
+        const calc = computeAutoLight(ex, 'easier_sets');
+        copyToManual(ex, calc);
+        ex.lightManual = false;
+      });
+    }
+    return state;
+  }
+
+  /* ==================== #97 / #81 / #113 CALCULATION ENGINE ==================== */
+  function roundDuration80(sec) {
+    if (sec == null) return { sec: null, hint: 'легче по ощущениям' };
+    if (sec <= 5) return { sec, hint: 'легче по ощущениям' };
+    const r = Math.round((sec * 0.8) / 5) * 5;
+    return { sec: Math.max(5, Math.min(sec - 5, r)), hint: null };
+  }
+
+  function roundDistance80(m) {
+    if (m == null) return { meters: null, hint: 'легче по ощущениям' };
+    if (m <= 1) return { meters: 1, hint: 'легче по ощущениям' };
+    const step = m >= 1000 ? 100 : m >= 100 ? 50 : m >= 10 ? 5 : 1;
+    let r = Math.round((m * 0.8) / step) * step;
+    if (r >= m) r = m - step;
+    if (r < 1) r = Math.max(1, m - 1);
+    return { meters: r, hint: null };
+  }
+
+  function computeAutoLight(ex, rule) {
+    // If progression is OFF -> auto light stays equal to heavy (#97)
+    if (!ex.progression) {
+      return {
+        sets: ex.heavySets,
+        mode: ex.heavyMode,
+        min: ex.heavyMin,
+        max: ex.heavyMax,
+        exact: ex.heavyExact,
+        sec: ex.heavySec,
+        meters: ex.heavyMeters,
+        unit: ex.heavyMeters != null ? (ex.heavyMeters >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'),
+        hint: 'Прогрессия выкл. — цель как в тяжёлой',
+        equalByProgOff: true
+      };
+    }
+
+    if (rule === 'fewer_sets') {
+      let sets = ex.heavySets;
+      let hint = null;
+      if (sets == null) {
+        hint = 'на тренировке 3 строки вместо 4';
+      } else if (sets >= 2) {
+        sets = sets - 1;
+      } else {
+        sets = 1;
+        hint = '1 подход — легче по ощущениям';
+      }
+      return {
+        sets,
+        mode: ex.heavyMode,
+        min: ex.heavyMin,
+        max: ex.heavyMax,
+        exact: ex.heavyExact,
+        sec: ex.heavySec,
+        meters: ex.heavyMeters,
+        unit: ex.heavyMeters != null ? (ex.heavyMeters >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'),
+        hint
+      };
+    }
+
+    // rule === 'easier_sets'
+    const base = { sets: ex.heavySets, hint: null };
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (ex.heavyMode === 'empty') {
+        return { ...base, mode: 'empty', min: null, max: null, exact: null, hint: 'без цели — легче по ощущениям' };
+      }
+      if (ex.heavyMode === 'exact') {
+        const v = Number(ex.heavyExact) || 0;
+        if (!v) return { ...base, mode: 'empty', exact: null, hint: 'легче по ощущениям' };
+        if (v >= 5) return { ...base, mode: 'exact', exact: v - 2 };
+        if (ex.type === 'weight_reps') {
+          return { ...base, mode: 'exact', exact: v, hint: 'короткая цель ≤ 4 — снизить вес по ощущениям' };
+        }
+        return v >= 2
+          ? { ...base, mode: 'exact', exact: v - 1 }
+          : { ...base, mode: 'exact', exact: 1, hint: 'легче по ощущениям' };
+      }
+      // range
+      const lo = Number(ex.heavyMin) || 0;
+      const hi = Number(ex.heavyMax) || lo;
+      if (!lo) return { ...base, mode: 'empty', min: null, max: null, hint: 'легче по ощущениям' };
+      if (lo >= 5) return { ...base, mode: 'range', min: lo - 2, max: Math.max(lo - 2, hi - 2) };
+      if (ex.type === 'weight_reps') {
+        return { ...base, mode: 'range', min: lo, max: hi, hint: 'нижняя граница ≤ 4 — снизить вес по ощущениям' };
+      }
+      if (lo >= 2) return { ...base, mode: 'range', min: lo - 1, max: Math.max(lo - 1, hi - 1) };
+      return { ...base, mode: 'range', min: lo, max: hi, hint: 'легче по ощущениям' };
+    }
+
+    if (ex.type === 'duration') {
+      const r = roundDuration80(ex.heavySec);
+      return { ...base, sec: r.sec, hint: r.hint };
+    }
+
+    if (ex.type === 'distance') {
+      const r = roundDistance80(ex.heavyMeters);
+      return { ...base, meters: r.meters, unit: r.meters != null && r.meters >= 1000 ? 'km' : 'm', hint: r.hint };
+    }
+    return base;
+  }
+
+  function getLightView(ex, rule) {
+    if (rule === 'manual' || ex.lightManual) {
+      return {
+        isManual: true,
+        isProgramManual: rule === 'manual',
+        sets: ex.manualSets,
+        mode: ex.manualMode,
+        min: ex.manualMin,
+        max: ex.manualMax,
+        exact: ex.manualExact,
+        sec: ex.manualSec,
+        meters: ex.manualMeters,
+        unit: ex.manualUnit || (ex.manualMeters != null && ex.manualMeters >= 1000 ? 'km' : 'm'),
+        hint: null
+      };
+    }
+    return { isManual: false, isProgramManual: false, ...computeAutoLight(ex, rule), ...(ex.lightDisplayUnit ? { unit: ex.lightDisplayUnit } : {}) };
+  }
+
+  function copyToManual(ex, src) {
+    ex.manualSets = src.sets;
+    ex.manualMode = src.mode || ex.heavyMode;
+    ex.manualMin = src.min ?? ex.heavyMin;
+    ex.manualMax = src.max ?? ex.heavyMax;
+    ex.manualExact = src.exact ?? ex.heavyExact;
+    ex.manualSec = src.sec ?? ex.heavySec;
+    ex.manualMeters = src.meters ?? ex.heavyMeters;
+    ex.manualUnit = src.unit || (ex.manualMeters != null && ex.manualMeters >= 1000 ? 'km' : 'm');
+  }
+
+  function ensureManualSnapshot(ex, rule) {
+    if (rule !== 'manual' && !ex.lightManual) {
+      const cur = computeAutoLight(ex, rule);
+      copyToManual(ex, cur);
+      ex.lightManual = true;
+    }
+  }
+
+  /* ==================== FORMATTERS ==================== */
+  function fmtSec(sec) {
+    if (sec == null) return 'Без цели';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function fmtMeters(m, forceUnit) {
+    if (m == null) return 'Без цели';
+    const u = forceUnit || (m >= 1000 ? 'km' : 'm');
+    if (u === 'km') {
+      const km = +(m / 1000).toFixed(2);
+      return `${String(km).replace('.', ',')} км`;
+    }
+    return `${Math.round(m)} м`;
+  }
+
+  function fmtNumForUnit(m, unit) {
+    if (m == null) return '';
+    if (unit === 'km') return String(+(m / 1000).toFixed(2)).replace('.', ',');
+    return String(Math.round(m));
+  }
+
+  function fmtTargetOnly(ex, obj, isLight) {
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = isLight ? obj.mode : ex.heavyMode;
+      if (mode === 'empty') return 'Без цели';
+      if (mode === 'range') {
+        const lo = isLight ? obj.min : ex.heavyMin;
+        const hi = isLight ? obj.max : ex.heavyMax;
+        return lo != null && hi != null ? `${lo}–${hi} повт.` : 'Без цели';
+      }
+      const v = isLight ? obj.exact : ex.heavyExact;
+      return v != null ? `${v} повт.` : 'Без цели';
+    }
+    if (ex.type === 'duration') {
+      return fmtSec(isLight ? obj.sec : ex.heavySec);
+    }
+    if (ex.type === 'distance') {
+      const m = isLight ? obj.meters : ex.heavyMeters;
+      const u = isLight ? obj.unit : ex.heavyUnit;
+      return fmtMeters(m, u);
+    }
+    return '—';
+  }
+
+  function fmtPairSummary(ex, obj, isLight) {
+    const sets = isLight ? obj.sets : ex.heavySets;
+    const tgt = fmtTargetOnly(ex, obj, isLight);
+    if (sets == null && tgt === 'Без цели') return 'Без цели';
+    if (sets == null) return tgt;
+    if (tgt === 'Без цели') return `${sets} подх.`;
+    return `${sets} × ${tgt}`;
+  }
+
+  function typeLabel(t) {
+    return t === 'weight_reps' ? 'Вес и повторы'
+      : t === 'reps' ? 'Повторения'
+      : t === 'duration' ? 'Время (шаг 5 с)'
+      : 'Дистанция (м | км)';
+  }
+
+  /* ==================== APP CONTROLLER STATE ==================== */
+  const urlParams = new URLSearchParams(location.search);
+  let activeVariant = ['A', 'B', 'C'].includes((urlParams.get('variant') || '').toUpperCase())
+    ? urlParams.get('variant').toUpperCase()
+    : 'A';
+  let activeView = 'interactive'; // 'interactive' | 'compare'
+  let activeScreen = 'day'; // 'program' | 'day'
+  let phoneWidth = 390;
+  let activeScenario = 'default';
+  let st = createInitialState('default');
+
+  function setVariant(v) {
+    activeVariant = v;
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set('variant', v);
+      history.replaceState(null, '', u.toString());
+    } catch (_) {}
+    renderAll();
+  }
+
+  function showSnack(text, undoLabel) {
+    st.snack = { text, undoLabel };
+    clearTimeout(window.__snackTimer);
+    window.__snackTimer = setTimeout(() => { st.snack = null; renderAll(); }, 3400);
+  }
+
+  /* ==================== SHARED REPS PRESET + INPUT BUILDERS ==================== */
+  function isPreset812(ex) {
+    return (ex.type === 'weight_reps' || ex.type === 'reps')
+      && ex.heavyMode === 'range' && Number(ex.heavyMin) === 8 && Number(ex.heavyMax) === 12;
+  }
+
+  function renderPresetStrip(ex, scopeAttr) {
+    if (ex.type !== 'weight_reps' && ex.type !== 'reps') return '';
+    const active812 = isPreset812(ex);
+    return `<div class="preset-bar">
+      <button class="pchip preset-main ${active812 ? 'active' : ''}" data-act="preset-812" data-ex="${ex.id}" ${scopeAttr}>⚡ 8–12</button>
+      <button class="pchip ${ex.heavyMode === 'range' && !active812 ? 'active' : ''}" data-act="set-mode" data-mode="range" data-ex="${ex.id}" ${scopeAttr}>Диапазон</button>
+      <button class="pchip ${ex.heavyMode === 'exact' ? 'active' : ''}" data-act="set-mode" data-mode="exact" data-ex="${ex.id}" ${scopeAttr}>Точно</button>
+      <button class="pchip ${ex.heavyMode === 'empty' ? 'active' : ''}" data-act="set-mode" data-mode="empty" data-ex="${ex.id}" ${scopeAttr}>Без цели</button>
+    </div>`;
+  }
+
+  function renderTargetControl(ex, side, light, compact) {
+    const isLight = side === 'light';
+    const cls = isLight ? (light.isManual ? 'mini-in manual-in' : 'mini-in auto-in') : 'mini-in';
+
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = isLight ? light.mode : ex.heavyMode;
+      if (mode === 'empty') {
+        return `<button class="${cls}" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--f-dim)" data-act="activate-target" data-side="${side}" data-ex="${ex.id}">Без цели · задать</button>`;
+      }
+      if (mode === 'range') {
+        const lo = isLight ? (light.min ?? '') : (ex.heavyMin ?? '');
+        const hi = isLight ? (light.max ?? '') : (ex.heavyMax ?? '');
+        return `<div class="range-pair">
+          <input class="${cls}" type="number" min="1" max="99" value="${lo}" placeholder="от" data-input="min" data-side="${side}" data-ex="${ex.id}" aria-label="От">
+          <span class="dash">–</span>
+          <input class="${cls}" type="number" min="1" max="99" value="${hi}" placeholder="до" data-input="max" data-side="${side}" data-ex="${ex.id}" aria-label="До">
+        </div>`;
+      }
+      const val = isLight ? (light.exact ?? '') : (ex.heavyExact ?? '');
+      return `<input class="${cls}" type="number" min="1" max="99" value="${val}" placeholder="повт." data-input="exact" data-side="${side}" data-ex="${ex.id}" aria-label="Повторы">`;
+    }
+
+    if (ex.type === 'duration') {
+      const sec = isLight ? light.sec : ex.heavySec;
+      return `<div class="step-box">
+        <button class="step-btn" data-act="dur-step" data-delta="-5" data-side="${side}" data-ex="${ex.id}" title="−5 с">−</button>
+        <div class="${cls}" style="display:flex;align-items:center;justify-content:center;font-size:${sec == null ? '12px' : (compact ? '17px' : '19px')};font-family:${sec == null ? 'Inter,sans-serif' : '"Barlow Condensed",Inter,sans-serif'};color:${sec == null ? 'var(--f-dim)' : ''}">
+          ${fmtSec(sec)}
+        </div>
+        <button class="step-btn" data-act="dur-step" data-delta="5" data-side="${side}" data-ex="${ex.id}" title="+5 с">+</button>
+      </div>`;
+    }
+
+    if (ex.type === 'distance') {
+      const meters = isLight ? light.meters : ex.heavyMeters;
+      const unit = isLight ? light.unit : ex.heavyUnit;
+      const str = fmtNumForUnit(meters, unit);
+      return `<div style="display:flex;align-items:center;gap:4px;width:100%">
+        <input class="${cls}" style="flex:1;min-width:0;font-size:${compact ? '18px' : '20px'}" type="text" inputmode="decimal" value="${str}" placeholder="без цели" data-input="dist" data-side="${side}" data-ex="${ex.id}">
+        <div class="unit-seg">
+          <button class="${unit === 'm' ? 'on' : ''}" data-act="dist-unit" data-unit="m" data-side="${side}" data-ex="${ex.id}">м</button>
+          <button class="${unit === 'km' ? 'on' : ''}" data-act="dist-unit" data-unit="km" data-side="${side}" data-ex="${ex.id}">км</button>
+        </div>
+      </div>`;
+    }
+    return '';
+  }
+
+  /* ==================== PROGRAM EDITOR RENDERERS ==================== */
+  function countManualOverrides() {
+    if (st.rule === 'manual') return 0;
+    return st.exercises.filter(e => e.lightManual).length;
+  }
+
+  function renderProgramEditor(variantKey) {
+    const len = [...st.programName.trim()].length;
+    const showCounter = len >= 48;
+    const over = len > 60;
+    const overrides = countManualOverrides();
+    const ruleObj = RULES.find(r => r.id === st.rule);
+
+    let weekBlock = '';
+    if (variantKey === 'A') {
+      weekBlock = `<div class="f-card" style="margin-top:14px">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Чередовать тяжёлые и лёгкие недели</div>
+            <div class="toggle-sub">${st.alternating ? 'У каждого дня — парные цели недели' : 'Обычный режим без деления на недели'}</div>
+          </div>
+          <button class="f-switch ${st.alternating ? 'on' : ''}" data-act="toggle-alt" aria-label="Чередовать недели"></button>
+        </div>
+        ${st.alternating ? `
+          <div style="margin-top:11px;padding-top:10px;border-top:1px solid #222B22">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+              <span style="font-size:11.5px;font-weight:700;color:var(--load-light-text);display:inline-flex;align-items:center;gap:6px"><span class="lamp light"></span>Правило лёгкой недели</span>
+              ${overrides > 0 ? `<span class="tag manual">${overrides} упр. вручную</span>` : ''}
+            </div>
+            <div class="radio-stack">
+              ${RULES.map(r => `<button class="radio-card ${st.rule === r.id ? 'on' : ''}" data-act="set-rule" data-rule="${r.id}">
+                <span class="radio-dot"></span>
+                <div>
+                  <div class="rc-title">${r.title}${r.badge ? ` <span class="tag lime" style="font-size:10px;padding:1px 6px">${r.badge}</span>` : ''}</div>
+                  <div class="rc-desc">${r.desc}</div>
+                </div>
+              </button>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>`;
+    } else if (variantKey === 'B') {
+      const ex1 = st.exercises[0];
+      const ex4 = st.exercises[3];
+      const ex5 = st.exercises[4];
+      const p1 = computeAutoLight({ ...ex1, progression: true }, st.rule === 'manual' ? 'easier_sets' : st.rule);
+      const p5 = computeAutoLight({ ...ex5, progression: true }, st.rule === 'manual' ? 'easier_sets' : st.rule);
+      weekBlock = `<div class="f-card" style="margin-top:14px">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Чередовать тяжёлые и лёгкие недели</div>
+            <div class="toggle-sub">Автоматическая разгрузка по проходам</div>
+          </div>
+          <button class="f-switch ${st.alternating ? 'on' : ''}" data-act="toggle-alt" aria-label="Чередовать недели"></button>
+        </div>
+        ${st.alternating ? `
+          <div class="seg-rule">
+            ${RULES.map(r => `<button class="${st.rule === r.id ? 'on' : ''}" data-act="set-rule" data-rule="${r.id}">${r.short}</button>`).join('')}
+          </div>
+          <div class="rule-preview">
+            ${st.rule === 'manual'
+              ? `<div class="rp-line"><span>Авторасчёт выключен</span><span style="color:var(--load-light-text);font-weight:600">Цели задаются вручную</span></div>`
+              : `<div class="rp-line">
+                  <span>Повторы (прогр. вкл.)</span>
+                  <span class="rp-pair"><span class="lamp heavy"></span>${fmtPairSummary(ex1, ex1, false)} → <span class="lamp light"></span>${fmtPairSummary(ex1, p1, true)}</span>
+                </div>
+                <div class="rp-line">
+                  <span>Дистанция (прогр. вкл.)</span>
+                  <span class="rp-pair"><span class="lamp heavy"></span>${fmtPairSummary(ex5, ex5, false)} → <span class="lamp light"></span>${fmtPairSummary(ex5, p5, true)}</span>
+                </div>
+                ${overrides > 0 ? `<div class="rp-line" style="color:#9CE0FF;padding-top:3px;border-top:1px solid #1E281E"><span>Ручные правки сохранятся</span><span>${overrides} упр.</span></div>` : ''}`
+            }
+          </div>
+        ` : ''}
+      </div>`;
+    } else {
+      // Variant C: ultra-compact rule trigger opening #1C231C sheet
+      weekBlock = `<div class="f-card" style="margin-top:14px">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Чередовать недели</div>
+            <div class="toggle-sub">Тяжёлая и лёгкая по очереди</div>
+          </div>
+          <button class="f-switch ${st.alternating ? 'on' : ''}" data-act="toggle-alt" aria-label="Чередовать недели"></button>
+        </div>
+        ${st.alternating ? `
+          <button class="prog-rule-btn" data-act="open-rule-sheet">
+            <div>
+              <small style="display:inline-flex;align-items:center;gap:5px"><span class="lamp light"></span>Правило лёгкой недели${overrides > 0 ? ` · ${overrides} вручную` : ''}</small>
+              <strong>${ruleObj.title}</strong>
+            </div>
+            <span style="color:var(--load-light-text);font-size:18px;font-weight:700">›</span>
+          </button>
+        ` : ''}
+      </div>`;
+    }
+
+    const ruleSheet = (variantKey === 'C' && st.ruleSheetOpen) ? `
+      <div class="f-scrim" data-act="close-sheets">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="sheet-grab"></div>
+          <div class="sheet-head">
+            <div>
+              <h3 class="sheet-title">Правило лёгкой недели</h3>
+              <div class="toggle-sub">Применится к авто-целям всех дней; ручные правки сохранятся</div>
+            </div>
+          </div>
+          <div class="radio-stack" style="margin-top:2px">
+            ${RULES.map(r => `<button class="radio-card ${st.rule === r.id ? 'on' : ''}" data-act="set-rule-sheet" data-rule="${r.id}">
+              <span class="radio-dot"></span>
+              <div>
+                <div class="rc-title">${r.title}${r.badge ? ` <span class="tag lime" style="font-size:10px;padding:1px 6px">${r.badge}</span>` : ''}</div>
+                <div class="rc-desc">${r.desc}</div>
+              </div>
+            </button>`).join('')}
+          </div>
+          <button class="btn-done-sheet" data-act="close-sheets">Готово</button>
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="f-status"><span>14:05</span><span>5G · 86%</span></div>
+      <div class="f-top">
+        <button class="f-back" data-act="noop" aria-label="Назад">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        ${st.alternating ? `<span class="f-top-tag"><span class="lamp heavy"></span><span class="lamp light"></span>Чередование вкл.</span>` : ''}
+      </div>
+      <div class="f-scroll">
+        <h1 class="f-h1">Редактирование программы</h1>
+        <label class="f-field-lbl" for="progName-${variantKey}">
+          <span>Название программы <b style="color:var(--f-primary)">*</b></span>
+          ${showCounter ? `<span class="f-counter ${over ? 'over' : ''}">${len} / 60</span>` : ''}
+        </label>
+        <input id="progName-${variantKey}" class="f-input ${over ? 'err' : ''}" value="${escapeAttr(st.programName)}" data-input="prog-name">
+        ${over ? `<div class="f-err-msg">Максимум 60 символов</div>` : ''}
+
+        ${weekBlock}
+
+        <div class="f-kicker">
+          <span>Тренировочные дни</span>
+          <span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">Нажми день → парные цели</span>
+        </div>
+
+        <button class="day-card" data-act="open-day">
+          <div style="min-width:0">
+            <div class="day-title">${escapeHtml(st.dayName)}</div>
+            <div class="day-sub">
+              <span>${st.exercises.length} упражнений</span>
+              ${st.alternating ? `<span class="tag light" style="font-size:10.5px;padding:1px 7px"><span class="lamp heavy"></span><span class="lamp light"></span>${ruleObj.short}</span>` : ''}
+              ${st.alternating && overrides > 0 ? `<span class="tag manual" style="font-size:10.5px;padding:1px 7px">${overrides} вручную</span>` : ''}
+            </div>
+          </div>
+          <span style="color:var(--f-muted);font-size:19px">›</span>
+        </button>
+
+        <button class="day-card" data-act="open-day">
+          <div style="min-width:0">
+            <div class="day-title">День Б · Ноги и кор</div>
+            <div class="day-sub">
+              <span>4 упражнения</span>
+              ${st.alternating ? `<span class="tag auto" style="font-size:10.5px;padding:1px 7px">авто</span>` : ''}
+            </div>
+          </div>
+          <span style="color:var(--f-muted);font-size:19px">›</span>
+        </button>
+
+        <button class="f-ob" style="margin-top:4px" data-act="noop">+ Добавить день</button>
+      </div>
+      <div class="f-foot"><button class="f-pb" data-act="save-prog">Сохранить программу</button></div>
+      ${ruleSheet}
+    `;
+  }
+
+  /* ==================== DAY EDITOR RENDERERS ==================== */
+  function renderDayEditor(variantKey) {
+    const dayLen = [...st.dayName.trim()].length;
+    const showDayCounter = dayLen >= 32;
+    const dayOver = dayLen > 40;
+    const ruleObj = RULES.find(r => r.id === st.rule);
+    const compact = phoneWidth === 360;
+
+    let listHtml = '';
+    if (variantKey === 'A') {
+      listHtml = st.exercises.map(ex => {
+        const light = getLightView(ex, st.rule);
+        const exp = st.expandedId === ex.id;
+        const canReset = st.alternating && st.rule !== 'manual' && ex.lightManual;
+        const lightBadge = !st.alternating ? '' : (
+          st.rule === 'manual' ? '<span class="va-col-badge manual">Вручную</span>'
+          : light.isManual ? '<span class="va-col-badge manual">Вручную</span>'
+          : '<span class="va-col-badge auto">Авто</span>'
+        );
+        return `<div class="ex-card ${exp ? 'expanded' : ''}">
+          <div class="ex-head">
+            <button class="ex-head-main" data-act="toggle-ex" data-ex="${ex.id}">
+              <div class="ex-name">${escapeHtml(ex.name)}</div>
+              <div class="ex-type-sub">
+                <span>${typeLabel(ex.type)}</span>
+                ${!ex.progression ? `<span>· Прогрессия выкл.</span>` : ''}
+              </div>
+              <div class="ex-summary-pills">
+                ${st.alternating
+                  ? `<span class="pill-val heavy"><span class="lamp heavy"></span>${fmtPairSummary(ex, ex, false)}</span>
+                     <span style="color:var(--f-dim);font-size:11px">→</span>
+                     <span class="pill-val ${light.isManual ? 'light-manual' : 'light-auto'}"><span class="lamp light"></span>${fmtPairSummary(ex, light, true)}${light.isManual && st.rule !== 'manual' ? ' · ручн.' : ''}</span>`
+                  : `<span class="pill-val plain">${fmtPairSummary(ex, ex, false)}</span>`}
+              </div>
+            </button>
+            <button class="drag-handle" title="Порядок" data-act="noop">⠿</button>
+          </div>
+          ${exp ? `<div class="va-body">
+            ${renderPresetStrip(ex, '')}
+            ${st.alternating ? `
+              <div class="va-cols">
+                <div class="va-col heavy">
+                  <div class="va-col-head">
+                    <span class="left"><span class="lamp heavy"></span><span style="color:var(--load-heavy-text)">Тяжёлая</span></span>
+                  </div>
+                  ${ex.type === 'distance' ? `
+                    <div>
+                      <span class="va-lbl">Подходы</span>
+                      <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                    </div>
+                    <div>
+                      <span class="va-lbl">Дистанция</span>
+                      ${renderTargetControl(ex, 'heavy', light, true)}
+                    </div>
+                  ` : ex.type === 'duration' ? `
+                    <div>
+                      <span class="va-lbl">Подходы</span>
+                      <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                    </div>
+                    <div>
+                      <span class="va-lbl">Время (шаг 5 с)</span>
+                      ${renderTargetControl(ex, 'heavy', light, true)}
+                    </div>
+                  ` : `
+                    <div class="va-field-grid">
+                      <div>
+                        <span class="va-lbl">Подх.</span>
+                        <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                      </div>
+                      <div>
+                        <span class="va-lbl">${ex.heavyMode === 'range' ? 'Повторы (от–до)' : 'Повторы'}</span>
+                        ${renderTargetControl(ex, 'heavy', light, true)}
+                      </div>
+                    </div>
+                  `}
+                </div>
+
+                <div class="va-col ${light.isManual ? 'light-manual' : 'light-auto'}">
+                  <div class="va-col-head">
+                    <span class="left"><span class="lamp light"></span><span style="color:var(--load-light-text)">Лёгкая</span></span>
+                    ${lightBadge}
+                  </div>
+                  ${ex.type === 'distance' ? `
+                    <div>
+                      <span class="va-lbl">Подходы</span>
+                      <input class="mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="number" min="1" max="20" value="${light.sets ?? ''}" placeholder="—" data-input="sets" data-side="light" data-ex="${ex.id}">
+                    </div>
+                    <div>
+                      <span class="va-lbl">Дистанция</span>
+                      ${renderTargetControl(ex, 'light', light, true)}
+                    </div>
+                  ` : ex.type === 'duration' ? `
+                    <div>
+                      <span class="va-lbl">Подходы</span>
+                      <input class="mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="number" min="1" max="20" value="${light.sets ?? ''}" placeholder="—" data-input="sets" data-side="light" data-ex="${ex.id}">
+                    </div>
+                    <div>
+                      <span class="va-lbl">Время (шаг 5 с)</span>
+                      ${renderTargetControl(ex, 'light', light, true)}
+                    </div>
+                  ` : `
+                    <div class="va-field-grid">
+                      <div>
+                        <span class="va-lbl">Подх.</span>
+                        <input class="mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="number" min="1" max="20" value="${light.sets ?? ''}" placeholder="—" data-input="sets" data-side="light" data-ex="${ex.id}">
+                      </div>
+                      <div>
+                        <span class="va-lbl">${light.mode === 'range' ? 'Повторы (от–до)' : 'Повторы'}</span>
+                        ${renderTargetControl(ex, 'light', light, true)}
+                      </div>
+                    </div>
+                  `}
+                  ${light.hint ? `<div class="va-hint">${light.hint}</div>` : ''}
+                </div>
+              </div>
+            ` : `
+              <div class="vb-inputs">
+                <div>
+                  <span class="va-lbl">Подходы</span>
+                  <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                </div>
+                <div>
+                  <span class="va-lbl">Цель</span>
+                  ${renderTargetControl(ex, 'heavy', light, false)}
+                </div>
+              </div>
+            `}
+            <div class="va-footer">
+              <label class="prog-inline">
+                <button class="f-switch sm ${ex.progression ? 'on' : ''}" data-act="toggle-prog" data-ex="${ex.id}" aria-label="Прогрессия"></button>
+                <span>Прогрессия</span>
+              </label>
+              ${canReset ? `<button class="reset-link" data-act="reset-light" data-ex="${ex.id}">↺ Сбросить к правилу</button>` : ''}
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('');
+    } else if (variantKey === 'B') {
+      listHtml = st.exercises.map(ex => {
+        const light = getLightView(ex, st.rule);
+        const exp = st.expandedId === ex.id;
+        const canReset = st.alternating && st.rule !== 'manual' && ex.lightManual;
+        return `<div class="ex-card ${exp ? 'expanded' : ''}">
+          <div class="ex-head">
+            <button class="ex-head-main" data-act="toggle-ex" data-ex="${ex.id}">
+              <div class="ex-name">${escapeHtml(ex.name)}</div>
+              <div class="ex-summary-pills">
+                ${st.alternating
+                  ? `<span class="pill-val heavy"><span class="lamp heavy"></span>${fmtPairSummary(ex, ex, false)}</span>
+                     <span class="pill-val ${light.isManual ? 'light-manual' : 'light-auto'}"><span class="lamp light"></span>${fmtPairSummary(ex, light, true)}${light.isManual && st.rule !== 'manual' ? ' · вручную' : ''}</span>`
+                  : `<span class="pill-val plain">${fmtPairSummary(ex, ex, false)}</span>`}
+                ${!ex.progression ? `<span class="tag muted" style="font-size:10.5px;padding:2px 7px">Без прогрессии</span>` : ''}
+              </div>
+            </button>
+            <button class="drag-handle" title="Порядок" data-act="noop">⠿</button>
+          </div>
+          ${exp ? `<div class="vb-body">
+            ${renderPresetStrip(ex, '')}
+            <div class="vb-row heavy">
+              <div class="vb-row-top">
+                <span class="vb-row-title" style="color:var(--load-heavy-text)">
+                  ${st.alternating ? '<span class="lamp heavy"></span>Тяжёлая неделя' : 'Цель по плану'}
+                </span>
+                <span style="font-size:11px;color:var(--f-dim)">${typeLabel(ex.type)}</span>
+              </div>
+              <div class="vb-inputs">
+                <div>
+                  <span class="va-lbl">Подходы</span>
+                  <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                </div>
+                <div>
+                  <span class="va-lbl">${ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : (ex.heavyMode === 'range' ? 'Диапазон повторов (от – до)' : 'Целевые повторы')}</span>
+                  ${renderTargetControl(ex, 'heavy', light, false)}
+                </div>
+              </div>
+            </div>
+
+            ${st.alternating ? `
+              <div class="vb-connector">
+                <span>↳</span>
+                <span>${st.rule === 'manual' ? 'Ручной режим программы' : light.isManual ? 'Изменено вручную — защищено от пересчёта' : `Авто · правило «${ruleObj.short}»`}</span>
+              </div>
+              <div class="vb-row ${light.isManual ? 'light-manual' : 'light-auto'}">
+                <div class="vb-row-top">
+                  <span class="vb-row-title" style="color:var(--load-light-text)">
+                    <span class="lamp light"></span>Лёгкая неделя
+                    ${!light.isManual ? '<span class="va-col-badge auto">Авто</span>' : (st.rule !== 'manual' ? '<span class="va-col-badge manual">Вручную</span>' : '')}
+                  </span>
+                  ${canReset ? `<button class="reset-link" data-act="reset-light" data-ex="${ex.id}">↺ Сбросить к правилу</button>` : ''}
+                </div>
+                <div class="vb-inputs">
+                  <div>
+                    <span class="va-lbl">Подходы</span>
+                    <input class="mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="number" min="1" max="20" value="${light.sets ?? ''}" placeholder="—" data-input="sets" data-side="light" data-ex="${ex.id}">
+                  </div>
+                  <div>
+                    <span class="va-lbl">${ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : (light.mode === 'range' ? 'Диапазон повторов (от – до)' : 'Целевые повторы')}</span>
+                    ${renderTargetControl(ex, 'light', light, false)}
+                  </div>
+                </div>
+                ${light.hint ? `<div class="va-hint">${light.hint}</div>` : ''}
+              </div>
+            ` : ''}
+
+            <div class="vb-prog-row">
+              <div>
+                <div style="font-size:12.5px;font-weight:600;color:var(--f-text)">Прогрессия</div>
+                <div style="font-size:11px;color:var(--f-dim)">${ex.progression ? 'Советы прогрессии и авто-облегчение вкл.' : 'Советы скрыты · авто-лёгкая равна тяжёлой'}</div>
+              </div>
+              <button class="f-switch sm ${ex.progression ? 'on' : ''}" data-act="toggle-prog" data-ex="${ex.id}" aria-label="Прогрессия"></button>
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('');
+    } else {
+      // Variant C: Compact non-expanding cards + #1C231C Bottom Sheet
+      listHtml = st.exercises.map(ex => {
+        const light = getLightView(ex, st.rule);
+        return `<div class="vc-card">
+          <div class="vc-top">
+            <button class="vc-tap" data-act="open-ex-sheet" data-ex="${ex.id}">
+              <div class="ex-name">${escapeHtml(ex.name)}</div>
+              <div class="ex-type-sub">
+                <span>${typeLabel(ex.type)}</span>
+                ${!ex.progression ? `<span style="color:#8F9D8B">· Без прогрессии</span>` : ''}
+              </div>
+            </button>
+            <button class="drag-handle" title="Порядок" data-act="noop">⠿</button>
+          </div>
+          <button class="vc-pair-bar" data-act="open-ex-sheet" data-ex="${ex.id}">
+            ${st.alternating ? `
+              <div class="vc-cell heavy">
+                <div class="vc-cell-k">
+                  <span style="display:inline-flex;align-items:center;gap:4px"><span class="lamp heavy"></span>Тяжёлая</span>
+                </div>
+                <div class="vc-cell-v">${fmtPairSummary(ex, ex, false)}</div>
+              </div>
+              <div class="vc-cell ${light.isManual ? 'light-manual' : 'light-auto'}">
+                <div class="vc-cell-k">
+                  <span style="display:inline-flex;align-items:center;gap:4px"><span class="lamp light"></span>Лёгкая</span>
+                  ${st.rule !== 'manual' ? `<span style="font-size:9.5px;color:${light.isManual ? '#9CE0FF' : '#73A6C2'}">${light.isManual ? 'ручн.' : 'авто'}</span>` : ''}
+                </div>
+                <div class="vc-cell-v ${light.isManual ? '' : 'auto'}">${fmtPairSummary(ex, light, true)}</div>
+              </div>
+            ` : `
+              <div class="vc-cell single">
+                <span style="font-size:11.5px;color:var(--f-muted)">Цель по плану</span>
+                <span class="vc-cell-v">${fmtPairSummary(ex, ex, false)}</span>
+              </div>
+            `}
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    // Bottom sheet for Variant C
+    let exSheet = '';
+    if (variantKey === 'C' && st.sheetExId) {
+      const ex = st.exercises.find(e => e.id === st.sheetExId);
+      if (ex) {
+        const light = getLightView(ex, st.rule);
+        const canReset = st.alternating && st.rule !== 'manual' && ex.lightManual;
+        exSheet = `<div class="f-scrim" data-act="close-sheets">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-grab"></div>
+            <div class="sheet-head">
+              <div style="min-width:0">
+                <h3 class="sheet-title">${escapeHtml(ex.name)}</h3>
+                <div class="ex-type-sub" style="margin-top:3px">${typeLabel(ex.type)}</div>
+              </div>
+              <label class="prog-inline" style="background:#141914;padding:5px 9px;border-radius:999px;flex-shrink:0">
+                <span style="font-size:11px">Прогрессия</span>
+                <button class="f-switch sm ${ex.progression ? 'on' : ''}" data-act="toggle-prog" data-ex="${ex.id}" aria-label="Прогрессия"></button>
+              </label>
+            </div>
+
+            ${renderPresetStrip(ex, '')}
+
+            <div class="vb-row heavy" style="background:#141914">
+              <div class="vb-row-top">
+                <span class="vb-row-title" style="color:var(--load-heavy-text)">
+                  ${st.alternating ? '<span class="lamp heavy"></span>Тяжёлая неделя' : 'Цель по плану'}
+                </span>
+              </div>
+              <div class="vb-inputs">
+                <div>
+                  <span class="va-lbl">Подходы</span>
+                  <input class="mini-in" type="number" min="1" max="20" value="${ex.heavySets ?? ''}" placeholder="—" data-input="sets" data-side="heavy" data-ex="${ex.id}">
+                </div>
+                <div>
+                  <span class="va-lbl">${ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : (ex.heavyMode === 'range' ? 'Диапазон (от – до)' : 'Повторы')}</span>
+                  ${renderTargetControl(ex, 'heavy', light, false)}
+                </div>
+              </div>
+            </div>
+
+            ${st.alternating ? `
+              <div class="vb-row ${light.isManual ? 'light-manual' : 'light-auto'}">
+                <div class="vb-row-top">
+                  <span class="vb-row-title" style="color:var(--load-light-text)">
+                    <span class="lamp light"></span>Лёгкая неделя
+                    ${!light.isManual ? `<span class="va-col-badge auto">Авто · ${ruleObj.short}</span>` : (st.rule !== 'manual' ? '<span class="va-col-badge manual">Вручную</span>' : '')}
+                  </span>
+                </div>
+                <div class="vb-inputs">
+                  <div>
+                    <span class="va-lbl">Подходы</span>
+                    <input class="mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="number" min="1" max="20" value="${light.sets ?? ''}" placeholder="—" data-input="sets" data-side="light" data-ex="${ex.id}">
+                  </div>
+                  <div>
+                    <span class="va-lbl">${ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : (light.mode === 'range' ? 'Диапазон (от – до)' : 'Повторы')}</span>
+                    ${renderTargetControl(ex, 'light', light, false)}
+                  </div>
+                </div>
+                ${light.hint ? `<div class="va-hint">${light.hint}</div>` : ''}
+                ${canReset ? `<button class="reset-link" style="align-self:flex-start;margin-top:2px" data-act="reset-light" data-ex="${ex.id}">↺ Сбросить к правилу программы</button>` : ''}
+              </div>
+            ` : ''}
+
+            <div class="sheet-foot">
+              <button class="btn-del-sheet" data-act="del-ex-sheet" data-ex="${ex.id}">🗑 Удалить</button>
+              <button class="btn-done-sheet" data-act="close-sheets">Готово</button>
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+
+    return `
+      <div class="f-status"><span>14:05</span><span>5G · 86%</span></div>
+      <div class="f-top">
+        <button class="f-back" data-act="back-prog" aria-label="К программе">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        ${st.alternating
+          ? `<button class="f-top-tag" style="border:0" data-act="back-prog" title="Правило программы"><span class="lamp heavy"></span><span class="lamp light"></span>${ruleObj.short}</button>`
+          : `<span class="f-top-tag">Без чередования</span>`}
+      </div>
+      <div class="f-scroll">
+        <h1 class="f-h1">Тренировочный день</h1>
+        <label class="f-field-lbl" for="dayName-${variantKey}">
+          <span>Название дня <b style="color:var(--f-primary)">*</b></span>
+          ${showDayCounter ? `<span class="f-counter ${dayOver ? 'over' : ''}">${dayLen} / 40</span>` : ''}
+        </label>
+        <input id="dayName-${variantKey}" class="f-input ${dayOver ? 'err' : ''}" value="${escapeAttr(st.dayName)}" data-input="day-name">
+        ${dayOver ? `<div class="f-err-msg">Максимум 40 символов</div>` : ''}
+
+        <div class="f-kicker">
+          <span>Упражнения (${st.exercises.length})</span>
+          <span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">${variantKey === 'C' ? 'Тап → шторка цели' : 'Тап → редактировать'}</span>
+        </div>
+
+        <div class="ex-list">${listHtml}</div>
+        <button class="f-ob" style="margin-top:10px" data-act="noop">+ Добавить упражнение</button>
+      </div>
+      <div class="f-foot"><button class="f-pb" data-act="back-prog">Сохранить день</button></div>
+      ${exSheet}
+    `;
+  }
+
+  function renderPhone(variantKey) {
+    const inner = activeScreen === 'program'
+      ? renderProgramEditor(variantKey)
+      : renderDayEditor(variantKey);
+    const snack = st.snack ? `<div class="f-snack"><span>${escapeHtml(st.snack.text)}</span>${st.snack.undoLabel ? `<b data-act="dismiss-snack">${st.snack.undoLabel}</b>` : ''}</div>` : '';
+    return `<div class="phone ${phoneWidth === 360 ? 'w360' : ''}" data-variant="${variantKey}">${inner}${snack}</div>`;
+  }
+
+  function renderStateTable() {
+    const ruleObj = RULES.find(r => r.id === st.rule);
+    const rows = [
+      ['Чередование недель', st.alternating ? `Вкл · правило «${ruleObj.title}»` : 'Выкл (обычная программа)'],
+      ...st.exercises.map(ex => {
+        const l = getLightView(ex, st.rule);
+        const badge = !st.alternating ? '—'
+          : st.rule === 'manual' ? 'вручную (режим прогр.)'
+          : l.isManual ? 'ВРУЧНУЮ (защищено)'
+          : !ex.progression ? 'авто (= тяжёлой, прогр. выкл.)'
+          : 'авто';
+        return [
+          ex.name.length > 26 ? ex.name.slice(0, 26) + '…' : ex.name,
+          st.alternating
+            ? `${fmtPairSummary(ex, ex, false)} → ${fmtPairSummary(ex, l, true)} (${badge})`
+            : fmtPairSummary(ex, ex, false)
+        ];
+      })
+    ];
+    document.getElementById('stateTable').innerHTML = rows.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`).join('');
+  }
+
+  function renderAll() {
+    const vObj = VARIANTS.find(v => v.key === activeVariant);
+    document.getElementById('pbKey').textContent = vObj.key;
+    document.getElementById('pbName').textContent = vObj.name;
+    document.getElementById('varHeading').textContent = `Вариант ${vObj.key} — ${vObj.name}`;
+    document.getElementById('varDescription').innerHTML = vObj.desc;
+
+    // Sync top host tabs
+    document.querySelectorAll('#viewTabs button').forEach(b => b.classList.toggle('active', b.dataset.view === activeView));
+    document.querySelectorAll('#screenTabs button').forEach(b => b.classList.toggle('active', b.dataset.screen === activeScreen));
+    document.querySelectorAll('#widthTabs button').forEach(b => b.classList.toggle('active', Number(b.dataset.w) === phoneWidth));
+    document.querySelectorAll('#scenarioBtns button').forEach(b => b.classList.toggle('active', b.dataset.sc === activeScenario));
+
+    const inter = document.getElementById('interactiveStage');
+    const comp = document.getElementById('compareStage');
+
+    if (activeView === 'interactive') {
+      inter.classList.remove('hidden');
+      comp.classList.add('hidden');
+      document.getElementById('mainPhoneMount').innerHTML = renderPhone(activeVariant);
+      document.getElementById('mainCaption').textContent = `Вариант ${vObj.key} (${vObj.short}) · ${phoneWidth} dp · ${activeScreen === 'program' ? 'Редактор программы' : 'Редактор дня'}`;
+      renderStateTable();
+    } else {
+      inter.classList.add('hidden');
+      comp.classList.remove('hidden');
+      comp.innerHTML = VARIANTS.map(v => `
+        <div class="compare-col">
+          <div class="compare-head">
+            <div>
+              <strong>Вариант ${v.key} · ${v.name}</strong>
+              <span>${v.short}</span>
+            </div>
+            <button class="cbtn ${v.key === activeVariant ? 'active' : ''}" data-pick-var="${v.key}">Открыть</button>
+          </div>
+          ${renderPhone(v.key)}
+        </div>
+      `).join('');
+    }
+  }
+
+  /* ==================== EVENTS (DELEGATED) ==================== */
+  document.addEventListener('click', e => {
+    const viewBtn = e.target.closest('#viewTabs button');
+    if (viewBtn) { activeView = viewBtn.dataset.view; renderAll(); return; }
+
+    const screenBtn = e.target.closest('#screenTabs button');
+    if (screenBtn) { activeScreen = screenBtn.dataset.screen; st.sheetExId = null; st.ruleSheetOpen = false; renderAll(); return; }
+
+    const wBtn = e.target.closest('#widthTabs button');
+    if (wBtn) { phoneWidth = Number(wBtn.dataset.w); renderAll(); return; }
+
+    const scBtn = e.target.closest('#scenarioBtns button');
+    if (scBtn) {
+      activeScenario = scBtn.dataset.sc;
+      st = createInitialState(activeScenario);
+      if (activeScenario === 'distance') activeScreen = 'day';
+      renderAll();
+      return;
+    }
+
+    const pickVar = e.target.closest('[data-pick-var]');
+    if (pickVar) { activeView = 'interactive'; setVariant(pickVar.dataset.pickVar); return; }
+
+    if (e.target.closest('#prevVar')) {
+      const idx = VARIANTS.findIndex(v => v.key === activeVariant);
+      setVariant(VARIANTS[(idx + VARIANTS.length - 1) % VARIANTS.length].key);
+      return;
+    }
+    if (e.target.closest('#nextVar')) {
+      const idx = VARIANTS.findIndex(v => v.key === activeVariant);
+      setVariant(VARIANTS[(idx + 1) % VARIANTS.length].key);
+      return;
+    }
+    if (e.target.closest('#btnResetDemo')) { st = createInitialState(activeScenario); renderAll(); return; }
+    if (e.target.closest('#btnToggleAlt')) { st.alternating = !st.alternating; renderAll(); return; }
+
+    const actEl = e.target.closest('[data-act]');
+    if (!actEl) return;
+    const act = actEl.dataset.act;
+    const exId = actEl.dataset.ex;
+    const ex = exId ? st.exercises.find(x => x.id === exId) : null;
+
+    if (act === 'toggle-alt') {
+      st.alternating = !st.alternating;
+      if (st.alternating) showSnack('Лёгкие цели рассчитаны по правилу «' + RULES.find(r => r.id === st.rule).short + '»', 'ОК');
+      renderAll();
+    } else if (act === 'set-rule' || act === 'set-rule-sheet') {
+      const nextRule = actEl.dataset.rule;
+      if (nextRule === 'manual' && st.rule !== 'manual') {
+        st.exercises.forEach(item => {
+          if (!item.lightManual) copyToManual(item, computeAutoLight(item, st.rule));
+          item.lightManual = false;
+        });
+      }
+      st.rule = nextRule;
+      if (act === 'set-rule-sheet') st.ruleSheetOpen = false;
+      showSnack('Правило: ' + RULES.find(r => r.id === st.rule).title);
+      renderAll();
+    } else if (act === 'open-rule-sheet') {
+      st.ruleSheetOpen = true;
+      renderAll();
+    } else if (act === 'open-day') {
+      activeScreen = 'day';
+      st.ruleSheetOpen = false;
+      renderAll();
+    } else if (act === 'back-prog') {
+      activeScreen = 'program';
+      st.sheetExId = null;
+      renderAll();
+    } else if (act === 'toggle-ex' && ex) {
+      st.expandedId = st.expandedId === ex.id ? null : ex.id;
+      renderAll();
+    } else if (act === 'open-ex-sheet' && ex) {
+      st.sheetExId = ex.id;
+      renderAll();
+    } else if (act === 'close-sheets') {
+      st.sheetExId = null;
+      st.ruleSheetOpen = false;
+      renderAll();
+    } else if (act === 'preset-812' && ex) {
+      ex.heavyMode = 'range';
+      ex.heavyMin = 8;
+      ex.heavyMax = 12;
+      if (st.rule === 'manual') {
+        // manual rule never auto-overwrites light
+      }
+      showSnack('Установлен диапазон 8–12 повт.');
+      renderAll();
+    } else if (act === 'set-mode' && ex) {
+      const m = actEl.dataset.mode;
+      ex.heavyMode = m;
+      if (m === 'range') {
+        if (!ex.heavyMin) ex.heavyMin = 8;
+        if (!ex.heavyMax || ex.heavyMax < ex.heavyMin) ex.heavyMax = ex.heavyMin + 2;
+      } else if (m === 'exact') {
+        if (!ex.heavyExact) ex.heavyExact = ex.heavyMin || 10;
+      }
+      renderAll();
+    } else if (act === 'activate-target' && ex) {
+      const side = actEl.dataset.side;
+      if (side === 'heavy') {
+        ex.heavyMode = 'exact';
+        ex.heavyExact = 10;
+      } else {
+        ensureManualSnapshot(ex, st.rule);
+        ex.manualMode = 'exact';
+        ex.manualExact = 8;
+      }
+      renderAll();
+    } else if (act === 'toggle-prog' && ex) {
+      ex.progression = !ex.progression;
+      renderAll();
+    } else if (act === 'reset-light' && ex) {
+      ex.lightManual = false;
+      ex.lightDisplayUnit = null;
+      showSnack('Лёгкая цель возвращена к правилу программы');
+      renderAll();
+    } else if (act === 'dur-step' && ex) {
+      const delta = Number(actEl.dataset.delta);
+      const side = actEl.dataset.side;
+      if (side === 'heavy') {
+        if (ex.heavySec == null) {
+          ex.heavySec = delta > 0 ? 15 : null;
+        } else {
+          const next = ex.heavySec + delta;
+          ex.heavySec = next < 5 ? null : next;
+        }
+      } else {
+        ensureManualSnapshot(ex, st.rule);
+        if (ex.manualSec == null) {
+          ex.manualSec = delta > 0 ? 15 : null;
+        } else {
+          const next = ex.manualSec + delta;
+          ex.manualSec = next < 5 ? null : next;
+        }
+      }
+      renderAll();
+    } else if (act === 'dist-unit' && ex) {
+      const u = actEl.dataset.unit;
+      const side = actEl.dataset.side;
+      if (side === 'heavy') {
+        ex.heavyUnit = u;
+      } else {
+        ex.manualUnit = u;
+        ex.lightDisplayUnit = u;
+      }
+      renderAll();
+    } else if (act === 'del-ex-sheet' && ex) {
+      st.sheetExId = null;
+      showSnack('Удалено из дня: ' + ex.name, 'ОК');
+      renderAll();
+    } else if (act === 'save-prog') {
+      showSnack('Программа сохранена (прототип)');
+      renderAll();
+    } else if (act === 'dismiss-snack') {
+      st.snack = null;
+      renderAll();
+    }
+  });
+
+  document.addEventListener('input', e => {
+    const inp = e.target;
+    const kind = inp.dataset.input;
+    if (!kind) return;
+
+    if (kind === 'prog-name') {
+      st.programName = inp.value;
+      renderStateTable();
+      // Keep focus without full re-render unless needed; update counters inline
+      const len = [...st.programName.trim()].length;
+      const lbl = inp.previousElementSibling;
+      if (lbl) {
+        let c = lbl.querySelector('.f-counter');
+        if (len >= 48) {
+          if (!c) { c = document.createElement('span'); c.className = 'f-counter'; lbl.appendChild(c); }
+          c.textContent = `${len} / 60`;
+          c.classList.toggle('over', len > 60);
+        } else if (c) c.remove();
+      }
+      inp.classList.toggle('err', len > 60);
+      return;
+    }
+    if (kind === 'day-name') {
+      st.dayName = inp.value;
+      const len = [...st.dayName.trim()].length;
+      const lbl = inp.previousElementSibling;
+      if (lbl) {
+        let c = lbl.querySelector('.f-counter');
+        if (len >= 32) {
+          if (!c) { c = document.createElement('span'); c.className = 'f-counter'; lbl.appendChild(c); }
+          c.textContent = `${len} / 40`;
+          c.classList.toggle('over', len > 40);
+        } else if (c) c.remove();
+      }
+      inp.classList.toggle('err', len > 40);
+      return;
+    }
+
+    const ex = st.exercises.find(x => x.id === inp.dataset.ex);
+    if (!ex) return;
+    const side = inp.dataset.side;
+    const raw = inp.value.trim();
+
+    if (side === 'light') {
+      ensureManualSnapshot(ex, st.rule);
+    }
+
+    if (kind === 'sets') {
+      const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1);
+      if (side === 'heavy') ex.heavySets = val;
+      else ex.manualSets = val;
+    } else if (kind === 'exact') {
+      const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1);
+      if (side === 'heavy') ex.heavyExact = val;
+      else ex.manualExact = val;
+    } else if (kind === 'min') {
+      const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1);
+      if (side === 'heavy') ex.heavyMin = val;
+      else ex.manualMin = val;
+    } else if (kind === 'max') {
+      const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1);
+      if (side === 'heavy') ex.heavyMax = val;
+      else ex.manualMax = val;
+    } else if (kind === 'dist') {
+      const normalized = raw.replace(',', '.');
+      const num = parseFloat(normalized);
+      const unit = side === 'heavy' ? ex.heavyUnit : ex.manualUnit;
+      const meters = raw === '' || isNaN(num) || num <= 0 ? null : (unit === 'km' ? Math.round(num * 1000) : Math.round(num));
+      if (side === 'heavy') ex.heavyMeters = meters;
+      else ex.manualMeters = meters;
+    }
+
+    // Live re-render preserving focus and caret position
+    const phoneEl = inp.closest('.phone');
+    const vKey = phoneEl ? phoneEl.dataset.variant : activeVariant;
+    const selStart = inp.selectionStart;
+    const selEnd = inp.selectionEnd;
+    renderAll();
+    const sel = `.phone[data-variant="${vKey}"] [data-input="${kind}"][data-side="${side}"][data-ex="${ex.id}"]`;
+    const nextInp = document.querySelector(sel);
+    if (nextInp) {
+      nextInp.focus();
+      try { if (selStart != null) nextInp.setSelectionRange(selStart, selEnd); } catch (_) {}
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const idx = VARIANTS.findIndex(v => v.key === activeVariant);
+      setVariant(VARIANTS[(idx + VARIANTS.length - 1) % VARIANTS.length].key);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const idx = VARIANTS.findIndex(v => v.key === activeVariant);
+      setVariant(VARIANTS[(idx + 1) % VARIANTS.length].key);
+    }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
