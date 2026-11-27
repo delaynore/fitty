@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #101, #102, #104, #105, #106, #113, #115/#116.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #100, #101, #102, #104, #105, #106, #113, #114, #115/#116, #117/#118, #119.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1323,6 +1323,99 @@
     border: 1.5px solid var(--f-outline-hi); display: flex; align-items: center; justify-content: center;
   }
   .f-feel-card.just-right .formula-radio { border-color: var(--f-primary); background: var(--f-primary); color: var(--f-on-primary); }
+
+  /* ==================== PROGRAM & DAY EDITOR (#100 · VARIANT 1 FINAL) ==================== */
+  .pe-scroll { flex: 1; overflow-y: auto; padding: 2px 18px 92px; scrollbar-width: thin; scrollbar-color: #2B352A transparent; }
+  .phone.w360 .pe-scroll { padding: 2px 14px 92px; }
+  .pe-top { height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .pe-back { width: 38px; height: 38px; border-radius: 12px; border: 0; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; margin-left: -8px; }
+  .pe-top-tag { font-size: 11.5px; font-weight: 600; color: var(--f-muted); background: var(--f-surface); padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 0; }
+  .pe-h1 { margin: 2px 0 14px; font-family: Inter, sans-serif; font-weight: 700; font-size: 24px; line-height: 1.08; text-transform: uppercase; letter-spacing: 0.3px; color: var(--f-text); }
+  .phone.w360 .pe-h1 { font-size: 21px; }
+  .pe-kicker { font-weight: 700; font-size: 12px; letter-spacing: 0.65px; text-transform: uppercase; color: var(--f-muted); margin: 18px 0 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-field-lbl { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--f-muted); margin: 0 0 6px; }
+  .pe-counter { font-size: 11px; font-weight: 600; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .pe-counter.over { color: var(--f-error); }
+  .pe-input { width: 100%; height: 48px; background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 14px; padding: 0 14px; font-size: 15px; font-weight: 600; outline: none; }
+  .pe-input:focus { border-color: var(--f-primary); }
+  .pe-input.err { border-color: var(--f-error); }
+  .pe-card { background: var(--f-surface); border-radius: 18px; overflow: hidden; }
+  .pe-set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; width: 100%; background: transparent; border: 0; color: inherit; text-align: left; }
+  .pe-set-div { height: 1px; background: #252D24; margin: 0 15px; }
+  .pe-set-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+  .pe-set-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--f-chip); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--load-light); gap: 4px; }
+  .pe-set-title { font-size: 14.5px; font-weight: 600; color: var(--f-text); line-height: 1.25; }
+  .pe-set-val { font-size: 12.5px; font-weight: 600; color: var(--load-light); margin-top: 2px; line-height: 1.25; }
+  .pe-set-sub { font-size: 11.5px; color: var(--f-dim); margin-top: 2px; line-height: 1.3; }
+  .pe-switch { width: 46px; height: 28px; border-radius: 999px; border: 1.5px solid var(--f-outline-hi); background: var(--f-chip); position: relative; padding: 0; flex: none; }
+  .pe-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform .14s, background .14s; }
+  .pe-switch.on { background: var(--f-primary); border-color: var(--f-primary); }
+  .pe-switch.on::after { transform: translateX(18px); background: var(--f-on-primary); }
+  .pe-switch.sm { width: 38px; height: 22px; }
+  .pe-switch.sm::after { width: 14px; height: 14px; top: 2.5px; left: 2.5px; }
+  .pe-switch.sm.on::after { transform: translateX(16px); }
+  .pe-day-card { width: 100%; text-align: left; border: 0; background: var(--f-surface); color: var(--f-text); border-radius: 18px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pe-day-title { font-weight: 700; font-size: 16px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pe-day-sub { font-size: 12px; color: var(--f-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pe-tag-man { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: rgba(92,200,250,0.14); color: #9CE0FF; font-size: 11px; font-weight: 600; }
+  .pe-foot { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 18px 18px; background: linear-gradient(180deg, rgba(11,14,11,0) 0%, rgba(11,14,11,0.92) 28%, #0B0E0B 100%); pointer-events: none; }
+  .phone.w360 .pe-foot { padding: 12px 14px 16px; }
+  .pe-foot .pb { pointer-events: auto; }
+  .pe-ex-list { display: flex; flex-direction: column; gap: 8px; }
+  .pe-ex-card { background: var(--f-surface); border-radius: 16px; overflow: hidden; border: 1.5px solid transparent; }
+  .pe-ex-card.expanded { border-color: #2E3A2D; background: #161C16; }
+  .pe-ex-head { display: flex; align-items: center; gap: 8px; padding: 11px 10px 11px 13px; }
+  .pe-ex-main { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 0; }
+  .pe-ex-name { font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--f-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pe-summary-line { height: 24px; margin-top: 5px; display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; }
+  .pe-pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 7px; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap; flex: none; }
+  .pe-pill.heavy { background: #241A10; color: #FFD8AA; }
+  .pe-pill.light-auto { background: rgba(19,37,49,0.55); color: #9BD5F3; border: 1px dashed #2E5A75; }
+  .pe-pill.light-manual { background: #132531; color: #D7F2FF; border: 1px solid #4589B3; }
+  .pe-pill.plain { background: var(--f-chip); color: var(--f-text); }
+  .pe-pill-eq { font-size: 11px; color: var(--f-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-drag { width: 32px; height: 34px; border-radius: 9px; border: 0; background: var(--f-primary-container); color: var(--f-primary); display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 15px; letter-spacing: -1px; }
+  .pe-ex-body { border-top: 1px solid #232C23; }
+  .pe-prog-bar { height: 44px; padding: 0 12px; background: #111611; border-bottom: 1px solid #202820; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pe-ex-inner { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 9px; }
+  .phone.w360 .pe-ex-inner { padding: 10px 10px 11px; }
+  .pe-mode-row { display: flex; align-items: center; gap: 7px; }
+  .pe-mode-seg { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 10px; padding: 2px; gap: 2px; }
+  .pe-mode-seg button { border: 0; background: transparent; color: var(--f-dim); height: 28px; border-radius: 8px; font-size: 11.5px; font-weight: 600; padding: 0 4px; white-space: nowrap; }
+  .pe-mode-seg button.on { background: #252E24; color: var(--f-text); box-shadow: inset 0 0 0 1px #3B4939; }
+  .pe-preset-btn { width: 56px; height: 32px; padding: 0; border-radius: 10px; flex: none; border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+  .pe-preset-btn.applied { background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary); }
+  .pe-tblock { border-radius: 13px; padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .pe-tblock.heavy { background: #131611; border: 1px solid #3C301E; }
+  .pe-tblock.plain { background: #121712; border: 1px solid #293328; }
+  .pe-tblock.light-auto { background: #0E171E; border: 1.5px dashed #2B536D; }
+  .pe-tblock.light-manual { background: #10202C; border: 1.5px solid #5CC8FA; }
+  .pe-thead { height: 22px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .pe-ttitle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 0; }
+  .pe-tmeta { font-size: 10.5px; color: #8ACCEB; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-tbadge { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; text-transform: uppercase; flex: none; }
+  .pe-tbadge.auto { background: rgba(92,200,250,0.14); color: #8ACCEB; }
+  .pe-tbadge.manual { background: #5CC8FA; color: #0B1922; }
+  .pe-tgrid { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: end; }
+  .phone.w360 .pe-tgrid { grid-template-columns: 62px 1fr; gap: 7px; }
+  .pe-tlbl { font-size: 10.5px; color: var(--f-dim); margin-bottom: 3px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-mini-in { width: 100%; height: 38px; background: #0B0E0B; color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 10px; text-align: center; font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; padding: 0 6px; outline: none; font-variant-numeric: tabular-nums; }
+  .pe-mini-in:focus { border-color: var(--f-primary); }
+  .pe-mini-in.auto-in { background: rgba(11,14,11,0.55); border: 1.5px dashed #315D78; color: #9ED6F3; }
+  .pe-mini-in.manual-in { background: #0D1922; border: 1.5px solid #4A92BE; color: #E5F6FF; }
+  .pe-range-pair { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-unit-seg { display: inline-flex; background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 9px; padding: 2px; gap: 2px; flex: none; height: 38px; align-items: center; }
+  .pe-unit-seg button { border: 0; background: transparent; color: var(--f-muted); font-size: 11px; font-weight: 700; padding: 0 9px; height: 30px; border-radius: 6px; }
+  .pe-unit-seg button.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .pe-step-box { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-step-btn { width: 32px; height: 38px; border-radius: 9px; border: 1px solid var(--f-outline); background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .pe-light-off { height: 38px; padding: 0 11px; border-radius: 11px; background: #101619; border: 1px dashed #243844; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-reset-link { border: 0; background: rgba(92,200,250,0.14); color: #AEE2FF; border-radius: 999px; padding: 2px 8px; font-size: 10.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .pe-radio-card { width: 100%; text-align: left; background: #141914; border: 1.5px solid #263026; border-radius: 15px; padding: 12px 13px; color: var(--f-text); display: flex; align-items: flex-start; gap: 11px; }
+  .pe-radio-card.on { background: #15222B; border-color: var(--load-light); }
+  .pe-radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--f-outline-hi); margin-top: 2px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .pe-radio-card.on .pe-radio-dot { border-color: var(--load-light); }
+  .pe-radio-card.on .pe-radio-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--load-light); }
 </style>
 </head>
 <body>
@@ -1769,8 +1862,126 @@
       sheet: null, snack: null, undoSnap: null,
       finishHintUntil: 0, finishHintScope: null, holdPreviewPct: 0, finishHintStatic: false,
       history: cloneHistoryList(INITIAL_HISTORY), lockPlankState: 'overtime',
-      installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0
+      installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0,
+      progEditor: peCreateInitial()
     };
+  }
+
+  const PE_RULES = [
+    { id: 'easier_sets', short: 'Легче подходы', title: 'Легче подходы', badge: 'По умолчанию', desc: '−2 повтора (для коротких ≤ 4 — снижение веса по ощущениям), ~80% времени и дистанции' },
+    { id: 'fewer_sets', short: '−1 подход', title: 'Меньше подходов (−1)', badge: '', desc: 'Минус 1 подход при ≥ 2 подходах; повторы, время и дистанция не меняются' },
+    { id: 'manual', short: 'Вручную', title: 'Вручную', badge: '', desc: 'Копирует тяжёлые цели при включении, без авторасчёта и кнопки сброса' }
+  ];
+
+  function peCreateInitial(ov = {}) {
+    const base = {
+      programName: 'Базовая силовая',
+      rule: 'easier_sets',
+      dayName: 'День А · Верх и тяга',
+      expandedId: 'pe1',
+      exercises: [
+        { id: 'pe1', name: 'Жим штанги лёжа', type: 'weight_reps', progression: true, heavySets: 3, heavyMode: 'range', heavyMin: 8, heavyMax: 12, heavyExact: 10, lightManual: false, manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8 },
+        { id: 'pe2', name: 'Подтягивания', type: 'reps', progression: true, heavySets: 3, heavyMode: 'exact', heavyMin: 8, heavyMax: 12, heavyExact: 10, lightManual: true, manualSets: 2, manualMode: 'range', manualMin: 6, manualMax: 8, manualExact: 7 },
+        { id: 'pe3', name: 'Становая тяга', type: 'weight_reps', progression: true, heavySets: 3, heavyMode: 'exact', heavyMin: 1, heavyMax: 3, heavyExact: 3, lightManual: false, manualSets: 3, manualMode: 'exact', manualMin: 1, manualMax: 3, manualExact: 3 },
+        { id: 'pe4', name: 'Планка на предплечьях', type: 'duration', progression: false, heavySets: 3, heavySec: 45, lightManual: false, manualSets: 3, manualSec: 45 },
+        { id: 'pe5', name: 'Бег на дорожке', type: 'distance', progression: false, heavySets: 1, heavyMeters: 1000, heavyUnit: 'km', lightManual: false, manualSets: 1, manualMeters: 1000, manualUnit: 'm' }
+      ]
+    };
+    const out = Object.assign(base, ov);
+    if (ov.exercises) out.exercises = ov.exercises.map(x => ({ ...x }));
+    return out;
+  }
+
+  function peClone(pe) {
+    if (!pe) return peCreateInitial();
+    return { ...pe, exercises: (pe.exercises || []).map(x => ({ ...x })) };
+  }
+
+  function peRoundDur80(sec) {
+    if (sec == null) return { sec: null, hint: 'легче по ощущениям' };
+    if (sec <= 5) return { sec, hint: 'легче по ощущениям' };
+    return { sec: Math.max(5, Math.min(sec - 5, Math.round((sec * 0.8) / 5) * 5)), hint: null };
+  }
+  function peRoundDist80(m) {
+    if (m == null) return { meters: null, hint: 'легче по ощущениям' };
+    if (m <= 1) return { meters: 1, hint: 'легче по ощущениям' };
+    const step = m >= 1000 ? 100 : m >= 100 ? 50 : m >= 10 ? 5 : 1;
+    let r = Math.round((m * 0.8) / step) * step;
+    if (r >= m) r = m - step;
+    if (r < 1) r = Math.max(1, m - 1);
+    return { meters: r, hint: null };
+  }
+  function peComputeAutoLight(ex, rule) {
+    if (!ex.progression) {
+      return { sets: ex.heavySets, mode: ex.heavyMode, min: ex.heavyMin, max: ex.heavyMax, exact: ex.heavyExact, sec: ex.heavySec, meters: ex.heavyMeters, unit: ex.heavyMeters != null ? (ex.heavyMeters >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint: null };
+    }
+    if (rule === 'fewer_sets') {
+      let sets = ex.heavySets, hint = null;
+      if (sets == null) hint = '3 строки вместо 4';
+      else if (sets >= 2) sets -= 1;
+      else { sets = 1; hint = 'легче по ощущениям'; }
+      return { sets, mode: ex.heavyMode, min: ex.heavyMin, max: ex.heavyMax, exact: ex.heavyExact, sec: ex.heavySec, meters: ex.heavyMeters, unit: ex.heavyMeters != null ? (ex.heavyMeters >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint };
+    }
+    const base = { sets: ex.heavySets, hint: null };
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (ex.heavyMode === 'empty') return { ...base, mode: 'empty', min: null, max: null, exact: null, hint: 'легче по ощущениям' };
+      if (ex.heavyMode === 'exact') {
+        const v = Number(ex.heavyExact) || 0;
+        if (!v) return { ...base, mode: 'empty', exact: null, hint: 'легче по ощущениям' };
+        if (v >= 5) return { ...base, mode: 'exact', exact: v - 2 };
+        if (ex.type === 'weight_reps') return { ...base, mode: 'exact', exact: v, hint: 'снизить вес по ощущениям' };
+        return v >= 2 ? { ...base, mode: 'exact', exact: v - 1 } : { ...base, mode: 'exact', exact: 1, hint: 'легче по ощущениям' };
+      }
+      const lo = Number(ex.heavyMin) || 0, hi = Number(ex.heavyMax) || lo;
+      if (!lo) return { ...base, mode: 'empty', min: null, max: null, hint: 'легче по ощущениям' };
+      if (lo >= 5) return { ...base, mode: 'range', min: lo - 2, max: Math.max(lo - 2, hi - 2) };
+      if (ex.type === 'weight_reps') return { ...base, mode: 'range', min: lo, max: hi, hint: 'снизить вес по ощущениям' };
+      if (lo >= 2) return { ...base, mode: 'range', min: lo - 1, max: Math.max(lo - 1, hi - 1) };
+      return { ...base, mode: 'range', min: lo, max: hi, hint: 'легче по ощущениям' };
+    }
+    if (ex.type === 'duration') { const r = peRoundDur80(ex.heavySec); return { ...base, sec: r.sec, hint: r.hint }; }
+    if (ex.type === 'distance') { const r = peRoundDist80(ex.heavyMeters); return { ...base, meters: r.meters, unit: r.meters != null && r.meters >= 1000 ? 'km' : 'm', hint: r.hint }; }
+    return base;
+  }
+  function peGetLight(ex, rule) {
+    if (rule === 'manual' || ex.lightManual) {
+      return { isManual: true, sets: ex.manualSets, mode: ex.manualMode, min: ex.manualMin, max: ex.manualMax, exact: ex.manualExact, sec: ex.manualSec, meters: ex.manualMeters, unit: ex.manualUnit || (ex.manualMeters != null && ex.manualMeters >= 1000 ? 'km' : 'm'), hint: null };
+    }
+    return { isManual: false, ...peComputeAutoLight(ex, rule), ...(ex.lightDisplayUnit ? { unit: ex.lightDisplayUnit } : {}) };
+  }
+  function peShowLight(ex, s) {
+    if (!s.alternating) return false;
+    if (s.progEditor.rule === 'manual' || ex.lightManual) return true;
+    return ex.progression;
+  }
+  function peCopyToManual(ex, src) {
+    ex.manualSets = src.sets; ex.manualMode = src.mode || ex.heavyMode;
+    ex.manualMin = src.min ?? ex.heavyMin; ex.manualMax = src.max ?? ex.heavyMax; ex.manualExact = src.exact ?? ex.heavyExact;
+    ex.manualSec = src.sec ?? ex.heavySec; ex.manualMeters = src.meters ?? ex.heavyMeters;
+    ex.manualUnit = src.unit || (ex.manualMeters != null && ex.manualMeters >= 1000 ? 'km' : 'm');
+  }
+  function peEnsureManual(ex, rule) {
+    if (rule !== 'manual' && !ex.lightManual) { peCopyToManual(ex, peComputeAutoLight(ex, rule)); ex.lightManual = true; }
+  }
+  function peFmtSec(sec) { return sec == null ? 'Без цели' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+  function peFmtMeters(m, forceU) {
+    if (m == null) return 'Без цели';
+    const u = forceU || (m >= 1000 ? 'km' : 'm');
+    return u === 'km' ? `${String(+(m / 1000).toFixed(2)).replace('.', ',')} км` : `${Math.round(m)} м`;
+  }
+  function peFmtPair(ex, obj, isLight) {
+    const sets = isLight ? obj.sets : ex.heavySets;
+    let tgt = 'Без цели';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = isLight ? obj.mode : ex.heavyMode;
+      if (mode === 'range') { const lo = isLight ? obj.min : ex.heavyMin, hi = isLight ? obj.max : ex.heavyMax; if (lo != null && hi != null) tgt = `${lo}–${hi} повт.`; }
+      else if (mode === 'exact') { const v = isLight ? obj.exact : ex.heavyExact; if (v != null) tgt = `${v} повт.`; }
+    } else if (ex.type === 'duration') tgt = peFmtSec(isLight ? obj.sec : ex.heavySec);
+    else if (ex.type === 'distance') tgt = peFmtMeters(isLight ? obj.meters : ex.heavyMeters, isLight ? obj.unit : ex.heavyUnit);
+    if (sets == null && tgt === 'Без цели') return 'Без цели';
+    if (sets == null) return tgt;
+    if (tgt === 'Без цели') return `${sets} подх.`;
+    return `${sets} × ${tgt}`;
   }
 
   let st = createInitialState();
@@ -3166,12 +3377,291 @@
       </div>`;
   }
 
+  /* ==================== PROGRAM & DAY EDITOR (#100 · VARIANT 1 FINAL) ==================== */
+  function renderProgramEditorHTML(s) {
+    const pe = s.progEditor || peCreateInitial();
+    const progName = s.longNames ? 'Силовая периодизация Верх / Низ на 12 недель с чередованием' : pe.programName;
+    const len = [...progName.trim()].length;
+    const showCounter = len >= 48, over = len > 60;
+    const overrides = pe.rule === 'manual' ? 0 : pe.exercises.filter(e => e.lightManual).length;
+    const ruleObj = PE_RULES.find(r => r.id === pe.rule) || PE_RULES[0];
+
+    const ruleSheet = s.sheet === 'pe_rule' ? `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-grab"></div>
+          <div style="font-size:18px;font-weight:700;color:var(--f-text);line-height:1.2">Правило лёгкой недели</div>
+          <div style="font-size:12.5px;color:var(--f-muted);margin:3px 0 11px;line-height:1.35">Автоматически пересчитывает цели с включённой прогрессией. Ручные правки сохранятся.</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            ${PE_RULES.map(r => `<button type="button" class="pe-radio-card ${pe.rule === r.id ? 'on' : ''}" data-act="pe-set-rule" data-v="${r.id}">
+              <span class="pe-radio-dot"></span>
+              <div>
+                <div style="font-size:14px;font-weight:650;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${r.title}${r.badge ? ` <span class="tag" style="background:var(--f-primary-container);color:var(--f-on-primary-container);font-size:10px;padding:1px 7px">${r.badge}</span>` : ''}</div>
+                <div style="font-size:12px;color:var(--f-muted);margin-top:3px;line-height:1.35">${r.desc}</div>
+              </div>
+            </button>`).join('')}
+          </div>
+          <button type="button" class="pb" data-act="close-sheet">Готово</button>
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="go-screen" data-v="home" aria-label="Назад">${ICO.back}</button>
+        ${s.alternating ? `<span class="pe-top-tag">${renderLamps('heavy', false)}${renderLamps('light', false)}Тяжёлая / Лёгкая</span>` : ''}
+      </div>
+      <div class="pe-scroll">
+        <h1 class="pe-h1">Редактирование программы</h1>
+        <label class="pe-field-lbl">
+          <span>Название программы <b style="color:var(--f-primary)">*</b></span>
+          ${showCounter ? `<span class="pe-counter ${over ? 'over' : ''}">${len} / 60</span>` : ''}
+        </label>
+        <input class="pe-input ${over ? 'err' : ''}" value="${progName.replace(/"/g, '&quot;')}" data-pe-in="prog-name">
+
+        <div class="pe-kicker"><span>Недели и нагрузка</span></div>
+        <div class="pe-card">
+          <div class="pe-set-row">
+            <div class="pe-set-left">
+              <span class="pe-set-ico">${renderLamps('heavy', false)}${renderLamps('light', false)}</span>
+              <div style="min-width:0">
+                <div class="pe-set-title">Чередовать недели</div>
+                <div class="pe-set-sub">${s.alternating ? 'Тяжёлая и лёгкая по проходам' : 'Выкл. · один план на все недели'}</div>
+              </div>
+            </div>
+            <button type="button" class="pe-switch ${s.alternating ? 'on' : ''}" data-act="pe-toggle-alt" aria-label="Чередовать недели"></button>
+          </div>
+          ${s.alternating ? `
+            <div class="pe-set-div"></div>
+            <button type="button" class="pe-set-row" data-act="open-sheet" data-v="pe_rule">
+              <div class="pe-set-left">
+                <span class="pe-set-ico">${ICO.pulse}</span>
+                <div style="min-width:0">
+                  <div class="pe-set-title">Правило лёгкой недели</div>
+                  <div class="pe-set-val">${ruleObj.title}${overrides > 0 ? ` <span style="color:var(--f-dim);font-weight:500">· ${overrides} вручную</span>` : ''}</div>
+                </div>
+              </div>
+              <span style="color:var(--f-dim);font-size:20px;line-height:1">›</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="pe-kicker">
+          <span>Тренировочные дни</span>
+          <span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">Нажми день → цели</span>
+        </div>
+
+        <button type="button" class="pe-day-card" data-act="go-screen" data-v="day_editor">
+          <div style="min-width:0">
+            <div class="pe-day-title">${s.longNames ? 'День А · Грудь, спина, тяга и разминочный бег' : pe.dayName}</div>
+            <div class="pe-day-sub">
+              <span>${pe.exercises.length} упражнений</span>
+              ${s.alternating && overrides > 0 ? `<span class="pe-tag-man">${overrides} вручную</span>` : ''}
+            </div>
+          </div>
+          <span style="color:var(--f-muted);font-size:19px">›</span>
+        </button>
+
+        <button type="button" class="pe-day-card" data-act="go-screen" data-v="day_editor">
+          <div style="min-width:0">
+            <div class="pe-day-title">День Б · Ноги и кор</div>
+            <div class="pe-day-sub"><span>4 упражнения</span></div>
+          </div>
+          <span style="color:var(--f-muted);font-size:19px">›</span>
+        </button>
+
+        <button type="button" class="ob" style="margin-top:4px">+ Добавить день</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="go-screen" data-v="home">Сохранить программу</button></div>
+      ${ruleSheet}
+    `;
+  }
+
+  function renderPeTargetControl(ex, side, light) {
+    const isLight = side === 'light';
+    const cls = isLight ? (light.isManual ? 'pe-mini-in manual-in' : 'pe-mini-in auto-in') : 'pe-mini-in';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = isLight ? light.mode : ex.heavyMode;
+      if (mode === 'empty') {
+        return `<button type="button" class="${cls}" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--f-dim)" data-act="pe-activate-tgt" data-v="${ex.id}:${side}">Без цели · задать</button>`;
+      }
+      if (mode === 'range') {
+        const lo = isLight ? (light.min ?? '') : (ex.heavyMin ?? '');
+        const hi = isLight ? (light.max ?? '') : (ex.heavyMax ?? '');
+        return `<div class="pe-range-pair">
+          <input class="${cls}" type="text" inputmode="numeric" value="${lo}" placeholder="от" data-pe-in="min" data-side="${side}" data-ex="${ex.id}">
+          <span style="color:var(--f-dim);font-weight:700;font-size:13px">–</span>
+          <input class="${cls}" type="text" inputmode="numeric" value="${hi}" placeholder="до" data-pe-in="max" data-side="${side}" data-ex="${ex.id}">
+        </div>`;
+      }
+      const val = isLight ? (light.exact ?? '') : (ex.heavyExact ?? '');
+      return `<input class="${cls}" type="text" inputmode="numeric" value="${val}" placeholder="без цели" data-pe-in="exact" data-side="${side}" data-ex="${ex.id}">`;
+    }
+    if (ex.type === 'duration') {
+      const sec = isLight ? light.sec : ex.heavySec;
+      return `<div class="pe-step-box">
+        <button type="button" class="pe-step-btn" data-act="pe-dur-step" data-v="${ex.id}:${side}:-5">−</button>
+        <div class="${cls}" style="display:flex;align-items:center;justify-content:center;font-size:${sec == null ? '12px' : '19px'};font-family:${sec == null ? 'Inter,sans-serif' : '"Barlow Condensed",Inter,sans-serif'};color:${sec == null ? 'var(--f-dim)' : ''}">${peFmtSec(sec)}</div>
+        <button type="button" class="pe-step-btn" data-act="pe-dur-step" data-v="${ex.id}:${side}:5">+</button>
+      </div>`;
+    }
+    if (ex.type === 'distance') {
+      const m = isLight ? light.meters : ex.heavyMeters;
+      const u = isLight ? light.unit : ex.heavyUnit;
+      const str = m == null ? '' : (u === 'km' ? String(+(m / 1000).toFixed(2)).replace('.', ',') : String(Math.round(m)));
+      return `<div style="display:flex;align-items:center;gap:4px;width:100%;height:38px">
+        <input class="${cls}" style="flex:1;min-width:0" type="text" inputmode="decimal" value="${str}" placeholder="без цели" data-pe-in="dist" data-side="${side}" data-ex="${ex.id}">
+        <div class="pe-unit-seg">
+          <button type="button" class="${u === 'm' ? 'on' : ''}" data-act="pe-dist-unit" data-v="${ex.id}:${side}:m">м</button>
+          <button type="button" class="${u === 'km' ? 'on' : ''}" data-act="pe-dist-unit" data-v="${ex.id}:${side}:km">км</button>
+        </div>
+      </div>`;
+    }
+    return '';
+  }
+
+  function renderDayEditorHTML(s) {
+    const pe = s.progEditor || peCreateInitial();
+    const dayName = s.longNames ? 'День А · Грудь, спина, тяга и разминочный бег' : pe.dayName;
+    const dayLen = [...dayName.trim()].length;
+    const showCounter = dayLen >= 32, over = dayLen > 40;
+    const ruleObj = PE_RULES.find(r => r.id === pe.rule) || PE_RULES[0];
+
+    const listHtml = pe.exercises.map(ex => {
+      const light = peGetLight(ex, pe.rule);
+      const exp = pe.expandedId === ex.id;
+      const showLight = peShowLight(ex, s);
+      const canReset = s.alternating && pe.rule !== 'manual' && ex.lightManual;
+      const is812 = (ex.type === 'weight_reps' || ex.type === 'reps') && ex.heavyMode === 'range' && Number(ex.heavyMin) === 8 && Number(ex.heavyMax) === 12;
+
+      const summaryLine = !s.alternating
+        ? `<div class="pe-summary-line"><span class="pe-pill plain">${peFmtPair(ex, ex, false)}</span></div>`
+        : !showLight
+          ? `<div class="pe-summary-line"><span class="pe-pill plain">${peFmtPair(ex, ex, false)}</span><span class="pe-pill-eq">· без прогрессии (= лёгкая)</span></div>`
+          : `<div class="pe-summary-line">
+              <span class="pe-pill heavy">${renderLamps('heavy', false)}${peFmtPair(ex, ex, false)}</span>
+              <span style="color:var(--f-dim);font-size:11px;flex:none">→</span>
+              <span class="pe-pill ${light.isManual ? 'light-manual' : 'light-auto'}">${renderLamps('light', false)}${peFmtPair(ex, light, true)}${light.isManual && pe.rule !== 'manual' ? ' · ручн.' : ''}</span>
+            </div>`;
+
+      let bodyHtml = '';
+      if (exp) {
+        const heavyLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : ex.heavyMode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+        const lightLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : light.mode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+        const repsBar = (ex.type === 'weight_reps' || ex.type === 'reps') ? `
+          <div class="pe-mode-row">
+            <div class="pe-mode-seg">
+              <button type="button" class="${ex.heavyMode === 'exact' ? 'on' : ''}" data-act="pe-set-mode" data-v="${ex.id}:exact">Точно</button>
+              <button type="button" class="${ex.heavyMode === 'range' ? 'on' : ''}" data-act="pe-set-mode" data-v="${ex.id}:range">Диапазон</button>
+              <button type="button" class="${ex.heavyMode === 'empty' ? 'on' : ''}" data-act="pe-set-mode" data-v="${ex.id}:empty">Без цели</button>
+            </div>
+            <button type="button" class="pe-preset-btn ${is812 ? 'applied' : ''}" data-act="pe-preset-812" data-v="${ex.id}">8–12</button>
+          </div>` : '';
+
+        bodyHtml = `<div class="pe-ex-body">
+          <div class="pe-prog-bar">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="font-size:12.5px;font-weight:600;color:var(--f-text);white-space:nowrap">Прогрессия</span>
+              <span style="font-size:11px;color:var(--f-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.progression ? 'советы и авто-лёгкая' : 'выкл.'}</span>
+            </div>
+            <button type="button" class="pe-switch sm ${ex.progression ? 'on' : ''}" data-act="pe-toggle-prog" data-v="${ex.id}" aria-label="Прогрессия"></button>
+          </div>
+          <div class="pe-ex-inner">
+            ${repsBar}
+            <div class="pe-tblock ${s.alternating && showLight ? 'heavy' : 'plain'}">
+              <div class="pe-thead">
+                <span class="pe-ttitle" style="color:${s.alternating && showLight ? '#FFD8AA' : 'var(--f-text)'}">
+                  ${s.alternating && showLight ? `${renderLamps('heavy', false)}Тяжёлая неделя` : 'Цель по плану'}
+                </span>
+                ${s.alternating && !showLight ? '<span style="font-size:11px;color:var(--f-dim)">одинакова для обеих недель</span>' : ''}
+              </div>
+              <div class="pe-tgrid">
+                <div>
+                  <span class="pe-tlbl">Подходы</span>
+                  <input class="pe-mini-in" type="text" inputmode="numeric" value="${ex.heavySets ?? ''}" placeholder="—" data-pe-in="sets" data-side="heavy" data-ex="${ex.id}">
+                </div>
+                <div>
+                  <span class="pe-tlbl">${heavyLbl}</span>
+                  ${renderPeTargetControl(ex, 'heavy', light)}
+                </div>
+              </div>
+            </div>
+            ${s.alternating ? (showLight ? `
+              <div class="pe-tblock ${light.isManual ? 'light-manual' : 'light-auto'}">
+                <div class="pe-thead">
+                  <span class="pe-ttitle" style="color:var(--load-light-text)">
+                    ${renderLamps('light', false)}Лёгкая неделя
+                    ${light.hint ? `<span class="pe-tmeta">· ${light.hint}</span>` : ''}
+                  </span>
+                  ${canReset
+                    ? `<button type="button" class="pe-reset-link" data-act="pe-reset-light" data-v="${ex.id}">↺ Сбросить к правилу</button>`
+                    : `<span class="pe-tbadge ${light.isManual ? 'manual' : 'auto'}">${pe.rule === 'manual' ? 'вручную' : light.isManual ? 'вручную' : 'авто'}</span>`}
+                </div>
+                <div class="pe-tgrid">
+                  <div>
+                    <span class="pe-tlbl">Подходы</span>
+                    <input class="pe-mini-in ${light.isManual ? 'manual-in' : 'auto-in'}" type="text" inputmode="numeric" value="${light.sets ?? ''}" placeholder="—" data-pe-in="sets" data-side="light" data-ex="${ex.id}">
+                  </div>
+                  <div>
+                    <span class="pe-tlbl">${lightLbl}</span>
+                    ${renderPeTargetControl(ex, 'light', light)}
+                  </div>
+                </div>
+              </div>
+            ` : `
+              <div class="pe-light-off">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--f-muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="opacity:.45;display:inline-flex">${renderLamps('light', false)}</span>Лёгкая неделя — как тяжёлая</span>
+                <button type="button" style="border:0;background:transparent;color:var(--load-light);font-size:11.5px;font-weight:600;white-space:nowrap;flex:none" data-act="pe-override-light" data-v="${ex.id}">Задать вручную</button>
+              </div>
+            `) : ''}
+          </div>
+        </div>`;
+      }
+
+      return `<div class="pe-ex-card ${exp ? 'expanded' : ''}">
+        <div class="pe-ex-head">
+          <button type="button" class="pe-ex-main" data-act="pe-toggle-ex" data-v="${ex.id}">
+            <div class="pe-ex-name">${ex.name}</div>
+            ${summaryLine}
+          </button>
+          <button type="button" class="pe-drag" title="Порядок">⠿</button>
+        </div>
+        ${bodyHtml}
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="go-screen" data-v="program_editor" aria-label="К программе">${ICO.back}</button>
+        ${s.alternating
+          ? `<button type="button" class="pe-top-tag" data-act="go-screen" data-v="program_editor">${renderLamps('heavy', false)}${renderLamps('light', false)}${ruleObj.short}</button>`
+          : `<span class="pe-top-tag">Без чередования</span>`}
+      </div>
+      <div class="pe-scroll">
+        <h1 class="pe-h1">Тренировочный день</h1>
+        <label class="pe-field-lbl">
+          <span>Название дня <b style="color:var(--f-primary)">*</b></span>
+          ${showCounter ? `<span class="pe-counter ${over ? 'over' : ''}">${dayLen} / 40</span>` : ''}
+        </label>
+        <input class="pe-input ${over ? 'err' : ''}" value="${dayName.replace(/"/g, '&quot;')}" data-pe-in="day-name">
+
+        <div class="pe-kicker"><span>Упражнения (${pe.exercises.length})</span></div>
+        <div class="pe-ex-list">${listHtml}</div>
+        <button type="button" class="ob" style="margin-top:10px">+ Добавить упражнение</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="go-screen" data-v="program_editor">Сохранить день</button></div>
+    `;
+  }
+
   function renderPhoneContent(s) {
     if (s.screen === 'home') return renderHomeHTML(s);
     if (s.screen === 'workout') return renderWorkoutHTML(s);
     if (s.screen === 'summary') return renderSummaryHTML(s);
     if (s.screen === 'history') return renderHistoryHTML(s);
     if (s.screen === 'settings') return renderSettingsHTML(s);
+    if (s.screen === 'program_editor') return renderProgramEditorHTML(s);
+    if (s.screen === 'day_editor') return renderDayEditorHTML(s);
     return renderLockHTML(s);
   }
 
@@ -3188,7 +3678,7 @@
 
   function renderInspector() {
     document.getElementById('ctrl-screen').innerHTML = [
-      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['lock', 'Экран блокировки']
+      ['home', 'Главная'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['program_editor', 'Редактор программы'], ['day_editor', 'Редактор дня'], ['lock', 'Экран блокировки']
     ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
 
     document.getElementById('ctrl-preset').innerHTML = [
@@ -3221,6 +3711,8 @@
       summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
       history: 'Согласованная История (#117 + #118 + #119): календарь с датой, временем и длительностью слева, Hero 2 детали без нижнего бара, правка подходов с живым итогом, Undo и удаление тренировки.',
       settings: 'Согласованные Настройки (#106 + #115/#116): 3 темы, плитки «Таймер отдыха» и «Формула 1RM», строка и шторка «Сигнал таймеров» (вариант A) с предпрослушкой, фиксированная карточка обновлений.',
+      program_editor: 'Согласованный Редактор программы (#97 + #100 + #119): карточка «Недели и нагрузка» в стиле Настроек + шторка #1C231C выбора правила лёгкой недели, без нижнего бара и кнопки ⚙.',
+      day_editor: 'Согласованный Редактор дня (#97 + #100 + #113): тумблер «Прогрессия» закреплён сверху, сегмент [Точно | Диапазон | Без цели] + фиксированная кнопка 8–12 (56 dp), скрытие дубля лёгкой при выкл. прогрессии и смешанный Distance 1 км → 800 м.',
       lock: 'Точный стиль доски 18 (#0B0E0B, часы 96px, Fitty · сейчас) + согласованные в #83 кнопки «■ Стоп» и «+30 с / Сброс».'
     };
     document.getElementById('phone-hint').textContent = hints[st.screen] || '';
@@ -3276,6 +3768,45 @@
           st.snack = { text: 'Тренировка отменена' }; st.undoSnap = null;
         }
         else if (act === 'open-replace') { st.sheet = null; st.snack = { text: 'Выбор замены упражнения на сегодня (#110)' }; }
+        else if (act === 'pe-toggle-alt') { st.alternating = !st.alternating; }
+        else if (act === 'pe-set-rule') {
+          const pe = st.progEditor;
+          if (v === 'manual' && pe.rule !== 'manual') {
+            pe.exercises.forEach(item => { if (!item.lightManual) peCopyToManual(item, peComputeAutoLight(item, pe.rule)); item.lightManual = false; });
+          }
+          pe.rule = v;
+        }
+        else if (act === 'pe-toggle-ex') { st.progEditor.expandedId = st.progEditor.expandedId === v ? null : v; }
+        else if (act === 'pe-toggle-prog') { const ex = st.progEditor.exercises.find(x => x.id === v); if (ex) ex.progression = !ex.progression; }
+        else if (act === 'pe-override-light') { const ex = st.progEditor.exercises.find(x => x.id === v); if (ex) peEnsureManual(ex, st.progEditor.rule); }
+        else if (act === 'pe-reset-light') { const ex = st.progEditor.exercises.find(x => x.id === v); if (ex) { ex.lightManual = false; ex.lightDisplayUnit = null; } }
+        else if (act === 'pe-preset-812') { const ex = st.progEditor.exercises.find(x => x.id === v); if (ex) { ex.heavyMode = 'range'; ex.heavyMin = 8; ex.heavyMax = 12; } }
+        else if (act === 'pe-set-mode') {
+          const [id, m] = v.split(':'), ex = st.progEditor.exercises.find(x => x.id === id);
+          if (ex) {
+            ex.heavyMode = m;
+            if (m === 'range') { if (!ex.heavyMin) ex.heavyMin = 8; if (!ex.heavyMax || ex.heavyMax < ex.heavyMin) ex.heavyMax = ex.heavyMin + 2; }
+            else if (m === 'exact' && !ex.heavyExact) ex.heavyExact = ex.heavyMin || 10;
+          }
+        }
+        else if (act === 'pe-activate-tgt') {
+          const [id, side] = v.split(':'), ex = st.progEditor.exercises.find(x => x.id === id);
+          if (ex) {
+            if (side === 'heavy') { ex.heavyMode = 'exact'; ex.heavyExact = 10; }
+            else { peEnsureManual(ex, st.progEditor.rule); ex.manualMode = 'exact'; ex.manualExact = 8; }
+          }
+        }
+        else if (act === 'pe-dur-step') {
+          const [id, side, dStr] = v.split(':'), delta = parseInt(dStr, 10), ex = st.progEditor.exercises.find(x => x.id === id);
+          if (ex) {
+            if (side === 'heavy') ex.heavySec = ex.heavySec == null ? (delta > 0 ? 15 : null) : (ex.heavySec + delta < 5 ? null : ex.heavySec + delta);
+            else { peEnsureManual(ex, st.progEditor.rule); ex.manualSec = ex.manualSec == null ? (delta > 0 ? 15 : null) : (ex.manualSec + delta < 5 ? null : ex.manualSec + delta); }
+          }
+        }
+        else if (act === 'pe-dist-unit') {
+          const [id, side, u] = v.split(':'), ex = st.progEditor.exercises.find(x => x.id === id);
+          if (ex) { if (side === 'heavy') ex.heavyUnit = u; else { ex.manualUnit = u; ex.lightDisplayUnit = u; } }
+        }
         else if (act === 'dismiss-prompt') { st.dismissedPrompts[v] = true; }
         else if (act === 'open-hist-detail') { st.historyDetailIdx = parseInt(v, 10); st.histEdit = null; st.histDelIdx = null; st.histSnack = null; }
         else if (act === 'close-hist-detail') { st.historyDetailIdx = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; }
@@ -3670,19 +4201,55 @@
         }
       });
     });
+    phone.querySelectorAll('input[data-pe-in]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const kind = inp.dataset.peIn;
+        if (kind === 'prog-name') { st.progEditor.programName = inp.value; return; }
+        if (kind === 'day-name') { st.progEditor.dayName = inp.value; return; }
+        const ex = st.progEditor.exercises.find(x => x.id === inp.dataset.ex);
+        if (!ex) return;
+        const side = inp.dataset.side, raw = inp.value.trim();
+        if (side === 'light') peEnsureManual(ex, st.progEditor.rule);
+        if (kind === 'sets') { const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1); if (side === 'heavy') ex.heavySets = val; else ex.manualSets = val; }
+        else if (kind === 'exact') { const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1); if (side === 'heavy') ex.heavyExact = val; else ex.manualExact = val; }
+        else if (kind === 'min') { const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1); if (side === 'heavy') ex.heavyMin = val; else ex.manualMin = val; }
+        else if (kind === 'max') { const val = raw === '' ? null : Math.max(1, parseInt(raw, 10) || 1); if (side === 'heavy') ex.heavyMax = val; else ex.manualMax = val; }
+        else if (kind === 'dist') {
+          const num = parseFloat(raw.replace(',', '.')), unit = side === 'heavy' ? ex.heavyUnit : ex.manualUnit;
+          const m = raw === '' || isNaN(num) || num <= 0 ? null : (unit === 'km' ? Math.round(num * 1000) : Math.round(num));
+          if (side === 'heavy') ex.heavyMeters = m; else ex.manualMeters = m;
+        }
+        const s0 = inp.selectionStart, s1 = inp.selectionEnd;
+        renderLive();
+        const nextInp = document.querySelector(`#phone-live [data-pe-in="${kind}"][data-side="${side}"][data-ex="${ex.id}"]`);
+        if (nextInp) { nextInp.focus(); try { if (s0 != null) nextInp.setSelectionRange(s0, s1); } catch (_) {} }
+      });
+    });
   }
 
   function renderLive() {
     const phone = document.getElementById('phone-live');
+    const prevPeScroll = phone.querySelector('.pe-scroll');
+    const savedPeTop = prevPeScroll ? prevPeScroll.scrollTop : 0;
+    const prevScreen = phone.dataset.screen;
+    phone.dataset.screen = st.screen;
     phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
     phone.innerHTML = renderPhoneContent(st);
+    const nextPeScroll = phone.querySelector('.pe-scroll');
+    if (nextPeScroll && prevScreen === st.screen) nextPeScroll.scrollTop = savedPeTop;
     bindPhoneEvents(phone);
     renderInspector();
   }
 
   function snap(ov) {
     const b = createInitialState();
-    return Object.assign(b, ov, { dayStatus: Object.assign({}, b.dayStatus, ov.dayStatus || {}), logged: Object.assign({}, b.logged, ov.logged || {}), drafts: Object.assign({}, b.drafts, ov.drafts || {}), distUnit: Object.assign({}, b.distUnit, ov.distUnit || {}) });
+    return Object.assign(b, ov, {
+      dayStatus: Object.assign({}, b.dayStatus, ov.dayStatus || {}),
+      logged: Object.assign({}, b.logged, ov.logged || {}),
+      drafts: Object.assign({}, b.drafts, ov.drafts || {}),
+      distUnit: Object.assign({}, b.distUnit, ov.distUnit || {}),
+      progEditor: ov.progEditor ? peClone(ov.progEditor) : peCreateInitial()
+    });
   }
 
   function renderBoard() {
@@ -3740,6 +4307,16 @@
           { title: 'Настройки · Доступно обновление v2.1 (та же высота)', note: 'Средний слот 64 px и кнопка 44 px меняются на месте без смещения экрана.', state: snap({ screen: 'settings', updState: 'available' }) },
           { title: 'Настройки · Шторка выбора формулы 1RM (#82 + #106)', note: 'Единая шторка 7 формул с живым примером ориентира (синхронизирована с экраном тренировки).', state: snap({ screen: 'settings', updState: 'uptodate', sheet: 'settings_formula' }) }
         ]
+      },
+      {
+        title: '5. Редактор программы и дня — база доски 05 + парные цели недель и пресет 8–12 (#97 + #100 + #119)',
+        sub: 'Единая карточка «Недели и нагрузка» в стиле Настроек со шторкой правила #1C231C, инлайн-редактор дня без скачков (тумблер «Прогрессия» сверху, [Точно | Диапазон | Без цели] + фиксированная кнопка 8–12, скрытие дубля при выкл. прогрессии)',
+        cards: [
+          { title: 'Редактор программы · Чередование вкл. (#100 + #119)', note: 'Без нижнего бара и ⚙, карточка «Недели и нагрузка» с разделителем #252D24 и строкой «Правило лёгкой недели · Легче подходы · 1 вручную ›».', state: snap({ screen: 'program_editor', alternating: true }) },
+          { title: 'Редактор программы · Шторка правила лёгкой недели (#97 + #100)', note: 'Нижняя шторка #1C231C с 3 радио-карточками («Легче подходы», «Меньше подходов (−1)», «Вручную») и кнопкой «Готово».', state: snap({ screen: 'program_editor', alternating: true, sheet: 'pe_rule' }) },
+          { title: 'Редактор дня · Повторы 8–12 и ручная правка (#100)', note: '«Прогрессия» сверху, сегмент [Точно | Диапазон | Без цели] + 56dp-кнопка 8–12 без смещения, парные строки Тяжёлая/Лёгкая и свёрнутые пилюли.', state: snap({ screen: 'day_editor', alternating: true, progEditor: peCreateInitial({ expandedId: 'pe1' }) }) },
+          { title: 'Редактор дня · Distance 1 км → 800 м и выкл. прогрессия (#97 + #100 + #113)', note: 'Смешанный кейс Distance (1 км в тяжёлой → 800 м в лёгкой с переключателем м|км) и Планка без дубля лёгкой цели.', state: snap({ screen: 'day_editor', alternating: true, progEditor: peCreateInitial({ expandedId: 'pe5', exercises: peCreateInitial().exercises.map(e => e.id === 'pe5' ? { ...e, progression: true } : e) }) }) }
+        ]
       }
     ];
 
@@ -3767,7 +4344,8 @@
         st = Object.assign(createInitialState(), target, {
           hostMode: 'interactive', width: w,
           history: cloneHistoryList(target.history || INITIAL_HISTORY),
-          histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null
+          histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null,
+          progEditor: peClone(target.progEditor)
         });
         syncHostTabs(); renderLive(); window.scrollTo({ top: 0, behavior: 'smooth' });
       });
