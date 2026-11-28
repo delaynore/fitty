@@ -1,0 +1,2306 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #121: Перестановка, меню дней, удаление с отменой и баннер в редакторе (A / B / C)</title>
+<!--
+  Throwaway UI prototype for issue #121 ("Как выглядят перестановка, меню дней, удаление с отменой и баннер активной тренировки в редакторе программы и дня?").
+  Plan: Three structurally different UI variants (A: Symmetrical Hit Zones & Split Footer, B: Frameless Minimal & Docked Undo Toast, C: High-Density Cards & Edge-Separated Actions) on top of approved #100 Program/Day Editor, switchable via ?variant=A|B|C, floating bottom switcher, and side-by-side comparison.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1420px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF);
+    color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1);
+    border-radius: 16px;
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs {
+    display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px;
+  }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage {
+    display: grid; grid-template-columns: auto minmax(310px, 1fr); gap: 18px; align-items: start;
+  }
+  @media (max-width: 880px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 500px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F4F6F1); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #E5EAE0); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .var-desc { font-size: 12.5px; color: var(--card-foreground, #2C342A); line-height: 1.48; margin: 0; }
+  .var-desc ul { margin: 6px 0 0; padding-left: 16px; }
+  .var-desc li { margin-bottom: 4px; }
+  .var-desc code {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    font-size: 11px; background: var(--secondary, #EFF3EC); padding: 1px 5px; border-radius: 5px;
+  }
+
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  .compare-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: flex-start; }
+  .compare-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .compare-head {
+    width: 100%; max-width: 390px;
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 13px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .compare-head strong { font-size: 13px; }
+  .compare-head span { font-size: 11.5px; color: var(--muted-foreground, #5C6759); display: block; margin-top: 1px; }
+  .hidden { display: none !important; }
+
+  /* Floating Prototype Switcher (prototype/UI.md) */
+  .proto-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 999;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #141A13; color: #F0F3EA;
+    border: 1px solid #394835; border-radius: 999px;
+    padding: 5px 7px; box-shadow: 0 10px 28px rgba(0,0,0,0.38);
+  }
+  .proto-switcher button {
+    width: 32px; height: 32px; border-radius: 50%; border: 0;
+    background: #232D22; color: #C5FA55; font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-switcher button:hover { background: #303E1B; }
+  .proto-switcher-lbl {
+    padding: 0 10px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.2px;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .proto-switcher-key {
+    background: #C5FA55; color: #1A2506; border-radius: 6px; padding: 1px 7px; font-size: 11.5px; font-weight: 800;
+  }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM (SCOPED TO .phone) ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-amber: #F5C469;
+    --f-amber-bg: #2B2416;
+    --f-amber-border: #554524;
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-text: #BFE9FF;
+
+    width: 390px;
+    height: 844px;
+    background: var(--f-bg);
+    color: var(--f-text);
+    border-radius: 32px;
+    border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative;
+    overflow: hidden;
+    font-family: Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    user-select: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: Inter, sans-serif; user-select: text; }
+
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .pb:hover { filter: brightness(1.04); }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 15.5px; letter-spacing: 0.55px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .ob:hover { border-color: var(--f-outline-hi); background: rgba(255,255,255,0.03); }
+
+  .f-status {
+    height: 28px; padding: 8px 20px 0; flex: none;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted); font-variant-numeric: tabular-nums;
+  }
+  .lamp { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .lamp.heavy { background: var(--load-heavy); box-shadow: 0 0 6px rgba(245,158,66,0.55); }
+  .lamp.light { background: var(--load-light); box-shadow: 0 0 6px rgba(92,200,250,0.55); }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); flex: none;
+    box-shadow: 0 0 0 0 rgba(197,250,85,0.6); animation: livePulse 1.9s infinite;
+  }
+  @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(197,250,85,0.55); } 70% { box-shadow: 0 0 0 5px rgba(197,250,85,0); } 100% { box-shadow: 0 0 0 0 rgba(197,250,85,0); } }
+
+  /* ==================== SHARED APPROVED #100 EDITOR BASE ==================== */
+  .pe-top { height: 46px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .pe-back { width: 38px; height: 38px; border-radius: 12px; border: 0; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; margin-left: -8px; }
+  .pe-back:hover { background: rgba(255,255,255,0.06); }
+  .pe-top-tag {
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted); background: var(--f-surface);
+    padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 0;
+  }
+  .pe-top-tag.dup-tag { background: #1A2413; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container); }
+
+  .pe-scroll { flex: 1; overflow-y: auto; padding: 2px 18px 98px; scrollbar-width: thin; scrollbar-color: #2B352A transparent; min-height: 0; }
+  .phone.w360 .pe-scroll { padding: 2px 14px 96px; }
+  .pe-h1 { margin: 2px 0 12px; font-family: Inter, sans-serif; font-weight: 700; font-size: 23px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.3px; color: var(--f-text); }
+  .phone.w360 .pe-h1 { font-size: 20px; }
+  .pe-kicker { font-weight: 700; font-size: 12px; letter-spacing: 0.65px; text-transform: uppercase; color: var(--f-muted); margin: 16px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-field-lbl { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--f-muted); margin: 0 0 6px; }
+  .pe-counter { font-size: 11px; font-weight: 600; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .pe-counter.over { color: var(--f-error); }
+  .pe-input { width: 100%; height: 48px; background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 14px; padding: 0 14px; font-size: 15px; font-weight: 600; outline: none; }
+  .pe-input:focus { border-color: var(--f-primary); }
+  .pe-input.err { border-color: var(--f-error); background: rgba(54,28,26,0.32); }
+  .pe-err-msg { font-size: 11.5px; color: var(--f-error); margin-top: 5px; display: flex; align-items: center; gap: 5px; line-height: 1.3; }
+
+  /* Weeks card (#100 approved) */
+  .pe-card { background: var(--f-surface); border-radius: 18px; overflow: hidden; }
+  .pe-set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; width: 100%; background: transparent; border: 0; color: inherit; text-align: left; }
+  .pe-set-div { height: 1px; background: #252D24; margin: 0 14px; }
+  .pe-set-left { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
+  .pe-set-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--f-chip); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--load-light); gap: 4px; }
+  .pe-set-title { font-size: 14px; font-weight: 600; color: var(--f-text); line-height: 1.25; }
+  .pe-set-val { font-size: 12.5px; font-weight: 600; color: var(--load-light); margin-top: 2px; line-height: 1.25; }
+  .pe-set-sub { font-size: 11.5px; color: var(--f-dim); margin-top: 2px; line-height: 1.3; }
+  .pe-switch { width: 46px; height: 28px; border-radius: 999px; border: 1.5px solid var(--f-outline-hi); background: var(--f-chip); position: relative; padding: 0; flex: none; }
+  .pe-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform .14s, background .14s; }
+  .pe-switch.on { background: var(--f-primary); border-color: var(--f-primary); }
+  .pe-switch.on::after { transform: translateX(18px); background: var(--f-on-primary); }
+  .pe-switch.sm { width: 38px; height: 22px; }
+  .pe-switch.sm::after { width: 14px; height: 14px; top: 2.5px; left: 2.5px; }
+  .pe-switch.sm.on::after { transform: translateX(16px); }
+
+  .pe-tag-man { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: rgba(92,200,250,0.14); color: #9CE0FF; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .pe-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 12;
+    padding: 12px 18px 16px;
+    background: linear-gradient(180deg, rgba(11,14,11,0) 0%, rgba(11,14,11,0.92) 28%, #0B0E0B 100%);
+    pointer-events: none;
+  }
+  .phone.w360 .pe-foot { padding: 10px 14px 14px; }
+  .pe-foot .pb { pointer-events: auto; }
+
+  /* ==================== ACTIVE WORKOUT BANNERS (A / B / C) ==================== */
+  /* Variant A: My Programs #107 tinted strip */
+  .aw-banner-a {
+    display: flex; align-items: flex-start; gap: 9px;
+    background: #172114; border: 1px solid var(--f-primary-border);
+    border-radius: 15px; padding: 10px 12px; margin: 0 0 12px;
+    font-size: 12px; line-height: 1.38; color: var(--f-muted);
+  }
+  .aw-banner-a strong { color: var(--f-text); font-weight: 650; }
+  /* Variant B: Coaching-style 3dp left-accented info ribbon */
+  .aw-banner-b {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--f-surface); border-left: 3px solid var(--f-primary);
+    border-radius: 10px; padding: 9px 11px; margin: 0 0 12px;
+    font-size: 12px; line-height: 1.35; color: var(--f-muted);
+  }
+  .aw-banner-b strong { color: var(--f-text); font-weight: 650; }
+  /* Variant C: Ultra-compact status capsule tucked under topbar */
+  .aw-banner-c {
+    margin: 0 18px 8px; padding: 6px 11px; border-radius: 999px;
+    background: #151E14; border: 1px solid #2D3D24;
+    display: flex; align-items: center; gap: 7px; flex: none;
+    font-size: 11.5px; color: var(--f-on-primary-container); line-height: 1.2;
+  }
+  .phone.w360 .aw-banner-c { margin: 0 14px 8px; font-size: 11px; }
+  .aw-banner-c span:last-child { color: var(--f-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ==================== DAY CARDS (A / B / C) ==================== */
+  .pe-day-list { display: flex; flex-direction: column; gap: 8px; }
+  .pe-empty-box {
+    background: var(--f-surface); border-radius: 16px; border: 1.5px dashed var(--f-outline);
+    padding: 18px 14px; text-align: center; font-size: 12.5px; color: var(--f-muted); line-height: 1.4;
+  }
+  .pe-empty-box.err { border-color: var(--f-error-border); background: rgba(54,28,26,0.3); color: var(--f-error); }
+
+  /* Drag state visuals */
+  .drag-item { position: relative; transition: transform 140ms, box-shadow 140ms, opacity 120ms; }
+  .drag-item.is-dragging {
+    z-index: 20; opacity: 0.94; transform: scale(1.018);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.55), 0 0 0 1.5px var(--f-primary);
+  }
+  .drag-item.drop-before::before, .drag-item.drop-after::after {
+    content: ""; position: absolute; left: 10px; right: 10px; height: 2.5px; border-radius: 2px;
+    background: var(--f-primary); pointer-events: none; z-index: 25;
+  }
+  .drag-item.drop-before::before { top: -5px; }
+  .drag-item.drop-after::after { bottom: -5px; }
+
+  /* Variant A Day Card: Symmetrical 3-zone (#107 sibling) */
+  .day-a {
+    background: var(--f-surface); border-radius: 18px; overflow: hidden;
+    border: 1.5px solid transparent; display: flex; align-items: stretch; min-height: 68px; position: relative;
+  }
+  .day-a.invalid { border-color: var(--f-error-border); background: #1A1515; }
+  .day-a.invalid::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px; background: var(--f-error); }
+  .day-a-grip, .day-a-more {
+    width: 44px; flex: none; border: 0; background: transparent; padding: 0;
+    display: flex; align-items: center; justify-content: center; color: var(--f-dim); touch-action: none;
+  }
+  .phone.w360 .day-a-grip, .phone.w360 .day-a-more { width: 40px; }
+  .day-a-grip { border-right: 1px solid rgba(255,255,255,0.06); cursor: grab; font-size: 17px; }
+  .day-a-grip:hover, .drag-item.is-dragging .day-a-grip { color: var(--f-primary); background: rgba(197,250,85,0.08); }
+  .day-a-more { border-left: 1px solid rgba(255,255,255,0.06); color: var(--f-muted); }
+  .day-a-more:hover, .day-a-more.menu-open { background: rgba(255,255,255,0.07); color: var(--f-text); }
+  .day-a-center {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left;
+    padding: 11px 12px; display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  }
+  .day-a-center:hover { background: rgba(255,255,255,0.025); }
+
+  /* Variant B Day Card: Airy frameless with floating tactile grip + circular ⋮ + exercise preview */
+  .day-b {
+    background: var(--f-surface); border-radius: 18px; padding: 10px 10px 10px 9px;
+    border: 1.5px solid transparent; display: flex; align-items: center; gap: 9px;
+  }
+  .day-b.invalid { background: #1C1414; border-color: var(--f-error-border); }
+  .day-b-grip {
+    width: 34px; height: 42px; border-radius: 11px; flex: none; border: 0;
+    background: #1D241D; color: var(--f-dim); display: flex; align-items: center; justify-content: center;
+    cursor: grab; font-size: 16px; touch-action: none;
+  }
+  .day-b-grip:hover, .drag-item.is-dragging .day-b-grip { background: var(--f-primary-container); color: var(--f-primary); }
+  .day-b-center {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 2px 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .day-b-preview { font-size: 11.5px; color: var(--f-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-b-more {
+    width: 36px; height: 36px; border-radius: 50%; flex: none; border: 0;
+    background: transparent; color: var(--f-muted); display: flex; align-items: center; justify-content: center;
+  }
+  .day-b-more:hover, .day-b-more.menu-open { background: var(--f-chip); color: var(--f-text); }
+
+  /* Variant C Day Card: High-density + attached bottom invalid strip */
+  .day-c {
+    background: var(--f-surface); border-radius: 16px; overflow: hidden;
+    border: 1.5px solid transparent; display: flex; flex-direction: column;
+  }
+  .day-c.invalid { border-color: var(--f-error-border); }
+  .day-c-main { display: flex; align-items: center; gap: 4px; padding: 9px 6px 9px 4px; }
+  .day-c-grip {
+    width: 30px; height: 40px; flex: none; border: 0; background: transparent; color: var(--f-dim);
+    display: flex; align-items: center; justify-content: center; cursor: grab; font-size: 16px; touch-action: none;
+  }
+  .day-c-grip:hover, .drag-item.is-dragging .day-c-grip { color: var(--f-primary); }
+  .day-c-center {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 2px 4px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .day-c-row1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .day-c-cnt {
+    font-size: 11px; font-weight: 600; color: var(--f-muted); background: var(--f-chip);
+    padding: 2px 7px; border-radius: 999px; white-space: nowrap; flex: none; margin-top: 1px; font-variant-numeric: tabular-nums;
+  }
+  .day-c-more {
+    width: 34px; height: 40px; border-radius: 10px; flex: none; border: 0; background: transparent;
+    color: var(--f-muted); display: flex; align-items: center; justify-content: center;
+  }
+  .day-c-more:hover, .day-c-more.menu-open { background: rgba(255,255,255,0.07); color: var(--f-text); }
+  .day-c-errbar {
+    border: 0; border-top: 1px solid var(--f-error-border); background: #291615; color: var(--f-error);
+    padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 11.5px; font-weight: 600; text-align: left; width: 100%;
+  }
+
+  .day-title-txt {
+    font-weight: 700; font-size: 15.5px; line-height: 1.24; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .phone.w360 .day-title-txt { font-size: 14.5px; }
+  .day-title-txt.empty { color: var(--f-error); font-style: italic; font-weight: 600; }
+  .day-meta-row { font-size: 12px; color: var(--f-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .err-pill {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px;
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error);
+    font-size: 10.5px; font-weight: 650; white-space: nowrap;
+  }
+  .err-inline-line { font-size: 11.5px; font-weight: 600; color: var(--f-error); display: flex; align-items: center; gap: 4px; }
+
+  /* Anchored #1C231C Context Menu (matches #107 My Programs) */
+  .ctx-backdrop { position: absolute; inset: 0; z-index: 34; background: transparent; }
+  .ctx-menu {
+    position: absolute; z-index: 35; min-width: 186px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi);
+    border-radius: 16px; padding: 5px; box-shadow: 0 12px 30px rgba(0,0,0,0.56);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .ctx-item {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    border-radius: 11px; padding: 10px 11px; display: flex; align-items: center; gap: 10px;
+    text-align: left; font-size: 13.5px; font-weight: 600;
+  }
+  .ctx-item:hover { background: rgba(255,255,255,0.07); }
+  .ctx-item.danger { color: var(--f-error); }
+  .ctx-item.danger:hover { background: rgba(255,180,171,0.1); }
+  .ctx-sep { height: 1px; background: rgba(255,255,255,0.07); margin: 2px 8px; }
+
+  /* ==================== DAY EDITOR EXERCISE CARDS (#100 + #120/#121) ==================== */
+  .pe-ex-list { display: flex; flex-direction: column; gap: 8px; }
+  .pe-ex-card { background: var(--f-surface); border-radius: 16px; overflow: hidden; border: 1.5px solid transparent; position: relative; }
+  .pe-ex-card.expanded { border-color: #2E3A2D; background: #161C16; }
+  .pe-ex-card.has-err { border-color: var(--f-error-border); }
+  .pe-ex-card.var-a.has-err::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px; background: var(--f-error); z-index: 2; }
+  .pe-ex-head { display: flex; align-items: center; gap: 8px; padding: 11px 10px 11px 13px; }
+  .pe-ex-card.var-a.has-err .pe-ex-head { padding-left: 15px; }
+  .pe-ex-main { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 0; }
+  .pe-ex-name {
+    font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .pe-summary-line { height: 24px; margin-top: 5px; display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; }
+  .pe-pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 7px; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap; flex: none; }
+  .pe-pill.heavy { background: #241A10; color: #FFD8AA; }
+  .pe-pill.light-auto { background: rgba(19,37,49,0.55); color: #9BD5F3; border: 1px dashed #2E5A75; }
+  .pe-pill.light-manual { background: #132531; color: #D7F2FF; border: 1px solid #4589B3; }
+  .pe-pill.plain { background: var(--f-chip); color: var(--f-text); }
+  .pe-pill.err { background: var(--f-error-bg); color: var(--f-error); border: 1px solid var(--f-error-border); }
+  .pe-pill-eq { font-size: 11px; color: var(--f-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Exercise drag handle per variant */
+  .ex-drag-a {
+    width: 34px; height: 36px; border-radius: 10px; border: 1px solid #2A3329; background: #1A211A;
+    color: var(--f-dim); display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 16px; cursor: grab; touch-action: none;
+  }
+  .ex-drag-a:hover, .drag-item.is-dragging .ex-drag-a { background: var(--f-primary-container); border-color: var(--f-primary-border); color: var(--f-primary); }
+  .ex-drag-b {
+    width: 32px; height: 36px; border-radius: 10px; border: 0; background: transparent;
+    color: var(--f-dim); display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 17px; cursor: grab; touch-action: none;
+  }
+  .ex-drag-b:hover, .drag-item.is-dragging .ex-drag-b { color: var(--f-primary); background: rgba(197,250,85,0.1); }
+  .ex-drag-c {
+    width: 32px; height: 34px; border-radius: 9px; border: 0; background: var(--f-chip);
+    color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 15px; cursor: grab; touch-action: none;
+  }
+  .ex-drag-c:hover, .drag-item.is-dragging .ex-drag-c { background: var(--f-primary-container); color: var(--f-primary); }
+
+  /* Expanded #100 internals */
+  .pe-ex-body { border-top: 1px solid #232C23; }
+  .pe-prog-bar { height: 44px; padding: 0 12px; background: #111611; border-bottom: 1px solid #202820; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pe-ex-inner { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 9px; }
+  .phone.w360 .pe-ex-inner { padding: 10px 10px 11px; }
+  .pe-mode-row { display: flex; align-items: center; gap: 7px; }
+  .pe-mode-seg { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 10px; padding: 2px; gap: 2px; }
+  .pe-mode-seg button { border: 0; background: transparent; color: var(--f-dim); height: 28px; border-radius: 8px; font-size: 11.5px; font-weight: 600; padding: 0 4px; white-space: nowrap; }
+  .pe-mode-seg button.on { background: #252E24; color: var(--f-text); box-shadow: inset 0 0 0 1px #3B4939; }
+  .pe-preset-btn { width: 56px; height: 32px; padding: 0; border-radius: 10px; flex: none; border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+  .pe-preset-btn.applied { background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary); }
+  .pe-tblock { border-radius: 13px; padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .pe-tblock.heavy { background: #131611; border: 1px solid #3C301E; }
+  .pe-tblock.plain { background: #121712; border: 1px solid #293328; }
+  .pe-tblock.light-auto { background: #0E171E; border: 1.5px dashed #2B536D; }
+  .pe-tblock.light-manual { background: #10202C; border: 1.5px solid #5CC8FA; }
+  .pe-tblock.block-err { border-color: var(--f-error-border); }
+  .pe-thead { height: 22px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .pe-ttitle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 0; }
+  .pe-tmeta { font-size: 10.5px; color: #8ACCEB; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-tbadge { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; text-transform: uppercase; flex: none; }
+  .pe-tbadge.auto { background: rgba(92,200,250,0.14); color: #8ACCEB; }
+  .pe-tbadge.manual { background: #5CC8FA; color: #0B1922; }
+  .pe-tgrid { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: end; }
+  .phone.w360 .pe-tgrid { grid-template-columns: 62px 1fr; gap: 7px; }
+  .pe-tlbl { font-size: 10.5px; color: var(--f-dim); margin-bottom: 3px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-mini-in { width: 100%; height: 38px; background: #0B0E0B; color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 10px; text-align: center; font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; padding: 0 6px; outline: none; font-variant-numeric: tabular-nums; }
+  .pe-mini-in:focus { border-color: var(--f-primary); }
+  .pe-mini-in.auto-in { background: rgba(11,14,11,0.55); border: 1.5px dashed #315D78; color: #9ED6F3; }
+  .pe-mini-in.manual-in { background: #0D1922; border: 1.5px solid #4A92BE; color: #E5F6FF; }
+  .pe-mini-in.in-err { border-color: var(--f-error) !important; background: rgba(54,28,26,0.45) !important; color: #FFDAD6 !important; }
+  .pe-range-pair { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-unit-seg { display: inline-flex; background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 9px; padding: 2px; gap: 2px; flex: none; height: 38px; align-items: center; }
+  .pe-unit-seg button { border: 0; background: transparent; color: var(--f-muted); font-size: 11px; font-weight: 700; padding: 0 9px; height: 30px; border-radius: 6px; }
+  .pe-unit-seg button.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .pe-step-box { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-step-btn { width: 32px; height: 38px; border-radius: 9px; border: 1px solid var(--f-outline); background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .pe-light-off { height: 38px; padding: 0 11px; border-radius: 11px; background: #101619; border: 1px dashed #243844; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-light-wait { padding: 8px 10px; border-radius: 11px; background: #11181D; border: 1px dashed #334C5C; font-size: 11.5px; color: #8FB2C4; display: flex; align-items: center; gap: 6px; }
+  .pe-reset-link { border: 0; background: rgba(92,200,250,0.14); color: #AEE2FF; border-radius: 999px; padding: 2px 8px; font-size: 10.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .pe-block-err-box {
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error);
+    border-radius: 9px; padding: 6px 9px; font-size: 11.5px; font-weight: 600; line-height: 1.3;
+  }
+
+  /* Expanded Card Bottom Action Row: Replace / Delete (A / B / C) */
+  /* Variant A: 50/50 split hairline footer */
+  .ex-acts-a {
+    display: grid; grid-template-columns: 1fr 1px 1fr; border-top: 1px solid #232C23; background: #111611;
+  }
+  .ex-acts-a-div { background: #232C23; }
+  .ex-acts-a button {
+    border: 0; background: transparent; height: 42px; font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--f-muted);
+  }
+  .ex-acts-a button:hover { background: rgba(255,255,255,0.04); color: var(--f-text); }
+  .ex-acts-a button.del { color: var(--f-error); }
+  .ex-acts-a button.del:hover { background: rgba(255,180,171,0.08); }
+
+  /* Variant B: Two separated tonal pills inside card padding */
+  .ex-acts-b {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px 11px; border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .ex-acts-b button {
+    flex: 1; height: 36px; border-radius: 999px; border: 1px solid var(--f-outline); background: #1D241D;
+    color: var(--f-text); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .ex-acts-b button:hover { border-color: var(--f-outline-hi); background: #242D23; }
+  .ex-acts-b button.del { background: #241615; border-color: #532B27; color: var(--f-error); }
+  .ex-acts-b button.del:hover { background: var(--f-error-bg); }
+
+  /* Variant C: Opposite-edge utility row (Replace left, Delete chip far right) */
+  .ex-acts-c {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px 9px 12px; border-top: 1px solid #222B22;
+  }
+  .ex-acts-c-rep {
+    border: 0; background: transparent; color: var(--f-muted); padding: 6px 8px; margin-left: -6px; border-radius: 9px;
+    font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ex-acts-c-rep:hover { background: rgba(255,255,255,0.06); color: var(--f-text); }
+  .ex-acts-c-del {
+    border: 1px solid rgba(255,180,171,0.28); background: rgba(54,28,26,0.45); color: var(--f-error);
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 650;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .ex-acts-c-del:hover { background: var(--f-error-bg); }
+
+  /* Duplicated-day banners (A / B / C) */
+  .dup-banner-a {
+    background: #172114; border: 1px solid var(--f-primary-border); border-radius: 13px;
+    padding: 8px 11px; margin-bottom: 11px; font-size: 12px; color: var(--f-on-primary-container);
+    display: flex; align-items: flex-start; gap: 8px; line-height: 1.35;
+  }
+  .dup-sub-b { font-size: 12px; color: var(--f-muted); margin: -8px 0 12px; line-height: 1.35; }
+  .val-sum-c {
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error);
+    border-radius: 12px; padding: 7px 11px; margin-bottom: 10px; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+
+  /* ==================== FLOATING UNDO SNACKBAR (~3s) (A / B / C) ==================== */
+  /* Variant A: Floating above Save CTA with thin bottom lime countdown bar */
+  .undo-a {
+    position: absolute; left: 16px; right: 16px; bottom: 74px; z-index: 26;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi); border-radius: 14px;
+    overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+  }
+  .phone.w360 .undo-a { left: 12px; right: 12px; bottom: 70px; }
+  .undo-a-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px 10px; }
+  .undo-txt { font-size: 13px; color: var(--f-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+  .undo-a-btn { border: 0; background: transparent; color: var(--f-primary); font-size: 13px; font-weight: 700; padding: 2px 4px; flex: none; }
+  .undo-a-bar { height: 2.5px; background: rgba(197,250,85,0.16); width: 100%; }
+  .undo-a-fill { height: 100%; background: var(--f-primary); transition: width 80ms linear; }
+
+  /* Variant B: Docked toast overlaying Save CTA area (zero list obstruction) with ring countdown */
+  .undo-b {
+    position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 28; min-height: 48px;
+    background: #1F271F; border: 1.5px solid #3F4E3C; border-radius: 999px;
+    padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 9px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.62);
+  }
+  .phone.w360 .undo-b { left: 12px; right: 12px; bottom: 14px; }
+  .undo-b-ring { width: 24px; height: 24px; flex: none; position: relative; display: flex; align-items: center; justify-content: center; }
+  .undo-b-btn {
+    border: 0; background: var(--f-primary); color: var(--f-on-primary);
+    border-radius: 999px; height: 34px; padding: 0 13px; font-size: 12.5px; font-weight: 750; flex: none;
+  }
+
+  /* Variant C: Lime-bordered bar above CTA with subtle progress sweep + tonal Undo chip */
+  .undo-c {
+    position: absolute; left: 16px; right: 16px; bottom: 72px; z-index: 26;
+    background: #141B14; border: 1.5px solid var(--f-primary-border); border-radius: 15px;
+    overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,0.52);
+  }
+  .phone.w360 .undo-c { left: 12px; right: 12px; bottom: 68px; }
+  .undo-c-sweep { position: absolute; inset: 0 auto 0 0; background: rgba(197,250,85,0.09); pointer-events: none; transition: width 80ms linear; }
+  .undo-c-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px 9px 13px; }
+  .undo-c-btn {
+    border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; height: 30px; padding: 0 12px; font-size: 12px; font-weight: 700; flex: none;
+  }
+
+  /* ==================== BOTTOM SHEETS (#1C231C) ==================== */
+  .f-scrim {
+    position: absolute; inset: 0; z-index: 40;
+    background: rgba(6, 9, 6, 0.72); display: flex; align-items: flex-end;
+  }
+  .f-sheet {
+    width: 100%; background: var(--f-surface-hi); border-radius: 26px 26px 0 0;
+    padding: 10px 18px 20px; border-top: 1px solid #2D382C;
+    display: flex; flex-direction: column; gap: 10px; max-height: 82%; overflow-y: auto;
+  }
+  .f-grab { width: 38px; height: 4px; border-radius: 2px; background: var(--f-outline-hi); margin: 0 auto 4px; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--f-text); line-height: 1.22; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.42; }
+  .f-sheet-card { background: var(--f-surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--f-muted); }
+  .f-sheet-card strong { color: var(--f-text); font-size: 13.5px; }
+  .f-sheet-danger {
+    width: 100%; min-height: 46px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .f-sheet-cancel {
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px;
+    font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%;
+  }
+  .f-sheet-split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pe-radio-card { width: 100%; text-align: left; background: #141914; border: 1.5px solid #263026; border-radius: 15px; padding: 11px 12px; color: var(--f-text); display: flex; align-items: flex-start; gap: 10px; }
+  .pe-radio-card.on { background: #15222B; border-color: var(--load-light); }
+  .pe-radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--f-outline-hi); margin-top: 2px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .pe-radio-card.on .pe-radio-dot { border-color: var(--load-light); }
+  .pe-radio-card.on .pe-radio-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--load-light); }
+  .pick-row {
+    width: 100%; border: 1px solid #252E24; background: var(--f-surface); color: var(--f-text);
+    border-radius: 14px; padding: 10px 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .pick-row:hover { border-color: var(--f-primary-border); background: #192217; }
+  .toast-info {
+    position: absolute; left: 16px; right: 16px; bottom: 74px; z-index: 25;
+    background: #1C231C; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container);
+    border-radius: 13px; padding: 10px 13px; font-size: 12.5px; font-weight: 600;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45); text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Fitty 2.0 · Прототип #121</span>
+      <div>
+        <h1 class="host-title">Редактор программы и дня: перестановка, меню дней, Undo-snackbar, баннер и валидация</h1>
+        <div class="host-sub">3 структурных варианта поверх утверждённого #100 · тяните карточки за ⠿, пробуйте ⋮, удаление, дубликат и «Сохранить»</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" id="host-mode">
+        <button type="button" data-mode="interactive" class="active">Интерактив</button>
+        <button type="button" data-mode="compare">Сравнение A / B / C</button>
+      </div>
+      <div class="seg-small" id="host-width">
+        <button type="button" data-w="390" class="active">390 dp</button>
+        <button type="button" data-w="360">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="stage-interactive" class="interactive-stage">
+    <div class="phone-slot">
+      <div id="live-phone" class="phone"></div>
+      <div class="phone-caption" id="phone-caption">Тяните за ⠿ для перестановки · ⋮ открывает меню дня · ← проверяет реальные правки черновика</div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Экран и сценарии проверки (#120 + #121 + #94)</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Готовые сценарии</span>
+          <div class="btn-wrap" id="ctrl-scenarios"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Переключатели и быстрые проверки</span>
+          <div class="btn-wrap" id="ctrl-toggles"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 id="var-panel-title">Отличия варианта A</h2>
+        <div class="var-desc" id="var-panel-desc"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние черновика (Live State)</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </aside>
+  </main>
+
+  <section id="stage-compare" class="hidden">
+    <div class="panel" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div class="btn-wrap" id="cmp-screen"></div>
+      <div class="btn-wrap" id="cmp-scenarios"></div>
+    </div>
+    <div class="compare-grid" id="compare-grid"></div>
+  </section>
+</div>
+
+<div class="proto-switcher" role="region" aria-label="Переключатель вариантов прототипа">
+  <button type="button" id="sw-prev" title="Предыдущий вариант (←)">←</button>
+  <span class="proto-switcher-lbl"><span class="proto-switcher-key" id="sw-key">A</span><span id="sw-name">Зоны «Моих программ»</span></span>
+  <button type="button" id="sw-next" title="Следующий вариант (→)">→</button>
+</div>
+
+<script>
+(() => {
+  const VARIANTS = [
+    {
+      key: 'A',
+      name: 'Зоны «Моих программ»',
+      short: '3 симметричные зоны + 50/50 футер + snackbar над кнопкой',
+      bullets: [
+        '<strong>Карточка дня:</strong> 3 полноразмерные зоны с вертикальными разделителями (<code>⠿</code> слева, центр-переход, <code>⋮</code> справа) — прямое родство с утверждённым <code>#107</code>.',
+        '<strong>Баннер тренировки:</strong> спокойная тонированная карточка <code>#172114</code> с пульсирующей точкой (как в «Моих программах»).',
+        '<strong>Внутри карточки упражнения:</strong> 50/50 сплит-футер <code>Заменить | Удалить</code> с вертикальной линией.',
+        '<strong>Ошибки и Undo:</strong> красная полоса <code>3,5 dp</code> слева + пилюля <code>Проверь цель</code>; Undo-snackbar парит <em>над</em> кнопкой «Сохранить» с тонкой лаймовой полоской таймера <code>3 с</code>.',
+        '<strong>Шторка выхода:</strong> со списком реальных правок черновика.'
+      ]
+    },
+    {
+      key: 'B',
+      name: 'Воздушная типографика',
+      short: 'Без разделителей + превью упражнений + toast поверх футера',
+      bullets: [
+        '<strong>Карточка дня:</strong> без внутренних линий — тактильная плитка <code>⠿</code> слева, превью упражнений дня в центре, круглая кнопка <code>⋮</code> справа.',
+        '<strong>Баннер тренировки:</strong> лента <code>#141914</code> с левой лаймовой полосой <code>3 dp</code> (в языке подсказок <code>#99</code>).',
+        '<strong>Внутри карточки упражнения:</strong> две отдельные закруглённые пилюли <code>Заменить</code> и <code>Удалить</code>.',
+        '<strong>Ошибки и Undo:</strong> мягкий красноватый фон карточки + inline-плашка внутри проблемного блока; Undo-toast встаёт <em>поверх</em> нижней кнопки с круговым кольцом <code>3 с</code> (не перекрывает список).',
+        '<strong>Дубликат и выход:</strong> заголовок <code>Новый день (копия)</code> с подзаголовком; компактная шторка выхода.'
+      ]
+    },
+    {
+      key: 'C',
+      name: 'Компактная плотность',
+      short: 'Плотнее на 360 dp + разнос Заменить/Удалить по краям + полоса ошибок',
+      bullets: [
+        '<strong>Карточка дня:</strong> компактная высота под <code>360 dp</code>, ручка <code>⠿</code> встроена в левый край, счётчик упражнений пилюлей справа; у невалидного дня — пристыкованная нижняя полоса ошибки.',
+        '<strong>Баннер тренировки:</strong> однострочная капсула прямо под шапкой — поле «Название программы» остаётся максимально высоко.',
+        '<strong>Внутри карточки упражнения:</strong> максимальный разнос действий — <code>Заменить</code> слева, спокойный чип <code>Удалить</code> у правого края.',
+        '<strong>Ошибки и Undo:</strong> верхняя сводка <code>Ошибки в N упр.</code> + построчные подписи под полями; Undo-бар над кнопкой с плавной заливкой-прогрессом и тональным чипом <code>Отменить</code>.',
+        '<strong>Дубликат и выход:</strong> метка <code>Копия · новый день</code> в топбаре; сплит-кнопки <code>Остаться | Выйти</code> в шторке.'
+      ]
+    }
+  ];
+
+  const RULES = [
+    { id: 'easier_sets', short: 'Легче подходы', title: 'Легче подходы', badge: 'По умолчанию', desc: '−2 повтора (для коротких ≤ 4 — снижение веса по ощущениям), ~80% времени и дистанции' },
+    { id: 'fewer_sets', short: '−1 подход', title: 'Меньше подходов (−1)', badge: '', desc: 'Минус 1 подход при ≥ 2 подходах; повторы, время и дистанция не меняются' },
+    { id: 'manual', short: 'Вручную', title: 'Вручную', badge: '', desc: 'Копирует тяжёлые цели при включении, без авторасчёта и кнопки сброса' }
+  ];
+
+  const CATALOG_SAMPLES = [
+    { name: 'Тяга верхнего блока к груди', type: 'weight_reps', progression: true },
+    { name: 'Жим гантелей на наклонной скамье с разворотом кистей вверху', type: 'weight_reps', progression: true },
+    { name: 'Отжимания на брусьях', type: 'reps', progression: true },
+    { name: 'Боковая планка', type: 'duration', progression: false },
+    { name: 'Гребля на тренажёре', type: 'distance', progression: false }
+  ];
+
+  const ICO = {
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    more: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+    edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+    swap: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    pulse: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+    warn: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  };
+
+  let uidCounter = 100;
+  function nextId(prefix) { return `${prefix}${++uidCounter}`; }
+  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  function graphemeLen(str) { return [...String(str || '').trim()].length; }
+  function escHtml(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function pluralRu(n, f1, f2, f5) {
+    const a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return `${n} ${f5}`;
+    if (b === 1) return `${n} ${f1}`;
+    if (b >= 2 && b <= 4) return `${n} ${f2}`;
+    return `${n} ${f5}`;
+  }
+  function makeCopyName(name) {
+    const suffix = ' (копия)';
+    const trimmed = String(name || '').trim();
+    const chars = [...trimmed];
+    const maxBase = 40 - [...suffix].length;
+    const base = chars.length > maxBase ? chars.slice(0, maxBase).join('').trimEnd() : trimmed;
+    return `${base}${suffix}`;
+  }
+
+  /* ==================== DEFAULT DATA ==================== */
+  function makeBaseProgram(mode = 'normal') {
+    const days = [
+      {
+        id: 'd1',
+        name: 'День А · Верх и тяга',
+        exercises: [
+          { id: 'e1', name: 'Жим штанги лёжа', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '10', manualExact: '8' },
+          { id: 'e2', name: 'Подтягивания широким хватом', type: 'reps', progression: true, heavySets: '3', heavyMode: 'exact', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: true, manualSets: '2', manualMode: 'range', manualMin: '6', manualMax: '8', manualExact: '7' },
+          { id: 'e3', name: 'Планка на предплечьях', type: 'duration', progression: false, heavySets: '3', heavySec: 45, lightManual: false, manualSets: '3', manualSec: 45 },
+          { id: 'e4', name: 'Бег на дорожке', type: 'distance', progression: true, heavySets: '1', heavyDist: '1', heavyUnit: 'km', lightManual: false, manualSets: '1', manualDist: '800', manualUnit: 'm' }
+        ]
+      },
+      {
+        id: 'd2',
+        name: 'День Б · Ноги и кор',
+        exercises: [
+          { id: 'e5', name: 'Приседания со штангой', type: 'weight_reps', progression: true, heavySets: '4', heavyMode: 'range', heavyMin: '6', heavyMax: '8', heavyExact: '6', lightManual: false, manualSets: '4', manualMode: 'range', manualMin: '4', manualMax: '6', manualExact: '4' },
+          { id: 'e6', name: 'Румынская тяга с гантелями', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '10', manualExact: '8' },
+          { id: 'e7', name: 'Скручивания на пресс', type: 'reps', progression: false, heavySets: '3', heavyMode: 'exact', heavyExact: '15', heavyMin: '12', heavyMax: '15', lightManual: false, manualSets: '3', manualMode: 'exact', manualExact: '15' }
+        ]
+      },
+      {
+        id: 'd3',
+        name: 'День В · Плечи и руки',
+        exercises: [
+          { id: 'e8', name: 'Армейский жим стоя', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '10', heavyExact: '8', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '8', manualExact: '6' },
+          { id: 'e9', name: 'Сгибания на бицепс с гантелями', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '10', heavyMax: '12', heavyExact: '10', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '8', manualMax: '10', manualExact: '8' }
+        ]
+      }
+    ];
+    if (mode === 'new_empty') {
+      return { isNew: true, name: '', alternating: false, rule: 'easier_sets', days: [] };
+    }
+    if (mode === 'long') {
+      days[0].name = 'День А: грудь, плечи и трицепс (силовой)';
+      days[0].exercises[0].name = 'Жим гантелей на наклонной скамье с разворотом кистей вверху';
+      days[0].exercises[1].name = 'СверхдлинноеСловоБезПробеловДляПроверкиПереносаВРедактореДня';
+      days[1].name = 'ДеньББезПробеловДлинноеНазваниеДляПровер';
+      return { isNew: false, name: 'Базовая силовая программа на 4 дня (верх и низ, осень 2026г)', alternating: true, rule: 'easier_sets', days };
+    }
+    if (mode === 'validation') {
+      days[0].exercises[0].heavyMin = '12';
+      days[0].exercises[0].heavyMax = '8'; // от >= до error
+      days[0].exercises[1].heavySets = '0'; // 1-99 error (will be collapsed -> Проверь цель)
+      days[0].exercises[3].heavyDist = '0'; // >= 1m error (collapsed -> Проверь цель)
+      days[2].exercises = []; // 0 exercises -> invalid day in program editor
+      return { isNew: false, name: 'Базовая силовая', alternating: true, rule: 'easier_sets', days };
+    }
+    return { isNew: false, name: 'Базовая силовая', alternating: true, rule: 'easier_sets', days };
+  }
+
+  /* ==================== TARGET MATH & VALIDATION (#100 + #120) ==================== */
+  function parseStrictInt(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return { empty: true, val: null, ok: true };
+    if (!/^\d+$/.test(s)) return { empty: false, val: null, ok: false };
+    return { empty: false, val: Number(s), ok: true };
+  }
+  function parseDistMeters(raw, unit) {
+    const s = String(raw ?? '').trim().replace(',', '.');
+    if (!s) return { empty: true, meters: null, ok: true };
+    if (!/^\d+(\.\d+)?$/.test(s)) return { empty: false, meters: null, ok: false };
+    const num = Number(s);
+    if (!Number.isFinite(num)) return { empty: false, meters: null, ok: false };
+    const meters = unit === 'km' ? Math.round(num * 1000) : Math.round(num);
+    return { empty: false, meters, ok: true };
+  }
+  function fmtSec(sec) { return sec == null ? 'Без цели' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+  function fmtMeters(m, forceU) {
+    if (m == null) return 'Без цели';
+    const u = forceU || (m >= 1000 ? 'km' : 'm');
+    return u === 'km' ? `${String(+(m / 1000).toFixed(2)).replace('.', ',')} км` : `${Math.round(m)} м`;
+  }
+  function roundDur80(sec) {
+    if (sec == null) return { sec: null, hint: 'легче по ощущениям' };
+    if (sec <= 5) return { sec, hint: 'легче по ощущениям' };
+    return { sec: Math.max(5, Math.min(sec - 5, Math.round((sec * 0.8) / 5) * 5)), hint: null };
+  }
+  function roundDist80(m) {
+    if (m == null) return { meters: null, hint: 'легче по ощущениям' };
+    if (m <= 1) return { meters: 1, hint: 'легче по ощущениям' };
+    const step = m >= 1000 ? 100 : m >= 100 ? 50 : m >= 10 ? 5 : 1;
+    let r = Math.round((m * 0.8) / step) * step;
+    if (r >= m) r = m - step;
+    if (r < 1) r = Math.max(1, m - 1);
+    return { meters: r, hint: null };
+  }
+
+  function validateSide(ex, side) {
+    const errs = {};
+    const setsRaw = side === 'heavy' ? ex.heavySets : ex.manualSets;
+    const pSets = parseStrictInt(setsRaw);
+    if (!pSets.empty && (!pSets.ok || pSets.val < 1 || pSets.val > 99)) {
+      errs.sets = 'Подходы: от 1 до 99';
+    }
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = side === 'heavy' ? ex.heavyMode : ex.manualMode;
+      if (mode === 'exact') {
+        const p = parseStrictInt(side === 'heavy' ? ex.heavyExact : ex.manualExact);
+        if (!p.empty && (!p.ok || p.val < 1)) errs.exact = 'Повторения: целое число ≥ 1';
+      } else if (mode === 'range') {
+        const pLo = parseStrictInt(side === 'heavy' ? ex.heavyMin : ex.manualMin);
+        const pHi = parseStrictInt(side === 'heavy' ? ex.heavyMax : ex.manualMax);
+        if (!(pLo.empty && pHi.empty)) {
+          if (pLo.empty || pHi.empty) errs.range = 'Заполните «от» и «до» (или оставьте оба пустыми)';
+          else if (!pLo.ok || !pHi.ok || pLo.val < 1 || pHi.val < 1) errs.range = 'Повторения: целые числа ≥ 1';
+          else if (pLo.val >= pHi.val) errs.range = '«От» должно быть строго меньше «до» (от < до)';
+        }
+      }
+    } else if (ex.type === 'distance') {
+      const distRaw = side === 'heavy' ? ex.heavyDist : ex.manualDist;
+      const unit = side === 'heavy' ? (ex.heavyUnit || 'm') : (ex.manualUnit || 'm');
+      const pD = parseDistMeters(distRaw, unit);
+      if (!pD.empty && (!pD.ok || pD.meters < 1)) errs.dist = 'Дистанция: минимум 1 м';
+    } else if (ex.type === 'duration') {
+      const sec = side === 'heavy' ? ex.heavySec : ex.manualSec;
+      if (sec != null && (sec < 5 || sec % 5 !== 0)) errs.dur = 'Длительность: ≥ 0:05 с шагом 5 с';
+    }
+    return errs;
+  }
+
+  function validateExercise(ex, alternating, rule) {
+    const heavy = validateSide(ex, 'heavy');
+    const needLight = alternating && (rule === 'manual' || ex.lightManual);
+    const light = needLight ? validateSide(ex, 'light') : {};
+    const heavyOk = Object.keys(heavy).length === 0;
+    const lightOk = Object.keys(light).length === 0;
+    return { heavy, light, heavyOk, lightOk, ok: heavyOk && lightOk };
+  }
+
+  function validateDay(day, alternating, rule) {
+    const nameLen = graphemeLen(day.name);
+    const nameErr = nameLen === 0 ? 'Введите название дня' : nameLen > 40 ? 'Не больше 40 символов' : null;
+    const noExErr = day.exercises.length === 0 ? 'Добавьте хотя бы 1 упражнение' : null;
+    const exErrors = {};
+    let exErrCount = 0;
+    day.exercises.forEach(ex => {
+      const v = validateExercise(ex, alternating, rule);
+      exErrors[ex.id] = v;
+      if (!v.ok) exErrCount++;
+    });
+    const ok = !nameErr && !noExErr && exErrCount === 0;
+    let shortReason = '';
+    if (nameErr) shortReason = 'Нет названия';
+    else if (noExErr) shortReason = 'Нет упражнений';
+    else if (exErrCount > 0) shortReason = exErrCount === 1 ? 'Проверь цель (1)' : `Проверь цели (${exErrCount})`;
+    return { ok, nameErr, noExErr, exErrors, exErrCount, shortReason };
+  }
+
+  function computeAutoLight(ex, rule) {
+    const hSets = parseStrictInt(ex.heavySets).val;
+    const hDist = ex.type === 'distance' ? parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters : null;
+    if (!ex.progression) {
+      return {
+        sets: hSets, mode: ex.heavyMode, min: parseStrictInt(ex.heavyMin).val, max: parseStrictInt(ex.heavyMax).val,
+        exact: parseStrictInt(ex.heavyExact).val, sec: ex.heavySec, meters: hDist,
+        unit: hDist != null ? (hDist >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint: null
+      };
+    }
+    if (rule === 'fewer_sets') {
+      let sets = hSets, hint = null;
+      if (sets == null) hint = '3 строки вместо 4';
+      else if (sets >= 2) sets -= 1;
+      else { sets = 1; hint = 'легче по ощущениям'; }
+      return {
+        sets, mode: ex.heavyMode, min: parseStrictInt(ex.heavyMin).val, max: parseStrictInt(ex.heavyMax).val,
+        exact: parseStrictInt(ex.heavyExact).val, sec: ex.heavySec, meters: hDist,
+        unit: hDist != null ? (hDist >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint
+      };
+    }
+    const base = { sets: hSets, hint: null };
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (ex.heavyMode === 'empty') return { ...base, mode: 'empty', min: null, max: null, exact: null, hint: 'легче по ощущениям' };
+      if (ex.heavyMode === 'exact') {
+        const v = parseStrictInt(ex.heavyExact).val;
+        if (!v) return { ...base, mode: 'empty', exact: null, hint: 'легче по ощущениям' };
+        if (v >= 5) return { ...base, mode: 'exact', exact: v - 2 };
+        if (ex.type === 'weight_reps') return { ...base, mode: 'exact', exact: v, hint: 'снизить вес по ощущениям' };
+        return v >= 2 ? { ...base, mode: 'exact', exact: v - 1 } : { ...base, mode: 'exact', exact: 1, hint: 'легче по ощущениям' };
+      }
+      const lo = parseStrictInt(ex.heavyMin).val, hi = parseStrictInt(ex.heavyMax).val;
+      if (!lo || !hi) return { ...base, mode: 'empty', min: null, max: null, hint: 'легче по ощущениям' };
+      if (lo >= 5) return { ...base, mode: 'range', min: lo - 2, max: Math.max(lo - 2, hi - 2) };
+      if (ex.type === 'weight_reps') return { ...base, mode: 'range', min: lo, max: hi, hint: 'снизить вес по ощущениям' };
+      if (lo >= 2) return { ...base, mode: 'range', min: lo - 1, max: Math.max(lo - 1, hi - 1) };
+      return { ...base, mode: 'range', min: lo, max: hi, hint: 'легче по ощущениям' };
+    }
+    if (ex.type === 'duration') { const r = roundDur80(ex.heavySec); return { ...base, sec: r.sec, hint: r.hint }; }
+    if (ex.type === 'distance') { const r = roundDist80(hDist); return { ...base, meters: r.meters, unit: r.meters != null && r.meters >= 1000 ? 'km' : 'm', hint: r.hint }; }
+    return base;
+  }
+
+  function getLight(ex, rule) {
+    if (rule === 'manual' || ex.lightManual) {
+      const m = ex.type === 'distance' ? parseDistMeters(ex.manualDist, ex.manualUnit || 'm').meters : null;
+      return {
+        isManual: true, sets: parseStrictInt(ex.manualSets).val, mode: ex.manualMode,
+        min: parseStrictInt(ex.manualMin).val, max: parseStrictInt(ex.manualMax).val, exact: parseStrictInt(ex.manualExact).val,
+        sec: ex.manualSec, meters: m, unit: ex.manualUnit || 'm', hint: null
+      };
+    }
+    const auto = computeAutoLight(ex, rule);
+    return { isManual: false, ...auto, ...(ex.lightDisplayUnit ? { unit: ex.lightDisplayUnit } : {}) };
+  }
+
+  function fmtHeavySummary(ex) {
+    const sets = parseStrictInt(ex.heavySets).val;
+    let tgt = 'Без цели';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (ex.heavyMode === 'range') {
+        const lo = parseStrictInt(ex.heavyMin).val, hi = parseStrictInt(ex.heavyMax).val;
+        if (lo && hi) tgt = `${lo}–${hi} повт.`;
+      } else if (ex.heavyMode === 'exact') {
+        const v = parseStrictInt(ex.heavyExact).val;
+        if (v) tgt = `${v} повт.`;
+      }
+    } else if (ex.type === 'duration') tgt = fmtSec(ex.heavySec);
+    else if (ex.type === 'distance') tgt = fmtMeters(parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters, ex.heavyUnit || 'm');
+    if (sets == null && tgt === 'Без цели') return 'Без цели';
+    if (sets == null) return tgt;
+    if (tgt === 'Без цели') return `${sets} подх.`;
+    return `${sets} × ${tgt}`;
+  }
+
+  function fmtLightSummary(ex, light) {
+    const sets = light.sets;
+    let tgt = 'Без цели';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (light.mode === 'range' && light.min != null && light.max != null) tgt = `${light.min}–${light.max} повт.`;
+      else if (light.mode === 'exact' && light.exact != null) tgt = `${light.exact} повт.`;
+    } else if (ex.type === 'duration') tgt = fmtSec(light.sec);
+    else if (ex.type === 'distance') tgt = fmtMeters(light.meters, light.unit);
+    if (sets == null && tgt === 'Без цели') return 'Без цели';
+    if (sets == null) return tgt;
+    if (tgt === 'Без цели') return `${sets} подх.`;
+    return `${sets} × ${tgt}`;
+  }
+
+  function showLightFor(ex, prog) {
+    if (!prog.alternating) return false;
+    if (prog.rule === 'manual' || ex.lightManual) return true;
+    return ex.progression;
+  }
+
+  /* ==================== STATE ==================== */
+  const urlParams = new URLSearchParams(location.search);
+  const initVar = ['A', 'B', 'C'].includes((urlParams.get('variant') || '').toUpperCase()) ? urlParams.get('variant').toUpperCase() : 'A';
+
+  let st = {
+    variant: initVar,
+    hostMode: 'interactive',
+    width: 390,
+    scenario: 'normal',
+    screen: 'program', // 'program' | 'day'
+    activeWorkout: false,
+    prog: null,
+    initialProgSnap: null,
+    activeDayId: null,
+    dayIsNewEmpty: false,
+    dayDupSourceName: null,
+    dayDupSnap: null,
+    expandedExId: null,
+    showProgValidation: false,
+    showDayValidation: false,
+    ctxDayId: null,
+    ctxPos: { top: 180, right: 16 },
+    sheet: null, // 'rule' | 'discard' | 'add_ex' | 'replace_ex'
+    replaceExId: null,
+    undo: null, // { kind: 'day'|'ex', label, item, index, startedAt, durationMs }
+    infoToast: null,
+    lastAction: 'Открыт редактор программы'
+  };
+
+  let undoRaf = null;
+  let toastTimer = null;
+
+  function loadScenario(sc) {
+    clearUndo();
+    st.scenario = sc;
+    st.sheet = null;
+    st.ctxDayId = null;
+    st.showProgValidation = false;
+    st.showDayValidation = false;
+    st.dayIsNewEmpty = false;
+    st.dayDupSourceName = null;
+    st.dayDupSnap = null;
+    st.activeWorkout = sc === 'active_workout';
+    const baseMode = sc === 'new_empty' ? 'new_empty' : sc === 'long' ? 'long' : sc === 'validation' ? 'validation' : 'normal';
+    st.prog = makeBaseProgram(baseMode);
+    st.initialProgSnap = JSON.stringify(st.prog);
+    st.activeDayId = st.prog.days[0]?.id || null;
+    st.expandedExId = null;
+
+    if (sc === 'validation') {
+      st.showProgValidation = true;
+      st.showDayValidation = true;
+      st.expandedExId = st.prog.days[0]?.exercises[0]?.id || null;
+      st.lastAction = 'Сценарий: ошибки валидации в программе и дне';
+    } else if (sc === 'duplicate') {
+      const src = st.prog.days[0];
+      const dup = {
+        id: nextId('d'),
+        name: makeCopyName(src.name),
+        exercises: src.exercises.map(e => ({ ...clone(e), id: nextId('e') }))
+      };
+      st.prog.days.push(dup);
+      st.activeDayId = dup.id;
+      st.dayDupSourceName = src.name;
+      st.dayDupSnap = JSON.stringify(dup);
+      st.screen = 'day';
+      st.expandedExId = null;
+      st.lastAction = `Дублирован «${src.name}» (нажмите ← без правок, чтобы отменить дубликат)`;
+    } else if (sc === 'active_workout') {
+      st.screen = 'program';
+      st.lastAction = 'Сценарий: редактирование программы активной тренировки';
+    } else if (sc === 'new_empty') {
+      st.screen = 'program';
+      st.lastAction = 'Сценарий: пустая новая программа (0 дней)';
+    } else if (sc === 'long') {
+      st.lastAction = 'Сценарий: длинные названия (#94)';
+    } else {
+      st.lastAction = 'Сценарий: обычное редактирование';
+    }
+    render();
+  }
+
+  function isProgDirty() {
+    return JSON.stringify(st.prog) !== st.initialProgSnap;
+  }
+  function getDiffSummary() {
+    const orig = JSON.parse(st.initialProgSnap);
+    const cur = st.prog;
+    const parts = [];
+    if (orig.name !== cur.name) parts.push('название программы');
+    if (orig.alternating !== cur.alternating || orig.rule !== cur.rule) parts.push('настройки недель');
+    const origIds = orig.days.map(d => d.id).join(',');
+    const curIds = cur.days.map(d => d.id).join(',');
+    if (orig.days.length !== cur.days.length) parts.push(`состав дней (${orig.days.length} → ${cur.days.length})`);
+    else if (origIds !== curIds) parts.push('порядок дней');
+    else if (JSON.stringify(orig.days) !== JSON.stringify(cur.days)) parts.push('цели или состав упражнений');
+    return parts.length ? parts.join(', ') : 'есть несохранённые правки';
+  }
+
+  function clearUndo() {
+    st.undo = null;
+    if (undoRaf) { cancelAnimationFrame(undoRaf); undoRaf = null; }
+  }
+  function triggerUndo(kind, label, item, index) {
+    clearUndo();
+    st.undo = { kind, label, item: clone(item), index, startedAt: performance.now(), durationMs: 3200 };
+    const tick = () => {
+      if (!st.undo) return;
+      const elapsed = performance.now() - st.undo.startedAt;
+      const left = Math.max(0, 1 - elapsed / st.undo.durationMs);
+      document.querySelectorAll('[data-undo-fill]').forEach(el => { el.style.width = `${(left * 100).toFixed(1)}%`; });
+      document.querySelectorAll('[data-undo-ring]').forEach(el => { el.style.strokeDashoffset = `${(56.55 * (1 - left)).toFixed(1)}`; });
+      if (elapsed >= st.undo.durationMs) {
+        st.undo = null;
+        st.lastAction = 'Таймер Undo истёк — удаление закреплено в черновике';
+        render();
+        return;
+      }
+      undoRaf = requestAnimationFrame(tick);
+    };
+    undoRaf = requestAnimationFrame(tick);
+  }
+  function showInfoToast(msg) {
+    st.infoToast = msg;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { st.infoToast = null; render(); }, 2200);
+  }
+
+  function currentDay() { return st.prog.days.find(d => d.id === st.activeDayId) || null; }
+
+  /* ==================== RENDERERS ==================== */
+  function renderLamps(type) {
+    return type === 'heavy' ? '<span class="lamp heavy"></span>' : '<span class="lamp light"></span>';
+  }
+
+  function renderUndoHTML(vKey, undo) {
+    if (!undo) return '';
+    const pct = Math.max(0, 1 - (performance.now() - undo.startedAt) / undo.durationMs);
+    if (vKey === 'A') {
+      return `<div class="undo-a" role="status">
+        <div class="undo-a-row">
+          <span class="undo-txt">${escHtml(undo.label)}</span>
+          <button type="button" class="undo-a-btn" data-act="undo-apply">Отменить</button>
+        </div>
+        <div class="undo-a-bar"><div class="undo-a-fill" data-undo-fill style="width:${(pct * 100).toFixed(1)}%"></div></div>
+      </div>`;
+    }
+    if (vKey === 'B') {
+      const dash = (56.55 * (1 - pct)).toFixed(1);
+      return `<div class="undo-b" role="status">
+        <span class="undo-b-ring">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="#334032" stroke-width="2.2"/>
+            <circle cx="12" cy="12" r="9" fill="none" stroke="#C5FA55" stroke-width="2.2" stroke-dasharray="56.55" stroke-dashoffset="${dash}" transform="rotate(-90 12 12)" data-undo-ring/>
+          </svg>
+        </span>
+        <span class="undo-txt">${escHtml(undo.label)}</span>
+        <button type="button" class="undo-b-btn" data-act="undo-apply">Отменить</button>
+      </div>`;
+    }
+    return `<div class="undo-c" role="status">
+      <div class="undo-c-sweep" data-undo-fill style="width:${(pct * 100).toFixed(1)}%"></div>
+      <div class="undo-c-row">
+        <span class="undo-txt">${escHtml(undo.label)}</span>
+        <button type="button" class="undo-c-btn" data-act="undo-apply">Отменить</button>
+      </div>
+    </div>`;
+  }
+
+  function renderProgramScreen(vKey, s) {
+    const prog = s.prog;
+    const len = graphemeLen(prog.name);
+    const showCounter = len >= 48 || len > 60;
+    const nameOver = len > 60;
+    const nameEmptyErr = s.showProgValidation && len === 0;
+    const daysEmptyErr = s.showProgValidation && prog.days.length === 0;
+    const ruleObj = RULES.find(r => r.id === prog.rule) || RULES[0];
+    const totalManual = prog.rule === 'manual' ? 0 : prog.days.reduce((acc, d) => acc + d.exercises.filter(e => e.lightManual).length, 0);
+
+    const activeBannerTop = s.activeWorkout && vKey === 'C'
+      ? `<div class="aw-banner-c"><span class="live-dot"></span><strong style="flex:none">Идёт тренировка</strong><span>· правки для будущих</span></div>`
+      : '';
+    const activeBannerScroll = s.activeWorkout && vKey === 'A'
+      ? `<div class="aw-banner-a"><span class="live-dot" style="margin-top:5px"></span><div><strong>Сейчас идёт тренировка</strong> — изменения применятся к будущим тренировкам. Текущая доработает по своему снимку.</div></div>`
+      : s.activeWorkout && vKey === 'B'
+        ? `<div class="aw-banner-b"><span class="live-dot"></span><div><strong>Сейчас идёт тренировка</strong> — правки применятся к будущим тренировкам.</div></div>`
+        : '';
+
+    const dayCards = prog.days.length === 0
+      ? `<div class="pe-empty-box ${daysEmptyErr ? 'err' : ''}">${daysEmptyErr ? 'Добавьте хотя бы 1 тренировочный день для сохранения программы.' : 'Тренировочных дней пока нет. Нажмите «+ Добавить день», чтобы собрать план.'}</div>`
+      : prog.days.map((d, idx) => {
+        const dv = validateDay(d, prog.alternating, prog.rule);
+        const showInvalid = !dv.ok && (s.showProgValidation || d.exercises.length === 0 || !d.name.trim());
+        const manCount = prog.alternating && prog.rule !== 'manual' ? d.exercises.filter(e => e.lightManual).length : 0;
+        const menuOpen = s.ctxDayId === d.id;
+        const titleHtml = d.name.trim()
+          ? `<div class="day-title-txt">${escHtml(d.name)}</div>`
+          : `<div class="day-title-txt empty">Без названия</div>`;
+
+        if (vKey === 'A') {
+          return `<div class="drag-item" data-drag-kind="day" data-drag-id="${d.id}" data-drag-idx="${idx}">
+            <div class="day-a ${showInvalid ? 'invalid' : ''}">
+              <button type="button" class="day-a-grip" data-drag-handle="day" data-id="${d.id}" aria-label="Перетащить день ${escHtml(d.name || 'без названия')}" title="Тяните для перестановки">⠿</button>
+              <button type="button" class="day-a-center" data-act="open-day" data-id="${d.id}">
+                ${titleHtml}
+                <div class="day-meta-row">
+                  <span>${pluralRu(d.exercises.length, 'упражнение', 'упражнения', 'упражнений')}</span>
+                  ${manCount > 0 ? `<span class="pe-tag-man">${manCount} вручную</span>` : ''}
+                  ${showInvalid ? `<span class="err-pill">${ICO.warn} ${escHtml(dv.shortReason)}</span>` : ''}
+                </div>
+              </button>
+              <button type="button" class="day-a-more ${menuOpen ? 'menu-open' : ''}" data-act="open-ctx" data-id="${d.id}" aria-label="Меню дня">${ICO.more}</button>
+            </div>
+          </div>`;
+        }
+        if (vKey === 'B') {
+          const preview = d.exercises.length ? d.exercises.map(e => e.name).join(' · ') : 'Упражнения не добавлены';
+          return `<div class="drag-item" data-drag-kind="day" data-drag-id="${d.id}" data-drag-idx="${idx}">
+            <div class="day-b ${showInvalid ? 'invalid' : ''}">
+              <button type="button" class="day-b-grip" data-drag-handle="day" data-id="${d.id}" aria-label="Перетащить день" title="Тяните для перестановки">⠿</button>
+              <button type="button" class="day-b-center" data-act="open-day" data-id="${d.id}">
+                ${titleHtml}
+                <div class="day-meta-row">
+                  <span>${pluralRu(d.exercises.length, 'упражнение', 'упражнения', 'упражнений')}</span>
+                  ${manCount > 0 ? `<span class="pe-tag-man">${manCount} вручную</span>` : ''}
+                </div>
+                ${showInvalid
+                  ? `<div class="err-inline-line">${ICO.warn} <span>${escHtml(dv.nameErr || dv.noExErr || dv.shortReason)}</span></div>`
+                  : `<div class="day-b-preview">${escHtml(preview)}</div>`}
+              </button>
+              <button type="button" class="day-b-more ${menuOpen ? 'menu-open' : ''}" data-act="open-ctx" data-id="${d.id}" aria-label="Меню дня">${ICO.more}</button>
+            </div>
+          </div>`;
+        }
+        return `<div class="drag-item" data-drag-kind="day" data-drag-id="${d.id}" data-drag-idx="${idx}">
+          <div class="day-c ${showInvalid ? 'invalid' : ''}">
+            <div class="day-c-main">
+              <button type="button" class="day-c-grip" data-drag-handle="day" data-id="${d.id}" aria-label="Перетащить день" title="Тяните для перестановки">⠿</button>
+              <button type="button" class="day-c-center" data-act="open-day" data-id="${d.id}">
+                <div class="day-c-row1">
+                  ${titleHtml}
+                  <span class="day-c-cnt">${d.exercises.length} упр.</span>
+                </div>
+                ${manCount > 0 ? `<div class="day-meta-row"><span class="pe-tag-man">${manCount} вручную</span></div>` : ''}
+              </button>
+              <button type="button" class="day-c-more ${menuOpen ? 'menu-open' : ''}" data-act="open-ctx" data-id="${d.id}" aria-label="Меню дня">${ICO.more}</button>
+            </div>
+            ${showInvalid ? `<button type="button" class="day-c-errbar" data-act="open-day" data-id="${d.id}">
+              <span style="display:inline-flex;align-items:center;gap:5px">${ICO.warn} ${escHtml(dv.shortReason)} — исправить</span><span>›</span>
+            </button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+    const ctxHtml = s.ctxDayId ? `
+      <div class="ctx-backdrop" data-act="close-ctx"></div>
+      <div class="ctx-menu" style="top:${s.ctxPos.top}px;right:${s.ctxPos.right}px" role="menu">
+        <button type="button" class="ctx-item" data-act="ctx-edit" data-id="${s.ctxDayId}">${ICO.edit}<span>Редактировать</span></button>
+        <button type="button" class="ctx-item" data-act="ctx-dup" data-id="${s.ctxDayId}">${ICO.copy}<span>Дублировать</span></button>
+        <div class="ctx-sep"></div>
+        <button type="button" class="ctx-item danger" data-act="ctx-del" data-id="${s.ctxDayId}">${ICO.trash}<span>Удалить</span></button>
+      </div>` : '';
+
+    let sheetHtml = '';
+    if (s.sheet === 'rule') {
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()">
+        <div class="f-grab"></div>
+        <h3>Правило лёгкой недели</h3>
+        <p>Автоматически пересчитывает цели с включённой прогрессией. Ручные правки сохранятся.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${RULES.map(r => `<button type="button" class="pe-radio-card ${prog.rule === r.id ? 'on' : ''}" data-act="set-rule" data-v="${r.id}">
+            <span class="pe-radio-dot"></span>
+            <div>
+              <div style="font-size:14px;font-weight:650;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${r.title}${r.badge ? ` <span style="background:var(--f-primary-container);color:var(--f-on-primary-container);font-size:10px;padding:1px 7px;border-radius:999px">${r.badge}</span>` : ''}</div>
+              <div style="font-size:12px;color:var(--f-muted);margin-top:3px;line-height:1.35">${r.desc}</div>
+            </div>
+          </button>`).join('')}
+        </div>
+        <button type="button" class="pb" data-act="close-sheet">Готово</button>
+      </div></div>`;
+    } else if (s.sheet === 'discard') {
+      const diffTxt = getDiffSummary();
+      if (vKey === 'A') {
+        sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-grab"></div>
+          <h3>Выйти без сохранения?</h3>
+          <div class="f-sheet-card">
+            <strong>${escHtml(prog.name.trim() || 'Новая программа')}</strong>
+            <span>Изменено: ${escHtml(diffTxt)}</span>
+          </div>
+          <p>Несохранённые правки в программе и тренировочных днях будут потеряны.</p>
+          <button type="button" class="f-sheet-danger" data-act="confirm-discard">Выйти без сохранения</button>
+          <button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться в редакторе</button>
+        </div></div>`;
+      } else if (vKey === 'B') {
+        sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-grab"></div>
+          <h3>Выйти без сохранения?</h3>
+          <p>В программе есть несохранённые правки. Если выйти сейчас, они пропадут.</p>
+          <button type="button" class="f-sheet-danger" data-act="confirm-discard">Выйти без сохранения</button>
+          <button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться в редакторе</button>
+        </div></div>`;
+      } else {
+        sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-grab"></div>
+          <h3>Выйти без сохранения?</h3>
+          <div class="f-sheet-card">
+            <strong>Изменения не сохранятся</strong>
+            <span>Затронуто: ${escHtml(diffTxt)}</span>
+          </div>
+          <div class="f-sheet-split">
+            <button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться</button>
+            <button type="button" class="f-sheet-danger" data-act="confirm-discard">Выйти</button>
+          </div>
+        </div></div>`;
+      }
+    }
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="prog-back" aria-label="Назад">${ICO.back}</button>
+        ${prog.alternating ? `<span class="pe-top-tag">${renderLamps('heavy')}${renderLamps('light')}Тяжёлая / Лёгкая</span>` : ''}
+      </div>
+      ${activeBannerTop}
+      <div class="pe-scroll">
+        <h1 class="pe-h1">${prog.isNew ? 'Новая программа' : 'Редактирование программы'}</h1>
+        ${activeBannerScroll}
+        <label class="pe-field-lbl">
+          <span>Название программы <b style="color:var(--f-primary)">*</b></span>
+          ${showCounter ? `<span class="pe-counter ${nameOver ? 'over' : ''}">${len} / 60</span>` : ''}
+        </label>
+        <input class="pe-input ${nameOver || nameEmptyErr ? 'err' : ''}" value="${escHtml(prog.name)}" placeholder="Например, Базовая силовая" data-in="prog-name">
+        ${nameEmptyErr ? `<div class="pe-err-msg">${ICO.warn} Введите название программы</div>` : nameOver ? `<div class="pe-err-msg">${ICO.warn} Сократите название до 60 символов</div>` : ''}
+
+        <div class="pe-kicker"><span>Недели и нагрузка</span></div>
+        <div class="pe-card">
+          <div class="pe-set-row">
+            <div class="pe-set-left">
+              <span class="pe-set-ico">${renderLamps('heavy')}${renderLamps('light')}</span>
+              <div style="min-width:0">
+                <div class="pe-set-title">Чередовать недели</div>
+                <div class="pe-set-sub">${prog.alternating ? 'Тяжёлая и лёгкая по проходам' : 'Выкл. · один план на все недели'}</div>
+              </div>
+            </div>
+            <button type="button" class="pe-switch ${prog.alternating ? 'on' : ''}" data-act="toggle-alt" aria-label="Чередовать недели"></button>
+          </div>
+          ${prog.alternating ? `
+            <div class="pe-set-div"></div>
+            <button type="button" class="pe-set-row" data-act="open-sheet" data-v="rule">
+              <div class="pe-set-left">
+                <span class="pe-set-ico">${ICO.pulse}</span>
+                <div style="min-width:0">
+                  <div class="pe-set-title">Правило лёгкой недели</div>
+                  <div class="pe-set-val">${ruleObj.title}${totalManual > 0 ? ` <span style="color:var(--f-dim);font-weight:500">· ${totalManual} вручную</span>` : ''}</div>
+                </div>
+              </div>
+              <span style="color:var(--f-dim);font-size:20px;line-height:1">›</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="pe-kicker">
+          <span>Тренировочные дни (${prog.days.length})</span>
+          <span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">⠿ порядок · ⋮ меню</span>
+        </div>
+        <div class="pe-day-list" data-list-kind="day">${dayCards}</div>
+        <button type="button" class="ob" style="margin-top:10px" data-act="add-day">+ Добавить день</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="save-prog">Сохранить программу</button></div>
+      ${renderUndoHTML(vKey, s.undo && s.undo.kind === 'day' ? s.undo : null)}
+      ${s.infoToast ? `<div class="toast-info">${escHtml(s.infoToast)}</div>` : ''}
+      ${ctxHtml}
+      ${sheetHtml}
+    `;
+  }
+
+  function renderTargetControl(ex, side, light, sideErrs) {
+    const isLight = side === 'light';
+    const baseCls = isLight ? (light.isManual ? 'pe-mini-in manual-in' : 'pe-mini-in auto-in') : 'pe-mini-in';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = isLight ? light.mode : ex.heavyMode;
+      if (mode === 'empty') {
+        return `<button type="button" class="${baseCls}" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--f-dim)" data-act="activate-tgt" data-ex="${ex.id}" data-side="${side}">Без цели · задать</button>`;
+      }
+      if (mode === 'range') {
+        const lo = isLight ? (light.isManual ? (ex.manualMin ?? '') : (light.min ?? '')) : (ex.heavyMin ?? '');
+        const hi = isLight ? (light.isManual ? (ex.manualMax ?? '') : (light.max ?? '')) : (ex.heavyMax ?? '');
+        const errCls = sideErrs.range ? ' in-err' : '';
+        return `<div class="pe-range-pair">
+          <input class="${baseCls}${errCls}" type="text" inputmode="numeric" value="${escHtml(lo)}" placeholder="от" data-ex-in="min" data-side="${side}" data-ex="${ex.id}">
+          <span style="color:var(--f-dim);font-weight:700;font-size:13px">–</span>
+          <input class="${baseCls}${errCls}" type="text" inputmode="numeric" value="${escHtml(hi)}" placeholder="до" data-ex-in="max" data-side="${side}" data-ex="${ex.id}">
+        </div>`;
+      }
+      const val = isLight ? (light.isManual ? (ex.manualExact ?? '') : (light.exact ?? '')) : (ex.heavyExact ?? '');
+      const errCls = sideErrs.exact ? ' in-err' : '';
+      return `<input class="${baseCls}${errCls}" type="text" inputmode="numeric" value="${escHtml(val)}" placeholder="без цели" data-ex-in="exact" data-side="${side}" data-ex="${ex.id}">`;
+    }
+    if (ex.type === 'duration') {
+      const sec = isLight ? light.sec : ex.heavySec;
+      return `<div class="pe-step-box">
+        <button type="button" class="pe-step-btn" data-act="dur-step" data-ex="${ex.id}" data-side="${side}" data-delta="-5">−</button>
+        <div class="${baseCls}" style="display:flex;align-items:center;justify-content:center;font-size:${sec == null ? '12px' : '19px'};font-family:${sec == null ? 'Inter,sans-serif' : '"Barlow Condensed",Inter,sans-serif'};color:${sec == null ? 'var(--f-dim)' : ''}">${fmtSec(sec)}</div>
+        <button type="button" class="pe-step-btn" data-act="dur-step" data-ex="${ex.id}" data-side="${side}" data-delta="5">+</button>
+      </div>`;
+    }
+    if (ex.type === 'distance') {
+      const u = isLight ? (light.unit || 'm') : (ex.heavyUnit || 'm');
+      const raw = isLight
+        ? (light.isManual ? (ex.manualDist ?? '') : (light.meters == null ? '' : (u === 'km' ? String(+(light.meters / 1000).toFixed(2)).replace('.', ',') : String(Math.round(light.meters)))))
+        : (ex.heavyDist ?? '');
+      const errCls = sideErrs.dist ? ' in-err' : '';
+      return `<div style="display:flex;align-items:center;gap:4px;width:100%;height:38px">
+        <input class="${baseCls}${errCls}" style="flex:1;min-width:0" type="text" inputmode="decimal" value="${escHtml(raw)}" placeholder="без цели" data-ex-in="dist" data-side="${side}" data-ex="${ex.id}">
+        <div class="pe-unit-seg">
+          <button type="button" class="${u === 'm' ? 'on' : ''}" data-act="dist-unit" data-ex="${ex.id}" data-side="${side}" data-u="m">м</button>
+          <button type="button" class="${u === 'km' ? 'on' : ''}" data-act="dist-unit" data-ex="${ex.id}" data-side="${side}" data-u="km">км</button>
+        </div>
+      </div>`;
+    }
+    return '';
+  }
+
+  function renderDayScreen(vKey, s) {
+    const prog = s.prog;
+    const day = currentDay();
+    if (!day) return renderProgramScreen(vKey, s);
+    const dv = validateDay(day, prog.alternating, prog.rule);
+    const dayLen = graphemeLen(day.name);
+    const showCounter = dayLen >= 32 || dayLen > 40;
+    const over = dayLen > 40;
+    const showNameErr = over || (s.showDayValidation && !!dv.nameErr);
+    const ruleObj = RULES.find(r => r.id === prog.rule) || RULES[0];
+    const isDup = !!s.dayDupSourceName;
+
+    const dupTopTag = isDup && vKey === 'C'
+      ? `<span class="pe-top-tag dup-tag">Копия · новый день</span>`
+      : prog.alternating
+        ? `<button type="button" class="pe-top-tag" data-act="day-back">${renderLamps('heavy')}${renderLamps('light')}${ruleObj.short}</button>`
+        : `<span class="pe-top-tag">Без чередования</span>`;
+
+    const dupBannerA = isDup && vKey === 'A'
+      ? `<div class="dup-banner-a">${ICO.copy}<span>Шаблон из «${escHtml(s.dayDupSourceName)}» · новые id. Назад без правок отменит дубликат.</span></div>`
+      : '';
+    const dupSubB = isDup && vKey === 'B'
+      ? `<div class="dup-sub-b">Создан по шаблону «${escHtml(s.dayDupSourceName)}» — цели и прогрессия скопированы, id новые.</div>`
+      : '';
+    const valSumC = vKey === 'C' && s.showDayValidation && dv.exErrCount > 0
+      ? `<div class="val-sum-c"><span>${ICO.warn} Ошибки в ${pluralRu(dv.exErrCount, 'упражнении', 'упражнениях', 'упражнениях')}</span><button type="button" style="border:0;background:transparent;color:var(--f-error);font-weight:700;font-size:11.5px;text-decoration:underline" data-act="jump-first-err">К ошибке</button></div>`
+      : '';
+
+    const exCards = day.exercises.length === 0
+      ? `<div class="pe-empty-box ${s.showDayValidation ? 'err' : ''}">${s.showDayValidation ? 'Добавьте хотя бы 1 упражнение, чтобы сохранить день.' : 'Упражнений пока нет — добавьте из каталога.'}</div>`
+      : day.exercises.map((ex, idx) => {
+        const ev = dv.exErrors[ex.id];
+        const showErr = s.showDayValidation && !ev.ok;
+        const exp = s.expandedExId === ex.id;
+        const light = getLight(ex, prog.rule);
+        const showLight = showLightFor(ex, prog);
+        const canReset = prog.alternating && prog.rule !== 'manual' && ex.lightManual;
+        const is812 = (ex.type === 'weight_reps' || ex.type === 'reps') && ex.heavyMode === 'range' && String(ex.heavyMin).trim() === '8' && String(ex.heavyMax).trim() === '12';
+        const heavySum = fmtHeavySummary(ex);
+
+        let summaryLine;
+        if (!exp && showErr) {
+          summaryLine = `<div class="pe-summary-line">
+            <span class="pe-pill err">${ICO.warn} Проверь цель</span>
+            <span class="pe-pill-eq">${escHtml(heavySum)}</span>
+          </div>`;
+        } else if (!prog.alternating) {
+          summaryLine = `<div class="pe-summary-line"><span class="pe-pill plain">${escHtml(heavySum)}</span></div>`;
+        } else if (!showLight) {
+          summaryLine = `<div class="pe-summary-line"><span class="pe-pill plain">${escHtml(heavySum)}</span><span class="pe-pill-eq">· без прогрессии (= лёгкая)</span></div>`;
+        } else {
+          const lightSum = ev.heavyOk || ex.lightManual ? fmtLightSummary(ex, light) : '…';
+          summaryLine = `<div class="pe-summary-line">
+            <span class="pe-pill heavy">${renderLamps('heavy')}${escHtml(heavySum)}</span>
+            <span style="color:var(--f-dim);font-size:11px;flex:none">→</span>
+            <span class="pe-pill ${light.isManual ? 'light-manual' : 'light-auto'}">${renderLamps('light')}${escHtml(lightSum)}${light.isManual && prog.rule !== 'manual' ? ' · ручн.' : ''}</span>
+          </div>`;
+        }
+
+        const dragCls = vKey === 'A' ? 'ex-drag-a' : vKey === 'B' ? 'ex-drag-b' : 'ex-drag-c';
+        let bodyHtml = '';
+        if (exp) {
+          const heavyLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : ex.heavyMode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+          const lightLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция и единицы' : light.mode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+          const heavyErrList = s.showDayValidation ? Object.values(ev.heavy) : [];
+          const lightErrList = s.showDayValidation ? Object.values(ev.light) : [];
+          const repsBar = (ex.type === 'weight_reps' || ex.type === 'reps') ? `
+            <div class="pe-mode-row">
+              <div class="pe-mode-seg">
+                <button type="button" class="${ex.heavyMode === 'exact' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="exact">Точно</button>
+                <button type="button" class="${ex.heavyMode === 'range' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="range">Диапазон</button>
+                <button type="button" class="${ex.heavyMode === 'empty' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="empty">Без цели</button>
+              </div>
+              <button type="button" class="pe-preset-btn ${is812 ? 'applied' : ''}" data-act="preset-812" data-ex="${ex.id}">8–12</button>
+            </div>` : '';
+
+          const renderErrMsgs = (list) => {
+            if (!list.length) return '';
+            if (vKey === 'B') return `<div class="pe-block-err-box">${list.map(m => escHtml(m)).join(' · ')}</div>`;
+            return list.map(m => `<div class="pe-err-msg" style="margin-top:1px">${ICO.warn} ${escHtml(m)}</div>`).join('');
+          };
+
+          let lightSection = '';
+          if (prog.alternating) {
+            if (!showLight) {
+              lightSection = `<div class="pe-light-off">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--f-muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="opacity:.45;display:inline-flex">${renderLamps('light')}</span>Лёгкая неделя — как тяжёлая</span>
+                <button type="button" style="border:0;background:transparent;color:var(--load-light);font-size:11.5px;font-weight:600;white-space:nowrap;flex:none" data-act="override-light" data-ex="${ex.id}">Задать вручную</button>
+              </div>`;
+            } else if (!ev.heavyOk && !light.isManual) {
+              lightSection = `<div class="pe-light-wait">${renderLamps('light')}<span>Авторасчёт лёгкой цели ждёт корректного значения тяжёлой</span></div>`;
+            } else {
+              lightSection = `<div class="pe-tblock ${light.isManual ? 'light-manual' : 'light-auto'} ${lightErrList.length ? 'block-err' : ''}">
+                <div class="pe-thead">
+                  <span class="pe-ttitle" style="color:var(--load-light-text)">
+                    ${renderLamps('light')}Лёгкая неделя
+                    ${light.hint ? `<span class="pe-tmeta">· ${escHtml(light.hint)}</span>` : ''}
+                  </span>
+                  ${canReset
+                    ? `<button type="button" class="pe-reset-link" data-act="reset-light" data-ex="${ex.id}">↺ Сбросить к правилу</button>`
+                    : `<span class="pe-tbadge ${light.isManual ? 'manual' : 'auto'}">${prog.rule === 'manual' ? 'вручную' : light.isManual ? 'вручную' : 'авто'}</span>`}
+                </div>
+                <div class="pe-tgrid">
+                  <div>
+                    <span class="pe-tlbl">Подходы</span>
+                    <input class="pe-mini-in ${light.isManual ? 'manual-in' : 'auto-in'} ${s.showDayValidation && ev.light.sets ? 'in-err' : ''}" type="text" inputmode="numeric" value="${escHtml(light.isManual ? (ex.manualSets ?? '') : (light.sets ?? ''))}" placeholder="—" data-ex-in="sets" data-side="light" data-ex="${ex.id}">
+                  </div>
+                  <div>
+                    <span class="pe-tlbl">${lightLbl}</span>
+                    ${renderTargetControl(ex, 'light', light, s.showDayValidation ? ev.light : {})}
+                  </div>
+                </div>
+                ${renderErrMsgs(lightErrList)}
+              </div>`;
+            }
+          }
+
+          const bottomActs = vKey === 'A'
+            ? `<div class="ex-acts-a">
+                <button type="button" data-act="open-replace" data-ex="${ex.id}">${ICO.swap}<span>Заменить</span></button>
+                <div class="ex-acts-a-div"></div>
+                <button type="button" class="del" data-act="del-ex" data-ex="${ex.id}">${ICO.trash}<span>Удалить</span></button>
+              </div>`
+            : vKey === 'B'
+              ? `<div class="ex-acts-b">
+                  <button type="button" data-act="open-replace" data-ex="${ex.id}">${ICO.swap}<span>Заменить</span></button>
+                  <button type="button" class="del" data-act="del-ex" data-ex="${ex.id}">${ICO.trash}<span>Удалить</span></button>
+                </div>`
+              : `<div class="ex-acts-c">
+                  <button type="button" class="ex-acts-c-rep" data-act="open-replace" data-ex="${ex.id}">${ICO.swap}<span>Заменить упражнение</span></button>
+                  <button type="button" class="ex-acts-c-del" data-act="del-ex" data-ex="${ex.id}">${ICO.trash}<span>Удалить</span></button>
+                </div>`;
+
+          bodyHtml = `<div class="pe-ex-body">
+            <div class="pe-prog-bar">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600;color:var(--f-text);white-space:nowrap">Прогрессия</span>
+                <span style="font-size:11px;color:var(--f-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ex.progression ? 'советы и авто-лёгкая' : 'выкл.'}</span>
+              </div>
+              <button type="button" class="pe-switch sm ${ex.progression ? 'on' : ''}" data-act="toggle-prog" data-ex="${ex.id}" aria-label="Прогрессия"></button>
+            </div>
+            <div class="pe-ex-inner">
+              ${repsBar}
+              <div class="pe-tblock ${prog.alternating && showLight ? 'heavy' : 'plain'} ${heavyErrList.length ? 'block-err' : ''}">
+                <div class="pe-thead">
+                  <span class="pe-ttitle" style="color:${prog.alternating && showLight ? '#FFD8AA' : 'var(--f-text)'}">
+                    ${prog.alternating && showLight ? `${renderLamps('heavy')}Тяжёлая неделя` : 'Цель по плану'}
+                  </span>
+                  ${prog.alternating && !showLight ? '<span style="font-size:11px;color:var(--f-dim)">одинакова для обеих недель</span>' : ''}
+                </div>
+                <div class="pe-tgrid">
+                  <div>
+                    <span class="pe-tlbl">Подходы</span>
+                    <input class="pe-mini-in ${s.showDayValidation && ev.heavy.sets ? 'in-err' : ''}" type="text" inputmode="numeric" value="${escHtml(ex.heavySets ?? '')}" placeholder="—" data-ex-in="sets" data-side="heavy" data-ex="${ex.id}">
+                  </div>
+                  <div>
+                    <span class="pe-tlbl">${heavyLbl}</span>
+                    ${renderTargetControl(ex, 'heavy', light, s.showDayValidation ? ev.heavy : {})}
+                  </div>
+                </div>
+                ${renderErrMsgs(heavyErrList)}
+              </div>
+              ${lightSection}
+            </div>
+            ${bottomActs}
+          </div>`;
+        }
+
+        return `<div class="drag-item" data-drag-kind="ex" data-drag-id="${ex.id}" data-drag-idx="${idx}">
+          <div class="pe-ex-card var-${vKey.toLowerCase()} ${exp ? 'expanded' : ''} ${showErr ? 'has-err' : ''}" data-ex-card="${ex.id}">
+            <div class="pe-ex-head">
+              <button type="button" class="pe-ex-main" data-act="toggle-ex" data-ex="${ex.id}">
+                <div class="pe-ex-name">${escHtml(ex.name)}</div>
+                ${summaryLine}
+              </button>
+              <button type="button" class="${dragCls}" data-drag-handle="ex" data-id="${ex.id}" aria-label="Перетащить упражнение" title="Тяните для перестановки">⠿</button>
+            </div>
+            ${bodyHtml}
+          </div>
+        </div>`;
+      }).join('');
+
+    let sheetHtml = '';
+    if (s.sheet === 'add_ex' || s.sheet === 'replace_ex') {
+      const isRep = s.sheet === 'replace_ex';
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()">
+        <div class="f-grab"></div>
+        <h3>${isRep ? 'Заменить упражнение (каталог)' : 'Добавить упражнение (каталог)'}</h3>
+        <p>${isRep ? 'Заменяет упражнение на месте; карточка останется раскрытой.' : 'Добавится в конец дня и сразу раскроется для настройки целей.'}</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          ${CATALOG_SAMPLES.map((c, i) => `<button type="button" class="pick-row" data-act="${isRep ? 'pick-replace' : 'pick-add'}" data-i="${i}">
+            <div style="min-width:0">
+              <div style="font-size:13.5px;font-weight:650;line-height:1.25">${escHtml(c.name)}</div>
+              <div style="font-size:11.5px;color:var(--f-dim);margin-top:2px">${c.type === 'weight_reps' ? 'Вес и повторения' : c.type === 'reps' ? 'Повторения' : c.type === 'duration' ? 'Длительность' : 'Дистанция'}</div>
+            </div>
+            <span style="color:var(--f-primary);font-weight:700;font-size:13px;flex:none">${isRep ? 'Выбрать' : '+ Добавить'}</span>
+          </button>`).join('')}
+        </div>
+        <button type="button" class="f-sheet-cancel" data-act="close-sheet">Отмена</button>
+      </div></div>`;
+    }
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="day-back" aria-label="К программе">${ICO.back}</button>
+        ${dupTopTag}
+      </div>
+      <div class="pe-scroll" id="day-scroll-${vKey}">
+        <h1 class="pe-h1">${isDup && vKey === 'B' ? 'Новый день (копия)' : 'Тренировочный день'}</h1>
+        ${dupBannerA}
+        ${dupSubB}
+        ${valSumC}
+        <label class="pe-field-lbl">
+          <span>Название дня <b style="color:var(--f-primary)">*</b></span>
+          ${showCounter ? `<span class="pe-counter ${over ? 'over' : ''}">${dayLen} / 40</span>` : ''}
+        </label>
+        <input class="pe-input ${showNameErr ? 'err' : ''}" value="${escHtml(day.name)}" placeholder="Например, День А · Верх" data-in="day-name">
+        ${showNameErr ? `<div class="pe-err-msg">${ICO.warn} ${escHtml(dv.nameErr)}</div>` : ''}
+
+        <div class="pe-kicker">
+          <span>Упражнения (${day.exercises.length})</span>
+          <span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">⠿ порядок · тап → цели</span>
+        </div>
+        <div class="pe-ex-list" data-list-kind="ex">${exCards}</div>
+        <button type="button" class="ob" style="margin-top:10px" data-act="open-sheet" data-v="add_ex">+ Добавить упражнение</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="save-day">Сохранить день</button></div>
+      ${renderUndoHTML(vKey, s.undo && s.undo.kind === 'ex' ? s.undo : null)}
+      ${sheetHtml}
+    `;
+  }
+
+  function renderPhone(vKey, s) {
+    return s.screen === 'program' ? renderProgramScreen(vKey, s) : renderDayScreen(vKey, s);
+  }
+
+  function renderInspector() {
+    const vObj = VARIANTS.find(v => v.key === st.variant);
+    document.getElementById('sw-key').textContent = vObj.key;
+    document.getElementById('sw-name').textContent = vObj.name;
+    document.getElementById('var-panel-title').textContent = `Вариант ${vObj.key} — ${vObj.name}`;
+    document.getElementById('var-panel-desc').innerHTML = `<ul>${vObj.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+
+    const screenBtns = [['program', 'Редактор программы'], ['day', 'Редактор дня']]
+      .map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
+    document.getElementById('ctrl-screen').innerHTML = screenBtns;
+    document.getElementById('cmp-screen').innerHTML = screenBtns;
+
+    const scList = [
+      ['normal', 'Обычное редактирование'],
+      ['active_workout', 'Идёт тренировка (баннер)'],
+      ['validation', 'Ошибки валидации (от < до, Проверь цель)'],
+      ['duplicate', 'Дубликат дня (шаблон)'],
+      ['long', 'Длинные названия (#94)'],
+      ['new_empty', 'Новая пустая программа']
+    ];
+    const scBtns = scList.map(([k, lbl]) => `<button type="button" class="cbtn ${st.scenario === k ? 'active' : ''}" data-host="scenario" data-v="${k}">${lbl}</button>`).join('');
+    document.getElementById('ctrl-scenarios').innerHTML = scBtns;
+    document.getElementById('cmp-scenarios').innerHTML = scBtns;
+
+    document.getElementById('ctrl-toggles').innerHTML = [
+      `<button type="button" class="cbtn ${st.prog.alternating ? 'active' : ''}" data-host="toggle-alt">Чередовать недели: ${st.prog.alternating ? 'Вкл' : 'Выкл'}</button>`,
+      `<button type="button" class="cbtn ${st.activeWorkout ? 'active' : ''}" data-host="toggle-aw">Баннер тренировки: ${st.activeWorkout ? 'Вкл' : 'Выкл'}</button>`,
+      `<button type="button" class="cbtn" data-host="demo-undo">Показать Undo-snackbar</button>`,
+      `<button type="button" class="cbtn" data-host="demo-discard">Шторка «Выйти без сохранения?»</button>`
+    ].join('');
+
+    const invalidDays = st.prog.days.filter(d => !validateDay(d, st.prog.alternating, st.prog.rule).ok).length;
+    const day = currentDay();
+    const dupUntouched = !!(st.dayDupSnap && day && JSON.stringify(day) === st.dayDupSnap);
+    document.getElementById('state-tbl').innerHTML = `
+      <tr><td>Экран / Вариант</td><td>${st.screen === 'program' ? 'Редактор программы' : 'Редактор дня'} · Вариант ${st.variant} (${st.width} dp)</td></tr>
+      <tr><td>Черновик изменён (isDirty)</td><td>${isProgDirty() ? 'Да (← откроет шторку выхода)' : 'Нет (← выйдет сразу без шторки)'}</td></tr>
+      <tr><td>Дней / невалидных</td><td>${st.prog.days.length} / ${invalidDays}</td></tr>
+      <tr><td>Дубликат без правок</td><td>${dupUntouched ? 'Да (← отменит дубликат)' : st.dayDupSourceName ? 'Изменён (← оставит в программе)' : 'Нет'}</td></tr>
+      <tr><td>Undo-snackbar</td><td>${st.undo ? `Активен: ${escHtml(st.undo.label)}` : 'Скрыт'}</td></tr>
+      <tr><td>Последнее действие</td><td>${escHtml(st.lastAction)}</td></tr>
+    `;
+  }
+
+  function render() {
+    document.querySelectorAll('#host-mode button').forEach(b => b.classList.toggle('active', b.dataset.mode === st.hostMode));
+    document.querySelectorAll('#host-width button').forEach(b => b.classList.toggle('active', Number(b.dataset.w) === st.width));
+    document.getElementById('stage-interactive').classList.toggle('hidden', st.hostMode !== 'interactive');
+    document.getElementById('stage-compare').classList.toggle('hidden', st.hostMode !== 'compare');
+
+    if (st.hostMode === 'interactive') {
+      const phone = document.getElementById('live-phone');
+      phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+      phone.innerHTML = renderPhone(st.variant, st);
+    } else {
+      const grid = document.getElementById('compare-grid');
+      grid.innerHTML = VARIANTS.map(v => `
+        <div class="compare-col">
+          <div class="compare-head">
+            <div><strong>Вариант ${v.key} · ${v.name}</strong><span>${v.short}</span></div>
+            <button type="button" class="cbtn ${st.variant === v.key ? 'active' : ''}" data-pick-var="${v.key}">Открыть</button>
+          </div>
+          <div class="phone ${st.width === 360 ? 'w360' : ''}" data-cmp-var="${v.key}">${renderPhone(v.key, st)}</div>
+        </div>
+      `).join('');
+    }
+    renderInspector();
+  }
+
+  function setVariant(vKey) {
+    st.variant = vKey;
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set('variant', vKey);
+      history.replaceState(null, '', u.toString());
+    } catch {}
+    render();
+  }
+
+  /* ==================== INTERACTIONS ==================== */
+  function ensureManual(ex) {
+    if (st.prog.rule !== 'manual' && !ex.lightManual) {
+      const auto = computeAutoLight(ex, st.prog.rule);
+      ex.manualSets = auto.sets == null ? '' : String(auto.sets);
+      ex.manualMode = auto.mode || ex.heavyMode;
+      ex.manualMin = auto.min == null ? '' : String(auto.min);
+      ex.manualMax = auto.max == null ? '' : String(auto.max);
+      ex.manualExact = auto.exact == null ? '' : String(auto.exact);
+      ex.manualSec = auto.sec;
+      ex.manualUnit = auto.unit || 'm';
+      ex.manualDist = auto.meters == null ? '' : (ex.manualUnit === 'km' ? String(+(auto.meters / 1000).toFixed(2)).replace('.', ',') : String(Math.round(auto.meters)));
+      ex.lightManual = true;
+    }
+  }
+
+  function handlePhoneClick(e) {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const id = btn.dataset.id;
+    const exId = btn.dataset.ex;
+    const day = currentDay();
+
+    if (act === 'toggle-alt') {
+      st.prog.alternating = !st.prog.alternating;
+      st.lastAction = `Чередование недель: ${st.prog.alternating ? 'Вкл' : 'Выкл'}`;
+      render();
+    } else if (act === 'open-sheet') {
+      st.ctxDayId = null;
+      st.sheet = btn.dataset.v;
+      render();
+    } else if (act === 'close-sheet') {
+      st.sheet = null;
+      st.replaceExId = null;
+      render();
+    } else if (act === 'set-rule') {
+      st.prog.rule = btn.dataset.v;
+      st.lastAction = `Правило лёгкой недели: ${RULES.find(r => r.id === st.prog.rule)?.title}`;
+      render();
+    } else if (act === 'open-ctx') {
+      const phone = btn.closest('.phone');
+      const pRect = phone.getBoundingClientRect();
+      const bRect = btn.getBoundingClientRect();
+      const menuH = 148;
+      let top = bRect.bottom - pRect.top + 4;
+      if (top + menuH > pRect.height - 16) top = Math.max(56, bRect.top - pRect.top - menuH - 4);
+      st.ctxDayId = st.ctxDayId === id ? null : id;
+      st.ctxPos = { top: Math.round(top), right: 16 };
+      render();
+    } else if (act === 'close-ctx') {
+      st.ctxDayId = null;
+      render();
+    } else if (act === 'open-day' || act === 'ctx-edit') {
+      clearUndo();
+      st.ctxDayId = null;
+      st.activeDayId = id;
+      st.dayIsNewEmpty = false;
+      st.dayDupSourceName = null;
+      st.dayDupSnap = null;
+      st.expandedExId = null;
+      st.screen = 'day';
+      st.lastAction = `Открыт день «${currentDay()?.name || 'Без названия'}»`;
+      render();
+    } else if (act === 'ctx-dup') {
+      clearUndo();
+      st.ctxDayId = null;
+      const src = st.prog.days.find(d => d.id === id);
+      if (!src) return;
+      const dup = {
+        id: nextId('d'),
+        name: makeCopyName(src.name),
+        exercises: src.exercises.map(x => ({ ...clone(x), id: nextId('e') }))
+      };
+      st.prog.days.push(dup);
+      st.activeDayId = dup.id;
+      st.dayIsNewEmpty = false;
+      st.dayDupSourceName = src.name || 'Без названия';
+      st.dayDupSnap = JSON.stringify(dup);
+      st.expandedExId = null;
+      st.showDayValidation = false;
+      st.screen = 'day';
+      st.lastAction = `Открыт дубликат «${dup.name}» (новые id, в конце списка)`;
+      render();
+    } else if (act === 'ctx-del') {
+      st.ctxDayId = null;
+      const idx = st.prog.days.findIndex(d => d.id === id);
+      if (idx < 0) return;
+      const [removed] = st.prog.days.splice(idx, 1);
+      triggerUndo('day', `Удалён день «${removed.name.trim() || 'Без названия'}»`, removed, idx);
+      st.lastAction = `Мгновенно удалён день «${removed.name.trim() || 'Без названия'}» (доступна Отмена ~3 с)`;
+      render();
+    } else if (act === 'add-day') {
+      clearUndo();
+      const nd = { id: nextId('d'), name: '', exercises: [] };
+      st.prog.days.push(nd);
+      st.activeDayId = nd.id;
+      st.dayIsNewEmpty = true;
+      st.dayDupSourceName = null;
+      st.dayDupSnap = null;
+      st.expandedExId = null;
+      st.showDayValidation = false;
+      st.screen = 'day';
+      st.lastAction = 'Создан пустой новый день (← молча отбросит его)';
+      render();
+    } else if (act === 'day-back') {
+      clearUndo();
+      if (day) {
+        const isCompletelyEmpty = st.dayIsNewEmpty && !day.name.trim() && day.exercises.length === 0;
+        const isUntouchedDup = st.dayDupSnap && JSON.stringify(day) === st.dayDupSnap;
+        if (isCompletelyEmpty || isUntouchedDup) {
+          st.prog.days = st.prog.days.filter(d => d.id !== day.id);
+          st.lastAction = isUntouchedDup ? 'Дубликат не менялся — отменён при возврате ←' : 'Пустой новый день молча отброшен при ←';
+        } else {
+          st.lastAction = `Правки дня «${day.name.trim() || 'Без названия'}» оставлены в черновике программы`;
+        }
+      }
+      st.dayIsNewEmpty = false;
+      st.dayDupSourceName = null;
+      st.dayDupSnap = null;
+      st.screen = 'program';
+      render();
+    } else if (act === 'save-day') {
+      clearUndo();
+      st.showDayValidation = true;
+      const dv = validateDay(day, st.prog.alternating, st.prog.rule);
+      if (!dv.ok) {
+        const firstBad = day.exercises.find(e => !dv.exErrors[e.id].ok);
+        if (firstBad) st.expandedExId = firstBad.id;
+        st.lastAction = `Валидация дня не пройдена: ${dv.nameErr || dv.noExErr || dv.shortReason}`;
+        render();
+        if (firstBad) {
+          setTimeout(() => {
+            const el = document.querySelector(`[data-ex-card="${firstBad.id}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 30);
+        }
+        return;
+      }
+      st.dayIsNewEmpty = false;
+      st.dayDupSourceName = null;
+      st.dayDupSnap = null;
+      st.screen = 'program';
+      st.lastAction = `День «${day.name.trim()}» проверен и сохранён в черновик`;
+      render();
+    } else if (act === 'save-prog') {
+      clearUndo();
+      st.showProgValidation = true;
+      const len = graphemeLen(st.prog.name);
+      if (len === 0 || len > 60 || st.prog.days.length === 0) {
+        st.lastAction = 'Ошибка сохранения программы: проверьте название и минимум 1 день';
+        render();
+        return;
+      }
+      const badDay = st.prog.days.find(d => !validateDay(d, st.prog.alternating, st.prog.rule).ok);
+      if (badDay) {
+        st.activeDayId = badDay.id;
+        st.showDayValidation = true;
+        const dv = validateDay(badDay, st.prog.alternating, st.prog.rule);
+        const firstBadEx = badDay.exercises.find(e => !dv.exErrors[e.id].ok);
+        st.expandedExId = firstBadEx ? firstBadEx.id : null;
+        st.screen = 'day';
+        st.lastAction = `Переход в первый проблемный день «${badDay.name.trim() || 'Без названия'}»`;
+        render();
+        return;
+      }
+      st.initialProgSnap = JSON.stringify(st.prog);
+      st.showProgValidation = false;
+      showInfoToast('Программа сохранена');
+      st.lastAction = 'Программа валидна и сохранена (isDirty сброшен)';
+      render();
+    } else if (act === 'prog-back') {
+      clearUndo();
+      if (isProgDirty()) {
+        st.sheet = 'discard';
+        st.lastAction = 'Черновик отличается от исходного → шторка «Выйти без сохранения?»';
+      } else {
+        showInfoToast('Выход без шторки: реальных правок нет');
+        st.lastAction = 'Выход сразу без шторки (isDirty = false)';
+      }
+      render();
+    } else if (act === 'confirm-discard') {
+      st.prog = JSON.parse(st.initialProgSnap);
+      st.sheet = null;
+      st.showProgValidation = false;
+      showInfoToast('Правки отброшены (возврат в Мои программы)');
+      st.lastAction = 'Подтверждён выход без сохранения — черновик сброшен';
+      render();
+    } else if (act === 'undo-apply') {
+      if (!st.undo) return;
+      const u = st.undo;
+      clearUndo();
+      if (u.kind === 'day') {
+        st.prog.days.splice(Math.min(u.index, st.prog.days.length), 0, u.item);
+        st.lastAction = `Отменено удаление дня «${u.item.name || 'Без названия'}» на позицию ${u.index + 1}`;
+      } else if (u.kind === 'ex' && day) {
+        day.exercises.splice(Math.min(u.index, day.exercises.length), 0, u.item);
+        st.lastAction = `Восстановлено «${u.item.name}» на позицию ${u.index + 1}`;
+      }
+      render();
+    } else if (act === 'toggle-ex') {
+      st.expandedExId = st.expandedExId === exId ? null : exId;
+      render();
+    } else if (act === 'toggle-prog' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (ex) { ex.progression = !ex.progression; st.lastAction = `Прогрессия для «${ex.name}»: ${ex.progression ? 'Вкл' : 'Выкл'}`; render(); }
+    } else if (act === 'set-mode' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (ex) {
+        ex.heavyMode = btn.dataset.m;
+        if (ex.heavyMode === 'range' && !ex.heavyMin && !ex.heavyMax) { ex.heavyMin = '8'; ex.heavyMax = '12'; }
+        render();
+      }
+    } else if (act === 'preset-812' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (ex) { ex.heavyMode = 'range'; ex.heavyMin = '8'; ex.heavyMax = '12'; render(); }
+    } else if (act === 'activate-tgt' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (!ex) return;
+      if (btn.dataset.side === 'heavy') { ex.heavyMode = 'exact'; ex.heavyExact = '10'; }
+      else { ensureManual(ex); ex.manualMode = 'exact'; ex.manualExact = '8'; }
+      render();
+    } else if (act === 'dur-step' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (!ex) return;
+      const delta = Number(btn.dataset.delta);
+      if (btn.dataset.side === 'heavy') {
+        const cur = ex.heavySec;
+        ex.heavySec = cur == null ? (delta > 0 ? 15 : null) : (cur + delta < 5 ? null : cur + delta);
+      } else {
+        ensureManual(ex);
+        const cur = ex.manualSec;
+        ex.manualSec = cur == null ? (delta > 0 ? 15 : null) : (cur + delta < 5 ? null : cur + delta);
+      }
+      render();
+    } else if (act === 'dist-unit' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (!ex) return;
+      const newU = btn.dataset.u;
+      if (btn.dataset.side === 'heavy') {
+        const m = parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters;
+        ex.heavyUnit = newU;
+        if (m != null) ex.heavyDist = newU === 'km' ? String(+(m / 1000).toFixed(2)).replace('.', ',') : String(Math.round(m));
+      } else {
+        if (!ex.lightManual && st.prog.rule !== 'manual') ex.lightDisplayUnit = newU;
+        else {
+          const m = parseDistMeters(ex.manualDist, ex.manualUnit || 'm').meters;
+          ex.manualUnit = newU;
+          if (m != null) ex.manualDist = newU === 'km' ? String(+(m / 1000).toFixed(2)).replace('.', ',') : String(Math.round(m));
+        }
+      }
+      render();
+    } else if (act === 'override-light' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (ex) { ensureManual(ex); render(); }
+    } else if (act === 'reset-light' && day) {
+      const ex = day.exercises.find(x => x.id === exId);
+      if (ex) { ex.lightManual = false; ex.lightDisplayUnit = null; render(); }
+    } else if (act === 'del-ex' && day) {
+      const idx = day.exercises.findIndex(x => x.id === exId);
+      if (idx < 0) return;
+      const [removed] = day.exercises.splice(idx, 1);
+      if (st.expandedExId === exId) st.expandedExId = null;
+      triggerUndo('ex', `Удалено «${removed.name}»`, removed, idx);
+      st.lastAction = `Мгновенно удалено «${removed.name}» (доступна Отмена ~3 с)`;
+      render();
+    } else if (act === 'open-replace') {
+      st.replaceExId = exId;
+      st.sheet = 'replace_ex';
+      render();
+    } else if (act === 'pick-add' && day) {
+      const sample = CATALOG_SAMPLES[Number(btn.dataset.i)];
+      const nex = {
+        id: nextId('e'), name: sample.name, type: sample.type, progression: sample.progression,
+        heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10',
+        heavySec: sample.type === 'duration' ? 30 : null, heavyDist: sample.type === 'distance' ? '500' : '', heavyUnit: 'm',
+        lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '10', manualExact: '8', manualSec: 25, manualDist: '400', manualUnit: 'm'
+      };
+      day.exercises.push(nex);
+      st.expandedExId = nex.id;
+      st.sheet = null;
+      st.lastAction = `Добавлено «${nex.name}» в конец дня и авто-раскрыто`;
+      render();
+      setTimeout(() => {
+        const el = document.querySelector(`[data-ex-card="${nex.id}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 30);
+    } else if (act === 'pick-replace' && day) {
+      const sample = CATALOG_SAMPLES[Number(btn.dataset.i)];
+      const ex = day.exercises.find(x => x.id === st.replaceExId);
+      if (ex && sample) {
+        const compat = (ex.type === sample.type) ||
+          ((ex.type === 'weight_reps' || ex.type === 'reps') && (sample.type === 'weight_reps' || sample.type === 'reps'));
+        ex.name = sample.name;
+        ex.type = sample.type;
+        if (!compat) {
+          ex.heavyMode = 'empty'; ex.heavyMin = ''; ex.heavyMax = ''; ex.heavyExact = ''; ex.heavySec = null; ex.heavyDist = ''; ex.heavyUnit = 'm';
+          ex.lightManual = false; ex.progression = sample.progression;
+        }
+        st.expandedExId = ex.id;
+        st.lastAction = `Заменено на месте (${compat ? 'совместимый тип — цели сохранены' : 'другой тип — цели сброшены, подходы сохранены'})`;
+      }
+      st.sheet = null;
+      st.replaceExId = null;
+      render();
+    } else if (act === 'jump-first-err' && day) {
+      const dv = validateDay(day, st.prog.alternating, st.prog.rule);
+      const firstBad = day.exercises.find(e => !dv.exErrors[e.id].ok);
+      if (firstBad) {
+        st.expandedExId = firstBad.id;
+        render();
+        setTimeout(() => { document.querySelector(`[data-ex-card="${firstBad.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 30);
+      }
+    }
+  }
+
+  /* ==================== INPUT HANDLING (PRESERVE CARET & FOCUS) ==================== */
+  function handlePhoneInput(e) {
+    const inp = e.target;
+    if (inp.dataset.in === 'prog-name') {
+      st.prog.name = inp.value.replace(/\r?\n/g, ' ');
+      rerenderKeepFocus(inp, '[data-in="prog-name"]');
+    } else if (inp.dataset.in === 'day-name') {
+      const day = currentDay();
+      if (day) {
+        day.name = inp.value.replace(/\r?\n/g, ' ');
+        rerenderKeepFocus(inp, '[data-in="day-name"]');
+      }
+    } else if (inp.dataset.exIn) {
+      const day = currentDay();
+      const ex = day?.exercises.find(x => x.id === inp.dataset.ex);
+      if (!ex) return;
+      const f = inp.dataset.exIn, side = inp.dataset.side;
+      if (side === 'light') ensureManual(ex);
+      const val = inp.value;
+      if (f === 'sets') { if (side === 'heavy') ex.heavySets = val; else ex.manualSets = val; }
+      else if (f === 'min') { if (side === 'heavy') ex.heavyMin = val; else ex.manualMin = val; }
+      else if (f === 'max') { if (side === 'heavy') ex.heavyMax = val; else ex.manualMax = val; }
+      else if (f === 'exact') { if (side === 'heavy') ex.heavyExact = val; else ex.manualExact = val; }
+      else if (f === 'dist') { if (side === 'heavy') ex.heavyDist = val; else ex.manualDist = val; }
+      const sel = `[data-ex-in="${f}"][data-side="${side}"][data-ex="${ex.id}"]`;
+      rerenderKeepFocus(inp, sel);
+    }
+  }
+
+  function rerenderKeepFocus(inp, selector) {
+    const posStart = inp.selectionStart, posEnd = inp.selectionEnd;
+    const scrollEl = inp.closest('.pe-scroll');
+    const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+    const phoneHost = inp.closest('.phone');
+    const cmpVar = phoneHost?.dataset.cmpVar || null;
+    render();
+    const scope = cmpVar ? document.querySelector(`[data-cmp-var="${cmpVar}"]`) : document.getElementById('live-phone');
+    const newScroll = scope?.querySelector('.pe-scroll');
+    if (newScroll) newScroll.scrollTop = scrollTop;
+    const nextInp = scope?.querySelector(selector);
+    if (nextInp) {
+      nextInp.focus({ preventScroll: true });
+      try { nextInp.setSelectionRange(posStart, posEnd); } catch {}
+    }
+  }
+
+  /* ==================== POINTER DRAG-AND-DROP (DAYS & EXERCISES) ==================== */
+  let dragState = null;
+  document.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('[data-drag-handle]');
+    if (!handle) return;
+    const kind = handle.dataset.dragHandle;
+    const id = handle.dataset.id;
+    const phone = handle.closest('.phone');
+    if (!phone) return;
+    e.preventDefault();
+
+    // Auto-collapse expanded exercise card when drag starts (#120)
+    if (kind === 'ex' && st.expandedExId === id) {
+      st.expandedExId = null;
+      render();
+    }
+    const listEl = (phone.dataset.cmpVar ? document.querySelector(`[data-cmp-var="${phone.dataset.cmpVar}"]`) : document.getElementById('live-phone'))
+      ?.querySelector(`[data-list-kind="${kind}"]`);
+    if (!listEl) return;
+    const itemEl = listEl.querySelector(`[data-drag-id="${id}"]`);
+    if (!itemEl) return;
+    itemEl.classList.add('is-dragging');
+    dragState = { kind, id, listEl, itemEl, fromIdx: Number(itemEl.dataset.dragIdx), targetIdx: Number(itemEl.dataset.dragIdx), moved: false, startY: e.clientY };
+  });
+
+  document.addEventListener('pointermove', e => {
+    if (!dragState) return;
+    const dy = e.clientY - dragState.startY;
+    if (Math.abs(dy) > 4) dragState.moved = true;
+    dragState.itemEl.style.transform = `translateY(${Math.max(-160, Math.min(160, dy))}px) scale(1.018)`;
+    const siblings = [...dragState.listEl.querySelectorAll(`[data-drag-kind="${dragState.kind}"]`)];
+    siblings.forEach(el => { el.classList.remove('drop-before', 'drop-after'); });
+    let bestIdx = dragState.fromIdx;
+    for (const el of siblings) {
+      const idx = Number(el.dataset.dragIdx);
+      const r = el.getBoundingClientRect();
+      const mid = r.top + r.height / 2;
+      if (e.clientY < mid) { bestIdx = idx; el.classList.add('drop-before'); break; }
+      bestIdx = idx + 1;
+    }
+    if (bestIdx === siblings.length && siblings.length) siblings[siblings.length - 1].classList.add('drop-after');
+    dragState.targetIdx = bestIdx;
+  });
+
+  document.addEventListener('pointerup', () => {
+    if (!dragState) return;
+    const { kind, fromIdx, targetIdx, moved } = dragState;
+    dragState.itemEl.classList.remove('is-dragging');
+    dragState.itemEl.style.transform = '';
+    dragState.listEl.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    dragState = null;
+
+    const arr = kind === 'day' ? st.prog.days : currentDay()?.exercises;
+    if (!arr || arr.length < 2) return;
+    let toIdx = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
+    if (!moved) {
+      // Single tap on ⠿ cycles down by 1 (or wraps to top) for effortless quick testing
+      toIdx = (fromIdx + 1) % arr.length;
+    }
+    if (toIdx !== fromIdx) {
+      const [item] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, item);
+      st.lastAction = `Перемещено «${item.name || 'Без названия'}»: позиция ${fromIdx + 1} → ${toIdx + 1}`;
+      render();
+    }
+  });
+
+  /* ==================== GLOBAL DELEGATION ==================== */
+  document.addEventListener('click', e => {
+    if (e.target.closest('.phone')) { handlePhoneClick(e); return; }
+    const modeBtn = e.target.closest('#host-mode button');
+    if (modeBtn) { st.hostMode = modeBtn.dataset.mode; render(); return; }
+    const wBtn = e.target.closest('#host-width button');
+    if (wBtn) { st.width = Number(wBtn.dataset.w); render(); return; }
+    const pickVar = e.target.closest('[data-pick-var]');
+    if (pickVar) { st.hostMode = 'interactive'; setVariant(pickVar.dataset.pickVar); return; }
+    const hostBtn = e.target.closest('[data-host]');
+    if (hostBtn) {
+      const h = hostBtn.dataset.host, v = hostBtn.dataset.v;
+      if (h === 'screen') {
+        clearUndo();
+        if (v === 'day' && !currentDay()) {
+          if (st.prog.days.length) st.activeDayId = st.prog.days[0].id;
+          else { const nd = { id: nextId('d'), name: 'День А · Новый', exercises: [] }; st.prog.days.push(nd); st.activeDayId = nd.id; }
+        }
+        st.screen = v;
+        render();
+      } else if (h === 'scenario') {
+        loadScenario(v);
+      } else if (h === 'toggle-alt') {
+        st.prog.alternating = !st.prog.alternating;
+        render();
+      } else if (h === 'toggle-aw') {
+        st.activeWorkout = !st.activeWorkout;
+        if (st.activeWorkout) st.screen = 'program';
+        render();
+      } else if (h === 'demo-undo') {
+        if (st.screen === 'program') {
+          const fake = { id: nextId('d'), name: 'День Г · Кардио и растяжка для проверки 1 строки с троеточием', exercises: [] };
+          triggerUndo('day', `Удалён день «${fake.name}»`, fake, st.prog.days.length);
+        } else {
+          const fake = { id: nextId('e'), name: 'Жим гантелей на наклонной скамье с разворотом кистей', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12' };
+          triggerUndo('ex', `Удалено «${fake.name}»`, fake, currentDay()?.exercises.length || 0);
+        }
+        render();
+      } else if (h === 'demo-discard') {
+        st.screen = 'program';
+        st.sheet = 'discard';
+        render();
+      }
+      return;
+    }
+    if (e.target.closest('#sw-prev')) {
+      const i = VARIANTS.findIndex(v => v.key === st.variant);
+      setVariant(VARIANTS[(i + VARIANTS.length - 1) % VARIANTS.length].key);
+    } else if (e.target.closest('#sw-next')) {
+      const i = VARIANTS.findIndex(v => v.key === st.variant);
+      setVariant(VARIANTS[(i + 1) % VARIANTS.length].key);
+    }
+  });
+
+  document.addEventListener('input', e => {
+    if (e.target.closest('.phone')) handlePhoneInput(e);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+    if (e.key === 'ArrowLeft') {
+      const i = VARIANTS.findIndex(v => v.key === st.variant);
+      setVariant(VARIANTS[(i + VARIANTS.length - 1) % VARIANTS.length].key);
+    } else if (e.key === 'ArrowRight') {
+      const i = VARIANTS.findIndex(v => v.key === st.variant);
+      setVariant(VARIANTS[(i + 1) % VARIANTS.length].key);
+    } else if (e.key === 'Escape') {
+      if (st.sheet || st.ctxDayId) { st.sheet = null; st.ctxDayId = null; render(); }
+    }
+  });
+
+  loadScenario('normal');
+})();
+</script>
+</body>
+</html>

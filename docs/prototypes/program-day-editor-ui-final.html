@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #121 (Финал): Редактор программы и дня</title>
+<!--
+  Final UI prototype candidate for issue #121 ("Как выглядят перестановка, меню дней, удаление с отменой и баннер активной тренировки в редакторе программы и дня?"):
+  - Unified left-edge ⠿ drag handle across BOTH Program Editor (days) and Day Editor (exercises), with smooth 1:1 pointer drag, live sibling reflow, and rounded card elevation.
+  - Program Editor: 3-zone day cards (⠿ | center | ⋮), Variant B left-accented active workout banner, Variant B tinted validation state, Variant C Undo snackbar (~3s), Variant B compact "Выйти без сохранения?" sheet.
+  - Day Editor: unified left ⠿ + #100 paired heavy/light targets + Variant B inline block validation & "Проверь цель" + Variant C opposite-edge "Заменить / Удалить" row + clean "Копия дня" title + Variant C Undo snackbar (~3s).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 28px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center; background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .seg-small {
+    display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0);
+    padding: 2px; border-radius: 9px; gap: 2px;
+  }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage { display: grid; grid-template-columns: auto minmax(300px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 860px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 480px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F4F6F1); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px; font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #E5EAE0); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .spec-list { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--card-foreground, #2C342A); line-height: 1.5; }
+  .spec-list li { margin-bottom: 4px; }
+  .spec-list code {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+    font-size: 11px; background: var(--secondary, #EFF3EC); padding: 1px 5px; border-radius: 5px;
+  }
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5C6759); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { font-weight: 600; color: var(--card-foreground, #1E251C); }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-bg: #132531;
+    --load-light-text: #BFE9FF;
+
+    width: 390px; height: 844px;
+    background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822;
+    box-shadow: 0 18px 44px rgba(14, 19, 13, 0.26);
+    position: relative; overflow: hidden;
+    font-family: Inter, sans-serif; display: flex; flex-direction: column; flex: none; user-select: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input { font-family: Inter, sans-serif; user-select: text; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-weight: 700; font-size: 15.5px; letter-spacing: 0.55px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .ob:hover { border-color: var(--f-outline-hi); background: rgba(255,255,255,0.03); }
+
+  .f-status {
+    height: 28px; padding: 8px 20px 0; flex: none;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted); font-variant-numeric: tabular-nums;
+  }
+  .lamp { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .lamp.heavy { background: var(--load-heavy); box-shadow: 0 0 6px rgba(245,158,66,0.55); }
+  .lamp.light { background: var(--load-light); box-shadow: 0 0 6px rgba(92,200,250,0.55); }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--f-primary); flex: none;
+    box-shadow: 0 0 0 0 rgba(197,250,85,0.6); animation: livePulse 1.9s infinite;
+  }
+  @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(197,250,85,0.55); } 70% { box-shadow: 0 0 0 5px rgba(197,250,85,0); } 100% { box-shadow: 0 0 0 0 rgba(197,250,85,0); } }
+
+  /* ==================== EDITOR BASE (#100) ==================== */
+  .pe-top { height: 46px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .pe-back { width: 38px; height: 38px; border-radius: 12px; border: 0; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; margin-left: -8px; }
+  .pe-back:hover { background: rgba(255,255,255,0.06); }
+  .pe-top-tag {
+    font-size: 11.5px; font-weight: 600; color: var(--f-muted); background: var(--f-surface);
+    padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 0;
+  }
+
+  .pe-scroll { flex: 1; overflow-y: auto; padding: 2px 18px 98px; scrollbar-width: thin; scrollbar-color: #2B352A transparent; min-height: 0; }
+  .phone.w360 .pe-scroll { padding: 2px 14px 96px; }
+  .pe-h1 { margin: 2px 0 12px; font-family: Inter, sans-serif; font-weight: 700; font-size: 23px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.3px; color: var(--f-text); }
+  .phone.w360 .pe-h1 { font-size: 20px; }
+  .pe-kicker { font-weight: 700; font-size: 12px; letter-spacing: 0.65px; text-transform: uppercase; color: var(--f-muted); margin: 16px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-field-lbl { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--f-muted); margin: 0 0 6px; }
+  .pe-counter { font-size: 11px; font-weight: 600; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .pe-counter.over { color: var(--f-error); }
+  .pe-input { width: 100%; height: 48px; background: var(--f-bg); color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 14px; padding: 0 14px; font-size: 15px; font-weight: 600; outline: none; }
+  .pe-input:focus { border-color: var(--f-primary); }
+  .pe-input.err { border-color: var(--f-error); background: rgba(54,28,26,0.32); }
+  .pe-err-msg { font-size: 11.5px; color: var(--f-error); margin-top: 5px; display: flex; align-items: center; gap: 5px; line-height: 1.3; font-weight: 600; }
+
+  .pe-card { background: var(--f-surface); border-radius: 18px; overflow: hidden; }
+  .pe-set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; width: 100%; background: transparent; border: 0; color: inherit; text-align: left; }
+  .pe-set-div { height: 1px; background: #252D24; margin: 0 14px; }
+  .pe-set-left { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
+  .pe-set-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--f-chip); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--load-light); gap: 4px; }
+  .pe-set-title { font-size: 14px; font-weight: 600; color: var(--f-text); line-height: 1.25; }
+  .pe-set-val { font-size: 12.5px; font-weight: 600; color: var(--load-light); margin-top: 2px; line-height: 1.25; }
+  .pe-set-sub { font-size: 11.5px; color: var(--f-dim); margin-top: 2px; line-height: 1.3; }
+  .pe-switch { width: 46px; height: 28px; border-radius: 999px; border: 0; box-shadow: inset 0 0 0 1.5px var(--f-outline-hi); background: var(--f-chip); position: relative; padding: 0; flex: none; transition: background .14s, box-shadow .14s; }
+  .pe-switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--f-muted); transition: transform .14s, background .14s; }
+  .pe-switch.on { background: var(--f-primary); box-shadow: none; }
+  .pe-switch.on::after { transform: translateX(18px); background: var(--f-on-primary); }
+  .pe-switch.sm { width: 38px; height: 22px; }
+  .pe-switch.sm::after { width: 14px; height: 14px; top: 4px; left: 4px; }
+  .pe-switch.sm.on::after { transform: translateX(16px); }
+
+  .pe-tag-man { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: rgba(92,200,250,0.14); color: #9CE0FF; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .pe-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 12;
+    padding: 12px 18px 16px;
+    background: linear-gradient(180deg, rgba(11,14,11,0) 0%, rgba(11,14,11,0.92) 28%, #0B0E0B 100%);
+    pointer-events: none;
+  }
+  .phone.w360 .pe-foot { padding: 10px 14px 14px; }
+  .pe-foot .pb { pointer-events: auto; }
+
+  /* ==================== ACTIVE WORKOUT BANNER (VARIANT B) ==================== */
+  .aw-banner {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--f-surface);
+    border-radius: 12px; padding: 9px 12px 9px 14px; margin: 0 0 12px;
+    font-size: 12px; line-height: 1.35; color: var(--f-muted);
+  }
+  .aw-banner::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--f-primary);
+  }
+  .aw-banner strong { color: var(--f-text); font-weight: 650; }
+
+  /* ==================== REORDERABLE LISTS (SMOOTH, ROUNDED, ZERO-LAG) ==================== */
+  .pe-day-list, .pe-ex-list { display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .pe-empty-box {
+    background: var(--f-surface); border-radius: 16px; border: 1.5px dashed var(--f-outline);
+    padding: 18px 14px; text-align: center; font-size: 12.5px; color: var(--f-muted); line-height: 1.4;
+  }
+  .pe-empty-box.err { border-color: var(--f-error-border); background: #1C1414; color: var(--f-error); }
+
+  /* Sibling items animate smoothly out of the way; active dragged card has NO transition lag */
+  .drag-item {
+    position: relative;
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+    will-change: transform;
+  }
+  .drag-item.is-dragging {
+    z-index: 30;
+    transition: none;
+    pointer-events: none;
+  }
+  .drag-item.is-settling {
+    z-index: 30;
+    transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  /* Rounded elevation strictly on the rounded card surface itself (never square wrapper!) */
+  .drag-item.is-dragging > .day-card,
+  .drag-item.is-dragging > .pe-ex-card {
+    background: #1B221B;
+    border-color: var(--f-primary-border);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(197, 250, 85, 0.25);
+    transform: scale(1.015);
+  }
+  .day-card, .pe-ex-card {
+    transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 140ms;
+  }
+
+  /* ==================== DAY CARD (3 SYMMETRICAL ZONES + B VALIDATION) ==================== */
+  .day-card {
+    background: var(--f-surface); border-radius: 18px; overflow: hidden;
+    border: 1.5px solid transparent; display: flex; align-items: stretch; min-height: 68px;
+  }
+  .day-card.invalid { background: #1C1414; border-color: var(--f-error-border); }
+  .day-grip, .day-more {
+    width: 44px; flex: none; border: 0; background: transparent; padding: 0;
+    display: flex; align-items: center; justify-content: center; color: var(--f-dim); touch-action: none;
+  }
+  .phone.w360 .day-grip, .phone.w360 .day-more { width: 40px; }
+  .day-grip { border-right: 1px solid rgba(255,255,255,0.06); cursor: grab; font-size: 17px; }
+  .day-card.invalid .day-grip { border-right-color: rgba(255,180,171,0.14); }
+  .day-grip:hover, .drag-item.is-dragging .day-grip { color: var(--f-primary); background: rgba(197,250,85,0.08); cursor: grabbing; }
+  .day-more { border-left: 1px solid rgba(255,255,255,0.06); color: var(--f-muted); }
+  .day-card.invalid .day-more { border-left-color: rgba(255,180,171,0.14); }
+  .day-more:hover, .day-more.menu-open { background: rgba(255,255,255,0.07); color: var(--f-text); }
+  .day-center {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left;
+    padding: 11px 12px; display: flex; flex-direction: column; justify-content: center; gap: 3.5px;
+  }
+  .day-center:hover { background: rgba(255,255,255,0.025); }
+  .day-title-txt {
+    font-weight: 700; font-size: 15.5px; line-height: 1.24; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .phone.w360 .day-title-txt { font-size: 14.5px; }
+  .day-title-txt.empty { color: var(--f-error); font-style: italic; font-weight: 600; }
+  .day-meta-row { font-size: 12px; color: var(--f-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .err-inline-line { font-size: 11.5px; font-weight: 600; color: var(--f-error); display: flex; align-items: center; gap: 4px; line-height: 1.28; margin-top: 1px; }
+
+  /* Context menu #1C231C */
+  .ctx-backdrop { position: absolute; inset: 0; z-index: 34; background: transparent; }
+  .ctx-menu {
+    position: absolute; z-index: 35; min-width: 186px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi);
+    border-radius: 16px; padding: 5px; box-shadow: 0 12px 30px rgba(0,0,0,0.56);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .ctx-item {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    border-radius: 11px; padding: 10px 11px; display: flex; align-items: center; gap: 10px;
+    text-align: left; font-size: 13.5px; font-weight: 600;
+  }
+  .ctx-item:hover { background: rgba(255,255,255,0.07); }
+  .ctx-item.danger { color: var(--f-error); }
+  .ctx-item.danger:hover { background: rgba(255,180,171,0.1); }
+  .ctx-sep { height: 1px; background: rgba(255,255,255,0.07); margin: 2px 8px; }
+
+  /* ==================== EXERCISE CARD (UNIFIED LEFT ⠿ + #100 + B VALIDATION + C ACTIONS) ==================== */
+  .pe-ex-card { background: var(--f-surface); border-radius: 16px; overflow: hidden; border: 1.5px solid transparent; }
+  .pe-ex-card.expanded { border-color: #2E3A2D; background: #161C16; }
+  .pe-ex-card.has-err { border-color: var(--f-error-border); background: #1C1414; }
+  .pe-ex-card.expanded.has-err { background: #191515; }
+
+  /* Unified left-edge drag rail matching Day cards */
+  .pe-ex-head { display: flex; align-items: stretch; min-height: 64px; }
+  .ex-grip {
+    width: 42px; flex: none; border: 0; border-right: 1px solid rgba(255,255,255,0.06);
+    background: transparent; padding: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--f-dim); font-size: 17px; cursor: grab; touch-action: none;
+  }
+  .phone.w360 .ex-grip { width: 38px; }
+  .pe-ex-card.has-err .ex-grip { border-right-color: rgba(255,180,171,0.14); }
+  .ex-grip:hover, .drag-item.is-dragging .ex-grip { color: var(--f-primary); background: rgba(197,250,85,0.08); cursor: grabbing; }
+
+  .pe-ex-main {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left;
+    padding: 10px 10px 10px 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .phone.w360 .pe-ex-main { padding: 10px 8px 10px 10px; }
+  .pe-ex-main:hover { background: rgba(255,255,255,0.02); }
+  .pe-ex-content { flex: 1; min-width: 0; }
+  .pe-ex-chev { color: var(--f-dim); flex: none; display: inline-flex; transition: transform 160ms, color 160ms; }
+  .pe-ex-card.expanded .pe-ex-chev { transform: rotate(180deg); color: var(--f-primary); }
+
+  .pe-ex-name {
+    font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--f-text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  }
+  .pe-summary-line { height: 24px; margin-top: 5px; display: flex; align-items: center; gap: 5px; overflow: hidden; white-space: nowrap; }
+  .pe-pill { display: inline-flex; align-items: center; gap: 4.5px; height: 22px; padding: 0 7px; border-radius: 7px; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap; flex: none; }
+  .phone.w360 .pe-pill { padding: 0 6px; font-size: 11px; }
+  .pe-pill.heavy { background: #241A10; color: #FFD8AA; }
+  .pe-pill.light-auto { background: rgba(19,37,49,0.55); color: #9BD5F3; border: 1px dashed #2E5A75; }
+  .pe-pill.light-manual { background: #132531; color: #D7F2FF; border: 1px solid #4589B3; }
+  .pe-pill.plain { background: var(--f-chip); color: var(--f-text); }
+  .pe-pill.err { background: var(--f-error-bg); color: var(--f-error); border: 1px solid var(--f-error-border); }
+  .pe-pill-eq { font-size: 11px; color: var(--f-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Expanded #100 internals */
+  .pe-ex-body { border-top: 1px solid #232C23; }
+  .pe-prog-bar { height: 44px; padding: 0 12px; background: #111611; border-bottom: 1px solid #202820; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pe-ex-inner { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 9px; }
+  .phone.w360 .pe-ex-inner { padding: 10px 10px 11px; }
+  .pe-mode-row { display: flex; align-items: center; gap: 7px; }
+  .pe-mode-seg { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 10px; padding: 2px; gap: 2px; }
+  .pe-mode-seg button { border: 0; background: transparent; color: var(--f-dim); height: 28px; border-radius: 8px; font-size: 11.5px; font-weight: 600; padding: 0 4px; white-space: nowrap; }
+  .pe-mode-seg button.on { background: #252E24; color: var(--f-text); box-shadow: inset 0 0 0 1px #3B4939; }
+  .pe-preset-btn { width: 56px; height: 34px; padding: 0; border-radius: 10px; flex: none; border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+  .pe-preset-btn.applied { background: var(--f-primary); color: var(--f-on-primary); border-color: var(--f-primary); }
+  .pe-tblock { border-radius: 13px; padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .pe-tblock.heavy { background: #131611; border: 1px solid #3C301E; }
+  .pe-tblock.plain { background: #121712; border: 1px solid #293328; }
+  .pe-tblock.light-auto { background: #0E171E; border: 1.5px dashed #2B536D; }
+  .pe-tblock.light-manual { background: #10202C; border: 1.5px solid #5CC8FA; }
+  .pe-tblock.block-err { border-color: var(--f-error-border); }
+  .pe-thead { height: 22px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .pe-ttitle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 0; }
+  .pe-tmeta { font-size: 10.5px; color: #8ACCEB; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-tbadge { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; text-transform: uppercase; flex: none; }
+  .pe-tbadge.auto { background: rgba(92,200,250,0.14); color: #8ACCEB; }
+  .pe-tbadge.manual { background: #5CC8FA; color: #0B1922; }
+  .pe-tgrid { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: end; }
+  .phone.w360 .pe-tgrid { grid-template-columns: 62px 1fr; gap: 7px; }
+  .pe-tlbl { font-size: 10.5px; color: var(--f-dim); margin-bottom: 3px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pe-mini-in { width: 100%; height: 38px; background: #0B0E0B; color: var(--f-text); border: 1.5px solid var(--f-outline); border-radius: 10px; text-align: center; font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 20px; padding: 0 6px; outline: none; font-variant-numeric: tabular-nums; }
+  .pe-mini-in:focus { border-color: var(--f-primary); }
+  .pe-mini-in.auto-in { background: rgba(11,14,11,0.55); border: 1.5px dashed #315D78; color: #9ED6F3; }
+  .pe-mini-in.manual-in { background: #0D1922; border: 1.5px solid #4A92BE; color: #E5F6FF; }
+  .pe-mini-in.in-err { border-color: var(--f-error) !important; background: rgba(54,28,26,0.45) !important; color: #FFDAD6 !important; }
+  .pe-range-pair { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-unit-seg { display: inline-flex; background: #0B0E0B; border: 1px solid var(--f-outline); border-radius: 9px; padding: 2px; gap: 2px; flex: none; height: 38px; align-items: center; }
+  .pe-unit-seg button { border: 0; background: transparent; color: var(--f-muted); font-size: 11px; font-weight: 700; padding: 0 9px; height: 32px; border-radius: 6px; }
+  .pe-unit-seg button.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .pe-step-box { display: flex; align-items: center; gap: 4px; width: 100%; height: 38px; }
+  .pe-step-btn { width: 32px; height: 38px; border-radius: 9px; border: 1px solid var(--f-outline); background: var(--f-chip); color: var(--f-text); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .pe-light-off { height: 38px; padding: 0 11px; border-radius: 11px; background: #101619; border: 1px dashed #243844; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pe-light-wait { padding: 8px 10px; border-radius: 11px; background: #11181D; border: 1px dashed #334C5C; font-size: 11.5px; color: #8FB2C4; display: flex; align-items: center; gap: 6px; }
+  .pe-reset-link { border: 0; background: rgba(92,200,250,0.14); color: #AEE2FF; border-radius: 999px; padding: 2px 8px; font-size: 10.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .pe-block-err-box {
+    background: var(--f-error-bg); border: 1px solid var(--f-error-border); color: var(--f-error);
+    border-radius: 9px; padding: 6px 9px; font-size: 11.5px; font-weight: 600; line-height: 1.3;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Expanded bottom actions (Variant C: opposite-edge separation) */
+  .ex-acts {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px 9px 12px; border-top: 1px solid #222B22;
+  }
+  .ex-acts-rep {
+    border: 0; background: transparent; color: var(--f-muted); padding: 6px 8px; margin-left: -6px; border-radius: 9px;
+    font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ex-acts-rep:hover { background: rgba(255,255,255,0.06); color: var(--f-text); }
+  .ex-acts-del {
+    border: 1px solid rgba(255,180,171,0.28); background: rgba(54,28,26,0.45); color: var(--f-error);
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 650;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .ex-acts-del:hover { background: var(--f-error-bg); }
+
+  /* ==================== UNDO SNACKBAR (VARIANT C) ==================== */
+  .undo-bar {
+    position: absolute; left: 16px; right: 16px; bottom: 72px; z-index: 26;
+    background: #141B14; border: 1.5px solid var(--f-primary-border); border-radius: 15px;
+    overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,0.52);
+  }
+  .phone.w360 .undo-bar { left: 12px; right: 12px; bottom: 68px; }
+  .undo-sweep { position: absolute; inset: 0 auto 0 0; background: rgba(197,250,85,0.1); pointer-events: none; transition: width 80ms linear; }
+  .undo-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px 9px 13px; }
+  .undo-txt { font-size: 13px; color: var(--f-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+  .undo-btn {
+    border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; height: 30px; padding: 0 12px; font-size: 12px; font-weight: 700; flex: none;
+  }
+
+  /* ==================== SHEETS (#1C231C, VARIANT B COMPACT) ==================== */
+  .f-scrim { position: absolute; inset: 0; z-index: 40; background: rgba(6, 9, 6, 0.72); display: flex; align-items: flex-end; }
+  .f-sheet {
+    width: 100%; background: var(--f-surface-hi); border-radius: 26px 26px 0 0;
+    padding: 10px 18px 20px; border-top: 1px solid #2D382C;
+    display: flex; flex-direction: column; gap: 10px; max-height: 82%; overflow-y: auto;
+  }
+  .f-grab { width: 38px; height: 4px; border-radius: 2px; background: var(--f-outline-hi); margin: 0 auto 4px; flex: none; }
+  .f-sheet h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--f-text); line-height: 1.22; }
+  .f-sheet p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.42; }
+  .f-sheet-danger {
+    width: 100%; min-height: 46px; border-radius: 999px;
+    border: 1px solid var(--f-error-border); background: var(--f-error-bg); color: var(--f-error);
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .f-sheet-cancel {
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 44px;
+    font-size: 14px; font-weight: 600; background: transparent; color: var(--f-muted); width: 100%;
+  }
+  .pe-radio-card { width: 100%; text-align: left; background: #141914; border: 1.5px solid #263026; border-radius: 15px; padding: 11px 12px; color: var(--f-text); display: flex; align-items: flex-start; gap: 10px; }
+  .pe-radio-card.on { background: #15222B; border-color: var(--load-light); }
+  .pe-radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--f-outline-hi); margin-top: 2px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .pe-radio-card.on .pe-radio-dot { border-color: var(--load-light); }
+  .pe-radio-card.on .pe-radio-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--load-light); }
+  .pick-row {
+    width: 100%; border: 1px solid #252E24; background: var(--f-surface); color: var(--f-text);
+    border-radius: 14px; padding: 10px 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .toast-info {
+    position: absolute; left: 16px; right: 16px; bottom: 74px; z-index: 25;
+    background: #1C231C; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container);
+    border-radius: 13px; padding: 10px 13px; font-size: 12.5px; font-weight: 600;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45); text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Fitty 2.0 · Финал #121</span>
+      <div>
+        <h1 class="host-title">Финальный кандидат: единая ручка ⠿ слева + лёгкий drag-and-drop с живым сдвигом соседей</h1>
+        <div class="host-sub">3 зоны дня (A) · Баннер (B) · Валидация (B) · Заменить/Удалить (C) · Undo (C) · Шторка выхода (B) · Чистая «Копия дня»</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="seg-small" id="host-width">
+        <button type="button" data-w="390" class="active">390 dp</button>
+        <button type="button" data-w="360">360 dp</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="interactive-stage">
+    <div class="phone-slot">
+      <div id="live-phone" class="phone"></div>
+      <div class="phone-caption">Потяни любую карточку за ⠿ слева (и дни, и упражнения) — соседи плавно расступаются, рамка повторяет скругление карточки</div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Экран и сценарии проверки</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран</span>
+          <div class="btn-wrap" id="ctrl-screen"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Сценарии</span>
+          <div class="btn-wrap" id="ctrl-scenarios"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Быстрые проверки</span>
+          <div class="btn-wrap" id="ctrl-quick"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Что исправлено и зафиксировано</h2>
+        <ul class="spec-list">
+          <li><strong>Единая ручка <code>⠿</code> слева на обоих экранах:</strong> и у карточек дней (<code>⠿ | центр | ⋮</code>), и у карточек упражнений (<code>⠿ | название + цели | ⌄</code>).</li>
+          <li><strong>Лёгкий drag-and-drop без квадратной рамки:</strong> перетаскиваемая карточка следует за курсором 1:1 без задержки, приподнимается со скруглённым контуром самой карточки, а соседние карточки плавно сдвигаются (<code>180 ms</code>) и освобождают место.</li>
+          <li><strong>Баннер активной тренировки (B):</strong> лента <code>#141914</code> с левой лаймовой полосой <code>3 dp</code>.</li>
+          <li><strong>Валидация (B):</strong> тонированная карточка <code>#1C1414</code> + строка ошибки у дня и плашка внутри проблемного блока цели + <code>Проверь цель</code> на свёрнутой карточке.</li>
+          <li><strong>Действия в упражнении (C):</strong> <code>Заменить упражнение</code> слева, спокойный чип <code>Удалить</code> справа.</li>
+          <li><strong>Undo-snackbar (C) и выход (B):</strong> лаймовый бар над кнопкой «Сохранить» с плавной заливкой <code>~3 с</code>; компактная шторка «Выйти без сохранения?»; чистый заголовок <strong>«Копия дня»</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Состояние черновика</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  const RULES = [
+    { id: 'easier_sets', short: 'Легче подходы', title: 'Легче подходы', badge: 'По умолчанию', desc: '−2 повтора (для коротких ≤ 4 — снижение веса по ощущениям), ~80% времени и дистанции' },
+    { id: 'fewer_sets', short: '−1 подход', title: 'Меньше подходов (−1)', badge: '', desc: 'Минус 1 подход при ≥ 2 подходах; повторы, время и дистанция не меняются' },
+    { id: 'manual', short: 'Вручную', title: 'Вручную', badge: '', desc: 'Копирует тяжёлые цели при включении, без авторасчёта и кнопки сброса' }
+  ];
+  const CATALOG_SAMPLES = [
+    { name: 'Тяга верхнего блока к груди', type: 'weight_reps', progression: true },
+    { name: 'Отжимания на брусьях', type: 'reps', progression: true },
+    { name: 'Боковая планка', type: 'duration', progression: false },
+    { name: 'Гребля на тренажёре', type: 'distance', progression: false }
+  ];
+  const ICO = {
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    more: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+    chevD: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+    swap: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    pulse: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+    warn: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    grip: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="3.5" r="1.35"/><circle cx="10.5" cy="3.5" r="1.35"/><circle cx="5.5" cy="8" r="1.35"/><circle cx="10.5" cy="8" r="1.35"/><circle cx="5.5" cy="12.5" r="1.35"/><circle cx="10.5" cy="12.5" r="1.35"/></svg>'
+  };
+
+  let uid = 100;
+  const nextId = p => `${p}${++uid}`;
+  const clone = v => JSON.parse(JSON.stringify(v));
+  const graphemeLen = s => [...String(s || '').trim()].length;
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const pluralRu = (n, f1, f2, f5) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? `${n} ${f5}` : b === 1 ? `${n} ${f1}` : b >= 2 && b <= 4 ? `${n} ${f2}` : `${n} ${f5}`; };
+  function makeCopyName(name) {
+    const suf = ' (копия)', t = String(name || '').trim(), ch = [...t], max = 40 - [...suf].length;
+    return `${ch.length > max ? ch.slice(0, max).join('').trimEnd() : t}${suf}`;
+  }
+
+  function makeProgram(mode = 'normal') {
+    const days = [
+      {
+        id: 'd1', name: 'День А · Верх и тяга',
+        exercises: [
+          { id: 'e1', name: 'Жим штанги лёжа', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '10', manualExact: '8' },
+          { id: 'e2', name: 'Подтягивания широким хватом', type: 'reps', progression: true, heavySets: '3', heavyMode: 'exact', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: true, manualSets: '2', manualMode: 'range', manualMin: '6', manualMax: '8', manualExact: '7' },
+          { id: 'e3', name: 'Планка на предплечьях', type: 'duration', progression: false, heavySets: '3', heavySec: 45, lightManual: false, manualSets: '3', manualSec: 45 },
+          { id: 'e4', name: 'Бег на дорожке', type: 'distance', progression: true, heavySets: '1', heavyDist: '1', heavyUnit: 'km', lightManual: false, manualSets: '1', manualDist: '800', manualUnit: 'm' }
+        ]
+      },
+      {
+        id: 'd2', name: 'День Б · Ноги и кор',
+        exercises: [
+          { id: 'e5', name: 'Приседания со штангой', type: 'weight_reps', progression: true, heavySets: '4', heavyMode: 'range', heavyMin: '6', heavyMax: '8', heavyExact: '6', lightManual: false, manualSets: '4', manualMode: 'range', manualMin: '4', manualMax: '6', manualExact: '4' },
+          { id: 'e6', name: 'Румынская тяга с гантелями', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '10', manualExact: '8' }
+        ]
+      },
+      {
+        id: 'd3', name: 'День В · Плечи и руки',
+        exercises: [
+          { id: 'e7', name: 'Армейский жим стоя', type: 'weight_reps', progression: true, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '10', heavyExact: '8', lightManual: false, manualSets: '3', manualMode: 'range', manualMin: '6', manualMax: '8', manualExact: '6' }
+        ]
+      }
+    ];
+    if (mode === 'validation') {
+      days[0].exercises[0].heavyMin = '12';
+      days[0].exercises[0].heavyMax = '8';
+      days[0].exercises[1].heavySets = '0';
+      days[0].exercises[3].heavyDist = '0';
+      days[2].exercises = [];
+    } else if (mode === 'long') {
+      days[0].name = 'День А: грудь, плечи и трицепс (силовой)';
+      days[0].exercises[0].name = 'Жим гантелей на наклонной скамье с разворотом кистей вверху';
+      days[0].exercises[1].name = 'СверхдлинноеСловоБезПробеловДляПроверкиПереносаВРедактореДня';
+      return { isNew: false, name: 'Базовая силовая программа на 4 дня (верх и низ, осень 2026г)', alternating: true, rule: 'easier_sets', days };
+    }
+    return { isNew: false, name: 'Базовая силовая', alternating: true, rule: 'easier_sets', days };
+  }
+
+  function parseStrictInt(raw) { const s = String(raw ?? '').trim(); if (!s) return { empty: true, val: null, ok: true }; if (!/^\d+$/.test(s)) return { empty: false, val: null, ok: false }; return { empty: false, val: Number(s), ok: true }; }
+  function parseDistMeters(raw, unit) { const s = String(raw ?? '').trim().replace(',', '.'); if (!s) return { empty: true, meters: null, ok: true }; if (!/^\d+(\.\d+)?$/.test(s)) return { empty: false, meters: null, ok: false }; const n = Number(s); return { empty: false, meters: unit === 'km' ? Math.round(n * 1000) : Math.round(n), ok: true }; }
+  function fmtSec(sec) { return sec == null ? 'Без цели' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+  function fmtMeters(m, forceU) { if (m == null) return 'Без цели'; const u = forceU || (m >= 1000 ? 'km' : 'm'); return u === 'km' ? `${String(+(m / 1000).toFixed(2)).replace('.', ',')} км` : `${Math.round(m)} м`; }
+  function roundDur80(sec) { if (sec == null || sec <= 5) return { sec, hint: 'легче по ощущениям' }; return { sec: Math.max(5, Math.min(sec - 5, Math.round((sec * 0.8) / 5) * 5)), hint: null }; }
+  function roundDist80(m) { if (m == null || m <= 1) return { meters: m == null ? null : 1, hint: 'легче по ощущениям' }; const step = m >= 1000 ? 100 : m >= 100 ? 50 : m >= 10 ? 5 : 1; let r = Math.round((m * 0.8) / step) * step; if (r >= m) r = m - step; return { meters: Math.max(1, r), hint: null }; }
+
+  function validateSide(ex, side) {
+    const errs = {};
+    const pS = parseStrictInt(side === 'heavy' ? ex.heavySets : ex.manualSets);
+    if (!pS.empty && (!pS.ok || pS.val < 1 || pS.val > 99)) errs.sets = 'От 1 до 99 подходов';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const mode = side === 'heavy' ? ex.heavyMode : ex.manualMode;
+      if (mode === 'exact') {
+        const p = parseStrictInt(side === 'heavy' ? ex.heavyExact : ex.manualExact);
+        if (!p.empty && (!p.ok || p.val < 1)) errs.exact = 'Минимум 1 повторение';
+      } else if (mode === 'range') {
+        const pLo = parseStrictInt(side === 'heavy' ? ex.heavyMin : ex.manualMin);
+        const pHi = parseStrictInt(side === 'heavy' ? ex.heavyMax : ex.manualMax);
+        if (!(pLo.empty && pHi.empty)) {
+          if (pLo.empty || pHi.empty) errs.range = 'Заполните «от» и «до»';
+          else if (!pLo.ok || !pHi.ok || pLo.val < 1 || pHi.val < 1) errs.range = 'Минимум 1 повторение';
+          else if (pLo.val >= pHi.val) errs.range = '«От» должно быть меньше «до»';
+        }
+      }
+    } else if (ex.type === 'distance') {
+      const pD = parseDistMeters(side === 'heavy' ? ex.heavyDist : ex.manualDist, side === 'heavy' ? (ex.heavyUnit || 'm') : (ex.manualUnit || 'm'));
+      if (!pD.empty && (!pD.ok || pD.meters < 1)) errs.dist = 'Минимум 1 м';
+    }
+    return errs;
+  }
+  function validateEx(ex, alt, rule) {
+    const heavy = validateSide(ex, 'heavy');
+    const light = (alt && (rule === 'manual' || ex.lightManual)) ? validateSide(ex, 'light') : {};
+    const heavyOk = !Object.keys(heavy).length, lightOk = !Object.keys(light).length;
+    return { heavy, light, heavyOk, lightOk, ok: heavyOk && lightOk };
+  }
+  function validateDay(day, alt, rule) {
+    const l = graphemeLen(day.name);
+    const nameErr = l === 0 ? 'Введите название дня' : l > 40 ? 'Не больше 40 символов' : null;
+    const noExErr = day.exercises.length === 0 ? 'Добавьте хотя бы 1 упражнение' : null;
+    const exErrors = {}; let exErrCount = 0;
+    day.exercises.forEach(e => { const v = validateEx(e, alt, rule); exErrors[e.id] = v; if (!v.ok) exErrCount++; });
+    const ok = !nameErr && !noExErr && exErrCount === 0;
+    const shortReason = nameErr || noExErr || (exErrCount === 1 ? 'Ошибка в целях (1)' : exErrCount > 1 ? `Ошибка в целях (${exErrCount})` : '');
+    return { ok, nameErr, noExErr, exErrors, exErrCount, shortReason };
+  }
+  function computeAutoLight(ex, rule) {
+    const hSets = parseStrictInt(ex.heavySets).val;
+    const hDist = ex.type === 'distance' ? parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters : null;
+    if (!ex.progression) return { sets: hSets, mode: ex.heavyMode, min: parseStrictInt(ex.heavyMin).val, max: parseStrictInt(ex.heavyMax).val, exact: parseStrictInt(ex.heavyExact).val, sec: ex.heavySec, meters: hDist, unit: hDist != null ? (hDist >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint: null };
+    if (rule === 'fewer_sets') { let s = hSets, hint = null; if (s == null) hint = '3 строки вместо 4'; else if (s >= 2) s -= 1; else { s = 1; hint = 'легче по ощущениям'; } return { sets: s, mode: ex.heavyMode, min: parseStrictInt(ex.heavyMin).val, max: parseStrictInt(ex.heavyMax).val, exact: parseStrictInt(ex.heavyExact).val, sec: ex.heavySec, meters: hDist, unit: hDist != null ? (hDist >= 1000 ? 'km' : 'm') : (ex.heavyUnit || 'm'), hint }; }
+    const base = { sets: hSets, hint: null };
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      if (ex.heavyMode === 'empty') return { ...base, mode: 'empty', hint: 'легче по ощущениям' };
+      if (ex.heavyMode === 'exact') { const v = parseStrictInt(ex.heavyExact).val; if (!v) return { ...base, mode: 'empty', hint: 'легче по ощущениям' }; if (v >= 5) return { ...base, mode: 'exact', exact: v - 2 }; if (ex.type === 'weight_reps') return { ...base, mode: 'exact', exact: v, hint: 'снизить вес по ощущениям' }; return v >= 2 ? { ...base, mode: 'exact', exact: v - 1 } : { ...base, mode: 'exact', exact: 1, hint: 'легче по ощущениям' }; }
+      const lo = parseStrictInt(ex.heavyMin).val, hi = parseStrictInt(ex.heavyMax).val;
+      if (!lo || !hi) return { ...base, mode: 'empty', hint: 'легче по ощущениям' };
+      if (lo >= 5) return { ...base, mode: 'range', min: lo - 2, max: Math.max(lo - 2, hi - 2) };
+      if (ex.type === 'weight_reps') return { ...base, mode: 'range', min: lo, max: hi, hint: 'снизить вес по ощущениям' };
+      return lo >= 2 ? { ...base, mode: 'range', min: lo - 1, max: Math.max(lo - 1, hi - 1) } : { ...base, mode: 'range', min: lo, max: hi, hint: 'легче по ощущениям' };
+    }
+    if (ex.type === 'duration') { const r = roundDur80(ex.heavySec); return { ...base, sec: r.sec, hint: r.hint }; }
+    const r = roundDist80(hDist); return { ...base, meters: r.meters, unit: r.meters != null && r.meters >= 1000 ? 'km' : 'm', hint: r.hint };
+  }
+  function getLight(ex, rule) {
+    if (rule === 'manual' || ex.lightManual) {
+      const m = ex.type === 'distance' ? parseDistMeters(ex.manualDist, ex.manualUnit || 'm').meters : null;
+      return { isManual: true, sets: parseStrictInt(ex.manualSets).val, mode: ex.manualMode, min: parseStrictInt(ex.manualMin).val, max: parseStrictInt(ex.manualMax).val, exact: parseStrictInt(ex.manualExact).val, sec: ex.manualSec, meters: m, unit: ex.manualUnit || 'm', hint: null };
+    }
+    return { isManual: false, ...computeAutoLight(ex, rule), ...(ex.lightDisplayUnit ? { unit: ex.lightDisplayUnit } : {}) };
+  }
+  function fmtPair(ex, obj, isLight) {
+    const sets = isLight ? obj.sets : parseStrictInt(ex.heavySets).val;
+    let tgt = 'Без цели';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const m = isLight ? obj.mode : ex.heavyMode;
+      if (m === 'range') { const lo = isLight ? obj.min : parseStrictInt(ex.heavyMin).val, hi = isLight ? obj.max : parseStrictInt(ex.heavyMax).val; if (lo && hi) tgt = `${lo}–${hi} повт.`; }
+      else if (m === 'exact') { const v = isLight ? obj.exact : parseStrictInt(ex.heavyExact).val; if (v) tgt = `${v} повт.`; }
+    } else if (ex.type === 'duration') tgt = fmtSec(isLight ? obj.sec : ex.heavySec);
+    else tgt = fmtMeters(isLight ? obj.meters : parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters, isLight ? obj.unit : (ex.heavyUnit || 'm'));
+    if (sets == null && tgt === 'Без цели') return 'Без цели';
+    if (sets == null) return tgt;
+    if (tgt === 'Без цели') return `${sets} подх.`;
+    return `${sets} × ${tgt}`;
+  }
+
+  let st = {
+    width: 390,
+    scenario: 'normal',
+    screen: 'program',
+    activeWorkout: true,
+    prog: null,
+    initialSnap: null,
+    activeDayId: null,
+    dayDupSource: null,
+    dayDupSnap: null,
+    dayIsNewEmpty: false,
+    expandedExId: null,
+    showProgVal: false,
+    showDayVal: false,
+    ctxDayId: null,
+    ctxPos: { top: 180, right: 16 },
+    sheet: null,
+    replaceExId: null,
+    undo: null,
+    toast: null,
+    lastAction: 'Потяни любой день или упражнение за ⠿ слева'
+  };
+  let undoRaf = null, toastTm = null;
+
+  const curDay = () => st.prog.days.find(d => d.id === st.activeDayId) || null;
+  const isDirty = () => JSON.stringify(st.prog) !== st.initialSnap;
+  function clearUndo() { st.undo = null; if (undoRaf) { cancelAnimationFrame(undoRaf); undoRaf = null; } }
+  function triggerUndo(kind, label, item, index) {
+    clearUndo();
+    st.undo = { kind, label, item: clone(item), index, startedAt: performance.now(), durationMs: 3200 };
+    const tick = () => {
+      if (!st.undo) return;
+      const left = Math.max(0, 1 - (performance.now() - st.undo.startedAt) / st.undo.durationMs);
+      document.querySelectorAll('[data-undo-fill]').forEach(el => { el.style.width = `${(left * 100).toFixed(1)}%`; });
+      if (left <= 0) { st.undo = null; render(); return; }
+      undoRaf = requestAnimationFrame(tick);
+    };
+    undoRaf = requestAnimationFrame(tick);
+  }
+  function showToast(msg) { st.toast = msg; if (toastTm) clearTimeout(toastTm); toastTm = setTimeout(() => { st.toast = null; render(); }, 2000); }
+
+  function loadScenario(sc) {
+    clearUndo();
+    st.scenario = sc; st.sheet = null; st.ctxDayId = null; st.dayDupSource = null; st.dayDupSnap = null; st.dayIsNewEmpty = false;
+    st.prog = makeProgram(sc === 'validation' ? 'validation' : sc === 'long' ? 'long' : 'normal');
+    st.initialSnap = JSON.stringify(st.prog);
+    st.activeDayId = st.prog.days[0]?.id || null;
+    st.activeWorkout = sc === 'active_workout' || sc === 'normal' || sc === 'validation';
+    st.showProgVal = sc === 'validation';
+    st.showDayVal = sc === 'validation';
+    st.expandedExId = sc === 'validation' ? st.prog.days[0].exercises[0].id : null;
+    if (sc === 'duplicate') {
+      const src = st.prog.days[0];
+      const dup = { id: nextId('d'), name: makeCopyName(src.name), exercises: src.exercises.map(e => ({ ...clone(e), id: nextId('e') })) };
+      st.prog.days.push(dup);
+      st.activeDayId = dup.id;
+      st.dayDupSource = src.name;
+      st.dayDupSnap = JSON.stringify(dup);
+      st.screen = 'day';
+      st.expandedExId = null;
+    } else if (sc === 'day_open') {
+      st.screen = 'day';
+      st.expandedExId = st.prog.days[0].exercises[0].id;
+    }
+    render();
+  }
+
+  function renderUndo() {
+    if (!st.undo) return '';
+    if ((st.screen === 'program' && st.undo.kind !== 'day') || (st.screen === 'day' && st.undo.kind !== 'ex')) return '';
+    const pct = Math.max(0, 1 - (performance.now() - st.undo.startedAt) / st.undo.durationMs);
+    return `<div class="undo-bar" role="status"><div class="undo-sweep" data-undo-fill style="width:${(pct * 100).toFixed(1)}%"></div><div class="undo-row"><span class="undo-txt">${esc(st.undo.label)}</span><button type="button" class="undo-btn" data-act="undo-apply">Отменить</button></div></div>`;
+  }
+
+  function renderProgram() {
+    const p = st.prog, len = graphemeLen(p.name), showCnt = len >= 48 || len > 60, over = len > 60;
+    const nameEmptyErr = st.showProgVal && len === 0;
+    const ruleObj = RULES.find(r => r.id === p.rule) || RULES[0];
+    const totalMan = p.rule === 'manual' ? 0 : p.days.reduce((s, d) => s + d.exercises.filter(e => e.lightManual).length, 0);
+
+    const awBanner = st.activeWorkout
+      ? `<div class="aw-banner"><span class="live-dot"></span><div><strong>Идёт тренировка</strong> — изменения применятся к будущим тренировкам.</div></div>` : '';
+
+    const cards = p.days.length === 0
+      ? `<div class="pe-empty-box ${st.showProgVal ? 'err' : ''}">${st.showProgVal ? 'Добавьте хотя бы 1 тренировочный день' : 'Дней пока нет — нажмите «+ Добавить день»'}</div>`
+      : p.days.map((d, idx) => {
+        const dv = validateDay(d, p.alternating, p.rule);
+        const showInv = !dv.ok && (st.showProgVal || d.exercises.length === 0 || !d.name.trim());
+        const manCnt = p.alternating && p.rule !== 'manual' ? d.exercises.filter(e => e.lightManual).length : 0;
+        const menuOpen = st.ctxDayId === d.id;
+        return `<div class="drag-item" data-drag-kind="day" data-drag-id="${d.id}" data-drag-idx="${idx}">
+          <div class="day-card ${showInv ? 'invalid' : ''}">
+            <button type="button" class="day-grip" data-drag-handle="day" data-id="${d.id}" aria-label="Переместить день">${ICO.grip}</button>
+            <button type="button" class="day-center" data-act="open-day" data-id="${d.id}">
+              <div class="day-title-txt ${d.name.trim() ? '' : 'empty'}">${esc(d.name.trim() || 'Без названия')}</div>
+              <div class="day-meta-row">
+                <span>${pluralRu(d.exercises.length, 'упражнение', 'упражнения', 'упражнений')}</span>
+                ${manCnt > 0 ? `<span class="pe-tag-man">${manCnt} вручную</span>` : ''}
+              </div>
+              ${showInv ? `<div class="err-inline-line">${ICO.warn} <span>${esc(dv.shortReason)}</span></div>` : ''}
+            </button>
+            <button type="button" class="day-more ${menuOpen ? 'menu-open' : ''}" data-act="open-ctx" data-id="${d.id}" aria-label="Меню дня">${ICO.more}</button>
+          </div>
+        </div>`;
+      }).join('');
+
+    const ctx = st.ctxDayId ? `<div class="ctx-backdrop" data-act="close-ctx"></div>
+      <div class="ctx-menu" style="top:${st.ctxPos.top}px;right:${st.ctxPos.right}px" role="menu">
+        <button type="button" class="ctx-item" data-act="ctx-edit" data-id="${st.ctxDayId}">${ICO.edit}<span>Редактировать</span></button>
+        <button type="button" class="ctx-item" data-act="ctx-dup" data-id="${st.ctxDayId}">${ICO.copy}<span>Дублировать</span></button>
+        <div class="ctx-sep"></div>
+        <button type="button" class="ctx-item danger" data-act="ctx-del" data-id="${st.ctxDayId}">${ICO.trash}<span>Удалить</span></button>
+      </div>` : '';
+
+    let sheet = '';
+    if (st.sheet === 'rule') {
+      sheet = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><h3>Правило лёгкой недели</h3><p>Пересчитывает цели с включённой прогрессией. Ручные правки сохранятся.</p><div style="display:flex;flex-direction:column;gap:8px">${RULES.map(r => `<button type="button" class="pe-radio-card ${p.rule === r.id ? 'on' : ''}" data-act="set-rule" data-v="${r.id}"><span class="pe-radio-dot"></span><div><div style="font-size:14px;font-weight:650">${r.title}</div><div style="font-size:12px;color:var(--f-muted);margin-top:3px">${r.desc}</div></div></button>`).join('')}</div><button type="button" class="pb" data-act="close-sheet">Готово</button></div></div>`;
+    } else if (st.sheet === 'discard') {
+      sheet = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><h3>Выйти без сохранения?</h3><p>Несохранённые изменения будут потеряны.</p><button type="button" class="f-sheet-danger" data-act="confirm-discard">Выйти без сохранения</button><button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться в редакторе</button></div></div>`;
+    }
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="prog-back">${ICO.back}</button>
+        ${p.alternating ? `<span class="pe-top-tag"><span class="lamp heavy"></span><span class="lamp light"></span>Тяжёлая / Лёгкая</span>` : ''}
+      </div>
+      <div class="pe-scroll">
+        <h1 class="pe-h1">Редактирование программы</h1>
+        ${awBanner}
+        <label class="pe-field-lbl"><span>Название программы <b style="color:var(--f-primary)">*</b></span>${showCnt ? `<span class="pe-counter ${over ? 'over' : ''}">${len} / 60</span>` : ''}</label>
+        <input class="pe-input ${over || nameEmptyErr ? 'err' : ''}" value="${esc(p.name)}" data-in="prog-name">
+        ${nameEmptyErr ? `<div class="pe-err-msg">${ICO.warn} Введите название</div>` : over ? `<div class="pe-err-msg">${ICO.warn} Не больше 60 символов</div>` : ''}
+        <div class="pe-kicker"><span>Недели и нагрузка</span></div>
+        <div class="pe-card">
+          <div class="pe-set-row"><div class="pe-set-left"><span class="pe-set-ico"><span class="lamp heavy"></span><span class="lamp light"></span></span><div><div class="pe-set-title">Чередовать недели</div><div class="pe-set-sub">${p.alternating ? 'Тяжёлая и лёгкая по проходам' : 'Выкл. · один план на все недели'}</div></div></div><button type="button" class="pe-switch ${p.alternating ? 'on' : ''}" data-act="toggle-alt"></button></div>
+          ${p.alternating ? `<div class="pe-set-div"></div><button type="button" class="pe-set-row" data-act="open-sheet" data-v="rule"><div class="pe-set-left"><span class="pe-set-ico">${ICO.pulse}</span><div><div class="pe-set-title">Правило лёгкой недели</div><div class="pe-set-val">${ruleObj.title}${totalMan ? ` <span style="color:var(--f-dim);font-weight:500">· ${totalMan} вручную</span>` : ''}</div></div></div><span style="color:var(--f-dim);font-size:20px">›</span></button>` : ''}
+        </div>
+        <div class="pe-kicker"><span>Тренировочные дни (${p.days.length})</span><span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">⠿ порядок · ⋮ меню</span></div>
+        <div class="pe-day-list" data-list-kind="day">${cards}</div>
+        <button type="button" class="ob" style="margin-top:10px" data-act="add-day">+ Добавить день</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="save-prog">Сохранить программу</button></div>
+      ${renderUndo()}
+      ${st.toast ? `<div class="toast-info">${esc(st.toast)}</div>` : ''}
+      ${ctx}${sheet}`;
+  }
+
+  function renderTgtCtrl(ex, side, light, errs) {
+    const isL = side === 'light', cls = isL ? (light.isManual ? 'pe-mini-in manual-in' : 'pe-mini-in auto-in') : 'pe-mini-in';
+    if (ex.type === 'weight_reps' || ex.type === 'reps') {
+      const m = isL ? light.mode : ex.heavyMode;
+      if (m === 'empty') return `<button type="button" class="${cls}" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:var(--f-dim)" data-act="activate-tgt" data-ex="${ex.id}" data-side="${side}">Без цели · задать</button>`;
+      if (m === 'range') {
+        const lo = isL ? (light.isManual ? (ex.manualMin ?? '') : (light.min ?? '')) : (ex.heavyMin ?? '');
+        const hi = isL ? (light.isManual ? (ex.manualMax ?? '') : (light.max ?? '')) : (ex.heavyMax ?? '');
+        return `<div class="pe-range-pair"><input class="${cls}${errs.range ? ' in-err' : ''}" type="text" inputmode="numeric" value="${esc(lo)}" placeholder="от" data-ex-in="min" data-side="${side}" data-ex="${ex.id}"><span style="color:var(--f-dim);font-weight:700">–</span><input class="${cls}${errs.range ? ' in-err' : ''}" type="text" inputmode="numeric" value="${esc(hi)}" placeholder="до" data-ex-in="max" data-side="${side}" data-ex="${ex.id}"></div>`;
+      }
+      const v = isL ? (light.isManual ? (ex.manualExact ?? '') : (light.exact ?? '')) : (ex.heavyExact ?? '');
+      return `<input class="${cls}${errs.exact ? ' in-err' : ''}" type="text" inputmode="numeric" value="${esc(v)}" placeholder="без цели" data-ex-in="exact" data-side="${side}" data-ex="${ex.id}">`;
+    }
+    if (ex.type === 'duration') {
+      const sec = isL ? light.sec : ex.heavySec;
+      return `<div class="pe-step-box"><button type="button" class="pe-step-btn" data-act="dur-step" data-ex="${ex.id}" data-side="${side}" data-delta="-5">−</button><div class="${cls}" style="display:flex;align-items:center;justify-content:center;font-size:${sec == null ? '12px' : '19px'};font-family:${sec == null ? 'Inter,sans-serif' : '"Barlow Condensed",Inter,sans-serif'};color:${sec == null ? 'var(--f-dim)' : ''}">${fmtSec(sec)}</div><button type="button" class="pe-step-btn" data-act="dur-step" data-ex="${ex.id}" data-side="${side}" data-delta="5">+</button></div>`;
+    }
+    const u = isL ? (light.unit || 'm') : (ex.heavyUnit || 'm');
+    const raw = isL ? (light.isManual ? (ex.manualDist ?? '') : (light.meters == null ? '' : (u === 'km' ? String(+(light.meters / 1000).toFixed(2)).replace('.', ',') : String(Math.round(light.meters))))) : (ex.heavyDist ?? '');
+    return `<div style="display:flex;align-items:center;gap:4px;width:100%;height:38px"><input class="${cls}${errs.dist ? ' in-err' : ''}" style="flex:1;min-width:0" type="text" inputmode="decimal" value="${esc(raw)}" placeholder="без цели" data-ex-in="dist" data-side="${side}" data-ex="${ex.id}"><div class="pe-unit-seg"><button type="button" class="${u === 'm' ? 'on' : ''}" data-act="dist-unit" data-ex="${ex.id}" data-side="${side}" data-u="m">м</button><button type="button" class="${u === 'km' ? 'on' : ''}" data-act="dist-unit" data-ex="${ex.id}" data-side="${side}" data-u="km">км</button></div></div>`;
+  }
+
+  function renderDay() {
+    const p = st.prog, day = curDay();
+    if (!day) return renderProgram();
+    const dv = validateDay(day, p.alternating, p.rule);
+    const l = graphemeLen(day.name), showCnt = l >= 32 || l > 40, over = l > 40;
+    const showNameErr = over || (st.showDayVal && !!dv.nameErr);
+    const ruleObj = RULES.find(r => r.id === p.rule) || RULES[0];
+    const isDup = !!st.dayDupSource;
+
+    const exCards = day.exercises.length === 0
+      ? `<div class="pe-empty-box ${st.showDayVal ? 'err' : ''}">${st.showDayVal ? 'Добавьте хотя бы 1 упражнение' : 'Упражнений пока нет'}</div>`
+      : day.exercises.map((ex, idx) => {
+        const ev = dv.exErrors[ex.id], showErr = st.showDayVal && !ev.ok, exp = st.expandedExId === ex.id;
+        const light = getLight(ex, p.rule), showLight = p.alternating && (p.rule === 'manual' || ex.lightManual || ex.progression);
+        const canReset = p.alternating && p.rule !== 'manual' && ex.lightManual;
+        const is812 = (ex.type === 'weight_reps' || ex.type === 'reps') && ex.heavyMode === 'range' && String(ex.heavyMin).trim() === '8' && String(ex.heavyMax).trim() === '12';
+        const hSum = fmtPair(ex, ex, false);
+
+        const summaryLine = (!exp && showErr)
+          ? `<div class="pe-summary-line"><span class="pe-pill err">${ICO.warn} Проверь цель</span><span class="pe-pill-eq">${esc(hSum)}</span></div>`
+          : !p.alternating
+            ? `<div class="pe-summary-line"><span class="pe-pill plain">${esc(hSum)}</span></div>`
+            : !showLight
+              ? `<div class="pe-summary-line"><span class="pe-pill plain">${esc(hSum)}</span><span class="pe-pill-eq">· без прогрессии (= лёгкая)</span></div>`
+              : `<div class="pe-summary-line"><span class="pe-pill heavy"><span class="lamp heavy"></span>${esc(hSum)}</span><span style="color:var(--f-dim);font-size:11px">→</span><span class="pe-pill ${light.isManual ? 'light-manual' : 'light-auto'}"><span class="lamp light"></span>${esc(ev.heavyOk || ex.lightManual ? fmtPair(ex, light, true) : '…')}${light.isManual && p.rule !== 'manual' ? ' · ручн.' : ''}</span></div>`;
+
+        let body = '';
+        if (exp) {
+          const hLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция' : ex.heavyMode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+          const lLbl = ex.type === 'duration' ? 'Длительность (шаг 5 с)' : ex.type === 'distance' ? 'Дистанция' : light.mode === 'range' ? 'Диапазон (от – до)' : 'Целевые повторы';
+          const hErrs = st.showDayVal ? Object.values(ev.heavy) : [];
+          const lErrs = st.showDayVal ? Object.values(ev.light) : [];
+          const repsBar = (ex.type === 'weight_reps' || ex.type === 'reps') ? `<div class="pe-mode-row"><div class="pe-mode-seg"><button type="button" class="${ex.heavyMode === 'exact' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="exact">Точно</button><button type="button" class="${ex.heavyMode === 'range' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="range">Диапазон</button><button type="button" class="${ex.heavyMode === 'empty' ? 'on' : ''}" data-act="set-mode" data-ex="${ex.id}" data-m="empty">Без цели</button></div><button type="button" class="pe-preset-btn ${is812 ? 'applied' : ''}" data-act="preset-812" data-ex="${ex.id}">8–12</button></div>` : '';
+
+          let lightSec = '';
+          if (p.alternating) {
+            if (!showLight) {
+              lightSec = `<div class="pe-light-off"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--f-muted)"><span style="opacity:.45;display:inline-flex"><span class="lamp light"></span></span>Лёгкая неделя — как тяжёлая</span><button type="button" style="border:0;background:transparent;color:var(--load-light);font-size:11.5px;font-weight:600" data-act="override-light" data-ex="${ex.id}">Задать вручную</button></div>`;
+            } else if (!ev.heavyOk && !light.isManual) {
+              lightSec = `<div class="pe-light-wait"><span class="lamp light"></span><span>Авторасчёт ждёт корректной тяжёлой цели</span></div>`;
+            } else {
+              lightSec = `<div class="pe-tblock ${light.isManual ? 'light-manual' : 'light-auto'} ${lErrs.length ? 'block-err' : ''}"><div class="pe-thead"><span class="pe-ttitle" style="color:var(--load-light-text)"><span class="lamp light"></span>Лёгкая неделя${light.hint ? `<span class="pe-tmeta">· ${esc(light.hint)}</span>` : ''}</span>${canReset ? `<button type="button" class="pe-reset-link" data-act="reset-light" data-ex="${ex.id}">↺ Сбросить к правилу</button>` : `<span class="pe-tbadge ${light.isManual ? 'manual' : 'auto'}">${p.rule === 'manual' ? 'вручную' : light.isManual ? 'вручную' : 'авто'}</span>`}</div><div class="pe-tgrid"><div><span class="pe-tlbl">Подходы</span><input class="pe-mini-in ${light.isManual ? 'manual-in' : 'auto-in'} ${st.showDayVal && ev.light.sets ? 'in-err' : ''}" type="text" inputmode="numeric" value="${esc(light.isManual ? (ex.manualSets ?? '') : (light.sets ?? ''))}" placeholder="—" data-ex-in="sets" data-side="light" data-ex="${ex.id}"></div><div><span class="pe-tlbl">${lLbl}</span>${renderTgtCtrl(ex, 'light', light, st.showDayVal ? ev.light : {})}</div></div>${lErrs.length ? `<div class="pe-block-err-box">${ICO.warn}<span>${esc(lErrs.join(' · '))}</span></div>` : ''}</div>`;
+            }
+          }
+
+          body = `<div class="pe-ex-body">
+            <div class="pe-prog-bar"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:12.5px;font-weight:600">Прогрессия</span><span style="font-size:11px;color:var(--f-dim)">${ex.progression ? 'советы и авто-лёгкая' : 'выкл.'}</span></div><button type="button" class="pe-switch sm ${ex.progression ? 'on' : ''}" data-act="toggle-prog" data-ex="${ex.id}"></button></div>
+            <div class="pe-ex-inner">
+              ${repsBar}
+              <div class="pe-tblock ${p.alternating && showLight ? 'heavy' : 'plain'} ${hErrs.length ? 'block-err' : ''}"><div class="pe-thead"><span class="pe-ttitle" style="color:${p.alternating && showLight ? '#FFD8AA' : 'var(--f-text)'}">${p.alternating && showLight ? '<span class="lamp heavy"></span>Тяжёлая неделя' : 'Цель по плану'}</span></div><div class="pe-tgrid"><div><span class="pe-tlbl">Подходы</span><input class="pe-mini-in ${st.showDayVal && ev.heavy.sets ? 'in-err' : ''}" type="text" inputmode="numeric" value="${esc(ex.heavySets ?? '')}" placeholder="—" data-ex-in="sets" data-side="heavy" data-ex="${ex.id}"></div><div><span class="pe-tlbl">${hLbl}</span>${renderTgtCtrl(ex, 'heavy', light, st.showDayVal ? ev.heavy : {})}</div></div>${hErrs.length ? `<div class="pe-block-err-box">${ICO.warn}<span>${esc(hErrs.join(' · '))}</span></div>` : ''}</div>
+              ${lightSec}
+            </div>
+            <div class="ex-acts">
+              <button type="button" class="ex-acts-rep" data-act="open-replace" data-ex="${ex.id}">${ICO.swap}<span>Заменить упражнение</span></button>
+              <button type="button" class="ex-acts-del" data-act="del-ex" data-ex="${ex.id}">${ICO.trash}<span>Удалить</span></button>
+            </div>
+          </div>`;
+        }
+
+        return `<div class="drag-item" data-drag-kind="ex" data-drag-id="${ex.id}" data-drag-idx="${idx}">
+          <div class="pe-ex-card ${exp ? 'expanded' : ''} ${showErr ? 'has-err' : ''}" data-ex-card="${ex.id}">
+            <div class="pe-ex-head">
+              <button type="button" class="ex-grip" data-drag-handle="ex" data-id="${ex.id}" aria-label="Переместить упражнение">${ICO.grip}</button>
+              <button type="button" class="pe-ex-main" data-act="toggle-ex" data-ex="${ex.id}">
+                <div class="pe-ex-content">
+                  <div class="pe-ex-name">${esc(ex.name)}</div>
+                  ${summaryLine}
+                </div>
+                <span class="pe-ex-chev">${ICO.chevD}</span>
+              </button>
+            </div>
+            ${body}
+          </div>
+        </div>`;
+      }).join('');
+
+    let sheet = '';
+    if (st.sheet === 'add_ex' || st.sheet === 'replace_ex') {
+      const isRep = st.sheet === 'replace_ex';
+      sheet = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><h3>${isRep ? 'Заменить упражнение' : 'Добавить упражнение'}</h3><div style="display:flex;flex-direction:column;gap:7px">${CATALOG_SAMPLES.map((c, i) => `<button type="button" class="pick-row" data-act="${isRep ? 'pick-replace' : 'pick-add'}" data-i="${i}"><span>${esc(c.name)}</span><span style="color:var(--f-primary);font-weight:700;font-size:12.5px">${isRep ? 'Выбрать' : '+ Добавить'}</span></button>`).join('')}</div><button type="button" class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
+    }
+
+    return `
+      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
+      <div class="pe-top">
+        <button type="button" class="pe-back" data-act="day-back">${ICO.back}</button>
+        ${p.alternating ? `<button type="button" class="pe-top-tag" data-act="day-back"><span class="lamp heavy"></span><span class="lamp light"></span>${ruleObj.short}</button>` : `<span class="pe-top-tag">Без чередования</span>`}
+      </div>
+      <div class="pe-scroll">
+        <h1 class="pe-h1">${isDup ? 'Копия дня' : 'Тренировочный день'}</h1>
+        <label class="pe-field-lbl"><span>Название дня <b style="color:var(--f-primary)">*</b></span>${showCnt ? `<span class="pe-counter ${over ? 'over' : ''}">${l} / 40</span>` : ''}</label>
+        <input class="pe-input ${showNameErr ? 'err' : ''}" value="${esc(day.name)}" placeholder="Например, День А · Верх" data-in="day-name">
+        ${showNameErr ? `<div class="pe-err-msg">${ICO.warn} ${esc(dv.nameErr)}</div>` : ''}
+        <div class="pe-kicker"><span>Упражнения (${day.exercises.length})</span><span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">⠿ порядок · тап → цели</span></div>
+        <div class="pe-ex-list" data-list-kind="ex">${exCards}</div>
+        <button type="button" class="ob" style="margin-top:10px" data-act="open-sheet" data-v="add_ex">+ Добавить упражнение</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb" data-act="save-day">Сохранить день</button></div>
+      ${renderUndo()}${sheet}`;
+  }
+
+  function render() {
+    document.querySelectorAll('#host-width button').forEach(b => b.classList.toggle('active', Number(b.dataset.w) === st.width));
+    const phone = document.getElementById('live-phone');
+    phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
+    phone.innerHTML = st.screen === 'program' ? renderProgram() : renderDay();
+
+    document.getElementById('ctrl-screen').innerHTML = [['program', 'Редактор программы'], ['day', 'Редактор дня']]
+      .map(([v, lbl]) => `<button type="button" class="cbtn ${st.screen === v ? 'active' : ''}" data-host="screen" data-v="${v}">${lbl}</button>`).join('');
+    document.getElementById('ctrl-scenarios').innerHTML = [
+      ['normal', 'Программа (с баннером)'],
+      ['day_open', 'День (раскрытое упр.)'],
+      ['validation', 'Ошибки валидации'],
+      ['duplicate', 'Копия дня'],
+      ['long', 'Длинные названия (#94)']
+    ].map(([v, lbl]) => `<button type="button" class="cbtn ${st.scenario === v ? 'active' : ''}" data-host="scenario" data-v="${v}">${lbl}</button>`).join('');
+    document.getElementById('ctrl-quick').innerHTML = [
+      `<button type="button" class="cbtn ${st.activeWorkout ? 'active' : ''}" data-host="toggle-aw">Баннер тренировки: ${st.activeWorkout ? 'Вкл' : 'Выкл'}</button>`,
+      `<button type="button" class="cbtn" data-host="demo-undo">Показать Undo (~3 с)</button>`,
+      `<button type="button" class="cbtn" data-host="demo-discard">«Выйти без сохранения?»</button>`
+    ].join('');
+
+    document.getElementById('state-tbl').innerHTML = `
+      <tr><td>Экран / Ширина</td><td>${st.screen === 'program' ? 'Редактор программы' : 'Редактор дня'} · ${st.width} dp</td></tr>
+      <tr><td>Черновик изменён</td><td>${isDirty() ? 'Да' : 'Нет'}</td></tr>
+      <tr><td>Последнее действие</td><td>${esc(st.lastAction)}</td></tr>
+    `;
+  }
+
+  function ensureManual(ex) {
+    if (st.prog.rule !== 'manual' && !ex.lightManual) {
+      const a = computeAutoLight(ex, st.prog.rule);
+      ex.manualSets = a.sets == null ? '' : String(a.sets); ex.manualMode = a.mode || ex.heavyMode;
+      ex.manualMin = a.min == null ? '' : String(a.min); ex.manualMax = a.max == null ? '' : String(a.max);
+      ex.manualExact = a.exact == null ? '' : String(a.exact); ex.manualSec = a.sec; ex.manualUnit = a.unit || 'm';
+      ex.manualDist = a.meters == null ? '' : (ex.manualUnit === 'km' ? String(+(a.meters / 1000).toFixed(2)).replace('.', ',') : String(Math.round(a.meters)));
+      ex.lightManual = true;
+    }
+  }
+
+  document.addEventListener('click', e => {
+    const wBtn = e.target.closest('#host-width button');
+    if (wBtn) { st.width = Number(wBtn.dataset.w); render(); return; }
+    const hb = e.target.closest('[data-host]');
+    if (hb) {
+      const h = hb.dataset.host, v = hb.dataset.v;
+      if (h === 'screen') { clearUndo(); st.screen = v; render(); }
+      else if (h === 'scenario') loadScenario(v);
+      else if (h === 'toggle-aw') { st.activeWorkout = !st.activeWorkout; render(); }
+      else if (h === 'demo-undo') {
+        const fake = st.screen === 'program' ? { id: nextId('d'), name: 'День В · Плечи и руки', exercises: [] } : { id: nextId('e'), name: 'Подтягивания широким хватом', type: 'reps', progression: true };
+        triggerUndo(st.screen === 'program' ? 'day' : 'ex', st.screen === 'program' ? `Удалён день «${fake.name}»` : `Удалено «${fake.name}»`, fake, 0);
+        render();
+      } else if (h === 'demo-discard') { st.screen = 'program'; st.sheet = 'discard'; render(); }
+      return;
+    }
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act, id = btn.dataset.id, exId = btn.dataset.ex, day = curDay();
+    if (act === 'toggle-alt') { st.prog.alternating = !st.prog.alternating; render(); }
+    else if (act === 'open-sheet') { st.ctxDayId = null; st.sheet = btn.dataset.v; render(); }
+    else if (act === 'close-sheet') { st.sheet = null; st.replaceExId = null; render(); }
+    else if (act === 'set-rule') { st.prog.rule = btn.dataset.v; render(); }
+    else if (act === 'open-ctx') {
+      const pR = btn.closest('.phone').getBoundingClientRect(), bR = btn.getBoundingClientRect();
+      let top = bR.bottom - pR.top + 4; if (top + 148 > pR.height - 16) top = Math.max(56, bR.top - pR.top - 152);
+      st.ctxDayId = st.ctxDayId === id ? null : id; st.ctxPos = { top: Math.round(top), right: 16 }; render();
+    } else if (act === 'close-ctx') { st.ctxDayId = null; render(); }
+    else if (act === 'open-day' || act === 'ctx-edit') { clearUndo(); st.ctxDayId = null; st.activeDayId = id; st.dayDupSource = null; st.dayDupSnap = null; st.dayIsNewEmpty = false; st.expandedExId = null; st.screen = 'day'; st.lastAction = `Открыт день «${curDay()?.name || 'Без названия'}»`; render(); }
+    else if (act === 'ctx-dup') {
+      clearUndo(); st.ctxDayId = null; const src = st.prog.days.find(d => d.id === id); if (!src) return;
+      const dup = { id: nextId('d'), name: makeCopyName(src.name), exercises: src.exercises.map(x => ({ ...clone(x), id: nextId('e') })) };
+      st.prog.days.push(dup); st.activeDayId = dup.id; st.dayDupSource = src.name; st.dayDupSnap = JSON.stringify(dup); st.expandedExId = null; st.showDayVal = false; st.screen = 'day'; st.lastAction = `Открыта копия «${dup.name}»`; render();
+    } else if (act === 'ctx-del') {
+      st.ctxDayId = null; const idx = st.prog.days.findIndex(d => d.id === id); if (idx < 0) return;
+      const [rem] = st.prog.days.splice(idx, 1); triggerUndo('day', `Удалён день «${rem.name.trim() || 'Без названия'}»`, rem, idx); st.lastAction = `Удалён день «${rem.name.trim() || 'Без названия'}»`; render();
+    } else if (act === 'add-day') {
+      clearUndo(); const nd = { id: nextId('d'), name: '', exercises: [] }; st.prog.days.push(nd); st.activeDayId = nd.id; st.dayIsNewEmpty = true; st.dayDupSource = null; st.dayDupSnap = null; st.expandedExId = null; st.showDayVal = false; st.screen = 'day'; render();
+    } else if (act === 'day-back') {
+      clearUndo();
+      if (day && ((st.dayIsNewEmpty && !day.name.trim() && !day.exercises.length) || (st.dayDupSnap && JSON.stringify(day) === st.dayDupSnap))) {
+        st.prog.days = st.prog.days.filter(d => d.id !== day.id);
+      }
+      st.dayIsNewEmpty = false; st.dayDupSource = null; st.dayDupSnap = null; st.screen = 'program'; render();
+    } else if (act === 'save-day') {
+      clearUndo(); st.showDayVal = true; const dv = validateDay(day, st.prog.alternating, st.prog.rule);
+      if (!dv.ok) { const b = day.exercises.find(x => !dv.exErrors[x.id].ok); if (b) st.expandedExId = b.id; render(); return; }
+      st.dayIsNewEmpty = false; st.dayDupSource = null; st.dayDupSnap = null; st.screen = 'program'; render();
+    } else if (act === 'save-prog') {
+      clearUndo(); st.showProgVal = true; const l = graphemeLen(st.prog.name);
+      if (!l || l > 60 || !st.prog.days.length) { render(); return; }
+      const bad = st.prog.days.find(d => !validateDay(d, st.prog.alternating, st.prog.rule).ok);
+      if (bad) { st.activeDayId = bad.id; st.showDayVal = true; const dv = validateDay(bad, st.prog.alternating, st.prog.rule); st.expandedExId = bad.exercises.find(x => !dv.exErrors[x.id].ok)?.id || null; st.screen = 'day'; render(); return; }
+      st.initialSnap = JSON.stringify(st.prog); st.showProgVal = false; showToast('Программа сохранена'); render();
+    } else if (act === 'prog-back') {
+      clearUndo(); if (isDirty()) st.sheet = 'discard'; else showToast('Выход без шторки: правок нет'); render();
+    } else if (act === 'confirm-discard') { st.prog = JSON.parse(st.initialSnap); st.sheet = null; showToast('Правки отброшены'); render(); }
+    else if (act === 'undo-apply' && st.undo) {
+      const u = st.undo; clearUndo();
+      if (u.kind === 'day') st.prog.days.splice(Math.min(u.index, st.prog.days.length), 0, u.item);
+      else if (u.kind === 'ex' && day) day.exercises.splice(Math.min(u.index, day.exercises.length), 0, u.item);
+      st.lastAction = 'Удаление отменено'; render();
+    } else if (act === 'toggle-ex') { st.expandedExId = st.expandedExId === exId ? null : exId; render(); }
+    else if (act === 'toggle-prog' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { ex.progression = !ex.progression; render(); } }
+    else if (act === 'set-mode' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { ex.heavyMode = btn.dataset.m; render(); } }
+    else if (act === 'preset-812' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { ex.heavyMode = 'range'; ex.heavyMin = '8'; ex.heavyMax = '12'; render(); } }
+    else if (act === 'activate-tgt' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { if (btn.dataset.side === 'heavy') { ex.heavyMode = 'exact'; ex.heavyExact = '10'; } else { ensureManual(ex); ex.manualMode = 'exact'; ex.manualExact = '8'; } render(); } }
+    else if (act === 'dur-step' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { const dlt = Number(btn.dataset.delta); if (btn.dataset.side === 'heavy') ex.heavySec = ex.heavySec == null ? (dlt > 0 ? 15 : null) : (ex.heavySec + dlt < 5 ? null : ex.heavySec + dlt); else { ensureManual(ex); ex.manualSec = ex.manualSec == null ? (dlt > 0 ? 15 : null) : (ex.manualSec + dlt < 5 ? null : ex.manualSec + dlt); } render(); } }
+    else if (act === 'dist-unit' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { const u = btn.dataset.u; if (btn.dataset.side === 'heavy') { const m = parseDistMeters(ex.heavyDist, ex.heavyUnit || 'm').meters; ex.heavyUnit = u; if (m != null) ex.heavyDist = u === 'km' ? String(+(m / 1000).toFixed(2)).replace('.', ',') : String(Math.round(m)); } else if (!ex.lightManual && st.prog.rule !== 'manual') ex.lightDisplayUnit = u; else { const m = parseDistMeters(ex.manualDist, ex.manualUnit || 'm').meters; ex.manualUnit = u; if (m != null) ex.manualDist = u === 'km' ? String(+(m / 1000).toFixed(2)).replace('.', ',') : String(Math.round(m)); } render(); } }
+    else if (act === 'override-light' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { ensureManual(ex); render(); } }
+    else if (act === 'reset-light' && day) { const ex = day.exercises.find(x => x.id === exId); if (ex) { ex.lightManual = false; ex.lightDisplayUnit = null; render(); } }
+    else if (act === 'del-ex' && day) { const idx = day.exercises.findIndex(x => x.id === exId); if (idx < 0) return; const [rem] = day.exercises.splice(idx, 1); if (st.expandedExId === exId) st.expandedExId = null; triggerUndo('ex', `Удалено «${rem.name}»`, rem, idx); st.lastAction = `Удалено «${rem.name}»`; render(); }
+    else if (act === 'open-replace') { st.replaceExId = exId; st.sheet = 'replace_ex'; render(); }
+    else if (act === 'pick-add' && day) { const c = CATALOG_SAMPLES[Number(btn.dataset.i)]; const n = { id: nextId('e'), name: c.name, type: c.type, progression: c.progression, heavySets: '3', heavyMode: 'range', heavyMin: '8', heavyMax: '12', heavyExact: '10', heavySec: 30, heavyDist: '500', heavyUnit: 'm', lightManual: false }; day.exercises.push(n); st.expandedExId = n.id; st.sheet = null; st.lastAction = `Добавлено «${n.name}» и авто-раскрыто`; render(); setTimeout(() => document.querySelector(`[data-ex-card="${n.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30); }
+    else if (act === 'pick-replace' && day) { const c = CATALOG_SAMPLES[Number(btn.dataset.i)]; const ex = day.exercises.find(x => x.id === st.replaceExId); if (ex && c) { ex.name = c.name; ex.type = c.type; st.expandedExId = ex.id; st.lastAction = `Заменено на «${c.name}»`; } st.sheet = null; st.replaceExId = null; render(); }
+  });
+
+  document.addEventListener('input', e => {
+    const inp = e.target; if (!inp.closest('.phone')) return;
+    const posS = inp.selectionStart, posE = inp.selectionEnd;
+    const sc = inp.closest('.pe-scroll'), top = sc ? sc.scrollTop : 0;
+    let sel = '';
+    if (inp.dataset.in === 'prog-name') { st.prog.name = inp.value.replace(/\r?\n/g, ' '); sel = '[data-in="prog-name"]'; }
+    else if (inp.dataset.in === 'day-name') { const d = curDay(); if (d) d.name = inp.value.replace(/\r?\n/g, ' '); sel = '[data-in="day-name"]'; }
+    else if (inp.dataset.exIn) {
+      const ex = curDay()?.exercises.find(x => x.id === inp.dataset.ex); if (!ex) return;
+      const f = inp.dataset.exIn, side = inp.dataset.side; if (side === 'light') ensureManual(ex);
+      if (f === 'sets') { if (side === 'heavy') ex.heavySets = inp.value; else ex.manualSets = inp.value; }
+      else if (f === 'min') { if (side === 'heavy') ex.heavyMin = inp.value; else ex.manualMin = inp.value; }
+      else if (f === 'max') { if (side === 'heavy') ex.heavyMax = inp.value; else ex.manualMax = inp.value; }
+      else if (f === 'exact') { if (side === 'heavy') ex.heavyExact = inp.value; else ex.manualExact = inp.value; }
+      else if (f === 'dist') { if (side === 'heavy') ex.heavyDist = inp.value; else ex.manualDist = inp.value; }
+      sel = `[data-ex-in="${f}"][data-side="${side}"][data-ex="${ex.id}"]`;
+    }
+    render();
+    const nsc = document.querySelector('#live-phone .pe-scroll'); if (nsc) nsc.scrollTop = top;
+    const ni = sel && document.querySelector(`#live-phone ${sel}`);
+    if (ni) { ni.focus({ preventScroll: true }); try { ni.setSelectionRange(posS, posE); } catch {} }
+  });
+
+  /* ==================== SMOOTH NATIVE-FEEL DRAG-AND-DROP (LIVE SIBLING REFLOW) ==================== */
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    const h = e.target.closest('[data-drag-handle]');
+    if (!h) return;
+    e.preventDefault();
+    const kind = h.dataset.dragHandle;
+    const id = h.dataset.id;
+
+    // Auto-collapse expanded exercise card before measuring heights (#120)
+    if (kind === 'ex' && st.expandedExId === id) {
+      st.expandedExId = null;
+      render();
+    }
+    const listEl = document.querySelector(`#live-phone [data-list-kind="${kind}"]`);
+    if (!listEl) return;
+    const items = [...listEl.querySelectorAll(`[data-drag-kind="${kind}"]`)];
+    const fromIdx = items.findIndex(el => el.dataset.dragId === id);
+    if (fromIdx < 0 || items.length < 2) return;
+
+    const rects = items.map(el => el.getBoundingClientRect());
+    const gap = rects.length > 1 ? Math.max(0, rects[1].top - rects[0].bottom) : 8;
+    const shiftDist = rects[fromIdx].height + gap;
+    const mids = rects.map(r => r.top + r.height / 2);
+    const minY = rects[0].top - rects[fromIdx].top - 10;
+    const maxY = rects[rects.length - 1].bottom - rects[fromIdx].bottom + 10;
+
+    items[fromIdx].classList.add('is-dragging');
+    drag = { kind, items, rects, mids, fromIdx, toIdx: fromIdx, shiftDist, startY: e.clientY, minY, maxY, moved: false };
+  });
+
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const rawDy = e.clientY - drag.startY;
+    if (Math.abs(rawDy) > 3) drag.moved = true;
+    const dy = Math.max(drag.minY, Math.min(drag.maxY, rawDy));
+    drag.items[drag.fromIdx].style.transform = `translate3d(0, ${dy}px, 0)`;
+
+    const curCenterY = drag.mids[drag.fromIdx] + dy;
+    let newTo = drag.fromIdx;
+    for (let i = 0; i < drag.mids.length; i++) {
+      if (i === drag.fromIdx) continue;
+      if (i < drag.fromIdx && curCenterY < drag.mids[i]) { newTo = Math.min(newTo, i); }
+      if (i > drag.fromIdx && curCenterY > drag.mids[i]) { newTo = Math.max(newTo, i); }
+    }
+    if (newTo !== drag.toIdx) {
+      drag.toIdx = newTo;
+      drag.items.forEach((el, i) => {
+        if (i === drag.fromIdx) return;
+        let offset = 0;
+        if (drag.toIdx > drag.fromIdx && i > drag.fromIdx && i <= drag.toIdx) offset = -drag.shiftDist;
+        else if (drag.toIdx < drag.fromIdx && i >= drag.toIdx && i < drag.fromIdx) offset = drag.shiftDist;
+        el.style.transform = offset ? `translate3d(0, ${offset}px, 0)` : '';
+      });
+    }
+  });
+
+  function finishDrag() {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    const activeEl = d.items[d.fromIdx];
+    const targetTop = d.toIdx === d.fromIdx
+      ? 0
+      : d.toIdx > d.fromIdx
+        ? (d.rects[d.toIdx].bottom - d.rects[d.fromIdx].bottom)
+        : (d.rects[d.toIdx].top - d.rects[d.fromIdx].top);
+
+    activeEl.classList.remove('is-dragging');
+    activeEl.classList.add('is-settling');
+    activeEl.style.transform = `translate3d(0, ${targetTop}px, 0)`;
+
+    const commit = () => {
+      if (d.toIdx !== d.fromIdx) {
+        const arr = d.kind === 'day' ? st.prog.days : curDay()?.exercises;
+        if (arr) {
+          const [movedItem] = arr.splice(d.fromIdx, 1);
+          arr.splice(d.toIdx, 0, movedItem);
+          st.lastAction = `Перемещено «${movedItem.name || 'Без названия'}»: ${d.fromIdx + 1} → ${d.toIdx + 1}`;
+        }
+      }
+      render();
+    };
+    setTimeout(commit, d.moved ? 165 : 20);
+  }
+
+  document.addEventListener('pointerup', finishDrag);
+  document.addEventListener('pointercancel', finishDrag);
+
+  loadScenario('normal');
+})();
+</script>
+</body>
+</html>
