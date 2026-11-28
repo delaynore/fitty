@@ -1555,7 +1555,7 @@
   .cat-quick-own { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 34px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--f-outline); background: var(--f-surface); color: var(--f-muted); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
   .cat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: #2B342A transparent; }
   .phone.w360 .cat-scroll { padding: 4px 14px 20px; }
-  .cat-scroll.has-sticky { padding-bottom: 92px; }
+  .cat-scroll.has-sticky { padding-bottom: 104px; }
   .cat-sticky-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 12; padding: 10px 16px 16px; background: linear-gradient(180deg, rgba(11, 14, 11, 0) 0%, #0B0E0B 28%); }
   .cat-sticky-foot.solid { background: #0B0E0B; border-top: 1px solid #222B22; padding-top: 12px; }
   .cat-type-ico { width: 38px; height: 38px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
@@ -2807,7 +2807,8 @@
         const targetSec = Math.max(0, pPlan.sec + s.plankOffset);
         const isOver = targetSec > 0 && s.plankElapsed > targetSec;
         const tDisp = targetSec === 0 ? fmtSec(s.plankElapsed) : isOver ? `+${fmtSec(s.plankElapsed - targetSec)}` : fmtSec(targetSec - s.plankElapsed);
-        timerTile = `<div class="a2-timer-tile is-ex"><span class="a2-timer-lbl">${isOver ? 'Цель ✓' : 'Планка'}</span><span class="a2-timer-num">${tDisp}</span></div>`;
+        const pLbl = plankEx.name.length > 14 ? `${plankEx.name.slice(0, 13)}…` : plankEx.name;
+        timerTile = `<div class="a2-timer-tile is-ex"><span class="a2-timer-lbl">${isOver ? 'Цель ✓' : catEsc(pLbl)}</span><span class="a2-timer-num">${tDisp}</span></div>`;
       } else if (s.restRunning) {
         timerTile = `<div class="a2-timer-tile"><span class="a2-timer-lbl">Отдых</span><span class="a2-timer-num">${fmtSec(s.restLeft)}</span></div>`;
       }
@@ -2928,7 +2929,8 @@
         ${dayRightAction}
       </div>` : '';
 
-    const rows = day.exercises.map((ex, i) => {
+    const viewExercises = isViewingActive ? day.exercises.map(ex => resolveWorkoutEx(ex, s)) : day.exercises;
+    const rows = viewExercises.map((ex, i) => {
       const plan = effectivePlan(ex, wk, isViewingActive || !hasActive ? s.easeMode : 'none');
       if (isViewingActive) {
         const loggedCnt = (s.logged[ex.id] || []).length;
@@ -3033,7 +3035,8 @@
       const targetSec = Math.max(0, plan.sec + s.plankOffset);
       const isOver = targetSec > 0 && s.plankElapsed > targetSec;
       const t = targetSec === 0 ? fmtSec(s.plankElapsed) : isOver ? `+${fmtSec(s.plankElapsed - targetSec)}` : fmtSec(targetSec - s.plankElapsed);
-      statusPill = `<span class="f-status-pill"><i></i>Планка ${t}</span>`;
+      const pName = ex.name.length > 14 ? `${ex.name.slice(0, 13)}…` : ex.name;
+      statusPill = `<span class="f-status-pill"><i></i>${catEsc(pName)} ${t}</span>`;
     } else if (s.restRunning) {
       statusPill = `<span class="f-status-pill"><i></i>Отдых ${fmtSec(s.restLeft)}</span>`;
     }
