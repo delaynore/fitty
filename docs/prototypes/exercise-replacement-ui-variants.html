@@ -1,0 +1,1820 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Прототип #125: Замена упражнений и возврат исходного (A / B / C)</title>
+<!--
+  Throwaway UI prototype for issue #125 ("Как выглядят каталог замены упражнения и возврат исходного во время тренировки и в редакторе дня?").
+  Plan: Three structurally different UI variants (A: Stacked Cards & Mirror Rail — stacked replace/revert cards in technique sheet, top context card, top-of-list revert card, full-height ⇄ rail; B: Unified Passport Module & Sticky Strip — single split replace/revert module in technique sheet, 2-line subtitle header, sticky-under-search revert strip, explicit text pill on rows & diff preview in day editor; C: Top Status Pill & Thumb-Zone Revert — replacement badge at top of technique sheet with split bottom actions, locked type-filter chip in chips bar, sticky bottom-bar revert in workout catalog, circular ⇄ row button) switchable via ?variant=A|B|C, floating bottom switcher, keyboard ←/→, and side-by-side comparison.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 90px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 11px 15px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(24, 30, 22, 0.04);
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center;
+    background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs { display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px; }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, sans-serif); padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small { display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0); padding: 2px; border-radius: 9px; gap: 2px; }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .interactive-stage { display: grid; grid-template-columns: auto minmax(320px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 900px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 520px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 13px 15px; box-shadow: 0 2px 8px rgba(24, 30, 22, 0.04);
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F7F9F5); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px;
+    font: 600 12px var(--font-sans, Inter, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #ECF0E8); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .variant-desc { font-size: 12.5px; line-height: 1.5; color: var(--card-foreground, #313B2F); margin: 0; }
+  .variant-desc ul { margin: 6px 0 0; padding-left: 17px; }
+  .variant-desc li { margin-bottom: 4px; }
+  .variant-desc code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; background: var(--secondary, #EFF3EC); color: var(--secondary-foreground, #1D261A); padding: 1px 5px; border-radius: 5px; }
+  .state-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .state-tbl td { padding: 4px 0; border-bottom: 1px solid var(--border, #ECEFE9); vertical-align: top; }
+  .state-tbl tr:last-child td { border-bottom: 0; }
+  .state-tbl td:first-child { color: var(--muted-foreground, #5E6A5B); width: 42%; padding-right: 8px; }
+  .state-tbl td:last-child { color: var(--card-foreground, #1D251B); font-weight: 600; }
+  .pill-ok { display: inline-block; padding: 1px 6px; border-radius: 6px; background: #263A17; color: #C5FA55; font-size: 11px; }
+  .pill-warn { display: inline-block; padding: 1px 6px; border-radius: 6px; background: #3A2E17; color: #FCE0A6; font-size: 11px; }
+  .pill-muted { display: inline-block; padding: 1px 6px; border-radius: 6px; background: var(--secondary, #EAEEE7); color: var(--muted-foreground, #4A5547); font-size: 11px; }
+
+  /* Compare grid */
+  .compare-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .compare-bar {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); border: 1px solid var(--border, #D5DBD1); border-radius: 14px;
+    padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .compare-grid { display: grid; grid-template-columns: repeat(3, minmax(360px, auto)); gap: 18px; justify-content: center; }
+  @media (max-width: 1260px) { .compare-grid { grid-template-columns: repeat(2, auto); } }
+  @media (max-width: 840px) { .compare-grid { grid-template-columns: 1fr; justify-items: center; } }
+  .compare-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .compare-col-head {
+    width: 100%; max-width: 390px; background: var(--card, #FFFFFF); border: 1px solid var(--border, #D5DBD1);
+    border-radius: 12px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .compare-col-head strong { font-size: 13px; color: var(--card-foreground, #1A2018); }
+  .compare-col-head span { font-size: 11.5px; color: var(--muted-foreground, #5B6658); display: block; }
+
+  /* Floating Prototype Switcher */
+  .proto-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 999;
+    background: #141A13; color: #F0F3EA;
+    border: 1.5px solid #4A6128; border-radius: 999px;
+    padding: 5px 7px; display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 0 0 4px rgba(197, 250, 85, 0.12);
+  }
+  .proto-sw-arrow {
+    width: 34px; height: 34px; border-radius: 50%; border: 0;
+    background: #232C22; color: #F0F3EA; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700;
+  }
+  .proto-sw-arrow:hover { background: #303E1B; color: #C5FA55; }
+  .proto-sw-label {
+    padding: 0 10px; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .proto-sw-key {
+    background: #C5FA55; color: #1A2506; font-weight: 800; font-size: 11.5px;
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .proto-sw-hint { font-size: 11px; color: #9AA698; font-weight: 500; }
+
+  /* ==================== FITTY ANDROID DESIGN TOKENS & PHONE FRAME ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #2C352B;
+    --f-outline-hi: #3F4A3D;
+    --f-text: #F0F3EA;
+    --f-muted: #A2AEA0;
+    --f-dim: #737E71;
+    --f-placeholder: #6E796D;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-on-primary-container: #DDFF98;
+    --f-primary-border: #4A6128;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-amber: #F5C469;
+    --f-amber-container: #2B2416;
+    --f-amber-border: #5E4B24;
+    --f-on-amber-container: #FCE0A6;
+    --load-heavy: #F59E42;
+    --load-light: #5CC8FA;
+    --load-light-text: #C2EBFF;
+    --load-ease: #C09BFF;
+
+    width: 390px; height: 820px; border-radius: 40px;
+    background: var(--f-bg); color: var(--f-text);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34), 0 0 0 8px #1B201B, 0 0 0 10px #2D342C;
+    overflow: hidden; position: relative;
+    display: flex; flex-direction: column;
+    font-family: Inter, system-ui, sans-serif;
+    user-select: none;
+  }
+  .phone.w360 { width: 360px; }
+  .phone button { font-family: inherit; cursor: pointer; }
+  .phone input { font-family: inherit; }
+
+  .statusbar {
+    height: 30px; padding: 10px 24px 0; flex: none;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 600; color: var(--f-text); z-index: 5;
+  }
+  .d { font-family: Inter, system-ui, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .f-num-font { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .m { color: var(--f-muted); }
+
+  .pb {
+    width: 100%; min-height: 48px; border: 0; border-radius: 999px;
+    background: var(--f-primary); color: var(--f-on-primary);
+    font: 700 15px Inter, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 0 16px;
+  }
+  .pb:hover { filter: brightness(1.04); }
+  .ob {
+    width: 100%; min-height: 46px; border-radius: 999px;
+    border: 1.5px solid var(--f-outline-hi); background: transparent; color: var(--f-text);
+    font: 600 14px Inter, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 0 14px;
+  }
+  .ob:hover { background: var(--f-surface); }
+
+  /* Lamps */
+  .lamp { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .lamp.heavy { background: var(--load-heavy); box-shadow: 0 0 8px rgba(245,158,66,0.55); }
+  .lamp.light { background: var(--load-light); box-shadow: 0 0 8px rgba(92,200,250,0.55); }
+  .lamp.ease { background: var(--load-ease); box-shadow: 0 0 8px rgba(192,155,255,0.55); }
+
+  /* ==================== WORKOUT SCREEN + TECHNIQUE SHEET ==================== */
+  .wk-top {
+    padding: 10px 14px 6px 8px; flex: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .wk-back {
+    width: 40px; height: 40px; border-radius: 20px; border: 0;
+    background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center;
+  }
+  .wk-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px; background: var(--f-surface);
+    font-size: 12px; font-weight: 600; color: var(--f-muted);
+  }
+  .wk-ease-btn {
+    border: 1px solid var(--f-outline); background: var(--f-surface); color: var(--f-text);
+    border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .wk-ease-btn.on { border-color: rgba(192,155,255,0.55); background: #211B2B; color: #E4D2FF; }
+
+  .wk-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 16px 16px; }
+  .phone.w360 .wk-scroll { padding: 6px 14px 16px; }
+
+  .wk-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .wk-title-btn {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text);
+    text-align: left; padding: 0; display: flex; flex-direction: column; gap: 6px;
+  }
+  .wk-title {
+    margin: 0; font-size: 24px; line-height: 1.1; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .wk-title.long { font-size: 18px; line-height: 1.18; }
+  .wk-plan-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wk-plan-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--f-chip); color: var(--f-text);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  }
+  .wk-cal-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border: 1px solid var(--f-primary-border);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  }
+
+  .rest-ring {
+    width: 76px; height: 76px; border-radius: 50%; flex: none;
+    background: var(--f-surface); border: 2px solid var(--f-outline);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .rest-ring.run { border-color: var(--f-primary); box-shadow: 0 0 0 4px rgba(197,250,85,0.12); }
+  .rest-ring .t { font-family: "Barlow Condensed", sans-serif; font-size: 24px; font-weight: 700; line-height: 1; color: var(--f-text); }
+  .rest-ring.run .t { color: var(--f-primary); }
+  .rest-ring .l { font-size: 10px; color: var(--f-muted); margin-top: 2px; }
+
+  .set-tbl { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  .set-hdr {
+    display: grid; grid-template-columns: 28px 1fr 1fr 48px; gap: 8px;
+    padding: 0 6px; font-size: 11.5px; color: var(--f-dim); text-align: center;
+  }
+  .set-row {
+    display: grid; grid-template-columns: 28px 1fr 1fr 48px; gap: 8px; align-items: center;
+    background: var(--f-surface); border-radius: 16px; padding: 7px 8px;
+  }
+  .set-row.logged { background: var(--f-primary-container); }
+  .set-num { text-align: center; font-weight: 700; color: var(--f-muted); font-size: 13px; }
+  .set-row.logged .set-num { color: var(--f-on-primary-container); }
+  .set-cell {
+    height: 40px; border-radius: 12px; background: #0E120E;
+    border: 1.5px dashed #394538; color: var(--f-muted);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Barlow Condensed", sans-serif; font-size: 21px; font-weight: 700;
+  }
+  .set-row.logged .set-cell { border: 0; background: rgba(11,14,11,0.28); color: var(--f-on-primary-container); }
+  .set-chk {
+    width: 44px; height: 44px; border-radius: 50%; border: 0;
+    background: var(--f-primary-container); color: var(--f-on-primary-container);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;
+  }
+  .set-row.logged .set-chk { background: #1F2B0D; color: var(--f-primary); }
+
+  .wk-bottom {
+    padding: 10px 14px 16px; border-top: 1px solid #1C231C; background: var(--f-bg);
+    display: flex; align-items: center; gap: 8px; flex: none;
+  }
+  .wk-nav-btn {
+    width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--f-outline);
+    background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .wk-plan-btn {
+    flex: 1; height: 48px; border-radius: 24px; border: 1px solid var(--f-outline);
+    background: var(--f-surface); color: var(--f-text);
+    font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+
+  /* Bottom Sheet (shared #1C231C) */
+  .f-scrim {
+    position: absolute; inset: 0; z-index: 30;
+    background: rgba(5, 8, 5, 0.72);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 26px 26px 0 0;
+    padding: 10px 16px 20px; max-height: 86%; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 11px;
+    box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.55);
+  }
+  .phone.w360 .f-sheet { padding: 10px 14px 18px; }
+  .f-sheet-handle { width: 38px; height: 4px; border-radius: 2px; background: #465345; margin: 0 auto 2px; flex: none; }
+
+  /* Technique card (#114) */
+  .diff-bars { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .diff-bars i { width: 14px; height: 4.5px; border-radius: 3px; background: var(--f-outline-hi); display: inline-block; }
+  .diff-bars i.on { background: var(--f-primary); }
+  .diff-bars.sm i { width: 9px; height: 4px; }
+  .tech-card { background: var(--f-surface); border-radius: 16px; padding: 11px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .tech-step { display: flex; gap: 10px; font-size: 13px; line-height: 1.42; color: var(--f-text); }
+  .tech-step-num { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 17px; color: var(--f-primary); width: 15px; flex: none; line-height: 1.2; }
+  .tech-prose { font-size: 13px; line-height: 1.46; color: var(--f-text); overflow-wrap: anywhere; }
+
+  /* ==================== TECHNIQUE SHEET REPLACEMENT VARIANTS ==================== */
+  /* Variant A: Stacked Cards */
+  .rep-card-a {
+    width: 100%; border: 1px solid var(--f-outline); border-radius: 16px;
+    background: var(--f-surface); color: var(--f-text);
+    padding: 11px 13px; display: flex; align-items: center; gap: 11px; text-align: left;
+  }
+  .rep-card-a:hover:not(:disabled) { background: #192019; border-color: var(--f-outline-hi); }
+  .rep-card-a:disabled { opacity: 0.62; cursor: not-allowed; background: #131713; border-color: #242B24; }
+  .rep-card-a.revert {
+    background: #182114; border-color: var(--f-primary-border);
+  }
+  .rep-card-a.revert:hover:not(:disabled) { background: #1F2B18; }
+  .rep-ico {
+    width: 36px; height: 36px; border-radius: 12px; flex: none;
+    background: var(--f-primary-container); color: var(--f-primary);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .rep-ico.muted { background: #222921; color: var(--f-dim); }
+  .rep-ico.revert { background: var(--f-primary); color: var(--f-on-primary); }
+
+  /* Variant B: Unified Passport Replacement Module */
+  .rep-mod-b {
+    background: var(--f-surface); border: 1px solid var(--f-outline);
+    border-radius: 18px; overflow: hidden;
+  }
+  .rep-mod-b.replaced { border-color: var(--f-primary-border); }
+  .rep-mod-b-row {
+    width: 100%; border: 0; background: transparent; color: var(--f-text);
+    padding: 11px 13px; display: flex; align-items: center; gap: 11px; text-align: left;
+  }
+  .rep-mod-b-row + .rep-mod-b-row { border-top: 1px solid #222B22; }
+  .rep-mod-b-row.revert-top { background: rgba(48, 62, 27, 0.34); }
+  .rep-mod-b-row:hover:not(:disabled) { background: rgba(255,255,255,0.03); }
+  .rep-mod-b-row.revert-top:hover:not(:disabled) { background: rgba(48, 62, 27, 0.52); }
+  .rep-mod-b-row:disabled { opacity: 0.64; cursor: not-allowed; }
+  .rep-pill-b {
+    flex: none; padding: 6px 11px; border-radius: 999px;
+    background: var(--f-primary-container); border: 1px solid var(--f-primary-border);
+    color: var(--f-on-primary-container); font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .rep-dot-b { width: 8px; height: 8px; border-radius: 50%; background: var(--f-primary); flex: none; }
+
+  /* Variant C: Top Replacement Status Pill + Split Bottom / Quiet Lock */
+  .rep-top-badge-c {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 11px; border-radius: 13px;
+    background: rgba(48, 62, 27, 0.45); border: 1px solid var(--f-primary-border);
+    font-size: 12.5px; line-height: 1.38; color: var(--f-on-primary-container);
+  }
+  .rep-split-c { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rep-split-btn-c {
+    border-radius: 16px; padding: 11px 12px; text-align: left;
+    display: flex; flex-direction: column; gap: 5px; min-width: 0;
+  }
+  .rep-split-btn-c.revert {
+    background: var(--f-primary-container); border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container);
+  }
+  .rep-split-btn-c.other {
+    background: var(--f-surface); border: 1px solid var(--f-outline); color: var(--f-text);
+  }
+  .rep-lock-c {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 12px; border-radius: 14px;
+    background: #131813; border: 1px dashed #2B342A; color: var(--f-dim);
+    font-size: 12.5px; line-height: 1.35;
+  }
+
+  /* ==================== CATALOG (H1 + H3 BASE FROM #124) ==================== */
+  .cat-topbar { display: flex; align-items: center; gap: 6px; padding: 10px 14px 6px 8px; min-height: 54px; flex: none; }
+  .cat-back { width: 40px; height: 40px; border: 0; border-radius: 20px; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-back:hover { background: var(--f-surface); }
+  .cat-top-title { margin: 0; font-size: 20px; line-height: 1.05; color: var(--f-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phone.w360 .cat-top-title { font-size: 18px; }
+  .cat-top-sub { font-size: 12px; color: var(--f-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+  /* Variant A: Context strip */
+  .rep-ctx-a {
+    margin: 0 16px 8px; padding: 9px 12px; border-radius: 14px; flex: none;
+    background: var(--f-surface); border: 1px solid #232C23;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .phone.w360 .rep-ctx-a { margin: 0 14px 8px; padding: 8px 10px; }
+  .rep-ctx-lbl { font-size: 11px; color: var(--f-dim); display: block; }
+  .rep-ctx-name { font-size: 13px; font-weight: 600; color: var(--f-text); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rep-scope-pill {
+    flex: none; padding: 4px 8px; border-radius: 999px;
+    background: #1D251C; border: 1px solid #303B2F;
+    font-size: 11px; font-weight: 600; color: var(--f-muted); white-space: nowrap;
+  }
+  .rep-scope-pill.compat { background: #1A2416; border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
+
+  .cat-search-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 8px; flex: none; }
+  .phone.w360 .cat-search-row { padding: 0 14px 8px; }
+  .cat-search-box {
+    flex: 1; min-width: 0; height: 46px; border-radius: 23px;
+    background: var(--f-surface); border: 1.5px solid transparent;
+    display: flex; align-items: center; gap: 9px; padding: 0 10px 0 14px;
+  }
+  .cat-search-box:focus-within { border-color: var(--f-primary-border); background: #161C16; }
+  .cat-search-box input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); font: 400 15px Inter, sans-serif; outline: none; }
+  .cat-search-box input::placeholder { color: var(--f-placeholder); }
+  .cat-clear-x { width: 30px; height: 30px; border-radius: 15px; border: 0; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-filter-btn {
+    position: relative; flex: none; width: 46px; height: 46px; border-radius: 23px;
+    border: 1.5px solid var(--f-outline); background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .cat-filter-btn.active { background: var(--f-primary-container); border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
+  .cat-filter-cnt {
+    position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; border-radius: 9px;
+    background: var(--f-primary); color: var(--f-on-primary); font-size: 10.5px; font-weight: 800;
+    padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #0B0E0B;
+  }
+
+  .cat-chips-bar { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 8px; scrollbar-width: none; flex: none; align-items: center; }
+  .phone.w360 .cat-chips-bar { padding: 0 14px 8px; }
+  .cat-chips-bar::-webkit-scrollbar { display: none; }
+  .cat-quick-own {
+    display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 32px; padding: 0 11px;
+    border-radius: 10px; border: 1px solid var(--f-outline); background: var(--f-surface);
+    color: var(--f-muted); font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .cat-chip-rm {
+    display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 32px; padding: 0 8px 0 11px;
+    border-radius: 10px; border: 1px solid var(--f-primary-border); background: var(--f-primary-container);
+    color: var(--f-on-primary-container); font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .cat-chip-lock {
+    display: inline-flex; align-items: center; gap: 5px; flex: none; min-height: 32px; padding: 0 10px;
+    border-radius: 10px; border: 1px dashed #3F5227; background: #172013;
+    color: var(--f-on-primary-container); font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+
+  /* Variant B: Sticky Revert Strip under search/chips */
+  .rep-sticky-top-b {
+    margin: 0 16px 8px; flex: none;
+    border: 1.5px solid var(--f-primary-border); background: #1A2414; color: var(--f-on-primary-container);
+    border-radius: 14px; padding: 9px 12px; text-align: left;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .phone.w360 .rep-sticky-top-b { margin: 0 14px 8px; padding: 8px 10px; }
+  .rep-sticky-top-b:hover { background: #212E19; }
+
+  /* Variant A: Top-of-list pinned revert card */
+  .rep-list-revert-a {
+    width: 100%; margin-bottom: 10px;
+    border: 1.5px solid var(--f-primary-border); background: #182114; color: var(--f-text);
+    border-radius: 18px; overflow: hidden; display: flex; align-items: stretch;
+  }
+  .rep-list-revert-a-main {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: inherit;
+    padding: 11px 12px; text-align: left; display: flex; align-items: center; gap: 10px;
+  }
+  .rep-list-revert-a-act {
+    width: 50px; flex: none; border: 0; border-left: 1px solid rgba(197,250,85,0.22);
+    background: var(--f-primary-container); color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone.w360 .rep-list-revert-a-act { width: 44px; }
+
+  .cat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 16px 20px; scrollbar-width: thin; scrollbar-color: #2B342A transparent; }
+  .phone.w360 .cat-scroll { padding: 2px 14px 20px; }
+  .cat-scroll.has-sticky { padding-bottom: 92px; }
+  .cat-sticky-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 12;
+    padding: 10px 16px 16px;
+    background: linear-gradient(180deg, rgba(11,14,11,0) 0%, #0B0E0B 26%);
+  }
+  .cat-sticky-foot.solid { background: #0B0E0B; border-top: 1px solid #222B22; padding-top: 12px; }
+  .phone.w360 .cat-sticky-foot { padding: 10px 14px 14px; }
+
+  /* Variant C: Sticky bottom revert bar */
+  .rep-foot-revert-c {
+    width: 100%; border: 1.5px solid var(--f-primary-border); background: #1A2414; color: var(--f-on-primary-container);
+    border-radius: 18px; padding: 10px 13px; text-align: left;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
+  }
+  .rep-foot-revert-c:hover { background: #223019; }
+
+  /* H1 Catalog Cards */
+  .cat-type-ico { width: 38px; height: 38px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+  .cat-type-ico.t-WEIGHT_AND_REPS { background: #263119; color: #C5FA55; }
+  .cat-type-ico.t-REPS { background: #1B2922; color: #7EE2B8; }
+  .cat-type-ico.t-DURATION { background: #162632; color: #5CC8FA; }
+  .cat-type-ico.t-DISTANCE { background: #2A2316; color: #F5C469; }
+
+  .cat-ex-card { background: var(--f-surface); border-radius: 18px; margin-bottom: 8px; display: flex; align-items: stretch; overflow: hidden; }
+  .cat-ex-main { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); text-align: left; padding: 11px 12px; display: flex; align-items: center; gap: 10px; }
+  .cat-ex-main:hover { background: #181E18; }
+  /* Variant A right rail */
+  .cat-ex-rail-a {
+    width: 50px; flex: none; border: 0; border-left: 1px solid #222B22;
+    background: transparent; color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone.w360 .cat-ex-rail-a { width: 44px; }
+  .cat-ex-rail-a:hover { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  /* Variant B right pill */
+  .cat-ex-pill-wrap-b { display: flex; align-items: center; padding: 0 10px 0 2px; flex: none; }
+  .cat-ex-pill-b {
+    border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+    border-radius: 999px; padding: 7px 11px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .phone.w360 .cat-ex-pill-b { padding: 6px 9px; font-size: 11.5px; }
+  .cat-ex-pill-b:hover { background: var(--f-primary); color: var(--f-on-primary); }
+  /* Variant C right circle */
+  .cat-ex-circ-wrap-c { display: flex; align-items: center; padding: 0 11px 0 4px; flex: none; }
+  .cat-ex-circ-c {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1.5px solid var(--f-primary-border); background: #192214; color: var(--f-primary);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .cat-ex-circ-c:hover { background: var(--f-primary); color: var(--f-on-primary); }
+
+  .cat-cl2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .cat-badge-own { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #1E251E; border: 1px solid #354134; font-size: 10.5px; font-weight: 600; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .cat-badge-day { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #232E19; border: 1px solid #415524; font-size: 10.5px; font-weight: 600; color: var(--f-on-primary-container); white-space: nowrap; flex: none; }
+  .cat-badge-incompat { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 999px; background: var(--f-amber-container); border: 1px solid var(--f-amber-border); font-size: 10px; font-weight: 600; color: var(--f-on-amber-container); white-space: nowrap; flex: none; }
+  .cat-sym-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; margin-top: 6px; font-size: 12px; line-height: 1.3; }
+  .cat-sym-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+  .cat-sym-m { color: var(--f-on-primary-container); font-weight: 600; }
+  .cat-sym-e { color: var(--f-muted); }
+  .cat-sym-free { color: #8CE8C2; font-weight: 500; }
+
+  /* H3 Passport Card */
+  .cat-passport { background: var(--f-surface); border-radius: 20px; overflow: hidden; margin-bottom: 12px; }
+  .cat-pass-row { padding: 11px 14px; border-bottom: 1px solid #202720; display: flex; align-items: center; gap: 11px; }
+  .cat-pass-row:last-child { border-bottom: 0; }
+  .cat-pass-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--f-surface-hi); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-pass-lbl { font-size: 11.5px; color: var(--f-dim); }
+  .cat-pass-val { font-size: 14px; font-weight: 600; color: var(--f-text); margin-top: 1px; line-height: 1.35; }
+
+  .cat-empty { background: var(--f-surface); border-radius: 20px; padding: 26px 18px; text-align: center; margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .cat-empty-ico { width: 50px; height: 50px; border-radius: 16px; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; }
+
+  .incompat-notice {
+    padding: 9px 12px; border-radius: 14px; margin-bottom: 9px;
+    background: var(--f-amber-container); border: 1px solid var(--f-amber-border);
+    color: var(--f-on-amber-container); font-size: 12px; line-height: 1.4;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+
+  /* ==================== DAY EDITOR (FROM #121) ==================== */
+  .pe-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 4px 8px; flex: none; }
+  .pe-top-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px; background: var(--f-surface); border: 1px solid var(--f-outline);
+    color: var(--f-muted); font-size: 12px; font-weight: 600;
+  }
+  .pe-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 18px; }
+  .phone.w360 .pe-scroll { padding: 4px 14px 18px; }
+  .pe-h1 { margin: 0 0 10px; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .pe-kicker { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--f-muted); }
+  .pe-ex-card { background: var(--f-surface); border-radius: 16px; overflow: hidden; border: 1.5px solid transparent; margin-bottom: 8px; }
+  .pe-ex-card.expanded { border-color: #2E3A2D; background: #161C16; }
+  .pe-ex-card.just-replaced { border-color: var(--f-primary-border); box-shadow: 0 0 0 2px rgba(197,250,85,0.12); }
+  .pe-ex-head { display: flex; align-items: stretch; min-height: 62px; }
+  .pe-ex-grip { width: 40px; flex: none; border: 0; border-right: 1px solid rgba(255,255,255,0.06); background: transparent; color: var(--f-dim); display: flex; align-items: center; justify-content: center; }
+  .pe-ex-main { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; padding: 10px 10px 10px 12px; display: flex; align-items: center; gap: 6px; }
+  .pe-ex-name { font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--f-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .pe-ex-card.expanded .pe-ex-name { -webkit-line-clamp: unset; display: block; }
+  .pe-summary-line { display: flex; align-items: center; gap: 5px; margin-top: 5px; flex-wrap: nowrap; overflow: hidden; }
+  .pe-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 7px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .pe-pill.heavy { background: rgba(245,158,66,0.12); color: #FFD8AA; border: 1px solid rgba(245,158,66,0.28); }
+  .pe-pill.light-auto { background: rgba(92,200,250,0.08); color: #C2EBFF; border: 1px dashed #2B536D; }
+  .pe-pill.light-manual { background: rgba(92,200,250,0.16); color: #C2EBFF; border: 1px solid #5CC8FA; }
+  .pe-pill.plain { background: #1E251E; color: var(--f-muted); }
+
+  .pe-ex-body { border-top: 1px solid #232C23; }
+  .pe-prog-bar {
+    height: 44px; padding: 0 12px; border-bottom: 1px solid #202820;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .pe-sw { width: 40px; height: 24px; border-radius: 12px; padding: 3px; background: #2C352B; display: inline-flex; align-items: center; border: 0; }
+  .pe-sw i { width: 18px; height: 18px; border-radius: 9px; background: #A2AEA0; display: block; transition: transform 140ms; }
+  .pe-sw.on { background: var(--f-primary); }
+  .pe-sw.on i { background: var(--f-on-primary); transform: translateX(16px); }
+  .pe-ex-inner { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .pe-tblock { border-radius: 13px; padding: 9px 10px; background: #111611; border: 1px solid #252E24; }
+  .pe-tblock.heavy { border-color: rgba(245,158,66,0.34); }
+  .pe-tblock.light-auto { border-style: dashed; border-color: #2B536D; }
+  .pe-tblock.light-manual { border-color: #5CC8FA; }
+  .pe-thead { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 7px; font-size: 12px; font-weight: 650; }
+  .pe-tgrid { display: grid; grid-template-columns: 76px 1fr; gap: 8px; }
+  .pe-val-box {
+    height: 36px; border-radius: 10px; background: #0C100C; border: 1px solid #2A3429;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13.5px; font-weight: 650; color: var(--f-text);
+  }
+  .pe-val-box.empty { color: var(--f-dim); font-weight: 500; border-style: dashed; }
+  .pe-ex-acts {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px 9px 12px; border-top: 1px solid #222B22;
+  }
+  .pe-ex-rep {
+    border: 0; background: transparent; color: var(--f-on-primary-container);
+    padding: 6px 9px; margin-left: -6px; border-radius: 9px;
+    font-size: 12.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pe-ex-rep:hover { background: var(--f-primary-container); }
+  .pe-ex-del {
+    border: 1px solid rgba(255,180,171,0.28); background: rgba(54,28,26,0.45); color: var(--f-error);
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 650;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .pe-foot { padding: 10px 16px 16px; border-top: 1px solid #1E261E; background: var(--f-bg); flex: none; }
+
+  .toast-mini {
+    position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 40;
+    background: #172014; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container);
+    border-radius: 14px; padding: 9px 12px; font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Прототип #125 · Варианты A / B / C</span>
+      <div>
+        <h1 class="host-title">Замена упражнения и возврат исходного (тренировка и редактор дня)</h1>
+        <div class="host-sub">Поверх утверждённого каталога H1+H3 (#124), карточки техники (#114) и редактора дня (#121) · логика #123</div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="mode-single" class="active" type="button">Интерактив</button>
+        <button id="mode-compare" type="button">Сравнить A / B / C</button>
+      </div>
+      <div class="seg-small" aria-label="Ширина экрана">
+        <button id="w-390" class="active" type="button">390 dp</button>
+        <button id="w-360" type="button">360 dp</button>
+      </div>
+      <button id="btn-long" class="cbtn" type="button">Длинные названия (#94)</button>
+    </div>
+  </header>
+
+  <section id="view-single" class="interactive-stage">
+    <div class="phone-slot">
+      <main id="phone-live" class="phone" aria-label="Интерактивный макет Fitty"></main>
+      <div class="phone-caption" id="phone-caption"></div>
+    </div>
+
+    <aside class="inspector">
+      <div class="panel">
+        <h2 id="var-panel-title">Вариант A</h2>
+        <div id="var-panel-desc" class="variant-desc"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Сценарии для проверки (#125)</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">1. «Карточка техники» во время In-progress workout</span>
+          <div class="btn-wrap" id="scn-tech"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">2. Каталог замены во время In-progress workout</span>
+          <div class="btn-wrap" id="scn-wk-cat"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">3. Замена в редакторе Training day</span>
+          <div class="btn-wrap" id="scn-day"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Живое состояние слота и переходов (#123)</h2>
+        <table class="state-tbl" id="state-tbl"></table>
+      </div>
+    </aside>
+  </section>
+
+  <section id="view-compare" class="compare-wrap" style="display:none">
+    <div class="compare-bar">
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted-foreground,#2E382C)">Сценарий для сравнения рядом:</div>
+      <div class="btn-wrap" id="compare-scenarios"></div>
+    </div>
+    <div class="compare-grid" id="compare-grid"></div>
+  </section>
+</div>
+
+<nav class="proto-switcher" aria-label="Переключатель вариантов прототипа">
+  <button class="proto-sw-arrow" id="sw-prev" type="button" title="Предыдущий вариант (←)">←</button>
+  <span class="proto-sw-label" id="sw-label"></span>
+  <button class="proto-sw-arrow" id="sw-next" type="button" title="Следующий вариант (→)">→</button>
+</nav>
+
+<script>
+(() => {
+  /* ==================== SVG ICONS ==================== */
+  const ICO = {
+    back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    chevR: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    chevD: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    swap: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    revert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>',
+    lock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    search: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+    filter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
+    x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+    muscle: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
+    bodyFree: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2.2"/><path d="M7 10.5l5 1.5 5-1.5M12 12v4.5M9.5 21l2.5-4.5 2.5 4.5"/></svg>',
+    gear: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8v8M18 8v8M4 10v4M20 10v4M6 12h12"/></svg>',
+    gauge: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></svg>',
+    grip: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>',
+    trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    info: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>',
+    list: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h12"/></svg>',
+    check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>'
+  };
+
+  function typeSvg(t, sz = 18) {
+    if (t === 'WEIGHT_AND_REPS') return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/></svg>`;
+    if (t === 'REPS') return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+    if (t === 'DURATION') return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>`;
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.5"/></svg>`;
+  }
+
+  const TYPE_META = {
+    WEIGHT_AND_REPS: { label: 'Вес и повторения', short: 'Вес и повторы', compatGroup: 'REPS_COMPAT', compatLabel: 'Вес и повторы · Повторы' },
+    REPS: { label: 'Повторения', short: 'Повторы', compatGroup: 'REPS_COMPAT', compatLabel: 'Вес и повторы · Повторы' },
+    DURATION: { label: 'Время', short: 'Время', compatGroup: 'DURATION', compatLabel: 'Только время' },
+    DISTANCE: { label: 'Дистанция', short: 'Дистанция', compatGroup: 'DISTANCE', compatLabel: 'Только дистанция' }
+  };
+
+  function isCompat(t1, t2) {
+    return TYPE_META[t1].compatGroup === TYPE_META[t2].compatGroup;
+  }
+
+  /* ==================== SAMPLE EXERCISE CATALOG ==================== */
+  const LONG_NAME_1 = 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке';
+  const LONG_NAME_2 = 'Отжимания на параллельных брусьях с акцентом на нижнюю грудь';
+  const LONG_TECH = 'Установите скамью под углом 30 градусов, плотно сведите лопатки и прижмите стопы к полу. Опускайте гантели по контролируемой дуге 2–3 секунды, удерживая локти под углом около 45 градусов к корпусу. Сделайте короткую паузу в нижней точке без провала в плечах и мощно выжмите гантели вверх до мягкого выпрямления рук.';
+
+  const CATALOG = [
+    {
+      id: 'bench', name: 'Жим штанги лёжа', longName: 'Жим штанги лёжа на горизонтальной скамье средним хватом',
+      type: 'WEIGHT_AND_REPS', primary: 'Грудь', assisting: ['Трицепс', 'Передние дельты'],
+      equip: ['Штанга', 'Скамья'], noEquip: false, diff: 2, diffLbl: 'Средний', custom: false,
+      historyWeight: '82,5', historyReps: '8',
+      steps: ['Сведите лопатки и упритесь стопами в пол.', 'Опустите гриф к нижней части груди под контролем.', 'Выжмите штангу вверх по слегка дуговой траектории.']
+    },
+    {
+      id: 'incline-db', name: 'Жим гантелей на наклонной', longName: LONG_NAME_1,
+      type: 'WEIGHT_AND_REPS', primary: 'Грудь', assisting: ['Передние дельты', 'Трицепс'],
+      equip: ['Гантели', 'Скамья'], noEquip: false, diff: 2, diffLbl: 'Средний', custom: false,
+      historyWeight: '28', historyReps: '10',
+      steps: ['Выставьте угол скамьи 30° и сведите лопатки.', 'Опускайте гантели к верху груди, локти под 45°.', 'Выжмите вверх без соударения гантелей.']
+    },
+    {
+      id: 'dips', name: 'Отжимания на брусьях', longName: LONG_NAME_2,
+      type: 'REPS', primary: 'Грудь', assisting: ['Трицепс', 'Передние дельты'],
+      equip: ['Брусья'], noEquip: false, diff: 2, diffLbl: 'Средний', custom: false,
+      historyWeight: null, historyReps: '10',
+      steps: ['Слегка наклоните корпус вперёд для акцента на грудь.', 'Опуститесь до параллели плеча с полом.', 'Выжмите корпус вверх без рывка.']
+    },
+    {
+      id: 'pushups', name: 'Отжимания от пола', longName: 'Классические отжимания от пола с контролем корпуса',
+      type: 'REPS', primary: 'Грудь', assisting: ['Трицепс', 'Кор'],
+      equip: [], noEquip: true, diff: 1, diffLbl: 'Начальный', custom: false,
+      historyWeight: null, historyReps: '12',
+      steps: ['Держите корпус в одной прямой линии.', 'Коснитесь грудью почти пола, локти под 45°.', 'Плавно выжмитесь в исходное положение.']
+    },
+    {
+      id: 'chest-machine', name: 'Жим в тренажёре сидя', longName: 'Жим от груди в рычажном тренажёре сидя с нейтральным хватом',
+      type: 'WEIGHT_AND_REPS', primary: 'Грудь', assisting: ['Трицепс'],
+      equip: ['Тренажёр'], noEquip: false, diff: 1, diffLbl: 'Начальный', custom: true,
+      historyWeight: null, historyReps: null, // No history -> shows Weight calibration!
+      steps: ['Отрегулируйте сиденье так, чтобы рукояти были на уровне середины груди.', 'Жмите вперёд, не отрывая плечи от спинки.']
+    },
+    {
+      id: 'row-db', name: 'Тяга гантели в наклоне', longName: 'Тяга гантели одной рукой в наклоне с упором коленом в скамью',
+      type: 'WEIGHT_AND_REPS', primary: 'Спина', assisting: ['Бицепс', 'Задние дельты'],
+      equip: ['Гантели', 'Скамья'], noEquip: false, diff: 2, diffLbl: 'Средний', custom: false,
+      historyWeight: '30', historyReps: '10',
+      steps: ['Упритесь рукой и коленом в скамью, спина нейтральна.', 'Тяните гантель к поясу, сводя лопатку.']
+    },
+    {
+      id: 'ohp', name: 'Жим штанги стоя', longName: 'Армейский жим штанги стоя с груди со строгой фиксацией кора',
+      type: 'WEIGHT_AND_REPS', primary: 'Плечи', assisting: ['Трицепс', 'Кор'],
+      equip: ['Штанга'], noEquip: false, diff: 3, diffLbl: 'Продвинутый', custom: false,
+      historyWeight: '45', historyReps: '8',
+      steps: ['Напрягите пресс и ягодицы.', 'Выжмите штангу строго вверх, выводя голову вперёд под гриф.']
+    },
+    {
+      id: 'plank', name: 'Планка на предплечьях', longName: 'Классическая планка на предплечьях с удержанием нейтральной поясницы',
+      type: 'DURATION', primary: 'Пресс', assisting: ['Плечи', 'Ягодицы'],
+      equip: [], noEquip: true, diff: 1, diffLbl: 'Начальный', custom: false,
+      steps: ['Локти строго под плечами, таз не провисает.', 'Дышите ровно, удерживая напряжение в коре.']
+    },
+    {
+      id: 'side-plank', name: 'Боковая планка', longName: 'Боковая планка на предплечье с удержанием прямой линии таза',
+      type: 'DURATION', primary: 'Пресс', assisting: ['Плечи'],
+      equip: [], noEquip: true, diff: 2, diffLbl: 'Средний', custom: false,
+      steps: ['Упритесь предплечьем под плечом и поднимите таз.', 'Удерживайте тело в одной плоскости.']
+    },
+    {
+      id: 'run', name: 'Бег на дорожке', longName: 'Интервальный бег на беговой дорожке в аэробной зоне',
+      type: 'DISTANCE', primary: 'Ноги', assisting: ['Икры', 'Кор'],
+      equip: ['Дорожка'], noEquip: false, diff: 1, diffLbl: 'Начальный', custom: false,
+      steps: ['Поддерживайте ровный каденс и мягкую постановку стопы.']
+    }
+  ];
+
+  function getEx(id) { return CATALOG.find(e => e.id === id) || CATALOG[0]; }
+  function dispName(ex, longNames) { return longNames ? ex.longName : ex.name; }
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  /* ==================== VARIANT METADATA ==================== */
+  const VARIANTS = {
+    A: {
+      key: 'A',
+      name: 'Карточки и зеркальная полоса ⇄',
+      short: 'Эволюция H1+H3 и #114',
+      bullets: [
+        '<b>Карточка техники:</b> раздельные карточки внизу листа — при замене сверху акцентная карточка <code>Вернуть исходное</code> (полное название), под ней <code>Заменить упражнение</code>; при ≥ 1 подходе — приглушённая карточка с 🔒.',
+        '<b>Каталог замены:</b> спокойная строка контекста под шапкой (<code>Вместо: …</code> + пилл допустимых типов), закреплённая карточка возврата наверху списка.',
+        '<b>Быстрая замена в списке:</b> полноразмерная правая полоса <code>⇄</code> за делителем — точное зеркало полосы <code>+</code> из каталога #124.'
+      ]
+    },
+    B: {
+      key: 'B',
+      name: 'Единый паспорт-модуль и липкая полоса',
+      short: 'Максимум ясности на 360 dp',
+      bullets: [
+        '<b>Карточка техники:</b> один составной <code>#141914</code> модуль замены (в духе паспорта H3) — верхняя строка статуса с пилюлей <code>↺ Вернуть</code>, нижняя <code>Заменить упражнение</code>.',
+        '<b>Каталог замены:</b> 2-строчная шапка без лишнего баннера; при повторной замене — <b>липкая полоса возврата прямо под поиском</b> (не уезжает при скролле).',
+        '<b>Быстрая замена в списке:</b> явная текстовая капсула <code>Выбрать</code> справа + метка <code>Другой тип</code> в редакторе дня и предпросмотр <code>Было → Станет</code> в карточке.'
+      ]
+    },
+    C: {
+      key: 'C',
+      name: 'Верхний бейдж и возврат под палец',
+      short: 'Фокус на технике и нижнем хвате',
+      bullets: [
+        '<b>Карточка техники:</b> статус <code>Временная замена · было: …</code> сразу наверху под кикером (виден без скролла техники); внизу 2-колоночный сплит <code>↺ Исходное</code> | <code>⇄ Другое</code>, а при ≥ 1 подходе — тихая пунктирная строка блокировки.',
+        '<b>Каталог замены:</b> несъёмный контекст-чип <code>🔒 Вес / Повторы</code> в строке чипов; при повторной замене <code>↺ Вернуть исходное</code> закреплена <b>в нижнем липком футере</b> (вместо скрытой <code>+ Создать</code>).',
+        '<b>Быстрая замена в списке:</b> лёгкая круглая кнопка <code>⇄</code> справа внутри карточки.'
+      ]
+    }
+  };
+
+  /* ==================== APP STATE ==================== */
+  const urlParams = new URLSearchParams(location.search);
+  const initVar = ['A', 'B', 'C'].includes((urlParams.get('variant') || '').toUpperCase()) ? urlParams.get('variant').toUpperCase() : 'A';
+
+  const state = {
+    variant: initVar,
+    mode: 'single', // 'single' | 'compare'
+    compareScenario: 'tech_replaced',
+    width: 390,
+    longNames: false,
+    screen: 'workout', // 'workout' | 'wk_catalog' | 'wk_detail' | 'day_editor' | 'day_catalog' | 'day_detail'
+    sheet: 'tech', // null | 'tech'
+    // Workout slot state
+    wkOriginalId: 'bench',
+    wkCurrentId: 'bench',
+    wkLoggedSets: 0,
+    wkOtherIds: ['row-db', 'ohp', 'plank'],
+    wkRestRunning: true,
+    wkSoftGuardBound: true,
+    wkExTimerRunning: false,
+    wkLightened: false,
+    // Catalog UI state
+    catSearch: '',
+    catOnlyOwn: false,
+    catMuscleFilter: false,
+    catSelectedId: 'incline-db',
+    // Day editor state
+    dayAlternating: true,
+    dayRule: 'easier',
+    dayExpandedId: 'slot-1',
+    dayJustReplacedId: null,
+    dayLastTransition: null,
+    dayReplacingSlotId: 'slot-1',
+    daySlots: [
+      { id: 'slot-1', exId: 'bench', heavySets: 3, heavyTarget: '8–12', lightSets: 3, lightTarget: '6–10', lightManual: true, progression: true },
+      { id: 'slot-2', exId: 'row-db', heavySets: 3, heavyTarget: '8–12', lightSets: 3, lightTarget: '6–10', lightManual: false, progression: true },
+      { id: 'slot-3', exId: 'plank', heavySets: 3, heavyTarget: '0:45', lightSets: 3, lightTarget: '0:45', lightManual: false, progression: false }
+    ],
+    toast: null
+  };
+
+  function showToast(msg) {
+    state.toast = msg;
+    render();
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { state.toast = null; render(); }, 2800);
+  }
+
+  function setVariant(v, pushUrl = true) {
+    state.variant = v;
+    if (pushUrl) {
+      try {
+        const u = new URL(location.href);
+        u.searchParams.set('variant', v);
+        history.replaceState(null, '', u.toString());
+      } catch (_) {}
+    }
+    render();
+  }
+
+  /* ==================== SCENARIOS ==================== */
+  function applyScenario(s, id) {
+    s.catSearch = '';
+    s.catOnlyOwn = false;
+    s.catMuscleFilter = false;
+    s.toast = null;
+    if (id === 'tech_0') {
+      s.screen = 'workout'; s.sheet = 'tech';
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'bench'; s.wkLoggedSets = 0;
+      s.wkRestRunning = false; s.wkSoftGuardBound = false;
+    } else if (id === 'tech_locked') {
+      s.screen = 'workout'; s.sheet = 'tech';
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'bench'; s.wkLoggedSets = 2;
+      s.wkRestRunning = true; s.wkSoftGuardBound = true;
+    } else if (id === 'tech_replaced') {
+      s.screen = 'workout'; s.sheet = 'tech';
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'incline-db'; s.wkLoggedSets = 0;
+      s.wkRestRunning = true; s.wkSoftGuardBound = false;
+    } else if (id === 'wk_cat_first') {
+      s.screen = 'wk_catalog'; s.sheet = null;
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'bench'; s.wkLoggedSets = 0;
+    } else if (id === 'wk_cat_repeat') {
+      s.screen = 'wk_catalog'; s.sheet = null;
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'incline-db'; s.wkLoggedSets = 0;
+    } else if (id === 'wk_cat_empty_dist') {
+      s.screen = 'wk_catalog'; s.sheet = null;
+      s.wkOriginalId = 'run'; s.wkCurrentId = 'run'; s.wkLoggedSets = 0;
+    } else if (id === 'wk_cat_detail') {
+      s.screen = 'wk_detail'; s.sheet = null;
+      s.wkOriginalId = 'bench'; s.wkCurrentId = 'incline-db'; s.wkLoggedSets = 0;
+      s.catSelectedId = 'chest-machine';
+    } else if (id === 'day_editor') {
+      s.screen = 'day_editor'; s.sheet = null;
+      s.dayReplacingSlotId = 'slot-1'; s.dayExpandedId = 'slot-1';
+    } else if (id === 'day_cat') {
+      s.screen = 'day_catalog'; s.sheet = null;
+      s.dayReplacingSlotId = 'slot-1'; s.dayExpandedId = 'slot-1';
+    } else if (id === 'day_detail_incompat') {
+      s.screen = 'day_detail'; s.sheet = null;
+      s.dayReplacingSlotId = 'slot-1'; s.dayExpandedId = 'slot-1';
+      s.catSelectedId = 'plank';
+    }
+  }
+
+  /* ==================== RENDER HELPERS ==================== */
+  function diffBarsHtml(diff, sm = false) {
+    return `<span class="diff-bars ${sm ? 'sm' : ''}">${[1,2,3].map(n => `<i class="${n <= diff ? 'on' : ''}"></i>`).join('')}</span>`;
+  }
+
+  function renderStatusbar() {
+    return `<div class="statusbar"><span>19:42</span><span style="opacity:.85">5G · 84%</span></div>`;
+  }
+
+  function renderWorkoutAndSheet(s, variant) {
+    const cur = getEx(s.wkCurrentId);
+    const orig = getEx(s.wkOriginalId);
+    const isReplaced = s.wkCurrentId !== s.wkOriginalId;
+    const isLocked = s.wkLoggedSets >= 1;
+    const title = dispName(cur, s.longNames);
+    const origTitle = dispName(orig, s.longNames);
+    const isLong = title.length > 26;
+    const planLabel = cur.type === 'DURATION' ? '3 × 0:45' : cur.type === 'DISTANCE' ? '1 × 1 км' : '3 × 8–12';
+    const hasHistory = !!cur.historyWeight || !!cur.historyReps;
+    const showCal = cur.type === 'WEIGHT_AND_REPS' && !hasHistory && s.wkLoggedSets === 0;
+
+    // Rows preview
+    const rows = [1, 2, 3].map(n => {
+      const done = n <= s.wkLoggedSets;
+      const wVal = cur.type === 'REPS' ? '—' : (cur.historyWeight || (done ? '60' : '—'));
+      const rVal = cur.historyReps || (done ? '10' : '10');
+      return `<div class="set-row ${done ? 'logged' : ''}">
+        <span class="set-num">${n}</span>
+        <div class="set-cell">${wVal}</div>
+        <div class="set-cell">${rVal}</div>
+        <button type="button" class="set-chk" data-act="wk-toggle-set" data-v="${n}">${done ? ICO.check : (s.wkRestRunning && s.wkSoftGuardBound && n === s.wkLoggedSets + 1 ? '⏳' : '✓')}</button>
+      </div>`;
+    }).join('');
+
+    // Technique sheet replacement block per variant
+    let topReplacedBanner = '';
+    let repSection = '';
+    if (variant === 'A') {
+      if (isLocked) {
+        repSection = `
+          ${isReplaced ? `<div style="font-size:12px;color:var(--f-muted);padding:0 2px">Временная замена · было: <strong style="color:var(--f-text)">${esc(origTitle)}</strong></div>` : ''}
+          <button type="button" class="rep-card-a" disabled>
+            <span class="rep-ico muted">${ICO.lock}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">Доступно до записи первого подхода</span>
+            </span>
+          </button>`;
+      } else if (isReplaced) {
+        repSection = `
+          <div class="m d" style="font-size:11.5px;margin-top:2px">Временная замена</div>
+          <button type="button" class="rep-card-a revert" data-act="wk-revert">
+            <span class="rep-ico revert">${ICO.revert}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:12px;color:var(--f-on-primary-container);font-weight:600">Вернуть исходное</span>
+              <span style="display:block;font-size:14px;font-weight:700;color:var(--f-text);overflow-wrap:anywhere">${esc(origTitle)}</span>
+            </span>
+          </button>
+          <button type="button" class="rep-card-a" data-act="open-wk-cat">
+            <span class="rep-ico">${ICO.swap}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · из каталога</span>
+            </span>
+            <span class="m">${ICO.chevR}</span>
+          </button>`;
+      } else {
+        repSection = `
+          <button type="button" class="rep-card-a" data-act="open-wk-cat">
+            <span class="rep-ico">${ICO.swap}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · из каталога</span>
+            </span>
+            <span class="m">${ICO.chevR}</span>
+          </button>`;
+      }
+    } else if (variant === 'B') {
+      repSection = `
+        <div class="rep-mod-b ${isReplaced && !isLocked ? 'replaced' : ''}">
+          ${isReplaced ? `
+            <button type="button" class="rep-mod-b-row revert-top" ${isLocked ? 'disabled' : 'data-act="wk-revert"'}>
+              <span class="rep-dot-b"></span>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:11.5px;color:var(--f-on-primary-container);font-weight:600">Замена на сегодня · исходное</span>
+                <span style="display:block;font-size:13.5px;font-weight:650;color:var(--f-text);overflow-wrap:anywhere">${esc(origTitle)}</span>
+              </span>
+              ${!isLocked ? `<span class="rep-pill-b">${ICO.revert} Вернуть</span>` : `<span style="color:var(--f-dim)">${ICO.lock}</span>`}
+            </button>` : ''}
+          <button type="button" class="rep-mod-b-row" ${isLocked ? 'disabled' : 'data-act="open-wk-cat"'}>
+            <span class="rep-ico ${isLocked ? 'muted' : ''}">${isLocked ? ICO.lock : ICO.swap}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">${isReplaced && !isLocked ? 'Выбрать другую замену' : 'Заменить упражнение'}</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">${isLocked ? 'Доступно до записи первого подхода' : 'Только на сегодняшнюю тренировку · из каталога'}</span>
+            </span>
+            ${!isLocked ? `<span class="m">${ICO.chevR}</span>` : ''}
+          </button>
+        </div>`;
+    } else {
+      // Variant C: top status pill + split bottom or quiet lock row
+      if (isReplaced) {
+        topReplacedBanner = `
+          <div class="rep-top-badge-c">
+            <span style="color:var(--f-primary);flex:none;margin-top:1px">${ICO.swap}</span>
+            <span style="min-width:0;overflow-wrap:anywhere">Замена на сегодня · исходное: <strong style="color:var(--f-text)">${esc(origTitle)}</strong></span>
+          </div>`;
+      }
+      if (isLocked) {
+        repSection = `
+          <div class="rep-lock-c">
+            <span style="flex:none;display:flex">${ICO.lock}</span>
+            <span><strong style="color:var(--f-muted)">Заменить упражнение</strong> · Доступно до записи первого подхода</span>
+          </div>`;
+      } else if (isReplaced) {
+        repSection = `
+          <div class="rep-split-c">
+            <button type="button" class="rep-split-btn-c revert" data-act="wk-revert">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700">${ICO.revert} Вернуть исходное</span>
+              <span style="font-size:12px;color:var(--f-text);opacity:0.9;overflow-wrap:anywhere;line-height:1.3">${esc(origTitle)}</span>
+            </button>
+            <button type="button" class="rep-split-btn-c other" data-act="open-wk-cat">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--f-primary)">${ICO.swap} Другое</span>
+              <span style="font-size:12px;color:var(--f-muted);line-height:1.3">На сегодня · из каталога</span>
+            </button>
+          </div>`;
+      } else {
+        repSection = `
+          <button type="button" class="rep-card-a" data-act="open-wk-cat">
+            <span class="rep-ico">${ICO.swap}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · из каталога</span>
+            </span>
+            <span class="m">${ICO.chevR}</span>
+          </button>`;
+      }
+    }
+
+    const techBlock = s.longNames
+      ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH}</div></div>`
+      : `<div class="tech-card">${cur.steps.map((st, i) => `<div class="tech-step"><span class="tech-step-num">${i + 1}</span><span>${esc(st)}</span></div>`).join('')}</div>`;
+
+    const sheetHtml = s.sheet === 'tech' ? `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="m d" style="font-size:11.5px">Упражнение 1 из 4 · План ${planLabel}</div>
+          <h2 class="d" style="margin:0;font-size:23px;line-height:26px;overflow-wrap:anywhere">${esc(title)}</h2>
+          ${topReplacedBanner}
+          <div style="font-size:12.5px;color:var(--f-muted);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+            <strong style="color:var(--f-on-primary-container)">${esc(cur.primary)}</strong>
+            ${cur.assisting.length ? `<span>· ${esc(cur.assisting.join(', '))}</span>` : ''}
+            <span>· ${cur.noEquip ? 'Без инвентаря' : esc(cur.equip.join(', '))}</span>
+            <span style="display:inline-flex;align-items:center;gap:5px">· ${diffBarsHtml(cur.diff)} ${esc(cur.diffLbl)}</span>
+          </div>
+          <div class="m d" style="font-size:11.5px;margin-top:2px">Техника выполнения</div>
+          ${techBlock}
+          ${repSection}
+        </div>
+      </div>` : '';
+
+    return `
+      ${renderStatusbar()}
+      <div class="wk-top">
+        <div style="display:flex;align-items:center;gap:4px">
+          <button type="button" class="wk-back">${ICO.back}</button>
+          <span class="wk-pill"><span class="lamp heavy"></span>Тяжёлая неделя</span>
+        </div>
+        <button type="button" class="wk-ease-btn ${s.wkLightened ? 'on' : ''}" data-act="toggle-ease">
+          ${s.wkLightened ? '<span class="lamp ease"></span>Облегчена' : 'Облегчить'}
+        </button>
+      </div>
+      <div class="wk-scroll">
+        <div class="wk-head">
+          <button type="button" class="wk-title-btn" data-act="open-tech">
+            <h1 class="d wk-title ${isLong ? 'long' : ''}">${esc(title)}</h1>
+            <div class="wk-plan-row">
+              <span class="wk-plan-chip">План ${planLabel}</span>
+              ${showCal ? '<span class="wk-cal-chip">Подобрать вес</span>' : ''}
+            </div>
+            <span style="font-size:11.5px;color:var(--f-dim)">Тап по названию → техника и замена</span>
+          </button>
+          <div class="rest-ring ${s.wkRestRunning ? 'run' : ''}">
+            <span class="t">${s.wkRestRunning ? '1:42' : '2:00'}</span>
+            <span class="l">${s.wkRestRunning ? 'отдых' : 'старт'}</span>
+          </div>
+        </div>
+        <div class="set-tbl">
+          <div class="set-hdr"><span>№</span><span>Вес, кг</span><span>Повторы</span><span></span></div>
+          ${rows}
+        </div>
+      </div>
+      <div class="wk-bottom">
+        <button type="button" class="wk-nav-btn">${ICO.back}</button>
+        <button type="button" class="wk-plan-btn">${ICO.list} План · 1/4</button>
+        <button type="button" class="wk-nav-btn" style="transform:rotate(180deg)">${ICO.back}</button>
+      </div>
+      ${sheetHtml}
+    `;
+  }
+
+  function renderReplaceCatalog(s, variant, mode) {
+    // mode: 'workout' | 'day'
+    const isWk = mode === 'workout';
+    const currentId = isWk ? s.wkCurrentId : (s.daySlots.find(x => x.id === s.dayReplacingSlotId)?.exId || 'bench');
+    const curEx = getEx(currentId);
+    const origEx = isWk ? getEx(s.wkOriginalId) : null;
+    const isRepeatWk = isWk && s.wkCurrentId !== s.wkOriginalId;
+    const presentIds = new Set(isWk ? s.wkOtherIds : s.daySlots.filter(x => x.id !== s.dayReplacingSlotId).map(x => x.exId));
+
+    // Base eligible pool: exclude currently active exercise of the slot; in workout mode restrict to compatible ExerciseType
+    const basePool = CATALOG.filter(ex => {
+      if (ex.id === currentId) return false;
+      if (isWk && !isCompat(curEx.type, ex.type)) return false;
+      return true;
+    });
+
+    // Apply user search / filters
+    const q = s.catSearch.trim().toLowerCase().replace(/ё/g, 'е');
+    const words = q ? q.split(/\s+/) : [];
+    const filtered = basePool.filter(ex => {
+      if (s.catOnlyOwn && !ex.custom) return false;
+      if (s.catMuscleFilter && ex.primary !== 'Грудь') return false;
+      if (words.length) {
+        const hay = dispName(ex, s.longNames).toLowerCase().replace(/ё/g, 'е');
+        if (!words.every(w => hay.includes(w))) return false;
+      }
+      return true;
+    }).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+    const fCnt = (s.catOnlyOwn ? 1 : 0) + (s.catMuscleFilter ? 1 : 0);
+    const curNm = dispName(curEx, s.longNames);
+    const origNm = origEx ? dispName(origEx, s.longNames) : '';
+    const scopeTxt = isWk ? TYPE_META[curEx.type].compatLabel : 'Все типы · редактор дня';
+
+    // Topbar & context per variant
+    let topbarHtml = '';
+    let ctxHtml = '';
+    if (variant === 'A') {
+      topbarHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="${isWk ? 'back-to-tech' : 'back-to-day'}">${ICO.back}</button>
+          <h1 class="d cat-top-title">Замена упражнения</h1>
+        </div>`;
+      ctxHtml = `
+        <div class="rep-ctx-a">
+          <div style="min-width:0;flex:1">
+            <span class="rep-ctx-lbl">${isWk ? 'Заменяем на сегодня' : 'Заменяем в дне'}</span>
+            <span class="rep-ctx-name">${esc(curNm)}</span>
+          </div>
+          <span class="rep-scope-pill ${isWk ? 'compat' : ''}">${esc(isWk ? TYPE_META[curEx.type].compatLabel : 'Любой тип')}</span>
+        </div>`;
+    } else if (variant === 'B') {
+      topbarHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="${isWk ? 'back-to-tech' : 'back-to-day'}">${ICO.back}</button>
+          <div style="flex:1;min-width:0">
+            <h1 class="d cat-top-title">Заменить упражнение</h1>
+            <div class="cat-top-sub">Вместо: ${esc(curNm)} · ${esc(isWk ? TYPE_META[curEx.type].compatLabel : 'все типы')}</div>
+          </div>
+        </div>`;
+    } else {
+      topbarHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="${isWk ? 'back-to-tech' : 'back-to-day'}">${ICO.back}</button>
+          <h1 class="d cat-top-title">Замена · ${esc(isWk ? 'на сегодня' : 'в дне')}</h1>
+        </div>`;
+    }
+
+    // Chips bar (Variant C includes locked type-scope chip)
+    const chipsHtml = `
+      <div class="cat-chips-bar">
+        ${variant === 'C' && isWk ? `<span class="cat-chip-lock">${ICO.lock} ${esc(TYPE_META[curEx.type].compatLabel)}</span>` : ''}
+        ${s.catOnlyOwn
+          ? `<button type="button" class="cat-chip-rm" data-act="cat-toggle-own"><span>Только свои</span><span>${ICO.x}</span></button>`
+          : `<button type="button" class="cat-quick-own" data-act="cat-toggle-own">Только свои</button>`}
+        ${s.catMuscleFilter
+          ? `<button type="button" class="cat-chip-rm" data-act="cat-toggle-muscle"><span>Грудь</span><span>${ICO.x}</span></button>`
+          : `<button type="button" class="cat-quick-own" data-act="cat-toggle-muscle">Мышца: Грудь</button>`}
+        ${fCnt >= 2 ? `<button type="button" class="cat-quick-own" data-act="cat-reset-filters">Сбросить</button>` : ''}
+      </div>`;
+
+    // Variant B sticky revert bar under chips
+    const stickyTopRevertB = (variant === 'B' && isRepeatWk) ? `
+      <button type="button" class="rep-sticky-top-b" data-act="wk-revert-from-cat">
+        <span class="rep-ico revert" style="width:32px;height:32px;border-radius:10px">${ICO.revert}</span>
+        <span style="flex:1;min-width:0">
+          <span style="display:block;font-size:11px;color:var(--f-on-primary-container);font-weight:700;text-transform:uppercase;letter-spacing:0.3px">Вернуть исходное</span>
+          <span class="cat-cl2" style="font-size:13.5px;font-weight:650;color:var(--f-text)">${esc(origNm)}</span>
+        </span>
+        <span style="font-size:12px;font-weight:700;color:var(--f-primary);flex:none">Вернуть</span>
+      </button>` : '';
+
+    // Variant A top-of-list revert card
+    const listTopRevertA = (variant === 'A' && isRepeatWk) ? `
+      <div class="rep-list-revert-a">
+        <button type="button" class="rep-list-revert-a-main" data-act="wk-revert-from-cat">
+          <span class="rep-ico revert" style="width:36px;height:36px">${ICO.revert}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11.5px;font-weight:700;color:var(--f-on-primary-container)">Вернуть исходное упражнение</div>
+            <div class="cat-cl2" style="font-size:14.5px;font-weight:650;color:var(--f-text);margin-top:1px">${esc(origNm)}</div>
+          </div>
+        </button>
+        <button type="button" class="rep-list-revert-a-act" data-act="wk-revert-from-cat" aria-label="Вернуть исходное">${ICO.revert}</button>
+      </div>` : '';
+
+    // List body or empty state
+    let listBody = '';
+    if (basePool.length === 0 && isWk) {
+      // Truly no other compatible exercises in catalog (e.g. Distance)
+      listBody = `
+        <div class="cat-empty">
+          <div class="cat-empty-ico">${typeSvg(curEx.type, 24)}</div>
+          <h3 style="margin:0;font-size:16px">Других упражнений этого типа пока нет</h3>
+          <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">Во время тренировки можно заменить упражнение только на совместимый тип («${esc(TYPE_META[curEx.type].label)}»). Добавить своё упражнение можно в Настройках → Каталог.</p>
+          <button type="button" class="ob" style="margin-top:4px" data-act="back-to-tech">Вернуться к тренировке</button>
+        </div>`;
+    } else if (filtered.length === 0) {
+      listBody = `
+        ${listTopRevertA}
+        <div class="cat-empty">
+          <div class="cat-empty-ico">${ICO.search}</div>
+          <h3 style="margin:0;font-size:16px">Ничего не найдено</h3>
+          <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">${fCnt ? 'Попробуйте сбросить фильтры или изменить запрос.' : (isWk ? 'Среди совместимых упражнений такого названия нет.' : 'В каталоге нет такого упражнения — можно добавить своё.')}</p>
+          <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px">
+            ${fCnt ? `<button type="button" class="ob" data-act="cat-reset-filters">Сбросить фильтры (${fCnt})</button>` : ''}
+            ${!isWk ? `<button type="button" class="pb" data-act="day-create-stub">+ Создать упражнение</button>` : ''}
+          </div>
+        </div>`;
+    } else {
+      const hintTxt = variant === 'A' ? 'Тап — карточка · ⇄ заменить' : variant === 'B' ? 'Тап — карточка · кнопка — заменить' : 'Тап — карточка · ⇄ сразу';
+      listBody = `
+        ${listTopRevertA}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;font-size:11.5px;color:var(--f-dim)">
+          <span>Доступно: ${filtered.length}</span>
+          <span>${hintTxt}</span>
+        </div>` +
+        filtered.map(ex => {
+          const nm = dispName(ex, s.longNames);
+          const already = presentIds.has(ex.id);
+          const incomp = !isWk && !isCompat(curEx.type, ex.type);
+          const rightAction = variant === 'A'
+            ? `<button type="button" class="cat-ex-rail-a" data-act="${isWk ? 'wk-pick-replace' : 'day-pick-replace'}" data-v="${ex.id}" aria-label="Заменить">${ICO.swap}</button>`
+            : variant === 'B'
+              ? `<div class="cat-ex-pill-wrap-b"><button type="button" class="cat-ex-pill-b" data-act="${isWk ? 'wk-pick-replace' : 'day-pick-replace'}" data-v="${ex.id}">Выбрать</button></div>`
+              : `<div class="cat-ex-circ-wrap-c"><button type="button" class="cat-ex-circ-c" data-act="${isWk ? 'wk-pick-replace' : 'day-pick-replace'}" data-v="${ex.id}" aria-label="Заменить">${ICO.swap}</button></div>`;
+          return `
+            <div class="cat-ex-card">
+              <button type="button" class="cat-ex-main" data-act="${isWk ? 'wk-open-detail' : 'day-open-detail'}" data-v="${ex.id}">
+                <span class="cat-type-ico t-${ex.type}">${typeSvg(ex.type, 18)}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:flex-start;gap:5px;flex-wrap:wrap">
+                    <span class="cat-cl2" style="font-size:14.5px;font-weight:600;line-height:19px;flex:1;min-width:110px">${esc(nm)}</span>
+                    ${ex.custom ? '<span class="cat-badge-own">Своё</span>' : ''}
+                    ${already ? `<span class="cat-badge-day">${isWk ? 'В тренировке' : 'В дне'}</span>` : ''}
+                    ${variant === 'B' && incomp ? '<span class="cat-badge-incompat">Другой тип</span>' : ''}
+                  </div>
+                  <div class="cat-sym-line">
+                    <span class="cat-sym-item cat-sym-m">${ICO.muscle}<span>${esc(ex.primary)}</span></span>
+                    <span class="cat-sym-item ${ex.noEquip ? 'cat-sym-free' : 'cat-sym-e'}">${ex.noEquip ? ICO.bodyFree : ICO.gear}<span>${ex.noEquip ? 'Без инвентаря' : esc(ex.equip[0])}</span></span>
+                    <span class="cat-sym-item" style="margin-left:auto">${diffBarsHtml(ex.diff, true)}</span>
+                  </div>
+                </div>
+              </button>
+              ${rightAction}
+            </div>`;
+        }).join('');
+    }
+
+    // Sticky footer: Day editor -> "+ Создать упражнение"; Workout Variant C (repeat) -> sticky bottom revert
+    let stickyFoot = '';
+    let hasSticky = false;
+    if (!isWk && filtered.length > 0) {
+      hasSticky = true;
+      stickyFoot = `<div class="cat-sticky-foot"><button type="button" class="pb" data-act="day-create-stub">+ Создать упражнение</button></div>`;
+    } else if (isWk && variant === 'C' && isRepeatWk) {
+      hasSticky = true;
+      stickyFoot = `
+        <div class="cat-sticky-foot">
+          <button type="button" class="rep-foot-revert-c" data-act="wk-revert-from-cat">
+            <span class="rep-ico revert" style="width:34px;height:34px;border-radius:11px">${ICO.revert}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:11px;font-weight:700;color:var(--f-on-primary-container)">Вернуть исходное</span>
+              <span class="cat-cl2" style="font-size:13.5px;font-weight:650;color:var(--f-text)">${esc(origNm)}</span>
+            </span>
+          </button>
+        </div>`;
+    }
+
+    return `
+      ${renderStatusbar()}
+      ${topbarHtml}
+      ${ctxHtml}
+      <div class="cat-search-row">
+        <div class="cat-search-box">
+          <span class="m" style="display:flex">${ICO.search}</span>
+          <input type="text" maxlength="100" data-cat-in="search" value="${esc(s.catSearch)}" placeholder="Поиск по названию">
+          ${s.catSearch ? `<button type="button" class="cat-clear-x" data-act="cat-clear-search">${ICO.x}</button>` : ''}
+        </div>
+        <button type="button" class="cat-filter-btn ${fCnt ? 'active' : ''}" data-act="cat-toggle-muscle" title="Фильтры">
+          ${ICO.filter}${fCnt ? `<span class="cat-filter-cnt">${fCnt}</span>` : ''}
+        </button>
+      </div>
+      ${chipsHtml}
+      ${stickyTopRevertB}
+      <div class="cat-scroll ${hasSticky ? 'has-sticky' : ''}">${listBody}</div>
+      ${stickyFoot}
+    `;
+  }
+
+  function renderReplaceDetail(s, variant, mode) {
+    const isWk = mode === 'workout';
+    const ex = getEx(s.catSelectedId);
+    const nm = dispName(ex, s.longNames);
+    const curSlot = isWk ? null : s.daySlots.find(x => x.id === s.dayReplacingSlotId);
+    const curEx = getEx(isWk ? s.wkCurrentId : (curSlot ? curSlot.exId : 'bench'));
+    const presentIds = new Set(isWk ? s.wkOtherIds : s.daySlots.filter(x => x.id !== s.dayReplacingSlotId).map(x => x.exId));
+    const already = presentIds.has(ex.id);
+    const incomp = !isWk && !isCompat(curEx.type, ex.type);
+
+    const ctaText = isWk
+      ? (variant === 'C' ? 'Заменить на сегодня' : 'Заменить упражнение')
+      : (variant === 'C' ? 'Заменить в дне' : 'Выбрать для замены');
+
+    const incompatBlock = incomp
+      ? (variant === 'B'
+        ? `<div class="incompat-notice"><span style="flex:none;margin-top:1px">${ICO.info}</span><span><strong>Смена типа записи:</strong> ${curSlot.heavySets} × ${curSlot.heavyTarget} → <strong>${curSlot.heavySets} × Без цели</strong> · лёгкая неделя сбросится к «авто», Прогрессия — выкл.</span></div>`
+        : `<div class="incompat-notice"><span style="flex:none;margin-top:1px">${ICO.info}</span><span>Другой тип записи: сохранятся только подходы (${curSlot.heavySets}), целевые значения сбросятся в «Без цели», а Прогрессия выставится по умолчанию для типа «${esc(TYPE_META[ex.type].label)}».</span></div>`)
+      : '';
+
+    const techBlock = s.longNames
+      ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH}</div></div>`
+      : `<div class="tech-card">${ex.steps.map((st, i) => `<div class="tech-step"><span class="tech-step-num">${i + 1}</span><span>${esc(st)}</span></div>`).join('')}</div>`;
+
+    return `
+      ${renderStatusbar()}
+      <div class="cat-topbar">
+        <button type="button" class="cat-back" data-act="${isWk ? 'open-wk-cat' : 'open-day-cat'}">${ICO.back}</button>
+        <h1 class="d cat-top-title">Упражнение</h1>
+      </div>
+      <div class="cat-scroll has-sticky">
+        <div style="padding:2px 2px 12px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+            <span class="cat-badge-own">${ex.custom ? 'Своё упражнение' : 'Встроенное'}</span>
+            ${already ? `<span class="cat-badge-day">${isWk ? 'Уже в тренировке' : 'Уже в дне'}</span>` : ''}
+          </div>
+          <h2 class="d" style="margin:0;font-size:24px;line-height:27px;overflow-wrap:anywhere">${esc(nm)}</h2>
+        </div>
+        ${incompatBlock}
+        <div class="cat-passport">
+          <div class="cat-pass-row">
+            <span class="cat-type-ico t-${ex.type}" style="width:34px;height:34px;border-radius:10px">${typeSvg(ex.type, 17)}</span>
+            <div style="flex:1;min-width:0"><div class="cat-pass-lbl">Тип записи</div><div class="cat-pass-val">${esc(TYPE_META[ex.type].label)}</div></div>
+          </div>
+          <div class="cat-pass-row">
+            <span class="cat-pass-ico" style="color:var(--f-on-primary-container)">${ICO.muscle}</span>
+            <div style="flex:1;min-width:0">
+              <div class="cat-pass-lbl">Мышцы</div>
+              <div class="cat-pass-val" style="color:var(--f-on-primary-container)">${esc(ex.primary)}</div>
+              ${ex.assisting.length ? `<div style="font-size:12px;color:var(--f-muted);margin-top:2px">Вспомогательные: ${esc(ex.assisting.join(', '))}</div>` : ''}
+            </div>
+          </div>
+          <div class="cat-pass-row">
+            <span class="cat-pass-ico" style="color:${ex.noEquip ? '#8CE8C2' : 'var(--f-muted)'}">${ex.noEquip ? ICO.bodyFree : ICO.gear}</span>
+            <div style="flex:1;min-width:0">
+              <div class="cat-pass-lbl">Инвентарь</div>
+              <div class="cat-pass-val">${ex.noEquip ? '<span style="color:#8CE8C2">Без инвентаря</span>' : esc(ex.equip.join(', '))}</div>
+            </div>
+          </div>
+          <div class="cat-pass-row">
+            <span class="cat-pass-ico">${ICO.gauge}</span>
+            <div style="flex:1;min-width:0">
+              <div class="cat-pass-lbl">Сложность техники</div>
+              <div class="cat-pass-val"><span style="display:inline-flex;align-items:center;gap:8px">${diffBarsHtml(ex.diff)} ${esc(ex.diffLbl)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="m d" style="font-size:12px;margin:0 0 8px 2px">Техника выполнения</div>
+        ${techBlock}
+      </div>
+      <div class="cat-sticky-foot solid">
+        ${isWk && variant === 'A' ? `<div style="font-size:11.5px;color:var(--f-muted);text-align:center;margin-bottom:7px">Только на сегодняшнюю тренировку · план программы не изменится</div>` : ''}
+        <button type="button" class="pb" data-act="${isWk ? 'wk-pick-replace' : 'day-pick-replace'}" data-v="${ex.id}">${ICO.swap} ${ctaText}</button>
+      </div>
+    `;
+  }
+
+  function renderDayEditor(s) {
+    const cards = s.daySlots.map((slot, idx) => {
+      const ex = getEx(slot.exId);
+      const nm = dispName(ex, s.longNames);
+      const exp = s.dayExpandedId === slot.id;
+      const just = s.dayJustReplacedId === slot.id;
+      const showLight = slot.progression || slot.lightManual;
+      const hTxt = `${slot.heavySets} × ${slot.heavyTarget || 'Без цели'}`;
+      const lTxt = `${slot.lightSets} × ${slot.lightTarget || 'Без цели'}`;
+      const summary = !showLight
+        ? `<div class="pe-summary-line"><span class="pe-pill plain">${hTxt}</span><span style="font-size:11px;color:var(--f-dim)">· без прогрессии (= лёгкая)</span></div>`
+        : `<div class="pe-summary-line">
+            <span class="pe-pill heavy"><span class="lamp heavy"></span>${hTxt}</span>
+            <span style="color:var(--f-dim);font-size:11px">→</span>
+            <span class="pe-pill ${slot.lightManual ? 'light-manual' : 'light-auto'}"><span class="lamp light"></span>${lTxt}${slot.lightManual ? ' · ручн.' : ''}</span>
+          </div>`;
+
+      const body = exp ? `
+        <div class="pe-ex-body">
+          <div class="pe-prog-bar">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="font-size:12.5px;font-weight:600">Прогрессия</span>
+              <span style="font-size:11px;color:var(--f-dim)">${slot.progression ? 'советы и авто-лёгкая' : 'выкл.'}</span>
+            </div>
+            <button type="button" class="pe-sw ${slot.progression ? 'on' : ''}" data-act="day-toggle-prog" data-v="${slot.id}"><i></i></button>
+          </div>
+          <div class="pe-ex-inner">
+            <div class="pe-tblock ${showLight ? 'heavy' : ''}">
+              <div class="pe-thead">
+                <span style="display:inline-flex;align-items:center;gap:6px;color:${showLight ? '#FFD8AA' : 'var(--f-text)'}">${showLight ? '<span class="lamp heavy"></span>Тяжёлая неделя' : 'Цель по плану'}</span>
+                <span style="font-size:11px;color:var(--f-dim)">${esc(TYPE_META[ex.type].short)}</span>
+              </div>
+              <div class="pe-tgrid">
+                <div class="pe-val-box">${slot.heavySets} подх.</div>
+                <div class="pe-val-box ${slot.heavyTarget ? '' : 'empty'}">${slot.heavyTarget || 'Без цели'}</div>
+              </div>
+            </div>
+            ${showLight ? `
+              <div class="pe-tblock ${slot.lightManual ? 'light-manual' : 'light-auto'}">
+                <div class="pe-thead">
+                  <span style="display:inline-flex;align-items:center;gap:6px;color:var(--load-light-text)"><span class="lamp light"></span>Лёгкая неделя</span>
+                  <span style="font-size:11px;color:${slot.lightManual ? 'var(--load-light)' : 'var(--f-dim)'}">${slot.lightManual ? 'вручную' : 'авто'}</span>
+                </div>
+                <div class="pe-tgrid">
+                  <div class="pe-val-box">${slot.lightSets} подх.</div>
+                  <div class="pe-val-box ${slot.lightTarget ? '' : 'empty'}">${slot.lightTarget || 'Без цели'}</div>
+                </div>
+              </div>` : `
+              <div style="padding:8px 10px;border-radius:12px;border:1px dashed #2B536D;font-size:12px;color:var(--f-muted);display:flex;align-items:center;justify-content:space-between">
+                <span>Лёгкая неделя — как тяжёлая</span>
+                <span style="color:var(--load-light);font-weight:600">Задать вручную</span>
+              </div>`}
+          </div>
+          <div class="pe-ex-acts">
+            <button type="button" class="pe-ex-rep" data-act="day-start-replace" data-v="${slot.id}">${ICO.swap}<span>Заменить упражнение</span></button>
+            <button type="button" class="pe-ex-del" type="button">${ICO.trash}<span>Удалить</span></button>
+          </div>
+        </div>` : '';
+
+      return `
+        <div class="pe-ex-card ${exp ? 'expanded' : ''} ${just ? 'just-replaced' : ''}">
+          <div class="pe-ex-head">
+            <span class="pe-ex-grip">${ICO.grip}</span>
+            <button type="button" class="pe-ex-main" data-act="day-toggle-slot" data-v="${slot.id}">
+              <div style="flex:1;min-width:0">
+                <div class="pe-ex-name">${idx + 1}. ${esc(nm)}</div>
+                ${summary}
+              </div>
+              <span style="color:${exp ? 'var(--f-primary)' : 'var(--f-dim)'};transform:${exp ? 'rotate(180deg)' : 'none'};display:inline-flex">${ICO.chevD}</span>
+            </button>
+          </div>
+          ${body}
+        </div>`;
+    }).join('');
+
+    return `
+      ${renderStatusbar()}
+      <div class="pe-top">
+        <button type="button" class="wk-back">${ICO.back}</button>
+        <span class="pe-top-tag"><span class="lamp heavy"></span><span class="lamp light"></span>Легче подходы</span>
+      </div>
+      <div class="pe-scroll">
+        <h1 class="pe-h1">Тренировочный день</h1>
+        <div style="font-size:12px;color:var(--f-muted);margin-bottom:8px">День А · Верх тела (позиция заменяемой карточки сохраняется)</div>
+        <div class="pe-kicker"><span>Упражнения (${s.daySlots.length})</span><span style="font-size:11px;text-transform:none;font-weight:500;color:var(--f-dim)">раскрытая карточка</span></div>
+        ${cards}
+        <button type="button" class="ob" style="margin-top:8px">+ Добавить упражнение</button>
+      </div>
+      <div class="pe-foot"><button type="button" class="pb">Сохранить день</button></div>
+    `;
+  }
+
+  function renderPhoneContent(s, variant) {
+    let html = '';
+    if (s.screen === 'workout') html = renderWorkoutAndSheet(s, variant);
+    else if (s.screen === 'wk_catalog') html = renderReplaceCatalog(s, variant, 'workout');
+    else if (s.screen === 'wk_detail') html = renderReplaceDetail(s, variant, 'workout');
+    else if (s.screen === 'day_editor') html = renderDayEditor(s);
+    else if (s.screen === 'day_catalog') html = renderReplaceCatalog(s, variant, 'day');
+    else if (s.screen === 'day_detail') html = renderReplaceDetail(s, variant, 'day');
+
+    if (s.toast) {
+      html += `<div class="toast-mini"><span>${esc(s.toast)}</span><span style="opacity:.7">✓</span></div>`;
+    }
+    return html;
+  }
+
+  /* ==================== MAIN RENDER ==================== */
+  const TECH_SCNS = [
+    { id: 'tech_0', label: '0 подходов (исходное)' },
+    { id: 'tech_replaced', label: '0 подходов (уже заменено)' },
+    { id: 'tech_locked', label: '≥ 1 подход (заблокировано)' }
+  ];
+  const WK_CAT_SCNS = [
+    { id: 'wk_cat_first', label: 'Первая замена' },
+    { id: 'wk_cat_repeat', label: 'Повторная (+ возврат)' },
+    { id: 'wk_cat_detail', label: 'Карточка H3 замены' },
+    { id: 'wk_cat_empty_dist', label: 'Пустой тип (Distance)' }
+  ];
+  const DAY_SCNS = [
+    { id: 'day_editor', label: 'Редактор дня (раскрыта)' },
+    { id: 'day_cat', label: 'Каталог замены (все типы)' },
+    { id: 'day_detail_incompat', label: 'Карточка: смена типа' }
+  ];
+  const COMPARE_SCNS = [
+    { id: 'tech_0', label: 'Техника: 0 подх.' },
+    { id: 'tech_replaced', label: 'Техника: заменено' },
+    { id: 'tech_locked', label: 'Техника: ≥ 1 подх.' },
+    { id: 'wk_cat_repeat', label: 'Каталог: повторная замена' },
+    { id: 'wk_cat_empty_dist', label: 'Каталог: пустой Distance' },
+    { id: 'day_cat', label: 'Каталог: редактор дня' },
+    { id: 'day_detail_incompat', label: 'Карточка: смена типа' }
+  ];
+
+  function render() {
+    document.getElementById('mode-single').classList.toggle('active', state.mode === 'single');
+    document.getElementById('mode-compare').classList.toggle('active', state.mode === 'compare');
+    document.getElementById('w-390').classList.toggle('active', state.width === 390);
+    document.getElementById('w-360').classList.toggle('active', state.width === 360);
+    document.getElementById('btn-long').classList.toggle('active', state.longNames);
+    document.getElementById('view-single').style.display = state.mode === 'single' ? '' : 'none';
+    document.getElementById('view-compare').style.display = state.mode === 'compare' ? '' : 'none';
+
+    const vObj = VARIANTS[state.variant];
+    document.getElementById('sw-label').innerHTML = `<span class="proto-sw-key">${vObj.key}</span><span>${vObj.name}</span><span class="proto-sw-hint">(← / →)</span>`;
+
+    if (state.mode === 'single') {
+      const phone = document.getElementById('phone-live');
+      phone.className = `phone ${state.width === 360 ? 'w360' : ''}`;
+      phone.innerHTML = renderPhoneContent(state, state.variant);
+
+      document.getElementById('var-panel-title').textContent = `Вариант ${vObj.key} — ${vObj.name}`;
+      document.getElementById('var-panel-desc').innerHTML = `<ul>${vObj.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+
+      const curScn = detectActiveScenario(state);
+      const fillBtns = (elId, arr) => {
+        document.getElementById(elId).innerHTML = arr.map(it =>
+          `<button type="button" class="cbtn ${curScn === it.id ? 'active' : ''}" data-scn="${it.id}">${it.label}</button>`
+        ).join('');
+      };
+      fillBtns('scn-tech', TECH_SCNS);
+      fillBtns('scn-wk-cat', WK_CAT_SCNS);
+      fillBtns('scn-day', DAY_SCNS);
+
+      const curWk = getEx(state.wkCurrentId), origWk = getEx(state.wkOriginalId);
+      const isRep = state.wkCurrentId !== state.wkOriginalId;
+      const slot1 = state.daySlots[0], slot1Ex = getEx(slot1.exId);
+      document.getElementById('state-tbl').innerHTML = `
+        <tr><td>Вариант / ширина</td><td>${state.variant} · ${state.width} dp ${state.longNames ? '· длинные названия' : ''}</td></tr>
+        <tr><td>Слот тренировки</td><td>${esc(curWk.name)} ${isRep ? `<span class="pill-warn">замена · было: ${esc(origWk.name)}</span>` : '<span class="pill-muted">исходное</span>'}</td></tr>
+        <tr><td>Logged sets / блокировка</td><td>${state.wkLoggedSets} ${state.wkLoggedSets >= 1 ? '<span class="pill-warn">замена заблокирована</span>' : '<span class="pill-ok">замена доступна</span>'}</td></tr>
+        <tr><td>Отдых / защита ⏳</td><td>${state.wkRestRunning ? 'Rest timer идёт (1:42)' : 'не идёт'} · ${state.wkSoftGuardBound ? '⏳ привязана' : '<span class="pill-ok">⏳ снята (1 тап)</span>'}</td></tr>
+        <tr><td>Слот #1 редактора дня</td><td>${esc(slot1Ex.name)} (${TYPE_META[slot1Ex.type].short}) · ${slot1.heavySets}×${slot1.heavyTarget || 'Без цели'} · лёгкая: ${slot1.lightManual ? 'ручн.' : 'авто'} · Прогрессия: ${slot1.progression ? 'вкл' : 'выкл'}</td></tr>
+        ${state.dayLastTransition ? `<tr><td>Последний переход дня</td><td><span class="${state.dayLastTransition.compat ? 'pill-ok' : 'pill-warn'}">${esc(state.dayLastTransition.msg)}</span></td></tr>` : ''}
+      `;
+      document.getElementById('phone-caption').textContent = state.screen === 'workout'
+        ? 'Нажмите на название упражнения для «Карточки техники» или на ✓ в строке, чтобы проверить блокировку при ≥ 1 подходе.'
+        : state.screen.includes('catalog')
+          ? 'Тап по карточке открывает паспорт H3 (без Редактировать/Удалить). Быстрая кнопка справа сразу заменяет.'
+          : state.screen === 'day_editor'
+            ? 'Нажмите «Заменить упражнение» внутри раскрытой карточки и попробуйте совместимый («Отжимания на брусьях») и несовместимый («Планка») типы.'
+            : 'Подтверждение замены из карточки упражнения H3.';
+    } else {
+      document.getElementById('compare-scenarios').innerHTML = COMPARE_SCNS.map(it =>
+        `<button type="button" class="cbtn ${state.compareScenario === it.id ? 'active' : ''}" data-cmp-scn="${it.id}">${it.label}</button>`
+      ).join('');
+      const grid = document.getElementById('compare-grid');
+      grid.innerHTML = ['A', 'B', 'C'].map(v => {
+        const snap = JSON.parse(JSON.stringify(state));
+        applyScenario(snap, state.compareScenario);
+        snap.toast = null;
+        return `
+          <div class="compare-col">
+            <div class="compare-col-head">
+              <div><strong>Вариант ${v} · ${VARIANTS[v].name}</strong><span>${VARIANTS[v].short}</span></div>
+              <button type="button" class="cbtn ${state.variant === v ? 'active' : ''}" data-pick-var="${v}">Открыть</button>
+            </div>
+            <div class="phone ${state.width === 360 ? 'w360' : ''}">${renderPhoneContent(snap, v)}</div>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  function detectActiveScenario(s) {
+    if (s.screen === 'workout' && s.sheet === 'tech') {
+      if (s.wkLoggedSets >= 1) return 'tech_locked';
+      return s.wkCurrentId !== s.wkOriginalId ? 'tech_replaced' : 'tech_0';
+    }
+    if (s.screen === 'wk_catalog') {
+      if (s.wkCurrentId === 'run') return 'wk_cat_empty_dist';
+      return s.wkCurrentId !== s.wkOriginalId ? 'wk_cat_repeat' : 'wk_cat_first';
+    }
+    if (s.screen === 'wk_detail') return 'wk_cat_detail';
+    if (s.screen === 'day_editor') return 'day_editor';
+    if (s.screen === 'day_catalog') return 'day_cat';
+    if (s.screen === 'day_detail') return 'day_detail_incompat';
+    return '';
+  }
+
+  /* ==================== INTERACTIONS ==================== */
+  document.addEventListener('click', e => {
+    const scnBtn = e.target.closest('[data-scn]');
+    if (scnBtn) { applyScenario(state, scnBtn.dataset.scn); render(); return; }
+
+    const cmpBtn = e.target.closest('[data-cmp-scn]');
+    if (cmpBtn) { state.compareScenario = cmpBtn.dataset.cmpScn; render(); return; }
+
+    const pickVar = e.target.closest('[data-pick-var]');
+    if (pickVar) { state.mode = 'single'; applyScenario(state, state.compareScenario); setVariant(pickVar.dataset.pickVar); return; }
+
+    const actEl = e.target.closest('[data-act]');
+    if (!actEl) return;
+    const act = actEl.dataset.act, v = actEl.dataset.v;
+
+    if (act === 'open-tech') { state.sheet = 'tech'; render(); }
+    else if (act === 'close-sheet') { state.sheet = null; render(); }
+    else if (act === 'toggle-ease') { state.wkLightened = !state.wkLightened; render(); }
+    else if (act === 'wk-toggle-set') {
+      const n = Number(v);
+      state.wkLoggedSets = (n <= state.wkLoggedSets) ? n - 1 : n;
+      state.wkRestRunning = state.wkLoggedSets >= 1;
+      state.wkSoftGuardBound = state.wkLoggedSets >= 1;
+      render();
+    } else if (act === 'open-wk-cat') {
+      state.sheet = null; state.screen = 'wk_catalog'; render();
+    } else if (act === 'back-to-tech') {
+      state.screen = 'workout'; state.sheet = 'tech'; render();
+    } else if (act === 'wk-open-detail') {
+      state.catSelectedId = v; state.screen = 'wk_detail'; render();
+    } else if (act === 'wk-pick-replace') {
+      state.wkCurrentId = v;
+      state.wkSoftGuardBound = false; // #123: Rest timer keeps running, soft guard cleared
+      state.wkExTimerRunning = false;
+      state.screen = 'workout'; state.sheet = null;
+      showToast(`Заменено на «${getEx(v).name}» (только на сегодня)`);
+    } else if (act === 'wk-revert' || act === 'wk-revert-from-cat') {
+      state.wkCurrentId = state.wkOriginalId;
+      state.wkSoftGuardBound = false;
+      state.screen = 'workout'; state.sheet = null;
+      showToast(`Возвращено исходное: «${getEx(state.wkOriginalId).name}»`);
+    } else if (act === 'cat-toggle-own') {
+      state.catOnlyOwn = !state.catOnlyOwn; render();
+    } else if (act === 'cat-toggle-muscle') {
+      state.catMuscleFilter = !state.catMuscleFilter; render();
+    } else if (act === 'cat-reset-filters') {
+      state.catOnlyOwn = false; state.catMuscleFilter = false; state.catSearch = ''; render();
+    } else if (act === 'cat-clear-search') {
+      state.catSearch = ''; render();
+    } else if (act === 'day-toggle-slot') {
+      state.dayExpandedId = state.dayExpandedId === v ? null : v; render();
+    } else if (act === 'day-toggle-prog') {
+      const sl = state.daySlots.find(x => x.id === v);
+      if (sl) sl.progression = !sl.progression;
+      render();
+    } else if (act === 'day-start-replace') {
+      state.dayReplacingSlotId = v; state.screen = 'day_catalog'; render();
+    } else if (act === 'open-day-cat') {
+      state.screen = 'day_catalog'; render();
+    } else if (act === 'back-to-day') {
+      state.screen = 'day_editor'; render();
+    } else if (act === 'day-open-detail') {
+      state.catSelectedId = v; state.screen = 'day_detail'; render();
+    } else if (act === 'day-pick-replace') {
+      const sl = state.daySlots.find(x => x.id === state.dayReplacingSlotId);
+      if (sl) {
+        const prevEx = getEx(sl.exId), nextEx = getEx(v);
+        const compat = isCompat(prevEx.type, nextEx.type);
+        sl.exId = v;
+        if (compat) {
+          state.dayLastTransition = { compat: true, msg: `Совместимый (${TYPE_META[prevEx.type].short} → ${TYPE_META[nextEx.type].short}): цели, ручная лёгкая и Прогрессия сохранены` };
+        } else {
+          // #123 incompatible transition
+          sl.heavyTarget = null;
+          sl.lightManual = false;
+          sl.lightSets = sl.heavySets;
+          sl.lightTarget = null;
+          sl.progression = (nextEx.type === 'WEIGHT_AND_REPS' || nextEx.type === 'REPS');
+          state.dayLastTransition = { compat: false, msg: `Несовместимый (${TYPE_META[prevEx.type].short} → ${TYPE_META[nextEx.type].short}): подходы (${sl.heavySets}) сохранены, цель → «Без цели», лёгкая → авто, Прогрессия → ${sl.progression ? 'вкл' : 'выкл'}` };
+        }
+        state.dayExpandedId = sl.id;
+        state.dayJustReplacedId = sl.id;
+        state.screen = 'day_editor';
+        showToast(compat ? `Заменено на «${nextEx.name}» · цели сохранены` : `Заменено на «${nextEx.name}» · цель сброшена в «Без цели»`);
+      }
+    } else if (act === 'day-create-stub') {
+      showToast('Открывается форма «+ Создать упражнение» → сразу заменяет слот');
+    }
+  });
+
+  document.addEventListener('input', e => {
+    if (e.target.matches('[data-cat-in="search"]')) {
+      const pos = e.target.selectionStart;
+      state.catSearch = e.target.value;
+      render();
+      const inp = document.querySelector('#phone-live [data-cat-in="search"]');
+      if (inp) { inp.focus(); inp.setSelectionRange(pos, pos); }
+    }
+  });
+
+  document.getElementById('mode-single').onclick = () => { state.mode = 'single'; render(); };
+  document.getElementById('mode-compare').onclick = () => { state.mode = 'compare'; render(); };
+  document.getElementById('w-390').onclick = () => { state.width = 390; render(); };
+  document.getElementById('w-360').onclick = () => { state.width = 360; render(); };
+  document.getElementById('btn-long').onclick = () => { state.longNames = !state.longNames; render(); };
+
+  const order = ['A', 'B', 'C'];
+  const stepVar = d => setVariant(order[(order.indexOf(state.variant) + d + 3) % 3]);
+  document.getElementById('sw-prev').onclick = () => stepVar(-1);
+  document.getElementById('sw-next').onclick = () => stepVar(1);
+
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); stepVar(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); stepVar(1); }
+  });
+
+  // Start on the richest scenario (Technique sheet with temporary replacement)
+  applyScenario(state, 'tech_replaced');
+  render();
+})();
+</script>
+</body>
+</html>
