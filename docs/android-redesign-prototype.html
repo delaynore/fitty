@@ -13,7 +13,7 @@
       280px circular Plank exercise timer with set chips, #0B0E0B lock screen with 96px clock &
       "Fitty · сейчас" cards, History lime uppercase date + 22px day title, authentic Exercise
       Detail & All Exercises sheets, "+ ПОДХОД" / "УПРАЖНЕНИЯ" / "ЗАВЕРШИТЬ" buttons.
-    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #100, #101, #102, #104, #105, #106, #107, #113, #114, #115/#116, #117/#118, #119, #120/#121.
+    - Approved additions: #79, #80/#82, #81/#83, #89, #94, #98, #99, #100, #101, #102, #104, #105, #106, #107, #113, #114, #115/#116, #117/#118, #119, #120/#121, #122/#124, #123/#125.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1645,6 +1645,27 @@
   .cat-usage-list { background: var(--f-surface); border-radius: 16px; overflow: hidden; }
   .cat-usage-row { padding: 11px 14px; border-bottom: 1px solid #202720; display: flex; flex-direction: column; gap: 2px; }
   .cat-usage-row:last-child { border-bottom: 0; }
+
+  /* ==================== EXERCISE REPLACEMENT (#123 + #125 APPROVED HYBRID A+B+C) ==================== */
+  .rep-mod { background: var(--f-surface); border: 1px solid var(--f-outline); border-radius: 18px; overflow: hidden; }
+  .rep-mod.replaced { border-color: var(--f-primary-border); }
+  .rep-mod-row { width: 100%; border: 0; background: transparent; color: var(--f-text); padding: 11px 13px; display: flex; align-items: center; gap: 11px; text-align: left; }
+  .rep-mod-row + .rep-mod-row { border-top: 1px solid #222B22; }
+  .rep-mod-row.revert-top { background: rgba(48, 62, 27, 0.34); }
+  .rep-mod-row:hover:not(:disabled) { background: rgba(255, 255, 255, 0.03); }
+  .rep-mod-row.revert-top:hover:not(:disabled) { background: rgba(48, 62, 27, 0.52); }
+  .rep-mod-row:disabled { opacity: 0.62; cursor: not-allowed; }
+  .rep-ico { width: 36px; height: 36px; border-radius: 12px; flex: none; background: var(--f-primary-container); color: var(--f-primary); display: inline-flex; align-items: center; justify-content: center; }
+  .rep-ico.muted { background: #222921; color: var(--f-dim); }
+  .rep-ico.revert { background: var(--f-primary); color: var(--f-on-primary); }
+  .rep-pill { flex: none; padding: 6px 11px; border-radius: 999px; background: var(--f-primary-container); border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+  .rep-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--f-primary); flex: none; }
+  .cat-top-sub { font-size: 12px; color: var(--f-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .cat-chip-lock { display: inline-flex; align-items: center; gap: 5px; flex: none; min-height: 34px; padding: 0 11px; border-radius: 11px; border: 1px dashed #3F5227; background: #172013; color: var(--f-on-primary-container); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .rep-foot-revert { width: 100%; border: 1.5px solid var(--f-primary-border); background: #1A2414; color: var(--f-on-primary-container); border-radius: 18px; padding: 10px 13px; text-align: left; display: flex; align-items: center; gap: 10px; box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45); }
+  .rep-foot-revert:hover { background: #223019; }
+  .cat-incompat-notice { padding: 10px 12px; border-radius: 14px; margin-bottom: 12px; background: var(--f-amber-container); border: 1px solid var(--f-amber-border); color: var(--f-on-amber-container); font-size: 12.5px; line-height: 1.42; display: flex; align-items: flex-start; gap: 8px; }
+  .pe-ex-card.just-replaced { border-color: var(--f-primary-border); box-shadow: 0 0 0 2px rgba(197, 250, 85, 0.12); }
 </style>
 </head>
 <body>
@@ -1768,6 +1789,7 @@
     info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
     list: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
     swap: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    revert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>',
     warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
     trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
@@ -2144,7 +2166,8 @@
       history: cloneHistoryList(INITIAL_HISTORY), lockPlankState: 'overtime',
       installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0,
       progEditor: peCreateInitial(),
-      catalog: catCreateInitial()
+      catalog: catCreateInitial(),
+      workoutReplacements: {}
     };
   }
 
@@ -2232,10 +2255,38 @@
       filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
       filterDraft: null, filterAccOpen: 'diff', filterMuscleSearch: '',
       selectedId: 'custom:t-bar-row', menuOpen: false, sheet: null,
+      replaceSourceType: null, replaceExcludeId: null, replaceExcludeName: '',
+      replaceOrigName: '', replaceCurrentName: '', replaceSlotSummary: '',
       form: catMakeEmptyForm(''),
       exercises: CAT_INITIAL_EXERCISES.map(e => ({ ...e, equip: [...e.equip], assisting: [...e.assisting], usedIn: e.usedIn ? e.usedIn.map(u => ({ ...u })) : [] }))
     };
     return Object.assign(base, ov);
+  }
+  function peTypeToCatType(peType) {
+    const t = CAT_TYPES.find(x => x.peType === peType);
+    return t ? t.id : 'WEIGHT_AND_REPS';
+  }
+  function catCompatGroup(typeId) {
+    return (typeId === 'WEIGHT_AND_REPS' || typeId === 'REPS') ? 'REPS_COMPAT' : typeId;
+  }
+  function catCompatLabel(typeId) {
+    const g = catCompatGroup(typeId);
+    return g === 'REPS_COMPAT' ? 'Вес и повторы · Повторы' : g === 'DURATION' ? 'Только время' : 'Только дистанция';
+  }
+  function catIsCompat(t1, t2) { return catCompatGroup(t1) === catCompatGroup(t2); }
+  function catBasePool(cat) {
+    const isWkRep = cat.entryMode === 'workout_replace';
+    const isRep = isWkRep || cat.entryMode === 'day_replace';
+    const exclId = cat.replaceExcludeId || null;
+    const exclName = catNorm(cat.replaceExcludeName || '');
+    return cat.exercises.filter(ex => {
+      if (isRep) {
+        if (exclId && ex.id === exclId) return false;
+        if (exclName && catNorm(ex.name) === exclName) return false;
+      }
+      if (isWkRep && cat.replaceSourceType && !catIsCompat(cat.replaceSourceType, ex.type)) return false;
+      return true;
+    });
   }
   function catClone(c) { return c ? JSON.parse(JSON.stringify(c)) : catCreateInitial(); }
   function catNorm(s) { return String(s || '').trim().toLowerCase().replace(/ё/g, 'е'); }
@@ -2267,7 +2318,7 @@
   function catFilterExercises(cat) {
     const words = catNorm(cat.search).split(/\s+/).filter(Boolean);
     const flt = cat.filters;
-    return [...cat.exercises].sort((a, b) => {
+    return [...catBasePool(cat)].sort((a, b) => {
       const c = a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' });
       return c !== 0 ? c : (a.custom ? 1 : 0) - (b.custom ? 1 : 0);
     }).filter(ex => {
@@ -2620,7 +2671,45 @@
   }
   const isWeekLocked = (s = st) => s.alternating && passInfo(s).resolved > 0;
   const getDay = (s = st) => DAYS.find(d => d.id === s.selectedDay) || DAYS[0];
-  const getEx = (s = st) => { const d = getDay(s); return d.exercises[s.exIndex] || d.exercises[0]; };
+  function resolveWorkoutEx(origEx, s = st) {
+    const rep = s && s.workoutReplacements && s.workoutReplacements[origEx.id];
+    if (!rep) return { ...origEx, isReplaced: false, origName: origEx.name, origLongName: origEx.longName };
+    const stripWeight = (b, newType) => {
+      if (!b) return b;
+      const out = { ...b };
+      if (newType === 'weight_reps' || newType === 'reps') {
+        out.lastW = rep.historyW ?? null;
+        out.lastR = rep.historyR ?? null;
+      } else if (newType === 'distance') {
+        out.lastM = rep.historyM ?? null;
+      }
+      return out;
+    };
+    return {
+      ...origEx,
+      catId: rep.catId,
+      name: rep.name,
+      longName: rep.longName || rep.name,
+      type: rep.type,
+      muscle: rep.muscle || origEx.muscle,
+      assisting: rep.assisting || '',
+      equip: rep.equip || 'Без инвентаря',
+      diff: rep.diff || 1,
+      diffLabel: rep.diffLabel || 'Начальный',
+      steps: rep.steps || null,
+      tech: rep.tech || '',
+      heavy: stripWeight(origEx.heavy, rep.type),
+      light: stripWeight(origEx.light, rep.type),
+      regular: stripWeight(origEx.regular, rep.type),
+      hasHistory: Boolean(rep.hasHistory),
+      prompt: null,
+      isReplaced: true,
+      origName: origEx.name,
+      origLongName: origEx.longName
+    };
+  }
+  const getWorkoutDay = (s = st) => { const d = getDay(s); return { ...d, exercises: d.exercises.map(x => resolveWorkoutEx(x, s)) }; };
+  const getEx = (s = st) => { const d = getWorkoutDay(s); return d.exercises[s.exIndex] || d.exercises[0]; };
   const dayDisplayName = (d, s = st) => s.longNames ? d.longName : d.name;
   const exDisplayName = (ex, s = st) => s.longNames ? ex.longName : ex.name;
 
@@ -2688,7 +2777,7 @@
     let heroHtml = '';
     let activeTotalSets = 0;
     if (hasActive) {
-      const exList = activeDay.exercises;
+      const exList = activeDay.exercises.map(x => resolveWorkoutEx(x, s));
       const curIdx = Math.min(s.exIndex, exList.length - 1);
       const curEx = exList[curIdx];
       let doneEx = 0;
@@ -2934,7 +3023,7 @@
 
   /* ==================== WORKOUT SCREEN ==================== */
   function renderWorkoutHTML(s) {
-    const day = getDay(s), ex = getEx(s), wk = activeWeekKey(s), isLight = wk === 'light', isEased = s.easeMode !== 'none';
+    const day = getWorkoutDay(s), ex = day.exercises[s.exIndex] || day.exercises[0], wk = activeWeekKey(s), isLight = wk === 'light', isEased = s.easeMode !== 'none';
     const plan = effectivePlan(ex, wk, s.easeMode, s.distUnit), exName = exDisplayName(ex, s), logged = s.logged[ex.id] || [];
     const showCalChip = ex.type === 'weight_reps' && !ex.hasHistory && logged.length === 0 && !(isLight && ex.heavy.lastW);
 
@@ -3135,7 +3224,7 @@
       const draft = s.drafts[ex.id] || { w: '', r: '' };
       let suggW = '', suggR = '';
       if (logged.length > 0) { suggW = logged[logged.length - 1].w; suggR = logged[logged.length - 1].r; }
-      else if (ex.id === 'incline' && s.calibratedSuggestion) { suggW = s.calibratedSuggestion.w; suggR = s.calibratedSuggestion.r; }
+      else if (s.calibratedSuggestion && (!s.calibratedSuggestion.exId || s.calibratedSuggestion.exId === ex.id)) { suggW = s.calibratedSuggestion.w; suggR = s.calibratedSuggestion.r; }
       else if (plan.lastW !== null && plan.lastW !== undefined) { suggW = String(plan.lastW).replace('.', ','); suggR = String(plan.lastR || plan.repsMax); }
       const hasSugg = suggW !== '' && suggR !== '';
       const hasEdits = draft.w.trim() !== '' || draft.r.trim() !== '';
@@ -3280,20 +3369,44 @@
       if (s.calFormulaPicker) {
         calBody = `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Формула расчёта 1RM</h3><button class="f-ghost-btn" data-act="cal-formula-close">Назад</button></div><p>Изменение здесь обновит формулу и в Настройках.</p><div style="display:flex;flex-direction:column;gap:4px">${FORMULAS.map(f => `<button class="f-feel-card ${f.id === fObj.id ? 'just-right' : ''}" data-act="cal-pick-formula" data-v="${f.id}"><div style="flex:1;min-width:0"><span class="f-feel-title">${f.name}${f.def ? ' · по умолчанию' : ''}</span><span class="f-feel-sub">${f.hint}</span></div><span class="f-num-font" style="color:var(--f-primary);font-size:15px">${validCalc ? '≈ ' + fmtNum(f.inv(f.calc(cw, cr), targetR + 2)) + ' кг' : ''}</span></button>`).join('')}</div>`;
       } else if (s.calTab === 'feel') {
-        calBody = `<p>Сделайте лёгкий пробный подход и отметьте ощущения. В историю попадёт только вариант «В самый раз».</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес пробы, кг</span><input class="f-in has-value" data-cal="feelW" value="${s.calFeelW}"></div><div><span class="f-field-lbl">Повторения</span><input class="f-in has-value" data-cal="feelR" value="${s.calFeelR}"></div></div><div class="f-feel-stack"><button class="f-feel-card" data-act="cal-feel" data-v="light"><span class="f-feel-ico">↑</span><span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Отдохните и возьмите следующий комфортный вес тяжелее</span></span></button><button class="f-feel-card just-right" data-act="cal-feel" data-v="ok"><span class="f-feel-ico">✓</span><span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Запишет подход 1 и подскажет вес для подхода 2</span></span></button><button class="f-feel-card ${s.calFeelAnswer === 'heavy' ? 'selected-heavy' : ''}" data-act="cal-feel" data-v="heavy"><span class="f-feel-ico">↓</span><span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Попробуйте легче · если вес минимальный — замените упражнение</span></span></button></div>${s.calFeelAnswer === 'heavy' ? '<div class="f-sheet-callout" style="background:var(--f-error-bg);border-color:var(--f-error-border);color:#FFD6D2">Возьмите вес легче или откройте замену упражнения в каталоге. Проба не сохранена.</div>' : ''}`;
+        calBody = `<p>Сделайте лёгкий пробный подход и отметьте ощущения. В историю попадёт только вариант «В самый раз».</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес пробы, кг</span><input class="f-in has-value" data-cal="feelW" value="${s.calFeelW}"></div><div><span class="f-field-lbl">Повторения</span><input class="f-in has-value" data-cal="feelR" value="${s.calFeelR}"></div></div><div class="f-feel-stack"><button class="f-feel-card" data-act="cal-feel" data-v="light"><span class="f-feel-ico">↑</span><span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Отдохните и возьмите следующий комфортный вес тяжелее</span></span></button><button class="f-feel-card just-right" data-act="cal-feel" data-v="ok"><span class="f-feel-ico">✓</span><span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Запишет подход 1 и подскажет вес для подхода 2</span></span></button><button class="f-feel-card ${s.calFeelAnswer === 'heavy' ? 'selected-heavy' : ''}" data-act="cal-feel" data-v="heavy"><span class="f-feel-ico">↓</span><span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Попробуйте легче · если вес минимальный — замените упражнение</span></span></button></div>${s.calFeelAnswer === 'heavy' ? '<div class="f-sheet-callout" style="background:var(--f-error-bg);border-color:var(--f-error-border);color:#FFD6D2;display:flex;flex-direction:column;gap:8px"><span>Возьмите вес легче или замените упражнение в каталоге. Проба не сохранена.</span><button type="button" class="ob" style="min-height:40px;border-color:var(--f-error-border);color:#FFD6D2" data-act="open-replace">Заменить упражнение</button></div>' : ''}`;
       } else {
         calBody = `<p>Один чистый подход до потери техники (не выше 15 повт.). Замер не попадёт в историю — подставим ориентир в строку 1.</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес, кг</span><input class="f-in has-value" data-cal="calcW" value="${s.calCalcW}"></div><div><span class="f-field-lbl">Повторения (до 15)</span><input class="f-in has-value" data-cal="calcR" value="${s.calCalcR}"></div></div><button class="f-formula-trigger" data-act="cal-formula-open"><div><div style="font-size:12.5px;font-weight:600">Формула: ${fObj.name}</div><div style="font-size:11px;color:var(--f-muted)">1RM ≈ ${validCalc ? fmtNum(est1RM) + ' кг' : '—'} · пересчёт под цель + 2</div></div><span style="font-size:12px;font-weight:600;color:var(--f-primary)">Сменить</span></button><div class="f-est-box"><div style="display:flex;align-items:baseline;justify-content:space-between"><span class="f-num-font" style="font-size:30px;color:var(--f-primary)">≈ ${fmtNum(estWork)} <small style="font-family:Inter;font-size:14px;color:var(--f-on-primary-container)">кг × ${targetR}</small></span><span style="font-size:11px;color:var(--f-muted)">округлите к снаряду</span></div><button class="pb" style="margin-top:2px;min-height:42px;font-size:15px" data-act="cal-apply-est">Подставить ориентир в подход 1</button></div>`;
       }
       sheetHtml = `<div class="f-scrim keep-header" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div>${!s.calFormulaPicker ? `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Подобрать рабочий вес</h3><button class="prog-strip-x" data-act="close-sheet">${ICO.x}</button></div><div class="f-seg"><button class="${s.calTab === 'feel' ? 'active' : ''}" data-act="cal-tab" data-v="feel">По ощущениям <span class="f-rec-dot">Рек.</span></button><button class="${s.calTab === 'calc' ? 'active' : ''}" data-act="cal-tab" data-v="calc">По повторениям</button></div>` : ''}${calBody}</div></div>`;
     } else if (s.sheet === 'ex_detail') {
-      // Approved Exercise Card / Technique sheet (Variant C · #114 + #94)
+      // Approved Exercise Card / Technique sheet (Variant C · #114 + #94 + Unified Replacement Module B · #123/#125)
       const diff = ex.diff || 2, diffLbl = ex.diffLabel || 'Средняя';
       const diffBars = `<span class="diff-bars">${[1, 2, 3].map(n => `<i class="${n <= diff ? 'on' : ''}"></i>`).join('')}</span>`;
       const techBlock = s.longNames
         ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
         : (ex.steps && ex.steps.length)
-          ? `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${st}</span></div>`).join('')}</div>`
-          : `<div class="tech-empty">Описание техники не указано. Его можно добавить в карточке упражнения в каталоге.</div>`;
+          ? `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${catEsc(st)}</span></div>`).join('')}</div>`
+          : ex.tech
+            ? `<div class="tech-card"><div class="tech-prose">${catEsc(ex.tech)}</div></div>`
+            : `<div class="tech-empty">Описание техники не указано. Его можно добавить в карточке упражнения в каталоге.</div>`;
+      const isRep = Boolean(ex.isReplaced), isLocked = logged.length >= 1;
+      const origTitle = s.longNames ? (ex.origLongName || ex.origName) : ex.origName;
+      const repModule = `
+        <div class="rep-mod ${isRep && !isLocked ? 'replaced' : ''}">
+          ${isRep ? `
+            <button type="button" class="rep-mod-row revert-top" ${isLocked ? 'disabled' : 'data-act="wk-revert"'}>
+              <span class="rep-dot"></span>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:11.5px;color:var(--f-on-primary-container);font-weight:600">Замена на сегодня · исходное</span>
+                <span style="display:block;font-size:13.5px;font-weight:650;color:var(--f-text);overflow-wrap:anywhere">${catEsc(origTitle)}</span>
+              </span>
+              ${!isLocked ? `<span class="rep-pill">${ICO.revert} Вернуть</span>` : `<span style="color:var(--f-dim);display:flex">${CAT_ICO.lock}</span>`}
+            </button>` : ''}
+          <button type="button" class="rep-mod-row" ${isLocked ? 'disabled' : 'data-act="open-replace"'}>
+            <span class="rep-ico ${isLocked ? 'muted' : ''}">${isLocked ? CAT_ICO.lock : ICO.swap}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:14px;font-weight:600">${isRep && !isLocked ? 'Выбрать другую замену' : 'Заменить упражнение'}</span>
+              <span style="display:block;font-size:12px;color:var(--f-muted)">${isLocked ? 'Доступно до записи первого подхода' : 'Только на сегодняшнюю тренировку · из каталога'}</span>
+            </span>
+            ${!isLocked ? `<span class="m">${ICO.chevR}</span>` : ''}
+          </button>
+        </div>`;
       sheetHtml = `
         <div class="f-scrim" data-act="close-sheet">
           <div class="f-sheet" onclick="event.stopPropagation()">
@@ -3308,14 +3421,7 @@
             </div>
             <div class="m d" style="font-size:12px;margin-top:2px">Техника выполнения</div>
             ${techBlock}
-            <button class="replace-card-c" data-act="open-replace" type="button">
-              <span class="replace-card-c-ico">${ICO.swap}</span>
-              <span style="flex:1;min-width:0">
-                <span style="display:block;font-size:14px;font-weight:600">Заменить упражнение</span>
-                <span style="display:block;font-size:12px;color:var(--f-muted)">Только на сегодняшнюю тренировку · по тем же мышцам</span>
-              </span>
-              <span class="m">${ICO.chevR}</span>
-            </button>
+            ${repModule}
           </div>
         </div>`;
     } else if (s.sheet === 'all_ex') {
@@ -4337,7 +4443,7 @@
         }
 
         return `<div class="pe-drag-item" data-pe-drag="ex" data-pe-id="${ex.id}" data-pe-idx="${idx}">
-          <div class="pe-ex-card ${exp ? 'expanded' : ''} ${showErr ? 'has-err' : ''}">
+          <div class="pe-ex-card ${exp ? 'expanded' : ''} ${showErr ? 'has-err' : ''} ${pe.justReplacedId === ex.id ? 'just-replaced' : ''}">
             <div class="pe-ex-head">
               <button type="button" class="pe-ex-grip" data-pe-grip="ex" data-pe-id="${ex.id}" aria-label="Переместить упражнение">${ICO.peGrip}</button>
               <button type="button" class="pe-ex-main" data-act="pe-toggle-ex" data-v="${ex.id}">
@@ -4353,11 +4459,7 @@
         </div>`;
       }).join('');
 
-    let sheetHtml = '';
-    if (s.sheet === 'pe_add_ex' || s.sheet === 'pe_rep_ex') {
-      const isRep = s.sheet === 'pe_rep_ex';
-      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3 style="margin:0 0 8px;font-size:18px;font-weight:700;color:var(--f-text)">${isRep ? 'Заменить упражнение' : 'Добавить упражнение'}</h3><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">${PE_CATALOG_SAMPLES.map((c, i) => `<button type="button" class="pe-radio-card" style="align-items:center;justify-content:space-between" data-act="${isRep ? 'pe-pick-rep' : 'pe-pick-add'}" data-v="${i}"><span style="font-size:13.5px;font-weight:600">${c.name}</span><span style="color:var(--f-primary);font-size:12.5px;font-weight:700;flex:none">${isRep ? 'Выбрать' : '+ Добавить'}</span></button>`).join('')}</div><button type="button" class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
-    }
+    const sheetHtml = '';
 
     return `
       <div class="pe-top">
@@ -4385,15 +4487,32 @@
     `;
   }
 
-  /* ==================== EXERCISE CATALOG SCREENS (#122 + #124 APPROVED HYBRID H1+H3+A+) ==================== */
+  /* ==================== EXERCISE CATALOG SCREENS (#122 + #124 + #123/#125 REPLACEMENT HYBRID) ==================== */
   function renderCatalogFlowHTML(s) {
     const cat = s.catalog || catCreateInitial();
-    const isPick = cat.entryMode === 'day_pick';
-    const dayExNames = new Set((peActiveDay(s.progEditor)?.exercises || []).map(x => catNorm(x.name)));
+    const isDayPick = cat.entryMode === 'day_pick';
+    const isDayReplace = cat.entryMode === 'day_replace';
+    const isWkReplace = cat.entryMode === 'workout_replace';
+    const isReplace = isDayReplace || isWkReplace;
+    const isSelectMode = isDayPick || isReplace;
+    const canCreate = !isWkReplace;
+    const activeDayEd = peActiveDay(s.progEditor);
+    const dayExNames = new Set(
+      (activeDayEd?.exercises || [])
+        .filter(x => !isDayReplace || x.id !== s.progEditor?.replaceExId)
+        .map(x => catNorm(x.name))
+    );
+    const wkDay = getWorkoutDay(s);
+    const wkExNames = new Set(
+      (wkDay?.exercises || [])
+        .filter((_, idx) => idx !== s.exIndex)
+        .map(x => catNorm(x.name))
+    );
     let mainHtml = '';
     let sheetHtml = '';
 
     if (cat.sub === 'list') {
+      const basePool = catBasePool(cat);
       const list = catFilterExercises(cat);
       const fCnt = catActiveFilterCount(cat.filters);
       const otherChips = [];
@@ -4402,9 +4521,18 @@
       if (catDiffRangeActive(cat.filters.diffRange)) otherChips.push({ k: 'diff', v: '', lbl: catDiffRangeLbl(cat.filters.diffRange) });
 
       let listBody = '';
-      if (list.length === 0) {
+      if (isWkReplace && basePool.length === 0) {
+        const srcTp = catTypeObj(cat.replaceSourceType);
+        listBody = `
+          <div class="cat-empty">
+            <div class="cat-empty-ico">${catTypeSvg(cat.replaceSourceType || 'DISTANCE', 24)}</div>
+            <h3 style="margin:0;font-size:16px">Других упражнений этого типа пока нет</h3>
+            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">Во время тренировки можно заменить упражнение только на совместимый тип («${catEsc(srcTp ? srcTp.label : 'Дистанция')}»). Добавить своё упражнение можно в Настройках → Каталог.</p>
+            <button type="button" class="ob" style="margin-top:4px" data-act="cat-exit">Вернуться к тренировке</button>
+          </div>`;
+      } else if (list.length === 0) {
         const qTrim = cat.search.trim();
-        const onlyOwnEmpty = cat.filters.customOnly && !qTrim && fCnt === 1 && cat.exercises.filter(e => e.custom).length === 0;
+        const onlyOwnEmpty = canCreate && cat.filters.customOnly && !qTrim && fCnt === 1 && cat.exercises.filter(e => e.custom).length === 0;
         listBody = onlyOwnEmpty ? `
           <div class="cat-empty">
             <div class="cat-empty-ico">${CAT_ICO.spark}</div>
@@ -4415,16 +4543,18 @@
           <div class="cat-empty">
             <div class="cat-empty-ico">${CAT_ICO.search}</div>
             <h3 style="margin:0;font-size:16px">Ничего не найдено</h3>
-            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">${fCnt ? 'Попробуйте сбросить активные фильтры или создайте своё упражнение.' : 'В каталоге нет такого упражнения — можно добавить своё.'}</p>
+            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">${fCnt ? (canCreate ? 'Попробуйте сбросить активные фильтры или создайте своё упражнение.' : 'Попробуйте сбросить активные фильтры или изменить запрос.') : (canCreate ? 'В каталоге нет такого упражнения — можно добавить своё.' : 'Среди совместимых упражнений такого названия нет.')}</p>
             <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px">
               ${fCnt ? `<button type="button" class="ob" data-act="cat-reset-filters">Сбросить фильтры (${fCnt})</button>` : ''}
-              <button type="button" class="pb" data-act="cat-open-create">${qTrim ? `+ Создать «${catEsc(qTrim.length > 24 ? qTrim.slice(0, 23) + '…' : qTrim)}»` : '+ Создать упражнение'}</button>
+              ${canCreate ? `<button type="button" class="pb" data-act="cat-open-create">${qTrim ? `+ Создать «${catEsc(qTrim.length > 24 ? qTrim.slice(0, 23) + '…' : qTrim)}»` : '+ Создать упражнение'}</button>` : ''}
             </div>
           </div>`;
       } else {
-        listBody = `<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;font-size:12px;color:var(--f-dim)"><span>Найдено: ${list.length}</span>${isPick ? '<span>Тап — карточка · + в день</span>' : ''}</div>` + list.map(ex => {
+        const rightHint = isReplace ? 'Тап — карточка · ⇄ заменить' : isDayPick ? 'Тап — карточка · + в день' : '';
+        listBody = `<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;font-size:12px;color:var(--f-dim)"><span>${isReplace ? `Доступно: ${list.length}` : `Найдено: ${list.length}`}</span>${rightHint ? `<span>${rightHint}</span>` : ''}</div>` + list.map(ex => {
           const nm = catExDisplayName(ex, s);
-          const inDay = isPick && dayExNames.has(catNorm(ex.name));
+          const already = isWkReplace ? wkExNames.has(catNorm(ex.name)) : (isDayPick || isDayReplace) ? dayExNames.has(catNorm(ex.name)) : false;
+          const alreadyLbl = isWkReplace ? 'В тренировке' : 'В дне';
           const eqShort = catEquipShort(ex);
           const noEq = catIsNoEquip(ex);
           return `
@@ -4432,10 +4562,10 @@
               <button type="button" class="cat-ex-main" data-act="cat-open-detail" data-v="${ex.id}">
                 <span class="cat-type-ico t-${ex.type}">${catTypeSvg(ex.type, 19)}</span>
                 <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:flex-start;gap:6px">
-                    <span class="cat-cl2" style="font-size:15px;font-weight:600;line-height:19px;flex:1;min-width:0">${catEsc(nm)}</span>
+                  <div style="display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
+                    <span class="cat-cl2" style="font-size:15px;font-weight:600;line-height:19px;flex:1;min-width:110px">${catEsc(nm)}</span>
                     ${ex.custom ? '<span class="cat-badge-own">Своё</span>' : ''}
-                    ${inDay ? '<span class="cat-badge-day">В дне</span>' : ''}
+                    ${already ? `<span class="cat-badge-day">${alreadyLbl}</span>` : ''}
                   </div>
                   <div class="cat-sym-line">
                     ${ex.primary ? `<span class="cat-sym-item cat-sym-m">${CAT_ICO.muscle(13)}<span>${catEsc(catMuscleLbl(ex.primary))}</span></span>` : ''}
@@ -4443,17 +4573,29 @@
                     ${ex.diff ? `<span class="cat-sym-item" style="margin-left:auto">${catDiffBars(ex.diff, true)}</span>` : ''}
                   </div>
                 </div>
-                ${!isPick ? `<span class="m" style="display:flex;opacity:0.65">${ICO.chevR}</span>` : ''}
+                ${!isSelectMode ? `<span class="m" style="display:flex;opacity:0.65">${ICO.chevR}</span>` : ''}
               </button>
-              ${isPick ? `<button type="button" class="cat-ex-plus" data-act="cat-quick-add" data-v="${ex.id}" aria-label="Добавить в день">${CAT_ICO.plus}</button>` : ''}
+              ${isSelectMode ? `<button type="button" class="cat-ex-plus" data-act="cat-quick-add" data-v="${ex.id}" aria-label="${isReplace ? 'Заменить упражнение' : 'Добавить в день'}">${isReplace ? ICO.swap : CAT_ICO.plus}</button>` : ''}
             </div>`;
         }).join('');
       }
 
+      const showStickyCreate = canCreate && list.length > 0;
+      const showStickyRevert = isWkReplace && Boolean(cat.replaceOrigName);
+      const stickyFootHtml = showStickyCreate
+        ? '<div class="cat-sticky-foot"><button type="button" class="pb" data-act="cat-open-create">+ Создать упражнение</button></div>'
+        : showStickyRevert
+          ? `<div class="cat-sticky-foot"><button type="button" class="rep-foot-revert" data-act="wk-revert-from-cat"><span class="rep-ico revert" style="width:34px;height:34px;border-radius:11px">${ICO.revert}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:11px;font-weight:700;color:var(--f-on-primary-container)">Вернуть исходное</span><span class="cat-cl2" style="font-size:13.5px;font-weight:650;color:var(--f-text)">${catEsc(cat.replaceOrigName)}</span></span></button></div>`
+          : '';
+      const topHeading = isWkReplace ? 'Замена · на сегодня' : isDayReplace ? 'Замена · в дне' : isDayPick ? 'Выбор упражнения' : 'Каталог упражнений';
+
       mainHtml = `
         <div class="cat-topbar">
           <button type="button" class="cat-back" data-act="cat-exit" aria-label="Назад">${ICO.back}</button>
-          <h1 class="d cat-top-title">${isPick ? 'Выбор упражнения' : 'Каталог упражнений'}</h1>
+          <div style="flex:1;min-width:0">
+            <h1 class="d cat-top-title">${topHeading}</h1>
+            ${isReplace && cat.replaceCurrentName ? `<div class="cat-top-sub">Вместо: ${catEsc(cat.replaceCurrentName)}</div>` : ''}
+          </div>
         </div>
         <div class="cat-search-row">
           <div class="cat-search-box">
@@ -4466,50 +4608,70 @@
           </button>
         </div>
         <div class="cat-chips-bar">
+          ${isWkReplace && cat.replaceSourceType ? `<span class="cat-chip-lock">${ICO.lock} ${catEsc(catCompatLabel(cat.replaceSourceType))}</span>` : ''}
           ${cat.filters.customOnly
             ? `<button type="button" class="cat-chip-rm" data-act="cat-toggle-own"><span>Только свои</span><span class="cat-x-dot">${CAT_ICO.x}</span></button>`
             : `<button type="button" class="cat-quick-own" data-act="cat-toggle-own">Только свои</button>`}
           ${otherChips.map(c => `<button type="button" class="cat-chip-rm" data-act="cat-rm-chip" data-v="${c.k}:${c.v}"><span>${catEsc(c.lbl)}</span><span class="cat-x-dot">${CAT_ICO.x}</span></button>`).join('')}
           ${fCnt >= 2 ? '<button type="button" class="cat-chip-rm clear-all" data-act="cat-reset-filters">Сбросить</button>' : ''}
         </div>
-        <div class="cat-scroll ${list.length > 0 ? 'has-sticky' : ''}">${listBody}</div>
-        ${list.length > 0 ? '<div class="cat-sticky-foot"><button type="button" class="pb" data-act="cat-open-create">+ Создать упражнение</button></div>' : ''}`;
+        <div class="cat-scroll ${showStickyCreate || showStickyRevert ? 'has-sticky' : ''}">${listBody}</div>
+        ${stickyFootHtml}`;
     } else if (cat.sub === 'detail') {
       const ex = cat.exercises.find(e => e.id === cat.selectedId) || cat.exercises[0];
       const nm = catExDisplayName(ex, s);
-      const inDay = isPick && dayExNames.has(catNorm(ex.name));
+      const already = isWkReplace ? wkExNames.has(catNorm(ex.name)) : (isDayPick || isDayReplace) ? dayExNames.has(catNorm(ex.name)) : false;
+      const alreadyDetailLbl = isWkReplace ? 'Уже в тренировке' : 'Уже в дне';
       const tp = catTypeObj(ex.type), df = catDiffObj(ex.diff), noEq = catIsNoEquip(ex);
       const assList = ex.assisting || [], eqList = ex.equip || [];
+      const incompDay = isDayReplace && cat.replaceSourceType && !catIsCompat(cat.replaceSourceType, ex.type);
+      const slotEx = isDayReplace ? (activeDayEd?.exercises || []).find(x => x.id === s.progEditor?.replaceExId) : null;
+      const setsKeep = slotEx && slotEx.heavySets ? `${slotEx.heavySets} × ` : '';
+      const lightNote = !s.alternating ? '' : (s.progEditor?.rule === 'manual' ? ' · цель лёгкой недели тоже сбросится' : ' · лёгкая неделя сбросится к «авто»');
+      const incompatNotice = incompDay ? `
+        <div class="cat-incompat-notice">
+          <span style="flex:none;margin-top:1px">${ICO.info}</span>
+          <span><strong>Смена типа записи:</strong> ${catEsc(cat.replaceSlotSummary || 'текущая цель')} → <strong>${catEsc(setsKeep)}Без цели</strong>${lightNote}, Прогрессия — ${tp && tp.progDef ? 'вкл.' : 'выкл.'}</span>
+        </div>` : '';
       const techBlock = s.longNames
         ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
         : (ex.steps && ex.steps.length)
           ? `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${catEsc(st)}</span></div>`).join('')}</div>`
           : ex.tech
             ? `<div class="tech-card"><div class="tech-prose">${catEsc(ex.tech)}</div></div>`
-            : `<div class="tech-empty">Описание техники не указано.${ex.custom && !isPick ? ' Его можно добавить через кнопку редактирования наверху.' : ''}</div>`;
+            : `<div class="tech-empty">Описание техники не указано.${ex.custom && !isSelectMode ? ' Его можно добавить через кнопку редактирования наверху.' : ''}</div>`;
+
+      const detailCtaHtml = isWkReplace
+        ? `<div class="cat-sticky-foot solid"><div style="font-size:11.5px;color:var(--f-muted);text-align:center;margin-bottom:7px">Только на сегодняшнюю тренировку · план программы не изменится</div><button type="button" class="pb" data-act="cat-pick-from-card">${ICO.swap} Заменить упражнение</button></div>`
+        : isDayReplace
+          ? `<div class="cat-sticky-foot solid"><button type="button" class="pb" data-act="cat-pick-from-card">${ICO.swap} Выбрать для замены</button></div>`
+          : isDayPick
+            ? `<div class="cat-sticky-foot solid"><button type="button" class="pb" data-act="cat-pick-from-card">${already ? '+ Добавить ещё раз в день' : '+ Добавить в день'}</button></div>`
+            : '';
 
       mainHtml = `
         <div class="cat-topbar">
           <button type="button" class="cat-back" data-act="cat-back-list" aria-label="Назад">${ICO.back}</button>
           <h1 class="d cat-top-title">Упражнение</h1>
-          ${!isPick && ex.custom ? `
+          ${!isSelectMode && ex.custom ? `
             <button type="button" class="cat-top-icon" data-act="cat-open-edit" aria-label="Редактировать">${ICO.edit}</button>
             <button type="button" class="cat-top-icon" data-act="cat-toggle-menu" aria-label="Ещё">${CAT_ICO.more}</button>` : ''}
         </div>
-        ${cat.menuOpen && !isPick && ex.custom ? `
+        ${cat.menuOpen && !isSelectMode && ex.custom ? `
           <div class="mp-ctx-backdrop" data-act="cat-toggle-menu"></div>
           <div class="cat-menu">
             <button type="button" data-act="cat-open-edit">${ICO.edit} Редактировать</button>
             <button type="button" class="danger" data-act="cat-try-delete">${ICO.trash} Удалить</button>
           </div>` : ''}
-        <div class="cat-scroll ${isPick ? 'has-sticky' : ''}">
+        <div class="cat-scroll ${isSelectMode ? 'has-sticky' : ''}">
           <div style="padding:2px 2px 12px">
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
               <span class="cat-badge-own">${ex.custom ? 'Своё упражнение' : 'Встроенное'}</span>
-              ${inDay ? '<span class="cat-badge-day">Уже в дне</span>' : ''}
+              ${already ? `<span class="cat-badge-day">${alreadyDetailLbl}</span>` : ''}
             </div>
             <h2 class="d" style="margin:0;font-size:26px;line-height:28px;overflow-wrap:anywhere">${catEsc(nm)}</h2>
           </div>
+          ${incompatNotice}
           <div class="cat-passport">
             <div class="cat-pass-row">
               <span class="cat-type-ico t-${ex.type}" style="width:34px;height:34px;border-radius:10px">${catTypeSvg(ex.type, 17)}</span>
@@ -4541,7 +4703,7 @@
           <div class="m d" style="font-size:12.5px;margin:0 0 8px 2px">Техника выполнения</div>
           ${techBlock}
         </div>
-        ${isPick ? `<div class="cat-sticky-foot solid"><button type="button" class="pb" data-act="cat-pick-from-card">${inDay ? '+ Добавить ещё раз в день' : '+ Добавить в день'}</button></div>` : ''}`;
+        ${detailCtaHtml}`;
     } else {
       const f = cat.form || catMakeEmptyForm('');
       const { errors, dup, nameLen, techLen } = catValidateForm(f, cat.exercises);
@@ -4552,7 +4714,7 @@
       const sliderLbl = sliderPos === 0 ? 'Не указана' : CAT_DIFFS[sliderPos - 1].label;
       const assTags = f.assisting.length ? f.assisting.map(id => `<span class="tag" style="color:var(--f-text)">${catEsc(catMuscleLbl(id))}</span>`).join('') : '<span style="color:var(--f-dim)">Не указаны</span>';
       const eqTags = f.equip.length ? f.equip.map(id => `<span class="tag" style="color:var(--f-text)">${catEsc(catEquipLbl(id))}</span>`).join('') : '<span style="color:var(--f-dim)">Не указано</span>';
-      const ctaLbl = f.mode === 'edit' ? 'Сохранить изменения' : (isPick ? 'Создать и добавить в день' : 'Сохранить упражнение');
+      const ctaLbl = f.mode === 'edit' ? 'Сохранить изменения' : (isDayReplace ? 'Создать и заменить в дне' : isDayPick ? 'Создать и добавить в день' : 'Сохранить упражнение');
 
       mainHtml = `
         <div class="cat-topbar">
@@ -4806,7 +4968,7 @@
         </div>`;
     }
 
-    const hasBottomCta = (cat.sub === 'list' && catFilterExercises(cat).length > 0) || (cat.sub === 'detail' && isPick) || cat.sub === 'form';
+    const hasBottomCta = (cat.sub === 'list' && ((canCreate && catFilterExercises(cat).length > 0) || (isWkReplace && Boolean(cat.replaceOrigName)))) || (cat.sub === 'detail' && isSelectMode) || cat.sub === 'form';
     const snackHtml = s.snack ? `<div class="f-snack" style="bottom:${hasBottomCta ? '78px' : '16px'};cursor:pointer" data-act="cat-clear-snack"><span>${s.snack.text}</span></div>` : '';
     return `${mainHtml}${sheetHtml}${snackHtml}`;
   }
@@ -5010,11 +5172,43 @@
         else if (act === 'confirm-cancel-workout') {
           st.activeWorkoutDayId = null; st.screen = 'home'; st.sheet = null; st.restRunning = false; st.plankRunning = false;
           st.restGuardArmed = null; st.easeMode = 'none'; st.sessionMarkedLightened = false; st.checkinAnswer = 'none';
+          st.workoutReplacements = {}; st.calibratedSuggestion = null;
           st.logged = { bench: [], row: [], incline: [], plank: [], pullup: [], walk: [], run: [] };
           st.drafts = { bench: { w: '', r: '' }, row: { w: '', r: '' }, incline: { w: '', r: '' }, pullup: { val: '' }, walk: { val: '' }, run: { val: '' } };
           st.snack = { text: 'Тренировка отменена' }; st.undoSnap = null;
         }
-        else if (act === 'open-replace') { st.sheet = null; st.snack = { text: 'Выбор замены упражнения на сегодня (#110)' }; }
+        else if (act === 'open-replace') {
+          const curEx = getEx();
+          if ((st.logged[curEx.id] || []).length === 0) {
+            st.calFeelAnswer = null;
+            st.catalog = Object.assign(st.catalog || catCreateInitial(), {
+              entryMode: 'workout_replace', sub: 'list', search: '', sheet: null, menuOpen: false,
+              filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
+              replaceSourceType: peTypeToCatType(curEx.type),
+              replaceExcludeId: curEx.catId || null,
+              replaceExcludeName: curEx.name,
+              replaceCurrentName: exDisplayName(curEx, st),
+              replaceOrigName: curEx.isReplaced ? (st.longNames ? (curEx.origLongName || curEx.origName) : curEx.origName) : '',
+              replaceSlotSummary: ''
+            });
+            st.sheet = null; st.snack = null; st.screen = 'catalog';
+          }
+        }
+        else if (act === 'wk-revert' || act === 'wk-revert-from-cat') {
+          const curEx = getEx();
+          if ((st.logged[curEx.id] || []).length === 0 && st.workoutReplacements && st.workoutReplacements[curEx.id]) {
+            const origName = curEx.origName || curEx.name;
+            const prevType = curEx.type;
+            delete st.workoutReplacements[curEx.id];
+            const restored = getEx();
+            if (prevType === 'duration') { st.plankRunning = false; st.plankElapsed = 0; }
+            if (st.restOwnerExId === curEx.id) { st.restOwnerExId = null; st.restGuardArmed = null; }
+            st.drafts[curEx.id] = (restored.type === 'distance' || restored.type === 'reps') ? { val: '' } : { w: '', r: '' };
+            if (st.calibratedSuggestion && (!st.calibratedSuggestion.exId || st.calibratedSuggestion.exId === curEx.id)) st.calibratedSuggestion = null;
+            st.calFeelAnswer = null; st.sheet = null; st.screen = 'workout';
+            st.snack = { text: `Возвращено исходное: «${origName}»` };
+          }
+        }
         else if (act === 'pe-back') {
           peClearUndo();
           st.progEditor.ctxDayId = null;
@@ -5113,7 +5307,23 @@
             peTriggerUndo('ex', `Удалено «${rem.name}»`, rem, idx);
           }
         }
-        else if (act === 'pe-open-replace') { st.progEditor.replaceExId = v; st.sheet = 'pe_rep_ex'; }
+        else if (act === 'pe-open-replace') {
+          const pe = st.progEditor, d = peActiveDay(pe), ex = d && d.exercises.find(x => x.id === v);
+          if (ex) {
+            pe.replaceExId = v;
+            st.catalog = Object.assign(st.catalog || catCreateInitial(), {
+              entryMode: 'day_replace', sub: 'list', search: '', sheet: null, menuOpen: false,
+              filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
+              replaceSourceType: peTypeToCatType(ex.type),
+              replaceExcludeId: null,
+              replaceExcludeName: ex.name,
+              replaceCurrentName: ex.name,
+              replaceOrigName: '',
+              replaceSlotSummary: peFmtPair(ex, ex, false)
+            });
+            st.sheet = null; st.snack = null; st.screen = 'catalog';
+          }
+        }
         else if (act === 'pe-pick-add') {
           const d = peActiveDay(st.progEditor), c = PE_CATALOG_SAMPLES[parseInt(v, 10)];
           if (d && c) {
@@ -5121,17 +5331,6 @@
             d.exercises.push(nex); st.progEditor.expandedId = nex.id;
           }
           st.sheet = null;
-        }
-        else if (act === 'pe-pick-rep') {
-          const pe = st.progEditor, d = peActiveDay(pe), c = PE_CATALOG_SAMPLES[parseInt(v, 10)];
-          const ex = d && d.exercises.find(x => x.id === pe.replaceExId);
-          if (ex && c) {
-            const compat = (ex.type === c.type) || ((ex.type === 'weight_reps' || ex.type === 'reps') && (c.type === 'weight_reps' || c.type === 'reps'));
-            ex.name = c.name; ex.type = c.type;
-            if (!compat) { ex.heavyMode = 'empty'; ex.heavyMin = null; ex.heavyMax = null; ex.heavyExact = null; ex.heavySec = null; ex.heavyMeters = null; ex.lightManual = false; ex.progression = c.progression; }
-            pe.expandedId = ex.id;
-          }
-          pe.replaceExId = null; st.sheet = null;
         }
         else if (act === 'pe-toggle-alt') { st.alternating = !st.alternating; }
         else if (act === 'pe-set-rule') {
@@ -5141,7 +5340,7 @@
           }
           pe.rule = v;
         }
-        else if (act === 'pe-toggle-ex') { st.progEditor.expandedId = st.progEditor.expandedId === v ? null : v; }
+        else if (act === 'pe-toggle-ex') { st.progEditor.expandedId = st.progEditor.expandedId === v ? null : v; st.progEditor.justReplacedId = null; }
         else if (act === 'pe-toggle-prog') { const ex = (peActiveDay(st.progEditor)?.exercises || []).find(x => x.id === v); if (ex) ex.progression = !ex.progression; }
         else if (act === 'pe-override-light') { const ex = (peActiveDay(st.progEditor)?.exercises || []).find(x => x.id === v); if (ex) peEnsureManual(ex, st.progEditor.rule); }
         else if (act === 'pe-reset-light') { const ex = (peActiveDay(st.progEditor)?.exercises || []).find(x => x.id === v); if (ex) { ex.lightManual = false; ex.lightDisplayUnit = null; } }
@@ -5299,8 +5498,8 @@
             }
           } else {
             const draft = st.drafts[ex.id] || { w: '', r: '' };
-            const suggW = logged.length ? logged[logged.length - 1].w : (ex.id === 'incline' && st.calibratedSuggestion ? st.calibratedSuggestion.w : (plan.lastW != null ? String(plan.lastW).replace('.', ',') : ''));
-            const suggR = logged.length ? logged[logged.length - 1].r : (ex.id === 'incline' && st.calibratedSuggestion ? st.calibratedSuggestion.r : (plan.lastR != null ? String(plan.lastR) : ''));
+            const suggW = logged.length ? logged[logged.length - 1].w : (st.calibratedSuggestion && (!st.calibratedSuggestion.exId || st.calibratedSuggestion.exId === ex.id) ? st.calibratedSuggestion.w : (plan.lastW != null ? String(plan.lastW).replace('.', ',') : ''));
+            const suggR = logged.length ? logged[logged.length - 1].r : (st.calibratedSuggestion && (!st.calibratedSuggestion.exId || st.calibratedSuggestion.exId === ex.id) ? st.calibratedSuggestion.r : (plan.lastR != null ? String(plan.lastR) : ''));
             const w = draft.w.trim() || suggW, r = draft.r.trim() || suggR;
             if (w && r) {
               const guarded = st.restRunning && st.restOwnerExId === ex.id;
@@ -5343,14 +5542,16 @@
         else if (act === 'cal-formula-close') { st.calFormulaPicker = false; }
         else if (act === 'cal-pick-formula') { st.formulaId = v; st.calFormulaPicker = false; }
         else if (act === 'cal-feel') {
-          if (v === 'ok') { (st.logged.incline || (st.logged.incline = [])).push({ w: st.calFeelW || '18', r: st.calFeelR || '10' }); st.sheet = null; st.snack = null; if (st.restAutoStart) { st.restRunning = true; st.restLeft = st.restDefault; } }
+          const curEx = getEx();
+          if (v === 'ok') { (st.logged[curEx.id] || (st.logged[curEx.id] = [])).push({ w: st.calFeelW || '18', r: st.calFeelR || '10' }); st.sheet = null; st.snack = null; if (st.restAutoStart) { st.restRunning = true; st.restLeft = st.restDefault; st.restOwnerExId = curEx.id; } }
           else st.calFeelAnswer = v;
         }
         else if (act === 'cal-apply-est') {
+          const curEx = getEx();
           const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
           const cw = parseFloat(String(st.calCalcW).replace(',', '.')) || 26, cr = parseInt(st.calCalcR, 10) || 8;
           const wStr = fmtNum(fObj.inv(fObj.calc(cw, cr), 12));
-          st.calibratedSuggestion = { w: wStr, r: '10', formula: fObj.name }; st.sheet = null;
+          st.calibratedSuggestion = { exId: curEx.id, w: wStr, r: '10', formula: fObj.name }; st.sheet = null;
           st.snack = { text: `Ориентир ≈ ${wStr} кг × 10 в подходе 1 · замер не записан`, undoType: 'cal' };
         }
         else if (act === 'undo-cal') { st.calibratedSuggestion = null; st.snack = null; st.sheet = 'calibrate'; st.calTab = 'calc'; }
@@ -5362,7 +5563,7 @@
           st.restRunning = false; st.plankRunning = false; st.holdPreviewPct = 0; st.finishHintStatic = false;
         }
         else if (act === 'save-to-history') {
-          const day = getDay();
+          const day = getWorkoutDay();
           const savedExercises = day.exercises.map(ex => {
             const raw = st.logged[ex.id] || [];
             if (!raw.length) return null;
@@ -5383,6 +5584,7 @@
           }
           if (st.alternating) st.dayStatus[day.id] = 'done';
           st.activeWorkoutDayId = null;
+          st.workoutReplacements = {};
           st.screen = 'home';
         }
         else if (act === 'lock-cycle-plank') { const order = ['overtime', 'countdown', 'countup']; st.lockPlankState = order[(order.indexOf(st.lockPlankState) + 1) % order.length]; }
@@ -5409,7 +5611,9 @@
           const mode = st.catalog.entryMode;
           st.catalog.search = ''; st.catalog.sheet = null; st.catalog.menuOpen = false; st.snack = null;
           st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
-          st.screen = mode === 'day_pick' ? 'day_editor' : 'settings';
+          if (mode === 'workout_replace') { st.screen = 'workout'; st.sheet = 'ex_detail'; }
+          else if (mode === 'day_pick' || mode === 'day_replace') { st.screen = 'day_editor'; }
+          else { st.screen = 'settings'; }
         }
         else if (act === 'cat-clear-snack') { st.snack = null; }
         else if (act === 'cat-back-list') { st.catalog.sub = 'list'; st.catalog.menuOpen = false; st.catalog.sheet = null; st.snack = null; }
@@ -5449,13 +5653,68 @@
         else if (act === 'cat-quick-add' || act === 'cat-pick-from-card') {
           const exId = act === 'cat-quick-add' ? v : st.catalog.selectedId;
           const ex = st.catalog.exercises.find(x => x.id === exId);
-          const d = peActiveDay(st.progEditor);
-          if (ex && d) {
-            const tp = catTypeObj(ex.type) || CAT_TYPES[0];
-            const nex = { id: peNextId('pe'), name: ex.name, type: tp.peType, progression: tp.progDef, heavySets: 3, heavyMode: 'range', heavyMin: 8, heavyMax: 12, heavyExact: 10, heavySec: tp.peType === 'duration' ? 30 : null, heavyMeters: tp.peType === 'distance' ? 500 : null, heavyUnit: 'm', lightManual: false, manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8, manualSec: 25, manualMeters: 400, manualUnit: 'm' };
-            d.exercises.push(nex); st.progEditor.expandedId = nex.id;
+          const mode = st.catalog.entryMode;
+          if (ex && mode === 'workout_replace') {
+            const curEx = getEx(), tp = catTypeObj(ex.type) || CAT_TYPES[0], df = catDiffObj(ex.diff);
+            const sameAsOrig = catNorm(ex.name) === catNorm(curEx.origName);
+            if (!st.workoutReplacements) st.workoutReplacements = {};
+            if (sameAsOrig) {
+              delete st.workoutReplacements[curEx.id];
+            } else {
+              const histEntry = (st.history || []).flatMap(h => h.exercises || []).find(he => catNorm(he.name) === catNorm(ex.name) && he.sets && he.sets.length);
+              const firstSet = histEntry ? histEntry.sets[0] : null;
+              st.workoutReplacements[curEx.id] = {
+                catId: ex.id,
+                name: ex.name,
+                longName: ex.id === 'barbell-bench-press' || ex.id === 'custom:t-bar-row' ? 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке' : ex.name,
+                type: tp.peType,
+                muscle: ex.primary ? catMuscleLbl(ex.primary) : curEx.muscle,
+                assisting: (ex.assisting || []).map(catMuscleLbl).join(', '),
+                equip: catIsNoEquip(ex) ? 'Без инвентаря' : (ex.equip || []).map(catEquipLbl).join(', '),
+                diff: df ? df.bars : 1,
+                diffLabel: df ? df.label : 'Начальный',
+                steps: ex.steps || null,
+                tech: ex.tech || '',
+                hasHistory: Boolean(firstSet),
+                historyW: firstSet && firstSet.w != null ? firstSet.w : null,
+                historyR: firstSet && firstSet.r != null ? firstSet.r : null,
+                historyM: firstSet && firstSet.m != null ? firstSet.m : null
+              };
+            }
+            if (curEx.type === 'duration') { st.plankRunning = false; st.plankElapsed = 0; }
+            if (st.restOwnerExId === curEx.id) { st.restOwnerExId = null; st.restGuardArmed = null; }
+            st.drafts[curEx.id] = (tp.peType === 'distance' || tp.peType === 'reps') ? { val: '' } : { w: '', r: '' };
+            if (st.calibratedSuggestion && (!st.calibratedSuggestion.exId || st.calibratedSuggestion.exId === curEx.id)) st.calibratedSuggestion = null;
+            st.calFeelAnswer = null;
             st.catalog.sub = 'list'; st.catalog.search = ''; st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
-            st.screen = 'day_editor'; st.snack = { text: `Добавлено: «${ex.name}»` };
+            st.sheet = null; st.screen = 'workout';
+            st.snack = { text: sameAsOrig ? `Возвращено исходное: «${ex.name}»` : `Заменено на «${ex.name}» (на сегодня)` };
+          } else if (ex && mode === 'day_replace') {
+            const pe = st.progEditor, d = peActiveDay(pe), slot = d && d.exercises.find(x => x.id === pe.replaceExId);
+            if (slot) {
+              const tp = catTypeObj(ex.type) || CAT_TYPES[0];
+              const compat = catIsCompat(peTypeToCatType(slot.type), ex.type);
+              slot.name = ex.name; slot.type = tp.peType;
+              if (!compat) {
+                slot.heavyMode = 'empty'; slot.heavyMin = null; slot.heavyMax = null; slot.heavyExact = null; slot.heavySec = null; slot.heavyMeters = null;
+                slot.lightManual = false;
+                slot.manualMode = 'empty'; slot.manualMin = null; slot.manualMax = null; slot.manualExact = null; slot.manualSec = null; slot.manualMeters = null;
+                slot.progression = tp.progDef;
+              }
+              pe.expandedId = slot.id; pe.justReplacedId = slot.id; pe.replaceExId = null;
+              st.catalog.sub = 'list'; st.catalog.search = ''; st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
+              st.screen = 'day_editor';
+              st.snack = { text: compat ? `Заменено на «${ex.name}» · цели сохранены` : `Заменено на «${ex.name}» · цель сброшена в «Без цели»` };
+            }
+          } else if (ex) {
+            const d = peActiveDay(st.progEditor);
+            if (d) {
+              const tp = catTypeObj(ex.type) || CAT_TYPES[0];
+              const nex = { id: peNextId('pe'), name: ex.name, type: tp.peType, progression: tp.progDef, heavySets: 3, heavyMode: 'range', heavyMin: 8, heavyMax: 12, heavyExact: 10, heavySec: tp.peType === 'duration' ? 30 : null, heavyMeters: tp.peType === 'distance' ? 500 : null, heavyUnit: 'm', lightManual: false, manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8, manualSec: 25, manualMeters: 400, manualUnit: 'm' };
+              d.exercises.push(nex); st.progEditor.expandedId = nex.id;
+              st.catalog.sub = 'list'; st.catalog.search = ''; st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
+              st.screen = 'day_editor'; st.snack = { text: `Добавлено: «${ex.name}»` };
+            }
           }
         }
         else if (act === 'cat-open-create') { st.catalog.form = catMakeEmptyForm(st.catalog.search); st.catalog.sub = 'form'; st.catalog.sheet = null; st.catalog.menuOpen = false; }
@@ -5518,6 +5777,20 @@
                   d.exercises.push(nex); st.progEditor.expandedId = nex.id;
                 }
                 st.catalog.sub = 'list'; st.catalog.search = ''; st.screen = 'day_editor'; st.snack = { text: `Создано «${nm}» и добавлено в день` };
+              } else if (st.catalog.entryMode === 'day_replace') {
+                const pe = st.progEditor, d = peActiveDay(pe), slot = d && d.exercises.find(x => x.id === pe.replaceExId), tp = catTypeObj(created.type) || CAT_TYPES[0];
+                if (slot) {
+                  const compat = catIsCompat(peTypeToCatType(slot.type), created.type);
+                  slot.name = created.name; slot.type = tp.peType;
+                  if (!compat) {
+                    slot.heavyMode = 'empty'; slot.heavyMin = null; slot.heavyMax = null; slot.heavyExact = null; slot.heavySec = null; slot.heavyMeters = null;
+                    slot.lightManual = false;
+                    slot.manualMode = 'empty'; slot.manualMin = null; slot.manualMax = null; slot.manualExact = null; slot.manualSec = null; slot.manualMeters = null;
+                    slot.progression = tp.progDef;
+                  }
+                  pe.expandedId = slot.id; pe.justReplacedId = slot.id; pe.replaceExId = null;
+                }
+                st.catalog.sub = 'list'; st.catalog.search = ''; st.screen = 'day_editor'; st.snack = { text: `Создано «${nm}» и заменено в дне` };
               } else {
                 st.catalog.selectedId = nid; st.catalog.sub = 'detail'; st.snack = { text: `Создано «${nm}»` };
               }
@@ -5858,6 +6131,7 @@
       logged: Object.assign({}, b.logged, ov.logged || {}),
       drafts: Object.assign({}, b.drafts, ov.drafts || {}),
       distUnit: Object.assign({}, b.distUnit, ov.distUnit || {}),
+      workoutReplacements: ov.workoutReplacements ? JSON.parse(JSON.stringify(ov.workoutReplacements)) : {},
       programs: ov.programs ? cloneProgramList(ov.programs) : cloneProgramList(INITIAL_PROGRAMS),
       progEditor: ov.progEditor ? peClone(ov.progEditor) : peCreateInitial(),
       catalog: ov.catalog ? catClone(ov.catalog) : catCreateInitial()
@@ -5949,6 +6223,18 @@
           { title: 'Каталог · Карточка-паспорт и меню ✎ / ⋮ (H3 + B · #124)', note: 'Полное название без обрезки, 4-строчная паспортная карточка #141914 с иконками, «Техника выполнения» и ✎ / ⋮ для своего упражнения из Настроек.', state: snap({ screen: 'catalog', catalog: catCreateInitial({ entryMode: 'settings', sub: 'detail', selectedId: 'custom:t-bar-row', menuOpen: true }) }) },
           { title: 'Каталог · Форма своего упражнения: слайдер и валидация (A+ · #124)', note: '3 outlined-секции, мягкое предупреждение о дубликате, выбор типа/мышц (поиск 48 dp) через шторки и 4-позиционный слайдер сложности техники.', state: snap({ screen: 'catalog', catalog: (() => { const c = catCreateInitial({ entryMode: 'settings', sub: 'form' }); c.form = catMakeEmptyForm('жим штанги лежа'); c.form.diff = 'INTERMEDIATE'; c.form.validated = true; return c; })() }) }
         ]
+      },
+      {
+        title: '8. Замена упражнения и возврат исходного — тренировка и редактор дня (#123 + #125 · A + B + C)',
+        sub: 'Единый паспорт-модуль замены в «Карточке техники» (B) с блокировкой при ≥ 1 подходе и пилюлей «↺ Вернуть», чип-замок совместимых типов (C), полоса ⇄ (A), нижний липкий возврат исходного (C), пустой Distance и смена типа в редакторе дня',
+        cards: [
+          { title: 'Замена · Карточка техники (уже заменено, 0 подх. · #125)', note: 'Единый модуль B: строка «Замена на сегодня · исходное» с пилюлей «↺ Вернуть» и строка «Выбрать другую замену» («из каталога»).', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, sheet: 'ex_detail', logged: { bench: [] }, workoutReplacements: { bench: { catId: 'dumbbell-bench-press', name: 'Жим гантелей лёжа', longName: 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке', type: 'weight_reps', muscle: 'Грудь', assisting: 'Трицепс, Плечи', equip: 'Гантели, Скамья', diff: 2, diffLabel: 'Средний', tech: 'Поставь стопы на пол и сведи лопатки. Опусти гантели по сторонам груди и выжми их вверх.', hasHistory: false } } }) },
+          { title: 'Замена · Карточка техники (≥ 1 подход · заблокировано)', note: 'Кнопка остаётся видимой в неактивном состоянии с 🔒 и подписью «Доступно до записи первого подхода».', state: snap({ screen: 'workout', currentWeek: 'heavy', exIndex: 0, sheet: 'ex_detail', logged: { bench: [{ w: '60', r: '12' }] } }) },
+          { title: 'Замена · Каталог на тренировке (повторная + возврат снизу)', note: '«Замена · на сегодня», несъёмный чип-замок «Вес и повторы · Повторы», полоса ⇄, метка «В тренировке» и липкий «↺ Вернуть исходное» внизу.', state: snap({ screen: 'catalog', selectedDay: 'A', exIndex: 0, logged: { bench: [] }, workoutReplacements: { bench: { catId: 'dumbbell-bench-press', name: 'Жим гантелей лёжа', type: 'weight_reps' } }, catalog: catCreateInitial({ entryMode: 'workout_replace', sub: 'list', replaceSourceType: 'WEIGHT_AND_REPS', replaceExcludeId: 'dumbbell-bench-press', replaceExcludeName: 'Жим гантелей лёжа', replaceCurrentName: 'Жим гантелей лёжа', replaceOrigName: 'Жим штанги лёжа' }) }) },
+          { title: 'Замена · Пустой совместимый тип (Distance · #125)', note: '«🔒 Только дистанция» и спокойное пустое состояние «Других упражнений этого типа пока нет» без кнопки «+ Создать».', state: snap({ screen: 'catalog', selectedDay: 'C', exIndex: 3, logged: { run: [] }, catalog: (() => { const c = catCreateInitial({ entryMode: 'workout_replace', sub: 'list', replaceSourceType: 'DISTANCE', replaceExcludeId: 'running', replaceExcludeName: 'Бег', replaceCurrentName: 'Бег' }); c.exercises = c.exercises.filter(e => !e.custom); return c; })() }) },
+          { title: 'Замена · Каталог в редакторе дня (все типы + Создать)', note: '«Замена · в дне», полный каталог всех 4 типов без замка, полоса ⇄, метка «В дне» и липкая «+ Создать упражнение».', state: snap({ screen: 'catalog', progEditor: peCreateInitial({ replaceExId: 'pe1', expandedId: 'pe1' }), catalog: catCreateInitial({ entryMode: 'day_replace', sub: 'list', replaceSourceType: 'WEIGHT_AND_REPS', replaceExcludeName: 'Жим штанги лёжа', replaceCurrentName: 'Жим штанги лёжа', replaceSlotSummary: '3 × 8–12' }) }) },
+          { title: 'Замена · Карточка H3 при смене типа в редакторе дня', note: 'Янтарный блок «Смена типа записи: 3 × 8–12 → 3 × Без цели · лёгкая неделя сбросится к авто, Прогрессия — выкл.» над паспортом.', state: snap({ screen: 'catalog', progEditor: peCreateInitial({ replaceExId: 'pe1', expandedId: 'pe1' }), catalog: catCreateInitial({ entryMode: 'day_replace', sub: 'detail', selectedId: 'plank', replaceSourceType: 'WEIGHT_AND_REPS', replaceExcludeName: 'Жим штанги лёжа', replaceCurrentName: 'Жим штанги лёжа', replaceSlotSummary: '3 × 8–12' }) }) }
+        ]
       }
     ];
 
@@ -5979,7 +6265,8 @@
           programs: cloneProgramList(target.programs || INITIAL_PROGRAMS),
           histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null,
           progEditor: peClone(target.progEditor),
-          catalog: catClone(target.catalog)
+          catalog: catClone(target.catalog),
+          workoutReplacements: target.workoutReplacements ? JSON.parse(JSON.stringify(target.workoutReplacements)) : {}
         });
         syncHostTabs(); renderLive(); window.scrollTo({ top: 0, behavior: 'smooth' });
       });
