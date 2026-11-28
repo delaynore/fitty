@@ -1674,8 +1674,8 @@
     <div class="host-title-group">
       <span class="host-badge">Fitty 2.0 · На базе дизайн-системы</span>
       <div>
-        <h1 class="host-title">Сводный прототип: исходный android-design-system.html + согласованные решения</h1>
-        <div class="host-sub">Вернул базовую типографику .d (UPPERCASE), поверхности без рамок, Планку 280px, Экран блокировки, Историю и шторки из исходного HTML</div>
+        <h1 class="host-title">Fitty v2 — сводный прототип Android (финальная база для разработки)</h1>
+        <div class="host-sub">Все согласованные экраны и состояния Fitty v2 поверх исходной дизайн-системы android-design-system.html (подкарты #108–#111, 390 / 360 dp)</div>
       </div>
     </div>
     <div class="host-controls">
@@ -1720,13 +1720,13 @@
       </div>
 
       <div class="panel">
-        <h2>Стыки для сверки</h2>
+        <h2>Стыки для сверки (Fitty v2)</h2>
         <ul class="junction-list">
-          <li><strong>База возвращена 1-в-1:</strong> <code>.d</code> UPPERCASE-типографика, карточки <code>#141914</code> без рамок, нижний бар <code>64px</code>, Планка с кругом <code>280px</code>, История с лаймовой датой, Экран блокировки <code>#0B0E0B</code> + часы <code>96px</code> + <code>Fitty · сейчас</code>, шторки досок 20 и 21.</li>
-          <li><strong>Цвет лёгкой недели (#98 → #101):</strong> сквозной голубой <code>#5CC8FA</code> вместо мятного <code>#7CE2D0</code>.</li>
-          <li><strong>Высота Главной:</strong> карточка программы с <code>Training week</code> + раскрытый <code>Readiness check-in</code> + чипы дней <code>44px</code> + упражнения на <code>390 / 360 dp</code>.</li>
-          <li><strong>Топ-бар и низ тренировки (#114):</strong> чистая шапка без счётчика <code>Упр. X/N</code> (<code>←</code> + лампа недели + <code>Облегчить</code>), нижняя панель <code>← · ≡ План · → / 🏁 Завершить</code> (удержание 1,2 с с линейной заливкой и морфингом подсказки), гибрид «Все упражнения» и карточка техники C.</li>
-          <li><strong>Два янтаря рядом:</strong> в упражнении 2 — лампа тяжёлой недели <code>#F59E42</code> и полоса совета «снизить вес» <code>#F5C469</code>.</li>
+          <li><strong>Визуальная база (доски 01–21):</strong> типографика <code>.d</code>, поверхности <code>#141914</code> без рамок, шторки <code>#1C231C</code>, нижний бар <code>64px</code> только на 3 корневых вкладках (<code>#119</code>), Планка <code>280px</code>, Экран блокировки <code>#0B0E0B</code> + часы <code>96px</code>.</li>
+          <li><strong>Главная и тренировка (#108):</strong> активная Hero-карточка A2 (<code>#105</code>), запись всех 4 типов (<code>#79</code>, <code>#81</code>, <code>#113</code>), мягкая защита отдыха <code>⏳</code> в 2 тапа (<code>#102</code>), чистая шапка без <code>Упр. X/N</code>, нижняя панель <code>← · ≡ План · 🏁 Завершить</code> с удержанием <code>1,2 с</code> и шторки (<code>#112</code>, <code>#114</code>).</li>
+          <li><strong>Умная нагрузка (#109):</strong> подбор веса (<code>#82</code>, 7 формул 1RM, лимит <code>≤ 15</code> повт.), чередование недель и голубой <code>#5CC8FA</code> (<code>#98</code>, <code>#100</code>), полосы советов и цветные Итоги (<code>#99</code>), самочувствие и сквозные <code>8 dp</code> лампы (<code>#101</code>).</li>
+          <li><strong>Программы, редактор, каталог и замены (#110):</strong> 3-зонные аккордеоны программ (<code>#107</code>), единая ручка <code>⠿</code> слева, валидация <code>#1C1414</code> и Undo (<code>#120</code>, <code>#121</code>), каталог H1/H3/A+ (<code>#122</code>, <code>#124</code>) и прямая замена/возврат (<code>#123</code>, <code>#125</code>).</li>
+          <li><strong>История, Настройки и общие правила (#111):</strong> Календарь 1 + детали Hero 2 + правка подходов (<code>#117</code>, <code>#118</code>), 3 секции Настроек с «Сигналом таймеров» и фиксированной карточкой обновлений (<code>#104</code>, <code>#106</code>, <code>#116</code>), лимиты текста <code>#94</code> и навигация <code>#119</code>.</li>
         </ul>
       </div>
 
@@ -2405,8 +2405,10 @@
   let peUidCounter = 200;
   function peNextId(p) { return `${p}${++peUidCounter}`; }
   function peMakeCopyName(name) {
-    const suf = ' (копия)', t = String(name || '').trim(), ch = [...t], max = 40 - [...suf].length;
-    return `${ch.length > max ? ch.slice(0, max).join('').trimEnd() : t}${suf}`;
+    const suf = ' (копия)', t = String(name || '').trim();
+    const segs = (typeof Intl !== 'undefined' && Intl.Segmenter) ? [...new Intl.Segmenter('ru', { granularity: 'grapheme' }).segment(t)].map(x => x.segment) : [...t];
+    const max = 40 - catGraphemes(suf);
+    return `${segs.length > max ? segs.slice(0, max).join('').trimEnd() : t}${suf}`;
   }
 
   function peCreateInitial(ov = {}) {
@@ -2511,7 +2513,7 @@
     return { heavy, light, heavyOk, lightOk, ok: heavyOk && lightOk };
   }
   function peValidateDay(day, alternating, rule) {
-    const len = [...String(day.name || '').trim()].length;
+    const len = catGraphemes(day.name);
     const nameErr = len === 0 ? 'Введите название дня' : len > 40 ? 'Не больше 40 символов' : null;
     const noExErr = (day.exercises || []).length === 0 ? 'Добавьте хотя бы 1 упражнение' : null;
     const exErrors = {}; let exErrCount = 0;
@@ -3374,7 +3376,11 @@
       } else if (s.calTab === 'feel') {
         calBody = `<p>Сделайте лёгкий пробный подход и отметьте ощущения. В историю попадёт только вариант «В самый раз».</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес пробы, кг</span><input class="f-in has-value" data-cal="feelW" value="${s.calFeelW}"></div><div><span class="f-field-lbl">Повторения</span><input class="f-in has-value" data-cal="feelR" value="${s.calFeelR}"></div></div><div class="f-feel-stack"><button class="f-feel-card" data-act="cal-feel" data-v="light"><span class="f-feel-ico">↑</span><span><span class="f-feel-title">Слишком легко</span><span class="f-feel-sub">Отдохните и возьмите следующий комфортный вес тяжелее</span></span></button><button class="f-feel-card just-right" data-act="cal-feel" data-v="ok"><span class="f-feel-ico">✓</span><span><span class="f-feel-title">В самый раз (~2–3 в запасе)</span><span class="f-feel-sub">Запишет подход 1 и подскажет вес для подхода 2</span></span></button><button class="f-feel-card ${s.calFeelAnswer === 'heavy' ? 'selected-heavy' : ''}" data-act="cal-feel" data-v="heavy"><span class="f-feel-ico">↓</span><span><span class="f-feel-title">Слишком тяжело</span><span class="f-feel-sub">Попробуйте легче · если вес минимальный — замените упражнение</span></span></button></div>${s.calFeelAnswer === 'heavy' ? '<div class="f-sheet-callout" style="background:var(--f-error-bg);border-color:var(--f-error-border);color:#FFD6D2;display:flex;flex-direction:column;gap:8px"><span>Возьмите вес легче или замените упражнение в каталоге. Проба не сохранена.</span><button type="button" class="ob" style="min-height:40px;border-color:var(--f-error-border);color:#FFD6D2" data-act="open-replace">Заменить упражнение</button></div>' : ''}`;
       } else {
-        calBody = `<p>Один чистый подход до потери техники (не выше 15 повт.). Замер не попадёт в историю — подставим ориентир в строку 1.</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес, кг</span><input class="f-in has-value" data-cal="calcW" value="${s.calCalcW}"></div><div><span class="f-field-lbl">Повторения (до 15)</span><input class="f-in has-value" data-cal="calcR" value="${s.calCalcR}"></div></div><button class="f-formula-trigger" data-act="cal-formula-open"><div><div style="font-size:12.5px;font-weight:600">Формула: ${fObj.name}</div><div style="font-size:11px;color:var(--f-muted)">1RM ≈ ${validCalc ? fmtNum(est1RM) + ' кг' : '—'} · пересчёт под цель + 2</div></div><span style="font-size:12px;font-weight:600;color:var(--f-primary)">Сменить</span></button><div class="f-est-box"><div style="display:flex;align-items:baseline;justify-content:space-between"><span class="f-num-font" style="font-size:30px;color:var(--f-primary)">≈ ${fmtNum(estWork)} <small style="font-family:Inter;font-size:14px;color:var(--f-on-primary-container)">кг × ${targetR}</small></span><span style="font-size:11px;color:var(--f-muted)">округлите к снаряду</span></div><button class="pb" style="margin-top:2px;min-height:42px;font-size:15px" data-act="cal-apply-est">Подставить ориентир в подход 1</button></div>`;
+        const over15 = cr > 15;
+        const estBoxHtml = over15
+          ? `<div class="f-sheet-callout" style="background:var(--f-amber-container);border-color:var(--f-amber-border);color:var(--f-on-amber-container);display:flex;flex-direction:column;gap:8px"><span>Выше 15 повторений формула 1RM неточна — возьмите вес тяжелее или перейдите в подбор «По ощущениям».</span><button type="button" class="ob" style="min-height:40px;border-color:var(--f-amber-border);color:var(--f-on-amber-container)" data-act="cal-tab" data-v="feel">Перейти «По ощущениям»</button></div>`
+          : `<div class="f-est-box"><div style="display:flex;align-items:baseline;justify-content:space-between"><span class="f-num-font" style="font-size:30px;color:${validCalc ? 'var(--f-primary)' : 'var(--f-dim)'}">${validCalc ? `≈ ${fmtNum(estWork)}` : '—'} <small style="font-family:Inter;font-size:14px;color:var(--f-on-primary-container)">кг × ${targetR}</small></span><span style="font-size:11px;color:var(--f-muted)">округлите к снаряду</span></div><button class="pb" style="margin-top:2px;min-height:42px;font-size:15px" data-act="cal-apply-est" ${validCalc ? '' : 'disabled'}>Подставить ориентир в подход 1</button></div>`;
+        calBody = `<p>Один чистый подход до потери техники (не выше 15 повт.). Замер не попадёт в историю — подставим ориентир в строку 1.</p><div class="f-inputs-2"><div><span class="f-field-lbl">Вес, кг</span><input class="f-in has-value" data-cal="calcW" value="${s.calCalcW}"></div><div><span class="f-field-lbl">Повторения (до 15)</span><input class="f-in has-value ${over15 ? 'err' : ''}" data-cal="calcR" value="${s.calCalcR}"></div></div><button class="f-formula-trigger" data-act="cal-formula-open"><div><div style="font-size:12.5px;font-weight:600">Формула: ${fObj.name}</div><div style="font-size:11px;color:var(--f-muted)">1RM ≈ ${validCalc ? fmtNum(est1RM) + ' кг' : '—'} · пересчёт под цель + 2</div></div><span style="font-size:12px;font-weight:600;color:var(--f-primary)">Сменить</span></button>${estBoxHtml}`;
       }
       sheetHtml = `<div class="f-scrim keep-header" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div>${!s.calFormulaPicker ? `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Подобрать рабочий вес</h3><button class="prog-strip-x" data-act="close-sheet">${ICO.x}</button></div><div class="f-seg"><button class="${s.calTab === 'feel' ? 'active' : ''}" data-act="cal-tab" data-v="feel">По ощущениям <span class="f-rec-dot">Рек.</span></button><button class="${s.calTab === 'calc' ? 'active' : ''}" data-act="cal-tab" data-v="calc">По повторениям</button></div>` : ''}${calBody}</div></div>`;
     } else if (s.sheet === 'ex_detail') {
@@ -3580,7 +3586,7 @@
 
   /* ==================== SUMMARY SCREEN (#99 + #101) ==================== */
   function renderSummaryHTML(s) {
-    const day = getDay(s), wk = activeWeekKey(s), isEased = s.easeMode !== 'none' || s.sessionMarkedLightened;
+    const day = getWorkoutDay(s), wk = activeWeekKey(s), isEased = s.easeMode !== 'none' || s.sessionMarkedLightened;
     const heroHtml = isEased ? `
       <div class="sum-hero eased">
         <div class="sum-hero-eye">Облегчённая тренировка · без сравнения с нормой</div>
@@ -3946,6 +3952,9 @@
         const sel = p.id === s.timerSoundId, playing = p.id === s.playingSoundId, isNone = p.id === 'none';
         return `<button class="sig-card-a ${sel ? 'active' : ''} ${playing ? 'playing' : ''} ${isNone ? 'none-opt' : ''}" data-act="pick-timer-sound" data-v="${p.id}"><span class="sig-radio">${sel ? ICO.checkSm : ''}</span><div style="flex:1;min-width:0"><span class="sig-title-a">${p.name}${p.def ? ' · по умолчанию' : ''}</span><span class="sig-sub-a">${p.hint}</span></div><span class="sig-trail">${playing ? `${eqHtml}<span>Играет</span>` : isNone ? ICO.volOff : (sel ? ICO.vol : ICO.playSm)}</span></button>`;
       }).join('')}</div><button class="f-sheet-cancel" data-act="close-sheet">Готово</button></div></div>`;
+    } else if (s.sheet === 'settings_upd_warn') {
+      const actDay = DAYS.find(d => d.id === s.activeWorkoutDayId) || DAYS[0];
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3>Сейчас идёт тренировка</h3><div class="f-sheet-summary"><strong>${dayDisplayName(actDay, s)}</strong><span class="f-sheet-summary-sub">Записанные подходы сохранятся в базе, но установка обновления перезапустит Fitty и остановит активные таймеры.</span></div><p>Можно завершить тренировку и обновиться позже или запустить загрузку сейчас.</p><button class="pb" type="button" data-act="confirm-start-upd">Всё равно обновить до 2.1</button><button class="f-sheet-cancel" type="button" data-act="close-sheet">Обновить позже</button></div></div>`;
     }
 
     const snackHtml = s.snack ? `<div class="f-snack"><span>${s.snack.text}</span></div>` : '';
@@ -4086,7 +4095,7 @@
   function renderProgramEditorHTML(s) {
     const pe = s.progEditor || peCreateInitial();
     const progName = s.longNames ? 'Силовая периодизация Верх / Низ на 12 недель с чередованием' : pe.programName;
-    const len = [...String(progName || '').trim()].length;
+    const len = catGraphemes(progName);
     const showCounter = len >= 48 || len > 60, over = len > 60;
     const nameEmptyErr = pe.showProgVal && len === 0;
     const totalOverrides = pe.rule === 'manual' ? 0 : (pe.days || []).reduce((acc, d) => acc + (d.exercises || []).filter(e => e.lightManual).length, 0);
@@ -4349,7 +4358,7 @@
     if (!day) return renderProgramEditorHTML(s);
     const dayName = s.longNames ? 'День А: грудь, плечи и трицепс (силовой)' : day.name;
     const dv = peValidateDay({ ...day, name: dayName }, s.alternating, pe.rule);
-    const dayLen = [...String(dayName || '').trim()].length;
+    const dayLen = catGraphemes(dayName);
     const showCounter = dayLen >= 32 || dayLen > 40, over = dayLen > 40;
     const showNameErr = over || (pe.showDayVal && !!dv.nameErr);
     const ruleObj = PE_RULES.find(r => r.id === pe.rule) || PE_RULES[0];
@@ -5059,7 +5068,7 @@
       el.addEventListener('click', () => {
         const act = el.dataset.act, v = el.dataset.v;
         if (act === 'go-screen') {
-          if (st.screen === v && v === 'history' && st.historyDetailIdx == null) {
+          if (st.screen === v && (v === 'home' || v === 'settings' || (v === 'history' && st.historyDetailIdx == null))) {
             const sc = phone.querySelector('.f-scroll-home');
             if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
             return;
@@ -5113,8 +5122,9 @@
           peClearUndo();
           pe.showProgVal = true;
           const trimmed = (pe.programName || '').trim();
-          if (!trimmed || [...trimmed].length > 60 || !(pe.days || []).length) {
-            st.snack = { text: !trimmed ? 'Введите название программы' : [...trimmed].length > 60 ? 'Название не длиннее 60 символов' : 'Добавьте хотя бы 1 день' };
+          const trimmedLen = catGraphemes(trimmed);
+          if (!trimmed || trimmedLen > 60 || !(pe.days || []).length) {
+            st.snack = { text: !trimmed ? 'Введите название программы' : trimmedLen > 60 ? 'Название не длиннее 60 символов' : 'Добавьте хотя бы 1 день' };
           } else {
             const badDay = pe.days.find(d => !peValidateDay(d, st.alternating, pe.rule).ok);
             if (badDay) {
@@ -5561,15 +5571,19 @@
         }
         else if (act === 'cal-apply-est') {
           const curEx = getEx();
+          const plan = effectivePlan(curEx, activeWeekKey(), st.easeMode, st.distUnit);
+          const targetR = plan.repsMax || 10;
           const fObj = FORMULAS.find(f => f.id === st.formulaId) || FORMULAS[0];
-          const cw = parseFloat(String(st.calCalcW).replace(',', '.')) || 26, cr = parseInt(st.calCalcR, 10) || 8;
-          const wStr = fmtNum(fObj.inv(fObj.calc(cw, cr), 12));
-          st.calibratedSuggestion = { exId: curEx.id, w: wStr, r: '10', formula: fObj.name }; st.sheet = null;
-          st.snack = { text: `Ориентир ≈ ${wStr} кг × 10 в подходе 1 · замер не записан`, undoType: 'cal' };
+          const cw = parseFloat(String(st.calCalcW).replace(',', '.')) || 0, cr = parseInt(st.calCalcR, 10) || 0;
+          if (cw > 0 && cr >= 1 && cr <= 15) {
+            const wStr = fmtNum(fObj.inv(fObj.calc(cw, cr), targetR + 2));
+            st.calibratedSuggestion = { exId: curEx.id, w: wStr, r: String(targetR), formula: fObj.name }; st.sheet = null;
+            st.snack = { text: `Ориентир ≈ ${wStr} кг × ${targetR} в подходе 1 · замер не записан`, undoType: 'cal' };
+          }
         }
         else if (act === 'undo-cal') { st.calibratedSuggestion = null; st.snack = null; st.sheet = 'calibrate'; st.calTab = 'calc'; }
         else if (act === 'prev-ex') { st.exIndex = Math.max(0, st.exIndex - 1); st.snack = null; st.restGuardArmed = null; }
-        else if (act === 'next-ex') { st.exIndex = Math.min(getDay().exercises.length - 1, st.exIndex + 1); st.snack = null; st.restGuardArmed = null; }
+        else if (act === 'next-ex') { st.exIndex = Math.min(getWorkoutDay().exercises.length - 1, st.exIndex + 1); st.snack = null; st.restGuardArmed = null; }
         else if (act === 'jump-ex') { st.exIndex = parseInt(v, 10); st.sheet = null; st.restGuardArmed = null; }
         else if (act === 'finish-workout') {
           st.screen = 'summary'; st.sheet = null; st.snack = null; st.restGuardArmed = null;
@@ -5589,9 +5603,10 @@
             return { id: `saved_${ex.id}_${Date.now()}`, type: ex.type, name: ex.name, longName: ex.longName, sets };
           }).filter(Boolean);
           if (savedExercises.length) {
+            const progObj = (st.programs || []).find(p => p.id === (st.activeWorkoutProgramId || st.selectedProgramId)) || (st.programs || [])[0];
             st.history.unshift({
               id: `h_${Date.now()}`, dayNum: '27', monShort: 'НОЯ', date: '27 ноября 2026', time: '19:24', durationSec: 2520,
-              day: day.name, longDay: day.longName, prog: 'Базовая силовая', week: activeWeekKey(),
+              day: day.name, longDay: day.longName, prog: progObj ? progObj.name : 'Базовая силовая', week: activeWeekKey(),
               lightened: st.easeMode !== 'none' || st.sessionMarkedLightened, exercises: savedExercises
             });
           }
@@ -5815,7 +5830,9 @@
           setTimeout(() => { st.updState = st.installedCode >= 210 ? 'uptodate' : 'available'; renderLive(); }, 1100);
           return;
         }
-        else if (act === 'start-upd') {
+        else if (act === 'start-upd' || act === 'confirm-start-upd') {
+          if (act === 'start-upd' && st.activeWorkoutDayId) { st.sheet = 'settings_upd_warn'; renderLive(); return; }
+          st.sheet = null;
           st.updState = 'downloading'; st.updProgress = 6; renderLive();
           const dl = setInterval(() => {
             if (st.updState !== 'downloading') { clearInterval(dl); return; }
@@ -5851,7 +5868,7 @@
       let anim = null;
       const cancelAnim = () => { if (anim) { cancelAnimationFrame(anim.raf); anim = null; } };
       const onFinishTrigger = () => {
-        const day = getDay();
+        const day = getWorkoutDay();
         const total = day.exercises.reduce((sum, item) => sum + (st.logged[item.id] || []).length, 0);
         if (total === 0) { st.sheet = 'finish_zero'; renderLive(); return; }
         const hasDraft = day.exercises.some(item => {
@@ -5896,7 +5913,7 @@
       };
       btn.addEventListener('pointerdown', e => {
         e.preventDefault();
-        const day = getDay();
+        const day = getWorkoutDay();
         const total = day.exercises.reduce((sum, item) => sum + (st.logged[item.id] || []).length, 0);
         if (total === 0) { st.sheet = 'finish_zero'; renderLive(); return; }
         cancelAnim();
@@ -5962,10 +5979,16 @@
     });
     phone.querySelectorAll('input[data-cal]').forEach(inp => {
       inp.addEventListener('input', () => {
-        if (inp.dataset.cal === 'feelW') st.calFeelW = inp.value;
-        if (inp.dataset.cal === 'feelR') st.calFeelR = inp.value;
-        if (inp.dataset.cal === 'calcW') st.calCalcW = inp.value;
-        if (inp.dataset.cal === 'calcR') st.calCalcR = inp.value;
+        const key = inp.dataset.cal, s0 = inp.selectionStart, s1 = inp.selectionEnd;
+        if (key === 'feelW') st.calFeelW = inp.value;
+        if (key === 'feelR') st.calFeelR = inp.value;
+        if (key === 'calcW') st.calCalcW = inp.value;
+        if (key === 'calcR') st.calCalcR = inp.value;
+        if (key === 'calcW' || key === 'calcR') {
+          renderLive();
+          const nextInp = document.querySelector(`#phone-live input[data-cal="${key}"]`);
+          if (nextInp) { nextInp.focus(); try { if (s0 != null) nextInp.setSelectionRange(s0, s1); } catch (_) {} }
+        }
       });
     });
     phone.querySelectorAll('input[data-hist-ed]').forEach(inp => {
