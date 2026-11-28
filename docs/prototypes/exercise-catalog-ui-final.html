@@ -1,0 +1,1875 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fitty 2.0 — Финал #124: Каталог упражнений, фильтры, карточка и форма (утверждённый гибрид)</title>
+<!--
+  Throwaway UI prototype (Hybrid iteration) for issue #124.
+  Locked from Daniil's feedback:
+  - List: Variant A base (sticky bottom +Создать упражнение, right full-height + strip in day-pick mode) + quick «Только свои» shortcut under search with × on active chips (no extra filter shortcuts).
+  - Filter sheet: Variant A accordion + «Только свои» switch pinned at TOP + interactive Difficulty slider + large 48dp thumb-friendly muscle search.
+  - Form: Variant A outlined sections & sheet pickers (with large 48dp muscle search) + interactive 4-stop Difficulty slider in Техника section.
+  - Exploring 3 focused structures (H1 / H2 / H3) for:
+    (1) Intuitive visual symbols in list rows (Exercise type / Primary muscle / Equipment needed vs bodyweight),
+    (2) Better structured Variant B Exercise Card (with header ✎ / ⋮ actions).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--background, #ECEEE8);
+    color: var(--foreground, #1D221B);
+    font: 14px/1.45 var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+    padding: 14px 14px 86px;
+  }
+
+  /* ==================== HOST SHELL (ORCA-AWARE) ==================== */
+  .shell { max-width: 1420px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .topbar-host {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px;
+    padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .host-title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .host-badge {
+    display: inline-flex; align-items: center; background: #1B2318; color: #C5FA55;
+    padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase;
+  }
+  .host-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--card-foreground, #1A2018); }
+  .host-sub { font-size: 12px; color: var(--muted-foreground, #5C6759); }
+  .host-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .mode-tabs { display: inline-flex; background: var(--secondary, #E3E7DE); padding: 3px; border-radius: 10px; gap: 2px; }
+  .mode-tabs button {
+    border: 0; background: transparent; color: var(--muted-foreground, #4E584B);
+    font: 600 12px var(--font-sans, Inter, system-ui, sans-serif); padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--primary, #1B2318); color: var(--primary-foreground, #F0F3EA); }
+
+  .seg-small { display: inline-flex; background: var(--secondary, #EEF1EA); border: 1px solid var(--border, #D4DAD0); padding: 2px; border-radius: 9px; gap: 2px; }
+  .seg-small button {
+    border: 0; background: transparent; color: var(--muted-foreground, #546051);
+    font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .seg-small button.active { background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018); }
+
+  .interactive-stage { display: grid; grid-template-columns: auto minmax(310px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 880px) {
+    .interactive-stage { grid-template-columns: 1fr; justify-items: center; }
+    .inspector { width: 100%; max-width: 500px; }
+  }
+  .phone-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-caption { font-size: 12px; color: var(--muted-foreground, #5B6658); text-align: center; max-width: 390px; }
+
+  .inspector { display: flex; flex-direction: column; gap: 10px; }
+  .panel {
+    background: var(--card, #FFFFFF); color: var(--card-foreground, #1D221B);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 16px; padding: 13px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 9px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted-foreground, #525D4F);
+  }
+  .ctrl-row { margin-bottom: 10px; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #4E584B); margin-bottom: 5px; }
+  .btn-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cbtn {
+    border: 1px solid var(--border, #CCD3C8); background: var(--secondary, #F4F6F1); color: var(--secondary-foreground, #242C22);
+    border-radius: 9px; padding: 5px 10px; font: 600 11.5px var(--font-sans, Inter, system-ui, sans-serif); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cbtn:hover { background: var(--accent, #E5EAE0); color: var(--accent-foreground, #1A2018); }
+  .cbtn.active { background: var(--primary, #1C2419); color: var(--primary-foreground, #F0F3EA); border-color: var(--primary, #1C2419); }
+
+  .var-desc { font-size: 12.5px; color: var(--card-foreground, #2C342A); line-height: 1.48; margin: 0; }
+  .var-desc ul { margin: 6px 0 0; padding-left: 16px; }
+  .var-desc li { margin-bottom: 4px; }
+  .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px; font-size: 12px;
+    background: var(--secondary, #F4F6F1); padding: 6px 9px; border-radius: 9px;
+  }
+
+  .compare-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: flex-start; }
+  .compare-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .compare-head {
+    width: 100%; max-width: 390px; background: var(--card, #FFFFFF); color: var(--card-foreground, #1A2018);
+    border: 1px solid var(--border, #D5DBD1); border-radius: 13px; padding: 9px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .compare-head strong { font-size: 13px; }
+  .compare-head span { font-size: 11.5px; color: var(--muted-foreground, #5B6658); }
+  .hidden { display: none !important; }
+
+  /* Floating Switcher */
+  .proto-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 999;
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #141A13; color: #F0F3EA; border: 1.5px solid #4A6128; border-radius: 999px;
+    padding: 5px 6px; box-shadow: 0 12px 32px rgba(0,0,0,0.34);
+  }
+  .proto-sw-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 0;
+    background: #222B21; color: #F0F3EA; font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .proto-sw-arrow:hover { background: #303E1B; color: #DDFF98; }
+  .proto-sw-label { padding: 0 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
+  .proto-sw-key { background: #C5FA55; color: #1A2506; font-weight: 800; font-size: 11.5px; padding: 2px 7px; border-radius: 999px; }
+
+  /* ==================== FITTY ANDROID DESIGN SYSTEM ==================== */
+  .phone {
+    --f-bg: #0B0E0B;
+    --f-surface: #141914;
+    --f-surface-hi: #1C231C;
+    --f-chip: #252D24;
+    --f-outline: #343E33;
+    --f-outline-hi: #4B5849;
+    --f-primary: #C5FA55;
+    --f-on-primary: #1A2506;
+    --f-primary-container: #303E1B;
+    --f-primary-border: #4A6128;
+    --f-on-primary-container: #DDFF98;
+    --f-text: #F0F3EA;
+    --f-muted: #B6C1B3;
+    --f-dim: #81907D;
+    --f-placeholder: #728070;
+    --f-disabled: #5A665A;
+    --f-error: #FFB4AB;
+    --f-error-bg: #361C1A;
+    --f-error-border: #6E3631;
+    --f-amber: #F5C469;
+    --f-amber-bg: #2B2416;
+    --f-amber-border: #554524;
+    --f-sky: #5CC8FA;
+    --f-sky-bg: #132531;
+    --f-sky-border: #2A526B;
+    --f-lav: #C09BFF;
+    --f-lav-bg: #221933;
+    --f-lav-border: #55407D;
+
+    width: 390px; height: 844px; background: var(--f-bg); color: var(--f-text);
+    border-radius: 32px; border: 4px solid #222822; box-shadow: 0 18px 44px rgba(14, 19, 13, 0.28);
+    position: relative; overflow: hidden; font-family: Inter, sans-serif;
+    display: flex; flex-direction: column; flex: none;
+  }
+  .phone.w360 { width: 360px; height: 800px; }
+  .phone button { font-family: Inter, sans-serif; cursor: pointer; }
+  .phone input, .phone textarea { font-family: Inter, sans-serif; }
+
+  .d { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+  .m { color: var(--f-muted); }
+  .dim { color: var(--f-dim); }
+  .cd { background: var(--f-surface); border-radius: 20px; }
+
+  .pb {
+    background: var(--f-primary); color: var(--f-on-primary);
+    border: 0; border-radius: 999px; min-height: 48px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 18px;
+  }
+  .ob {
+    background: transparent; color: var(--f-text);
+    border: 1.5px solid var(--f-outline); border-radius: 999px; min-height: 46px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15.5px; letter-spacing: 0.55px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px;
+  }
+  .db {
+    background: var(--f-error-bg); color: var(--f-error);
+    border: 1px solid var(--f-error-border); border-radius: 999px; min-height: 46px; width: 100%;
+    font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: 15.5px; letter-spacing: 0.55px; text-transform: uppercase;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px;
+  }
+
+  .f-status {
+    height: 30px; padding: 8px 20px 0; display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 600; color: var(--f-muted); flex: none;
+  }
+  .f-status-r { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+  .f-topbar { display: flex; align-items: center; gap: 6px; padding: 6px 14px 6px 8px; min-height: 52px; flex: none; }
+  .f-back {
+    width: 42px; height: 42px; border: 0; border-radius: 21px; background: transparent; color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .f-back:hover { background: var(--f-surface); }
+  .f-top-title { margin: 0; font-size: 21px; line-height: 1.05; color: var(--f-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phone.w360 .f-top-title { font-size: 19px; }
+
+  .f-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: #2B342A transparent; }
+  .phone.w360 .f-scroll { padding: 4px 14px 20px; }
+  .f-scroll.has-sticky { padding-bottom: 92px; }
+  .f-sticky-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; padding: 10px 16px 16px;
+    background: linear-gradient(180deg, rgba(11,14,11,0) 0%, #0B0E0B 28%);
+  }
+  .f-sticky-foot.solid { background: #0B0E0B; border-top: 1px solid #222B22; padding-top: 12px; }
+
+  .diff-bars { display: inline-flex; gap: 3px; vertical-align: middle; align-items: center; }
+  .diff-bars i { width: 14px; height: 4.5px; border-radius: 2.5px; background: var(--f-outline); display: inline-block; }
+  .diff-bars i.on { background: var(--f-primary); }
+  .diff-bars.sm i { width: 9px; height: 3.5px; }
+  .cl2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .cl1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--f-chip); font-size: 12px; font-weight: 500; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .badge-custom { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #1E251E; border: 1px solid #354134; font-size: 10.5px; font-weight: 600; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .badge-inday { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; background: #232E19; border: 1px solid #415524; font-size: 10.5px; font-weight: 600; color: var(--f-on-primary-container); white-space: nowrap; flex: none; }
+
+  /* Search + Filter + Chips */
+  .cat-search-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 8px; flex: none; }
+  .phone.w360 .cat-search-row { padding: 0 14px 8px; }
+  .cat-search-box {
+    flex: 1; min-width: 0; height: 48px; border-radius: 24px;
+    background: var(--f-surface); border: 1.5px solid transparent;
+    display: flex; align-items: center; gap: 9px; padding: 0 10px 0 15px;
+  }
+  .cat-search-box:focus-within { border-color: var(--f-primary-border); background: #161C16; }
+  .cat-search-box input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); font-size: 15.5px; outline: none; }
+  .cat-search-box input::placeholder { color: var(--f-placeholder); }
+  .cat-clear-x {
+    width: 32px; height: 32px; border-radius: 16px; border: 0; background: var(--f-chip); color: var(--f-muted);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .cat-filter-btn {
+    position: relative; flex: none; width: 48px; height: 48px; border-radius: 24px;
+    border: 1.5px solid var(--f-outline); background: var(--f-surface); color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .cat-filter-btn.active { background: var(--f-primary-container); border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
+  .cat-filter-cnt {
+    position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; border-radius: 10px;
+    background: var(--f-primary); color: var(--f-on-primary); font-size: 11px; font-weight: 800; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #0B0E0B;
+  }
+
+  .cat-chips-bar { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 8px; scrollbar-width: none; flex: none; align-items: center; }
+  .phone.w360 .cat-chips-bar { padding: 0 14px 8px; }
+  .cat-chips-bar::-webkit-scrollbar { display: none; }
+  .cat-chip-rm {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    min-height: 34px; padding: 0 9px 0 12px; border-radius: 11px;
+    border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container);
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  }
+  .cat-chip-rm .x-dot {
+    width: 18px; height: 18px; border-radius: 9px; background: rgba(197,250,85,0.18);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .cat-quick-own {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    min-height: 34px; padding: 0 12px; border-radius: 11px;
+    border: 1px solid var(--f-outline); background: var(--f-surface); color: var(--f-muted);
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  }
+  .cat-chip-rm.clear-all { background: transparent; border-color: var(--f-outline); color: var(--f-muted); padding: 0 11px; }
+
+  /* ==================== SYMBOLIC EXERCISE TYPE TOKENS ==================== */
+  .ex-type-ico {
+    width: 38px; height: 38px; border-radius: 12px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .ex-type-ico.t-WEIGHT_AND_REPS { background: #263119; color: #C5FA55; }
+  .ex-type-ico.t-REPS { background: #1B2922; color: #7EE2B8; }
+  .ex-type-ico.t-DURATION { background: #162632; color: #5CC8FA; }
+  .ex-type-ico.t-DISTANCE { background: #2A2316; color: #F5C469; }
+
+  .ex-type-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 8px; font-size: 11px; font-weight: 600; white-space: nowrap; flex: none;
+  }
+  .ex-type-pill.t-WEIGHT_AND_REPS { background: #232D17; color: #D7F992; }
+  .ex-type-pill.t-REPS { background: #182620; color: #8CE8C2; }
+  .ex-type-pill.t-DURATION { background: #142530; color: #8DD7FA; }
+  .ex-type-pill.t-DISTANCE { background: #2B2416; color: #F8D488; }
+
+  /* Shared 2-zone Card Shell (Variant A + strip) */
+  .ex-card {
+    background: var(--f-surface); border-radius: 18px; margin-bottom: 8px;
+    display: flex; align-items: stretch; overflow: hidden;
+  }
+  .ex-card-main {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text);
+    text-align: left; padding: 11px 12px; display: flex; align-items: center; gap: 11px;
+  }
+  .ex-card-main:hover { background: #181E18; }
+  .ex-card-plus {
+    width: 50px; flex: none; border: 0; border-left: 1px solid #222B22;
+    background: transparent; color: var(--f-primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone.w360 .ex-card-plus { width: 44px; }
+  .ex-card-plus:hover { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+
+  /* Symbolic inline cues */
+  .sym-line {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    margin-top: 6px; font-size: 12px; line-height: 1.3;
+  }
+  .sym-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+  .sym-muscle { color: var(--f-on-primary-container); font-weight: 600; }
+  .sym-equip { color: var(--f-muted); }
+  .sym-free { color: #8CE8C2; font-weight: 500; }
+  .sym-chip-free {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 7px; background: #182720; color: #8CE8C2; font-size: 11.5px; font-weight: 600;
+  }
+  .sym-chip-gear {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 7px; background: #202720; color: var(--f-muted); font-size: 11.5px; font-weight: 500;
+  }
+  .sym-chip-muscle {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 7px; background: #232E18; color: var(--f-on-primary-container); font-size: 11.5px; font-weight: 600;
+  }
+
+  /* ==================== STRUCTURED VARIANT B CARDS (H1 / H2 / H3) ==================== */
+  .top-icon-btn {
+    width: 40px; height: 40px; border-radius: 20px; border: 0; background: transparent; color: var(--f-text);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .top-icon-btn:hover { background: var(--f-surface); }
+  .anchored-menu {
+    position: absolute; top: 82px; right: 14px; z-index: 25; width: 210px;
+    background: var(--f-surface-hi); border: 1px solid var(--f-outline); border-radius: 16px;
+    padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  }
+  .anchored-menu button {
+    width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: transparent;
+    color: var(--f-text); font-size: 14px; font-weight: 500; padding: 0 12px;
+    display: flex; align-items: center; gap: 10px; text-align: left;
+  }
+  .anchored-menu button:hover { background: var(--f-chip); }
+  .anchored-menu button.danger { color: var(--f-error); }
+
+  /* H1 Hero structured list */
+  .hero-b1 { background: var(--f-surface); border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+  .b1-rows { margin-top: 14px; border-top: 1px solid #222B22; padding-top: 10px; display: flex; flex-direction: column; gap: 11px; }
+  .b1-row { display: flex; align-items: flex-start; gap: 11px; }
+  .b1-ico {
+    width: 32px; height: 32px; border-radius: 10px; background: #1C231C; color: var(--f-muted);
+    display: inline-flex; align-items: center; justify-content: center; flex: none; margin-top: 1px;
+  }
+  .b1-k { font-size: 11px; color: var(--f-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .b1-v { font-size: 14px; font-weight: 600; color: var(--f-text); margin-top: 2px; line-height: 1.38; }
+
+  /* H2 Clean header + 2x2 structured tiles */
+  .facts-grid-h2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .fact-h2 {
+    background: var(--f-surface); border-radius: 16px; padding: 12px 13px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .fact-h2.wide { grid-column: 1 / 3; }
+  .fact-h2-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.45px; color: var(--f-dim); }
+  .fact-h2-val { font-size: 14.5px; font-weight: 600; color: var(--f-text); line-height: 1.35; }
+
+  /* H3 Passport divided card */
+  .passport-card { background: var(--f-surface); border-radius: 20px; overflow: hidden; margin-bottom: 14px; }
+  .pass-row {
+    padding: 12px 15px; border-bottom: 1px solid #202720;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pass-row:last-child { border-bottom: 0; }
+  .pass-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--f-surface-hi); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .pass-lbl { font-size: 12px; color: var(--f-dim); }
+  .pass-val { font-size: 14.5px; font-weight: 600; color: var(--f-text); margin-top: 1px; line-height: 1.35; }
+
+  .tech-card { background: var(--f-surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .tech-step { display: flex; gap: 11px; font-size: 14px; line-height: 20px; color: var(--f-text); }
+  .tech-step-num { font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; color: var(--f-primary); font-size: 18px; width: 16px; flex: none; line-height: 20px; }
+  .tech-prose { font-size: 14px; line-height: 21px; color: var(--f-text); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tech-empty { background: var(--f-surface); border-radius: 18px; padding: 16px; font-size: 13.5px; color: var(--f-dim); line-height: 1.45; }
+
+  /* ==================== DIFFICULTY SLIDER (FORM & FILTERS) ==================== */
+  .slider-box {
+    background: #101510; border: 1px solid #263025; border-radius: 14px; padding: 12px 14px 10px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .slider-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .slider-val { font-size: 14px; font-weight: 600; color: var(--f-on-primary-container); display: inline-flex; align-items: center; gap: 7px; }
+  .slider-val.muted { color: var(--f-dim); font-weight: 500; }
+
+  /* Native single-thumb discrete range slider (Form) */
+  .f-range {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; cursor: pointer;
+  }
+  .f-range::-webkit-slider-runnable-track {
+    height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--f-primary) 0%, var(--f-primary) var(--pct, 0%), #283227 var(--pct, 0%), #283227 100%);
+  }
+  .f-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--f-primary); border: 3px solid #141914;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 1.5px var(--f-primary-border);
+    margin-top: -9px;
+  }
+  .f-range::-moz-range-track { height: 8px; border-radius: 4px; background: #283227; }
+  .f-range::-moz-range-thumb {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--f-primary); border: 3px solid #141914;
+  }
+
+  /* Dual-thumb range slider for Filters */
+  .dual-range-wrap { position: relative; height: 34px; display: flex; align-items: center; }
+  .dual-track { position: absolute; left: 0; right: 0; height: 8px; border-radius: 4px; background: #283227; }
+  .dual-fill { position: absolute; height: 8px; border-radius: 4px; background: var(--f-primary); }
+  .dual-range-wrap input[type=range] {
+    position: absolute; left: 0; right: 0; width: 100%; margin: 0;
+    -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; height: 34px;
+  }
+  .dual-range-wrap input[type=range]::-webkit-slider-thumb {
+    pointer-events: auto; -webkit-appearance: none; appearance: none;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--f-primary); border: 3px solid #141914;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 1.5px var(--f-primary-border); cursor: pointer;
+  }
+  .dual-range-wrap input[type=range]::-moz-range-thumb {
+    pointer-events: auto; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--f-primary); border: 3px solid #141914; cursor: pointer;
+  }
+  .slider-stops { display: grid; gap: 4px; }
+  .slider-stops.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .slider-stops.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .slider-stop-btn {
+    border: 0; background: transparent; color: var(--f-dim); padding: 4px 2px; border-radius: 8px;
+    font-size: 11.5px; font-weight: 600; text-align: center;
+  }
+  .slider-stop-btn.on { color: var(--f-on-primary-container); background: rgba(197,250,85,0.1); }
+
+  /* ==================== SHEETS & THUMB-FRIENDLY 48dp MUSCLE SEARCH ==================== */
+  .f-scrim {
+    position: absolute; inset: 0; z-index: 30; background: rgba(5, 7, 5, 0.72);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .f-sheet {
+    background: var(--f-surface-hi); border-radius: 24px 24px 0 0;
+    padding: 10px 16px 16px; max-height: 90%;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
+  }
+  .phone.w360 .f-sheet { padding: 10px 14px 14px; }
+  .f-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--f-outline); margin: 0 auto 2px; flex: none; }
+  .f-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .f-sheet-head h3 { margin: 0; font-size: 20px; line-height: 1.1; color: var(--f-text); }
+  .f-sheet-reset { border: 0; background: transparent; color: var(--f-primary); font-size: 14px; font-weight: 600; padding: 8px 10px; border-radius: 10px; }
+  .f-sheet-reset:disabled { color: var(--f-disabled); cursor: default; }
+  .f-sheet-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: #343E33 transparent; }
+  .f-sheet-foot { flex: none; padding-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* REWORKED: Big 48dp Thumb-Friendly Search inside Sheets */
+  .sheet-search-big {
+    min-height: 48px; border-radius: 24px; background: #0C100C; border: 1.5px solid #2D382C;
+    display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; flex: none;
+  }
+  .sheet-search-big:focus-within { border-color: var(--f-primary-border); background: #0E130E; }
+  .sheet-search-big input {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text);
+    font-size: 16px; outline: none; height: 46px;
+  }
+  .sheet-search-big input::placeholder { color: var(--f-placeholder); }
+  .sheet-search-x {
+    width: 36px; height: 36px; border-radius: 18px; border: 0; background: var(--f-chip); color: var(--f-muted);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+
+  .flt-acc { background: var(--f-surface); border-radius: 16px; overflow: hidden; flex: none; }
+  .flt-acc-btn {
+    width: 100%; min-height: 58px; border: 0; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; gap: 11px; padding: 10px 14px; text-align: left;
+  }
+  .flt-acc-cnt {
+    min-width: 22px; height: 22px; border-radius: 11px; background: var(--f-primary); color: var(--f-on-primary);
+    font-size: 11.5px; font-weight: 800; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .flt-acc-body { padding: 0 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  .f-switch-row {
+    background: var(--f-surface); border-radius: 16px; padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border: 0; width: 100%; color: var(--f-text); text-align: left; flex: none;
+  }
+  .f-switch {
+    width: 44px; height: 26px; border-radius: 13px; padding: 3px; flex: none;
+    background: #2C352B; box-shadow: inset 0 0 0 1px #424E41; display: inline-flex; align-items: center;
+  }
+  .f-switch i { width: 20px; height: 20px; border-radius: 10px; background: #A2AEA0; transform: translateX(0); transition: transform 0.15s; display: block; }
+  .f-switch.on { background: var(--f-primary); box-shadow: none; }
+  .f-switch.on i { background: var(--f-on-primary); transform: translateX(18px); }
+
+  .role-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+    background: #0E120E; padding: 3px; border-radius: 13px; border: 1px solid #262F25;
+  }
+  .role-seg.disabled { opacity: 0.48; }
+  .role-seg button { border: 0; border-radius: 10px; min-height: 40px; padding: 0 8px; background: transparent; color: var(--f-muted); font-size: 13px; font-weight: 600; }
+  .role-seg button.active { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+
+  .pick-row {
+    width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: transparent; color: var(--f-text);
+    display: flex; align-items: center; gap: 12px; padding: 8px 12px; text-align: left; font-size: 15.5px;
+  }
+  .pick-row:hover { background: rgba(255,255,255,0.03); }
+  .pick-row.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .pick-row.disabled { opacity: 0.45; cursor: default; }
+  .pick-box {
+    width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--f-dim);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .pick-box.radio { border-radius: 50%; }
+  .pick-row.on .pick-box { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+
+  /* Form (Variant A Outlined Base + Difficulty Slider) */
+  .form-sec { background: var(--f-surface); border-radius: 20px; padding: 15px 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 14px; }
+  .form-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .form-sec-head h2 { margin: 0; font-size: 16.5px; color: var(--f-text); }
+  .form-sec-head span { font-size: 11.5px; color: var(--f-dim); }
+  .out-field { position: relative; padding-top: 6px; }
+  .out-lbl { position: absolute; top: -2px; left: 12px; padding: 0 5px; background: var(--f-surface); font-size: 11.5px; font-weight: 500; color: var(--f-muted); z-index: 2; }
+  .out-lbl.err { color: var(--f-error); }
+  .out-input, .out-pick, .out-textarea {
+    width: 100%; border-radius: 14px; border: 1.5px solid var(--f-outline-hi); background: transparent; color: var(--f-text); font-size: 15.5px; outline: none;
+  }
+  .out-input { height: 52px; padding: 0 14px; }
+  .out-input:focus, .out-textarea:focus { border-color: var(--f-primary); }
+  .out-textarea { min-height: 100px; padding: 12px 14px; resize: none; line-height: 1.45; }
+  .out-pick { min-height: 52px; padding: 10px 12px 10px 14px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .out-input.err, .out-pick.err, .out-textarea.err { border-color: var(--f-error); background: #1C1414; }
+  .field-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 12px; }
+  .field-err { color: var(--f-error); line-height: 1.35; }
+  .fill-cnt { font-size: 11.5px; color: var(--f-dim); font-variant-numeric: tabular-nums; }
+  .fill-cnt.err { color: var(--f-error); font-weight: 700; }
+  .field-warn {
+    margin-top: 5px; padding: 8px 10px; border-radius: 11px;
+    background: var(--f-amber-bg); border: 1px solid var(--f-amber-border);
+    color: #FFE0A3; font-size: 12px; line-height: 1.38; display: flex; align-items: flex-start; gap: 7px;
+  }
+  .field-lock {
+    padding: 11px 12px; border-radius: 14px; background: #101410; border: 1px dashed var(--f-outline);
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .type-radio-card {
+    width: 100%; border-radius: 14px; border: 1.5px solid #263025; background: var(--f-surface);
+    color: var(--f-text); padding: 11px 12px; text-align: left; display: flex; align-items: center; gap: 12px;
+  }
+  .type-radio-card.on { border-color: var(--f-primary); background: var(--f-primary-container); }
+
+  /* Empty States & Usage list */
+  .cat-empty {
+    background: var(--f-surface); border-radius: 20px; padding: 26px 18px; text-align: center;
+    margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .cat-empty-ico { width: 50px; height: 50px; border-radius: 16px; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; }
+  .cat-empty h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--f-text); }
+  .cat-empty p { margin: 0; font-size: 13px; color: var(--f-muted); line-height: 1.45; max-width: 280px; }
+  .cat-empty-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px; }
+  .usage-list { background: var(--f-surface); border-radius: 16px; overflow: hidden; }
+  .usage-row { padding: 11px 14px; border-bottom: 1px solid #202720; display: flex; flex-direction: column; gap: 2px; }
+  .usage-row:last-child { border-bottom: 0; }
+  .usage-row strong { font-size: 14px; color: var(--f-text); }
+  .usage-row span { font-size: 12px; color: var(--f-muted); }
+
+  .f-toast {
+    position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 40;
+    background: #141B14; border: 1px solid var(--f-primary-border); color: var(--f-on-primary-container);
+    border-radius: 14px; padding: 10px 14px; font-size: 13px; font-weight: 500;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar-host">
+    <div class="host-title-group">
+      <span class="host-badge">Финал #124</span>
+      <div>
+        <h1 class="host-title">Утверждённый дизайн каталога упражнений (#124)</h1>
+        <div class="host-sub">Список H1 (иконка типа слева + символы мышцы/инвентаря + полоса <code>+</code>) · Карточка H3 («паспорт» + <code>✎ / ⋮</code> в шапке) · Фильтры и форма A со слайдерами сложности и поиском мышц <code>48 dp</code></div>
+      </div>
+    </div>
+    <div class="host-controls">
+      <div class="mode-tabs">
+        <button id="modeInteractive" class="active" type="button">Интерактив</button>
+        
+      </div>
+      <div class="seg-small">
+        <button id="w390" class="active" type="button">390 dp</button>
+        <button id="w360" type="button">360 dp</button>
+      </div>
+      <button id="toggleLong" class="cbtn" type="button">Длинные названия (#94)</button>
+    </div>
+  </header>
+
+  <section id="interactiveStage" class="interactive-stage">
+    <div class="phone-slot">
+      <div id="phoneHost"></div>
+      <div id="phoneCaption" class="phone-caption"></div>
+    </div>
+    <aside class="inspector">
+      <div class="panel">
+        <h2>Выбранный вариант списка и карточки</h2>
+        <div id="varDesc" class="var-desc"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Символы-подсказки в каталоге</h2>
+        <div class="legend-grid">
+          <div class="legend-item"><span id="legW"></span><span><strong>Вес × повт.</strong> — штанга/гантели</span></div>
+          <div class="legend-item"><span id="legR"></span><span><strong>Повторы</strong> — свой вес / повторения</span></div>
+          <div class="legend-item"><span id="legT"></span><span><strong>Время</strong> — таймер / статика</span></div>
+          <div class="legend-item"><span id="legD"></span><span><strong>Дистанция</strong> — метры / км</span></div>
+          <div class="legend-item"><span id="legM"></span><span><strong>На что</strong> — основная мышца</span></div>
+          <div class="legend-item"><span id="legE"></span><span><strong>Инвентарь</strong> — снаряд или «свой вес»</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Быстрая проверка всех экранов</h2>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Экран / шторка</span>
+          <div class="btn-wrap" id="screenBtns"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Режим входа</span>
+          <div class="btn-wrap" id="entryBtns"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Пресеты списка и фильтров</span>
+          <div class="btn-wrap" id="listPresetBtns"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-lbl">Пресеты карточки и формы</span>
+          <div class="btn-wrap" id="cardFormBtns"></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="compareStage" class="hidden">
+    <div class="panel" style="margin-bottom:12px">
+      <div class="btn-wrap" id="compareQuickBtns"></div>
+    </div>
+    <div id="compareGrid" class="compare-grid"></div>
+  </section>
+</div>
+
+
+
+<script>
+(() => {
+  const TYPES = [
+    { id: 'WEIGHT_AND_REPS', label: 'Вес и повторы', short: 'Вес × повт.', hint: 'Штанга, гантели, тренажёры' },
+    { id: 'REPS', label: 'Повторы', short: 'Повторы', hint: 'Отжимания, подтягивания' },
+    { id: 'DURATION', label: 'Время', short: 'Время', hint: 'Планка, статические удержания' },
+    { id: 'DISTANCE', label: 'Дистанция', short: 'Дистанция', hint: 'Бег, прогулка фермера' }
+  ];
+  const DIFFS = [
+    { id: 'BEGINNER', label: 'Начальный', bars: 1 },
+    { id: 'INTERMEDIATE', label: 'Средний', bars: 2 },
+    { id: 'ADVANCED', label: 'Продвинутый', bars: 3 }
+  ];
+  const MUSCLES = [
+    { id: 'CHEST', label: 'Грудь' },
+    { id: 'BACK', label: 'Спина' },
+    { id: 'SHOULDERS', label: 'Плечи' },
+    { id: 'BICEPS', label: 'Бицепс' },
+    { id: 'TRICEPS', label: 'Трицепс' },
+    { id: 'FOREARMS', label: 'Предплечья' },
+    { id: 'UPPER_TRAPS', label: 'Верх трапеций' },
+    { id: 'ABS', label: 'Мышцы живота' },
+    { id: 'LOWER_BACK', label: 'Поясница' },
+    { id: 'GLUTES', label: 'Ягодицы' },
+    { id: 'QUADRICEPS', label: 'Квадрицепсы' },
+    { id: 'HAMSTRINGS', label: 'Задняя поверхность бедра' },
+    { id: 'HIP_FLEXORS', label: 'Сгибатели бедра' },
+    { id: 'CALVES', label: 'Икры' }
+  ];
+  const EQUIPMENT = [
+    { id: 'NONE', label: 'Без инвентаря', exclusive: true },
+    { id: 'BARBELL', label: 'Штанга' },
+    { id: 'DUMBBELLS', label: 'Гантели' },
+    { id: 'BENCH', label: 'Скамья' },
+    { id: 'RACK', label: 'Стойка' },
+    { id: 'CABLE', label: 'Блочный тренажёр' },
+    { id: 'MACHINE', label: 'Тренажёр' },
+    { id: 'PULL_UP_BAR', label: 'Турник' },
+    { id: 'BAND', label: 'Резинка' },
+    { id: 'PLATES', label: 'Блины' },
+    { id: 'WEIGHT_BELT', label: 'Пояс для отягощений' }
+  ];
+
+  const LONG_NAME_60 = 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке';
+  const LONG_TECH_500 = 'Установите спинку скамьи под углом 30 градусов, плотно упритесь стопами в пол и сведите лопатки. Снимите гантели и удерживайте предплечья строго вертикально. На вдохе плавно опускайте гантели к верхней части груди, сохраняя угол в локтях около 45 градусов к корпусу. Сделайте короткую контролируемую паузу в нижней точке без отрыва таза и плеч от скамьи. На выдохе мощно, но без рывка выжмите гантели вверх по лёгкой дуге, не сталкивая их наверху. Контролируйте негативную фазу каждого повторения.';
+
+  const INITIAL_EXERCISES = [
+    { id: 'running', name: 'Бег', type: 'DISTANCE', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'CALVES', 'HAMSTRINGS'], diff: 'BEGINNER', tech: 'Начни с лёгкого темпа. Держи плечи расслабленными и ставь стопу близко к проекции корпуса.' },
+    { id: 'side-plank', name: 'Боковая планка', type: 'DURATION', equip: ['NONE'], primary: 'ABS', assisting: ['GLUTES', 'SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Поставь локоть под плечо и подними таз. Выстрой плечи, таз и стопы в линию. Удерживай положение и дыши ровно.' },
+    { id: 'reverse-lunge', name: 'Выпады назад', type: 'REPS', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Шагни назад и согни оба колена. Колено передней ноги направляй вдоль носка. Оттолкнись передней стопой и вернись в стойку.' },
+    { id: 'dumbbell-bench-press', name: 'Жим гантелей лёжа', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Поставь стопы на пол и сведи лопатки. Опусти гантели по сторонам груди и выжми их вверх, удерживая кисти над локтями.' },
+    { id: 'dumbbell-shoulder-press', name: 'Жим гантелей над головой', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'SHOULDERS', assisting: ['TRICEPS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Подними гантели к плечам. Выжми их вверх, сохраняя рёбра над тазом, затем плавно опусти к плечам.' },
+    { id: 'leg-press', name: 'Жим ногами', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'HAMSTRINGS'], diff: 'BEGINNER', tech: 'Поставь стопы на платформу и прижми таз к сиденью. Согни колени до положения, в котором таз остаётся на опоре. Выжми платформу без рывка.' },
+    { id: 'chest-press', name: 'Жим от груди в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Отрегулируй сиденье так, чтобы рукоятки были на уровне груди. Прижми спину к опоре, выжми рукоятки и плавно верни их.' },
+    { id: 'barbell-bench-press', name: 'Жим штанги лёжа', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'BENCH', 'RACK'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'INTERMEDIATE', steps: ['Поставь стопы на пол и сведи лопатки.', 'Опусти гриф к нижней части груди и выжми его вверх.', 'Используй страховочные упоры или попроси подстраховать.'], tech: 'Поставь стопы на пол и сведи лопатки. Опусти гриф к нижней части груди и выжми его вверх. Используй страховочные упоры или попроси подстраховать.' },
+    { id: 'dead-bug', name: 'Мёртвый жук', type: 'REPS', equip: ['NONE'], primary: 'ABS', assisting: ['HIP_FLEXORS'], diff: 'BEGINNER', tech: 'Ляг на спину, руки подними, а ноги согни под прямым углом. Вытяни противоположные руку и ногу без прогиба в пояснице, верни и поменяй сторону.' },
+    { id: 'push-up', name: 'Отжимания', type: 'REPS', equip: ['NONE'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS', 'ABS'], diff: 'BEGINNER', tech: 'Поставь ладони чуть шире плеч. Сохраняй ровную линию от головы до пяток, опусти грудь и оттолкнись от пола.' },
+    { id: 'incline-push-up', name: 'Отжимания от опоры', type: 'REPS', equip: ['BENCH'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Поставь ладони на устойчивую опору. Согни руки и подведи грудь к опоре. Выпрями руки, сохраняя корпус ровным.' },
+    { id: 'plank', name: 'Планка на предплечьях', type: 'DURATION', equip: ['NONE'], primary: 'ABS', assisting: ['GLUTES', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Поставь локти под плечи. Вытяни ноги, напряги живот и ягодицы. Держи корпус ровно и продолжай дышать.' },
+    { id: 'pull-up', name: 'Подтягивания', type: 'REPS', equip: ['PULL_UP_BAR'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'INTERMEDIATE', tech: 'Возьмись за перекладину хватом чуть шире плеч. Веди локти вниз, пока подбородок не окажется над перекладиной. Опустись без раскачки.' },
+    { id: 'weighted-pull-up', name: 'Подтягивания с отягощением', type: 'WEIGHT_AND_REPS', equip: ['PULL_UP_BAR', 'WEIGHT_BELT', 'PLATES'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'ADVANCED', tech: 'Закрепи груз на поясе. Подтянись без рывка до уровня, где подбородок проходит перекладину. Опустись плавно. Записывай вес добавленного груза.' },
+    { id: 'dumbbell-lateral-raise', name: 'Подъём гантелей в стороны', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'SHOULDERS', assisting: ['UPPER_TRAPS'], diff: 'BEGINNER', tech: 'Слегка согни локти и подними руки в стороны примерно до уровня плеч. Не раскачивай корпус и плавно опусти гантели.' },
+    { id: 'calf-raise', name: 'Подъём на носки', type: 'REPS', equip: ['NONE'], primary: 'CALVES', assisting: [], diff: 'BEGINNER', tech: 'Поднимись на носки и задержись на мгновение. Плавно опусти пятки. Для равновесия держись за опору.' },
+    { id: 'bodyweight-squat', name: 'Приседания без веса', type: 'REPS', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Поставь стопы примерно на ширине плеч. Согни колени и тазобедренные суставы, направляя колени вдоль носков. Поднимись с опорой на всю стопу.' },
+    { id: 'goblet-squat', name: 'Приседания с гантелью у груди', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Держи гантель у груди. Присядь между бёдрами, сохраняя опору на всю стопу. Вернись в стойку.' },
+    { id: 'barbell-squat', name: 'Приседания со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'RACK'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS', 'LOWER_BACK'], diff: 'ADVANCED', tech: 'Уложи гриф на верх спины и напряги корпус. Присядь, направляя колени вдоль носков, затем встань с опорой на всю стопу. Выставь страховочные упоры.' },
+    { id: 'custom:farmers-walk', name: 'Прогулка фермера с гирями', type: 'DISTANCE', equip: ['DUMBBELLS'], primary: 'FOREARMS', assisting: ['UPPER_TRAPS', 'ABS'], diff: null, tech: '', custom: true, usedIn: [], hasHistory: false },
+    { id: 'dumbbell-fly', name: 'Разведение гантелей лёжа', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'CHEST', assisting: ['SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Держи локти слегка согнутыми. Разводи руки по дуге до комфортного положения, затем сведи гантели над грудью.' },
+    { id: 'leg-extension', name: 'Разгибание ног в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'QUADRICEPS', assisting: [], diff: 'BEGINNER', tech: 'Совмести колени с осью тренажёра и поставь валик над стопами. Разогни колени и плавно опусти валик.' },
+    { id: 'triceps-pushdown', name: 'Разгибание рук на блоке', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'TRICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Прижми локти к бокам. Разогни руки, направляя рукоятку вниз, затем плавно согни их, не меняя положения локтей.' },
+    { id: 'romanian-deadlift', name: 'Румынская тяга со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'HAMSTRINGS', assisting: ['GLUTES', 'LOWER_BACK', 'FOREARMS'], diff: 'INTERMEDIATE', tech: 'Слегка согни колени и отводи таз назад. Опускай гриф близко к ногам, пока держишь спину ровной. Подай таз вперёд и выпрямись.' },
+    { id: 'leg-curl', name: 'Сгибание ног в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'HAMSTRINGS', assisting: ['CALVES'], diff: 'BEGINNER', tech: 'Совмести колени с осью тренажёра, а валик расположи над пятками. Согни колени и плавно разогни их, удерживая таз на опоре.' },
+    { id: 'dumbbell-curl', name: 'Сгибания рук с гантелями', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Прижми локти к бокам и поверни ладони вперёд. Согни руки без раскачки корпуса, затем медленно опусти гантели.' },
+    { id: 'band-curl', name: 'Сгибания рук с резинкой', type: 'REPS', equip: ['BAND'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Наступи на середину резинки и возьми концы. Согни руки, не двигая локти вперёд, затем медленно ослабь натяжение.' },
+    { id: 'barbell-curl', name: 'Сгибания рук со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Держи гриф хватом снизу. Согни руки, оставляя локти рядом с корпусом. Плавно опусти гриф.' },
+    { id: 'dumbbell-split-squat', name: 'Сплит-приседания с гантелями', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'INTERMEDIATE', tech: 'Поставь одну ногу впереди и держи гантели по бокам. Опусти заднее колено к полу. Поднимись, опираясь на переднюю стопу.' },
+    { id: 'deadlift', name: 'Становая тяга', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'QUADRICEPS', 'LOWER_BACK', 'FOREARMS'], diff: 'ADVANCED', tech: 'Поставь стопы под грифом и возьмись за него. Напряги корпус, выпрями ноги и таз, ведя гриф близко к телу. Верни штангу на пол под контролем.' },
+    { id: 'wall-sit', name: 'Стульчик у стены', type: 'DURATION', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES'], diff: 'BEGINNER', tech: 'Прижми спину к стене, вынеси стопы вперёд и опустись до удобной высоты. Удерживай положение с опорой на обе стопы.' },
+    { id: 'lat-pulldown', name: 'Тяга верхнего блока', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'BEGINNER', tech: 'Зафиксируй бёдра под валиками. Веди локти вниз и подтяни рукоятку к верхней части груди. Плавно выпрями руки.' },
+    { id: 'dumbbell-row', name: 'Тяга гантели в наклоне', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'BEGINNER', tech: 'Опрись коленом и ладонью на скамью. Веди локоть рабочей руки к тазу и опускай гантель без поворота корпуса.' },
+    { id: 'cable-row', name: 'Тяга нижнего блока', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'BACK', assisting: ['BICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Упрись стопами в платформу и слегка согни колени. Подтяни рукоятку к животу, ведя локти назад. Верни руки вперёд без рывка корпусом.' },
+    { id: 'custom:t-bar-row', name: 'Тяга Т-грифа в наклоне', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'PLATES'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS', 'LOWER_BACK'], diff: 'INTERMEDIATE', tech: 'Упри гриф в угол, встань над штангой и сведи лопатки. Тяни рукоять к нижней части груди без раскачки поясницы.', custom: true, usedIn: [{ prog: 'Верх / Низ 4 дня', day: 'День Б · Спина и руки' }, { prog: 'Базовая 3 дня', day: 'День А · Фулбоди' }], hasHistory: true },
+    { id: 'barbell-row', name: 'Тяга штанги в наклоне', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS', 'LOWER_BACK'], diff: 'INTERMEDIATE', tech: 'Отведи таз назад и слегка согни колени. Удерживая наклон корпуса, подтяни гриф к животу и плавно опусти его.' },
+    { id: 'barbell-hip-thrust', name: 'Ягодичный мост со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'BENCH'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Опрись лопатками на устойчивую скамью и уложи гриф через накладку на таз. Упрись стопами в пол, подними таз и плавно опусти.' },
+    { id: 'glute-bridge', name: 'Ягодичный мостик', type: 'REPS', equip: ['NONE'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'BEGINNER', tech: 'Ляг на спину и поставь стопы на пол. Подними таз за счёт ягодиц, сохраняя рёбра опущенными, затем плавно опусти таз.' },
+    { id: 'custom:single-leg-bridge', name: 'Ягодичный мостик на одной ноге', type: 'REPS', equip: ['NONE'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Подними одну ногу вверх, рабочей стопой упрись в пол и плавно вытолкни таз до прямой линии корпуса.', custom: true, usedIn: [], hasHistory: true }
+  ];
+
+  const DAY_EXISTING_IDS = new Set(['barbell-bench-press', 'barbell-row', 'plank', 'custom:t-bar-row']);
+
+  const VARIANT_META = {
+    H1: {
+      name: 'Плитка типа + Hero-блоки',
+      short: 'Иконка типа слева в строке · структурированный Hero в карточке',
+      bullets: [
+        '<strong>Список:</strong> слева цветная иконка-плитка типа записи (штанга / повторы / секундомер / маршрут) — сразу видно <em>для чего</em>; в центре название + символы <code>◎ Мышца</code>, <code>⚙ Инвентарь</code> или <code>✋ Без инвентаря</code> и 3 полоски сложности.',
+        '<strong>Карточка (B+):</strong> верхний Hero-блок с кикером типа, полным названием и 3 структурированными строками с иконками (<code>Мышцы</code> → основная + вспомогательные чипы, <code>Инвентарь</code>, <code>Сложность</code>); действия <code>✎ / ⋮</code> в шапке.'
+      ]
+    },
+    H2: {
+      name: 'Символьные чипы + Сетка 2×2',
+      short: 'Максимум ширины под название · чёткая сетка фактов с иконками',
+      bullets: [
+        '<strong>Список:</strong> без левой иконки — вся ширина под длинные названия; под названием 3 наглядных символьных чипа в фиксированном порядке: <code>◎ Мышца</code> (лайм), <code>✋ Без инвентаря</code> (зелёный) или <code>⚙ Снаряд</code>, плюс цветной символ-бейдж типа записи.',
+        '<strong>Карточка (B+):</strong> чистая шапка без лишней рамки + 2×2 сетка раздельных карточек <code>#141914</code> с иконками в заголовках (<code>Тип записи</code> | <code>Сложность</code>, ниже широкие <code>Мышцы</code> и <code>Инвентарь</code>).'
+      ]
+    },
+    H3: {
+      name: 'Двухъярусная строка + Паспорт',
+      short: 'Символ типа в правом углу · паспортная таблица с делителями',
+      bullets: [
+        '<strong>Список:</strong> верхний ярус — название + компактный символ типа справа; нижний ярус — слева <code>◎ Мышца</code>, рядом <code>✋ Без инвентаря</code> / <code>⚙ Инвентарь</code> и справа 3 полоски сложности.',
+        '<strong>Карточка (B+):</strong> единая «паспортная» карточка <code>#141914</code> с делителями (в стиле Настроек #116): 4 ровные строки <code>Тип записи</code>, <code>Мышцы</code> (основная + вспомогательные), <code>Инвентарь</code>, <code>Сложность</code>.'
+      ]
+    }
+  };
+
+  /* ==================== ICONS ==================== */
+  const ICO = {
+    back: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+    search: `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>`,
+    filter: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>`,
+    x: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
+    xBig: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
+    plus: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+    chevD: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`,
+    chevR: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`,
+    check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`,
+    edit: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+    trash: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>`,
+    more: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>`,
+    lock: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+    warn: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18.4A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.6L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>`,
+    // Symbolic domain icons (intuitive at a glance)
+    tWeight: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10M18 7v10M3 9.5v5M21 9.5v5M6 12h12"/></svg>`,
+    tReps: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    tDuration: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/></svg>`,
+    tDistance: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.5"/></svg>`,
+    muscle: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`,
+    gear: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5v7M17.5 8.5v7M3.5 10.5v3M20.5 10.5v3M6.5 12h11"/></svg>`,
+    bodyFree: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><path d="M6 10l6 2 6-2M12 12v4.5M9 21l3-4.5 3 4.5"/></svg>`,
+    gauge: (sz = 16) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 14v4M12 10v8M17 6v12"/></svg>`,
+    spark: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2Z"/></svg>`
+  };
+
+  function typeIconSvg(typeId, sz = 18) {
+    if (typeId === 'WEIGHT_AND_REPS') return ICO.tWeight(sz);
+    if (typeId === 'REPS') return ICO.tReps(sz);
+    if (typeId === 'DURATION') return ICO.tDuration(sz);
+    return ICO.tDistance(sz);
+  }
+
+  /* ==================== HELPERS ==================== */
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const norm = s => String(s || '').trim().toLowerCase().replace(/ё/g, 'е');
+  const graphemes = s => {
+    const t = String(s || '').trim();
+    if (!t) return 0;
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) return [...new Intl.Segmenter('ru', { granularity: 'grapheme' }).segment(t)].length;
+    return [...t].length;
+  };
+  const typeObj = id => TYPES.find(t => t.id === id);
+  const diffObj = id => DIFFS.find(d => d.id === id);
+  const diffIdx = id => DIFFS.findIndex(d => d.id === id); // 0..2
+  const muscleLbl = id => (MUSCLES.find(m => m.id === id) || {}).label || '';
+  const equipLbl = id => (EQUIPMENT.find(e => e.id === id) || {}).label || '';
+  const isNoEquip = ex => ex.equip && ex.equip.length === 1 && ex.equip[0] === 'NONE';
+  const renderDiffBars = (id, sm) => {
+    const d = diffObj(id);
+    if (!d) return '';
+    return `<span class="diff-bars ${sm ? 'sm' : ''}">${[1,2,3].map(n => `<i class="${n <= d.bars ? 'on' : ''}"></i>`).join('')}</span>`;
+  };
+  const sortExercises = list => [...list].sort((a, b) => {
+    const c = a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' });
+    return c !== 0 ? c : (a.custom ? 1 : 0) - (b.custom ? 1 : 0);
+  });
+
+  function formatEquipShort(ex) {
+    if (!ex.equip || !ex.equip.length) return '';
+    if (isNoEquip(ex)) return 'Без инвентаря';
+    if (ex.equip.length <= 2) return ex.equip.map(equipLbl).join(', ');
+    return `${equipLbl(ex.equip[0])} +${ex.equip.length - 1}`;
+  }
+
+  function diffRangeLabel(range) {
+    if (!range) return 'Любая';
+    const [mn, mx] = range;
+    if (mn === 0 && mx === 2) return 'Любая';
+    if (mn === mx) return DIFFS[mn].label;
+    return `${DIFFS[mn].label} – ${DIFFS[mx].label}`;
+  }
+
+  function isDiffRangeActive(range) {
+    return Boolean(range && !(range[0] === 0 && range[1] === 2));
+  }
+
+  function filterExercises(exercises, q, flt) {
+    const words = norm(q).split(/\s+/).filter(Boolean);
+    return sortExercises(exercises).filter(ex => {
+      if (words.length) {
+        const nm = norm(ex.name);
+        if (!words.every(w => nm.includes(w))) return false;
+      }
+      if (flt.customOnly && !ex.custom) return false;
+      if (isDiffRangeActive(flt.diffRange)) {
+        const idx = diffIdx(ex.diff);
+        if (idx < 0 || idx < flt.diffRange[0] || idx > flt.diffRange[1]) return false;
+      }
+      if (flt.muscle) {
+        if (flt.muscleRole === 'PRIMARY') {
+          if (ex.primary !== flt.muscle) return false;
+        } else {
+          if (!ex.assisting || !ex.assisting.includes(flt.muscle)) return false;
+        }
+      }
+      if (flt.equip.length) {
+        if (!ex.equip || !ex.equip.length) return false;
+        if (flt.equip.includes('NONE')) {
+          if (!isNoEquip(ex)) return false;
+        } else {
+          if (!ex.equip.every(eq => eq === 'NONE' || flt.equip.includes(eq))) return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  function activeFilterCount(flt) {
+    return (isDiffRangeActive(flt.diffRange) ? 1 : 0) + (flt.muscle ? 1 : 0) + flt.equip.length + (flt.customOnly ? 1 : 0);
+  }
+
+  function makeEmptyForm(prefill = '') {
+    return {
+      mode: 'create', editId: null, lockedType: false,
+      name: prefill, type: null, primary: null, assisting: [], equip: [], diff: null, tech: '',
+      initialSnap: JSON.stringify({ name: prefill, type: null, primary: null, assisting: [], equip: [], diff: null, tech: '' }),
+      validated: false, pickerSheet: null, pickerSearch: ''
+    };
+  }
+  function makeEditForm(ex) {
+    const snap = { name: ex.name, type: ex.type, primary: ex.primary || null, assisting: [...(ex.assisting || [])], equip: [...(ex.equip || [])], diff: ex.diff || null, tech: ex.tech || '' };
+    return { mode: 'edit', editId: ex.id, lockedType: Boolean((ex.usedIn && ex.usedIn.length) || ex.hasHistory), ...snap, initialSnap: JSON.stringify(snap), validated: false, pickerSheet: null, pickerSearch: '' };
+  }
+  function isFormDirty(form) {
+    return JSON.stringify({ name: form.name, type: form.type, primary: form.primary, assisting: form.assisting, equip: form.equip, diff: form.diff, tech: form.tech }) !== form.initialSnap;
+  }
+  function validateForm(form, exercises) {
+    const errors = {};
+    const nameLen = graphemes(form.name);
+    if (nameLen === 0) errors.name = 'Введите название упражнения';
+    else if (nameLen > 60) errors.name = `Максимум 60 символов (сейчас ${nameLen})`;
+    if (!form.type) errors.type = 'Выберите тип записи';
+    const techLen = graphemes(form.tech);
+    if (techLen > 500) errors.tech = `Максимум 500 символов (сейчас ${techLen})`;
+    const nNorm = norm(form.name);
+    const dup = nNorm ? exercises.find(e => e.id !== form.editId && norm(e.name) === nNorm) : null;
+    return { errors, dup, nameLen, techLen };
+  }
+
+  /* ==================== STATE ==================== */
+  const urlV = new URLSearchParams(location.search).get('variant');
+  const state = {
+    variant: ['H1', 'H2', 'H3'].includes(urlV) ? urlV : 'H1',
+    viewMode: 'interactive',
+    width: 390,
+    longNames: false,
+    entryMode: 'day_pick', // start in day_pick so Daniil immediately sees the + strip too
+    screen: 'catalog',
+    sheet: null,
+    menuOpen: false,
+    exercises: INITIAL_EXERCISES.map(e => ({ ...e, equip: [...e.equip], assisting: [...e.assisting], usedIn: e.usedIn ? e.usedIn.map(u => ({ ...u })) : [] })),
+    search: '',
+    filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
+    filterDraft: null,
+    filterAccOpen: 'muscle',
+    filterMuscleSearch: '',
+    selectedId: 'custom:t-bar-row',
+    form: makeEmptyForm(''),
+    toast: null,
+    hideCustomForEmptyTest: false
+  };
+
+  let toastTimer = null;
+  function showToast(msg) {
+    state.toast = msg;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { state.toast = null; render(); }, 2800);
+  }
+  function currentExercises() {
+    return state.hideCustomForEmptyTest ? state.exercises.filter(e => !e.custom) : state.exercises;
+  }
+  function displayName(ex) {
+    if (state.longNames && (ex.id === 'barbell-bench-press' || ex.id === 'custom:t-bar-row')) return LONG_NAME_60;
+    return ex.name;
+  }
+  function syncUrl() {
+    try { const u = new URL(location.href); u.searchParams.set('variant', state.variant); history.replaceState(null, '', u.toString()); } catch (_) {}
+  }
+
+  /* ==================== RENDERERS ==================== */
+  function renderStatusBar() {
+    return `<div class="f-status"><span>14:35</span><span class="f-status-r"><span>5G</span><span>84%</span></span></div>`;
+  }
+
+  function renderCatalogScreen(v) {
+    const allEx = currentExercises();
+    const list = filterExercises(allEx, state.search, state.filters);
+    const fCnt = activeFilterCount(state.filters);
+    const isPick = state.entryMode === 'day_pick';
+    const title = isPick ? 'Выбор упражнения' : 'Каталог упражнений';
+
+    // Active chips (excluding customOnly which is rendered first as the single quick shortcut with × when active!)
+    const otherChips = [];
+    if (state.filters.muscle) {
+      const rTxt = state.filters.muscleRole === 'ASSISTING' ? ' (вспом.)' : '';
+      otherChips.push({ key: 'muscle', val: '', label: `${muscleLbl(state.filters.muscle)}${rTxt}` });
+    }
+    state.filters.equip.forEach(eq => otherChips.push({ key: 'equip', val: eq, label: equipLbl(eq) }));
+    if (isDiffRangeActive(state.filters.diffRange)) {
+      otherChips.push({ key: 'diff', val: '', label: diffRangeLabel(state.filters.diffRange) });
+    }
+
+    const topBar = `
+      <div class="f-topbar">
+        <button type="button" class="f-back" data-act="back-root" aria-label="Назад">${ICO.back}</button>
+        <h1 class="d f-top-title">${title}</h1>
+      </div>`;
+
+    const searchRow = `
+      <div class="cat-search-row">
+        <div class="cat-search-box">
+          <span class="m" style="display:flex">${ICO.search}</span>
+          <input type="text" maxlength="100" data-in="search" value="${esc(state.search)}" placeholder="Поиск по названию">
+          ${state.search ? `<button type="button" class="cat-clear-x" data-act="clear-search" aria-label="Очистить">${ICO.x}</button>` : ''}
+        </div>
+        <button type="button" class="cat-filter-btn ${fCnt ? 'active' : ''}" data-act="open-filters" aria-label="Фильтры">
+          ${ICO.filter}
+          ${fCnt ? `<span class="cat-filter-cnt">${fCnt}</span>` : ''}
+        </button>
+      </div>`;
+
+    // Quick shortcut ONLY «Только свои» + removable active filter chips with ×
+    const chipsRow = `
+      <div class="cat-chips-bar">
+        ${state.filters.customOnly
+          ? `<button type="button" class="cat-chip-rm" data-act="toggle-quick-own"><span>Только свои</span><span class="x-dot">${ICO.x}</span></button>`
+          : `<button type="button" class="cat-quick-own" data-act="toggle-quick-own">Только свои</button>`}
+        ${otherChips.map(c => `<button type="button" class="cat-chip-rm" data-act="rm-chip" data-k="${c.key}" data-v="${c.val}"><span>${esc(c.label)}</span><span class="x-dot">${ICO.x}</span></button>`).join('')}
+        ${fCnt >= 2 ? `<button type="button" class="cat-chip-rm clear-all" data-act="reset-filters">Сбросить</button>` : ''}
+      </div>`;
+
+    let bodyContent = '';
+    if (list.length === 0) {
+      const qTrim = state.search.trim();
+      const onlyCustomEmpty = state.filters.customOnly && !qTrim && fCnt === 1 && allEx.filter(e => e.custom).length === 0;
+      bodyContent = onlyCustomEmpty ? `
+        <div class="cat-empty">
+          <div class="cat-empty-ico">${ICO.spark}</div>
+          <h3>Своих упражнений пока нет</h3>
+          <p>Создайте своё упражнение — оно появится в каталоге и будет доступно для всех программ.</p>
+          <div class="cat-empty-actions"><button type="button" class="pb" data-act="open-create">+ Создать упражнение</button></div>
+        </div>` : `
+        <div class="cat-empty">
+          <div class="cat-empty-ico">${ICO.search}</div>
+          <h3>Ничего не найдено</h3>
+          <p>${fCnt ? 'Попробуйте сбросить активные фильтры или создайте своё упражнение.' : 'В каталоге нет такого упражнения — можно добавить своё.'}</p>
+          <div class="cat-empty-actions">
+            ${fCnt ? `<button type="button" class="ob" data-act="reset-filters">Сбросить фильтры (${fCnt})</button>` : ''}
+            <button type="button" class="pb" data-act="open-create">${qTrim ? `+ Создать «${esc(qTrim.length > 26 ? qTrim.slice(0, 25) + '…' : qTrim)}»` : '+ Создать упражнение'}</button>
+          </div>
+        </div>`;
+    } else {
+      const countRow = `<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;font-size:12px;color:var(--f-dim)"><span>Найдено: ${list.length}</span>${isPick ? `<span>Тап — карточка · + в день</span>` : ''}</div>`;
+
+      bodyContent = countRow + list.map(ex => {
+        const nm = displayName(ex);
+        const inDay = isPick && DAY_EXISTING_IDS.has(ex.id);
+        const tp = typeObj(ex.type);
+        const eqShort = formatEquipShort(ex);
+        const noEq = isNoEquip(ex);
+        const plusZone = isPick ? `<button type="button" class="ex-card-plus" data-act="quick-add" data-id="${ex.id}" aria-label="Добавить в день">${ICO.plus}</button>` : '';
+
+        if (true) {
+          return `
+            <div class="ex-card">
+              <button type="button" class="ex-card-main" data-act="open-detail" data-id="${ex.id}">
+                <span class="ex-type-ico t-${ex.type}" title="${esc(tp.label)}">${typeIconSvg(ex.type, 19)}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:flex-start;gap:6px">
+                    <span class="cl2" style="font-size:15px;font-weight:600;line-height:19px;flex:1;min-width:0">${esc(nm)}</span>
+                    ${ex.custom ? `<span class="badge-custom">Своё</span>` : ''}
+                    ${inDay ? `<span class="badge-inday">В дне</span>` : ''}
+                  </div>
+                  <div class="sym-line">
+                    ${ex.primary ? `<span class="sym-item sym-muscle">${ICO.muscle(13)}<span>${esc(muscleLbl(ex.primary))}</span></span>` : ''}
+                    ${eqShort ? `<span class="sym-item ${noEq ? 'sym-free' : 'sym-equip'}">${noEq ? ICO.bodyFree(13) : ICO.gear(13)}<span>${esc(eqShort)}</span></span>` : ''}
+                    ${ex.diff ? `<span class="sym-item" style="margin-left:auto">${renderDiffBars(ex.diff, true)}</span>` : ''}
+                  </div>
+                </div>
+                ${!isPick ? `<span class="dim" style="display:flex">${ICO.chevR}</span>` : ''}
+              </button>
+              ${plusZone}
+            </div>`;
+        } else if (v === 'H2') {
+          return `
+            <div class="ex-card">
+              <button type="button" class="ex-card-main" style="padding:11px 13px;display:block" data-act="open-detail" data-id="${ex.id}">
+                <div style="display:flex;align-items:flex-start;gap:7px">
+                  <span class="cl2" style="font-size:15.5px;font-weight:600;line-height:20px;flex:1;min-width:0">${esc(nm)}</span>
+                  ${ex.custom ? `<span class="badge-custom">Своё</span>` : ''}
+                  ${inDay ? `<span class="badge-inday">В дне</span>` : ''}
+                  ${ex.diff ? `<span style="padding-top:4px;flex:none">${renderDiffBars(ex.diff, true)}</span>` : ''}
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;align-items:center">
+                  ${ex.primary ? `<span class="sym-chip-muscle">${ICO.muscle(12)} ${esc(muscleLbl(ex.primary))}</span>` : ''}
+                  ${eqShort ? `<span class="${noEq ? 'sym-chip-free' : 'sym-chip-gear'}">${noEq ? ICO.bodyFree(12) : ICO.gear(12)} ${esc(eqShort)}</span>` : ''}
+                  <span class="ex-type-pill t-${ex.type}">${typeIconSvg(ex.type, 12)} ${esc(tp.short)}</span>
+                </div>
+              </button>
+              ${plusZone}
+            </div>`;
+        } else {
+          return `
+            <div class="ex-card">
+              <button type="button" class="ex-card-main" style="padding:11px 13px;display:block" data-act="open-detail" data-id="${ex.id}">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                  <span class="cl2" style="font-size:15.5px;font-weight:600;line-height:20px;flex:1;min-width:0">${esc(nm)}</span>
+                  <span class="ex-type-pill t-${ex.type}" style="margin-top:1px">${typeIconSvg(ex.type, 12)} ${esc(tp.short)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap">
+                  ${ex.primary ? `<span class="sym-item sym-muscle" style="font-size:12.5px">${ICO.muscle(13)} ${esc(muscleLbl(ex.primary))}</span>` : ''}
+                  ${eqShort ? `<span class="sym-item ${noEq ? 'sym-free' : 'sym-equip'}" style="font-size:12.5px">${noEq ? ICO.bodyFree(13) : ICO.gear(13)} ${esc(eqShort)}</span>` : ''}
+                  <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">
+                    ${ex.custom ? `<span class="badge-custom">Своё</span>` : ''}
+                    ${inDay ? `<span class="badge-inday">В дне</span>` : ''}
+                    ${ex.diff ? renderDiffBars(ex.diff, true) : ''}
+                  </span>
+                </div>
+              </button>
+              ${plusZone}
+            </div>`;
+        }
+      }).join('');
+    }
+
+    const stickyFoot = list.length > 0 ? `<div class="f-sticky-foot"><button type="button" class="pb" data-act="open-create">+ Создать упражнение</button></div>` : '';
+    return `${topBar}${searchRow}${chipsRow}<div class="f-scroll ${stickyFoot ? 'has-sticky' : ''}">${bodyContent}</div>${stickyFoot}`;
+  }
+
+  function renderFilterSheet() {
+    const d = state.filterDraft || state.filters;
+    const matchCnt = filterExercises(currentExercises(), state.search, d).length;
+    const totalActive = activeFilterCount(d);
+    const mSearch = norm(state.filterMuscleSearch);
+    const visibleMuscles = MUSCLES.filter(m => !mSearch || norm(m.label).includes(mSearch));
+
+    const [minD, maxD] = d.diffRange;
+    const diffActive = isDiffRangeActive(d.diffRange);
+    const fillLeft = (minD / 2) * 100;
+    const fillWidth = ((maxD - minD) / 2) * 100;
+
+    const mSummary = d.muscle ? `${muscleLbl(d.muscle)} (${d.muscleRole === 'PRIMARY' ? 'основная' : 'вспом.'})` : 'Любая';
+    const eSummary = d.equip.length ? d.equip.map(equipLbl).join(', ') : 'Любой';
+    const dSummary = diffRangeLabel(d.diffRange);
+
+    return `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head">
+            <h3 class="d">Фильтры</h3>
+            <button type="button" class="f-sheet-reset" data-act="flt-reset-draft" ${totalActive === 0 ? 'disabled' : ''}>Сбросить</button>
+          </div>
+
+          <div class="f-sheet-body">
+            <!-- «Только свои» НАВЕРХУ (как попросил Даниил) -->
+            <button type="button" class="f-switch-row" data-act="flt-custom">
+              <div>
+                <div style="font-size:15px;font-weight:600">Только свои упражнения</div>
+                <div style="font-size:12px;color:var(--f-muted)">Показать только созданные вручную</div>
+              </div>
+              <span class="f-switch ${d.customOnly ? 'on' : ''}"><i></i></span>
+            </button>
+
+            <!-- Сложность (СЛАЙДЕРОМ) -->
+            <div class="flt-acc">
+              <button type="button" class="flt-acc-btn" data-act="flt-acc" data-v="diff">
+                <span class="m" style="display:flex">${ICO.gauge(19)}</span>
+                <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Сложность</span><span class="cl1" style="display:block;font-size:12.5px;color:${diffActive ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${esc(dSummary)}</span></span>
+                ${diffActive ? `<span class="flt-acc-cnt">1</span>` : ''}
+                <span class="m" style="display:flex;transform:${state.filterAccOpen === 'diff' ? 'rotate(180deg)' : 'none'}">${ICO.chevD}</span>
+              </button>
+              ${state.filterAccOpen === 'diff' ? `
+                <div class="flt-acc-body">
+                  <div class="slider-box">
+                    <div class="slider-head">
+                      <span class="slider-val ${diffActive ? '' : 'muted'}">${esc(dSummary)}</span>
+                      ${diffActive ? `<button type="button" style="border:0;background:transparent;color:var(--f-muted);font-size:12px;font-weight:600" data-act="flt-diff-any">Любая</button>` : `<span class="dim" style="font-size:11.5px">диапазон от — до</span>`}
+                    </div>
+                    <div class="dual-range-wrap">
+                      <div class="dual-track"></div>
+                      <div class="dual-fill" style="left:${fillLeft}%;width:${Math.max(fillWidth, 2)}%"></div>
+                      <input type="range" min="0" max="2" step="1" value="${minD}" data-in="flt-diff-min" aria-label="Минимальная сложность">
+                      <input type="range" min="0" max="2" step="1" value="${maxD}" data-in="flt-diff-max" aria-label="Максимальная сложность">
+                    </div>
+                    <div class="slider-stops cols-3">
+                      ${DIFFS.map((df, i) => {
+                        const inRange = i >= minD && i <= maxD;
+                        return `<button type="button" class="slider-stop-btn ${inRange && diffActive ? 'on' : ''}" data-act="flt-diff-tap" data-v="${i}">${df.label}</button>`;
+                      }).join('')}
+                    </div>
+                  </div>
+                </div>` : ''}
+            </div>
+
+            <!-- Мышцы (с КРУПНЫМ 48dp поиском) -->
+            <div class="flt-acc">
+              <button type="button" class="flt-acc-btn" data-act="flt-acc" data-v="muscle">
+                <span class="m" style="display:flex">${ICO.muscle(19)}</span>
+                <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Мышцы</span><span class="cl1" style="display:block;font-size:12.5px;color:${d.muscle ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${esc(mSummary)}</span></span>
+                ${d.muscle ? `<span class="flt-acc-cnt">1</span>` : ''}
+                <span class="m" style="display:flex;transform:${state.filterAccOpen === 'muscle' ? 'rotate(180deg)' : 'none'}">${ICO.chevD}</span>
+              </button>
+              ${state.filterAccOpen === 'muscle' ? `
+                <div class="flt-acc-body">
+                  <div>
+                    <div style="font-size:12px;color:var(--f-dim);margin-bottom:6px;display:flex;justify-content:space-between">
+                      <span>Роль мышцы</span>
+                      ${!d.muscle ? `<span>выберите мышцу ниже</span>` : ''}
+                    </div>
+                    <div class="role-seg ${!d.muscle ? 'disabled' : ''}">
+                      <button type="button" class="${d.muscleRole === 'PRIMARY' ? 'active' : ''}" data-act="flt-role" data-v="PRIMARY" ${!d.muscle ? 'disabled' : ''}>Основная</button>
+                      <button type="button" class="${d.muscleRole === 'ASSISTING' ? 'active' : ''}" data-act="flt-role" data-v="ASSISTING" ${!d.muscle ? 'disabled' : ''}>Вспомогательная</button>
+                    </div>
+                  </div>
+                  <div class="sheet-search-big">
+                    <span class="m" style="display:flex">${ICO.search}</span>
+                    <input type="text" maxlength="100" data-in="flt-m-search" value="${esc(state.filterMuscleSearch)}" placeholder="Поиск мышцы">
+                    ${state.filterMuscleSearch ? `<button type="button" class="sheet-search-x" data-act="clear-flt-m" aria-label="Очистить">${ICO.xBig}</button>` : ''}
+                  </div>
+                  <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+                    ${visibleMuscles.map(m => {
+                      const on = d.muscle === m.id;
+                      return `<button type="button" class="pick-row ${on ? 'on' : ''}" data-act="flt-muscle" data-v="${m.id}"><span class="pick-box radio">${on ? ICO.check : ''}</span><span style="flex:1">${m.label}</span></button>`;
+                    }).join('') || `<div class="dim" style="padding:14px;text-align:center;font-size:13.5px">Мышца не найдена</div>`}
+                  </div>
+                </div>` : ''}
+            </div>
+
+            <!-- Инвентарь -->
+            <div class="flt-acc">
+              <button type="button" class="flt-acc-btn" data-act="flt-acc" data-v="equip">
+                <span class="m" style="display:flex">${ICO.gear(19)}</span>
+                <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Доступный инвентарь</span><span class="cl1" style="display:block;font-size:12.5px;color:${d.equip.length ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${esc(eSummary)}</span></span>
+                ${d.equip.length ? `<span class="flt-acc-cnt">${d.equip.length}</span>` : ''}
+                <span class="m" style="display:flex;transform:${state.filterAccOpen === 'equip' ? 'rotate(180deg)' : 'none'}">${ICO.chevD}</span>
+              </button>
+              ${state.filterAccOpen === 'equip' ? `
+                <div class="flt-acc-body">
+                  <div style="font-size:12px;color:var(--f-dim)">Показываем упражнения, для которых хватит отмеченного инвентаря.</div>
+                  <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+                    ${EQUIPMENT.map(eq => {
+                      const on = d.equip.includes(eq.id);
+                      return `<button type="button" class="pick-row ${on ? 'on' : ''}" data-act="flt-equip" data-v="${eq.id}"><span class="pick-box">${on ? ICO.check : ''}</span><span style="flex:1">${eq.label}</span>${eq.exclusive ? `<span class="dim" style="font-size:11.5px">только без всего</span>` : ''}</button>`;
+                    }).join('')}
+                  </div>
+                </div>` : ''}
+            </div>
+          </div>
+
+          <div class="f-sheet-foot">
+            <button type="button" class="pb" data-act="flt-apply">Показать ${matchCnt}</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderDetailScreen(v) {
+    const ex = state.exercises.find(e => e.id === state.selectedId) || state.exercises[0];
+    const nm = displayName(ex);
+    const isPick = state.entryMode === 'day_pick';
+    const inDay = isPick && DAY_EXISTING_IDS.has(ex.id);
+    const tp = typeObj(ex.type);
+    const df = diffObj(ex.diff);
+    const noEq = isNoEquip(ex);
+    const eqList = ex.equip || [];
+    const assList = ex.assisting || [];
+
+    const techText = state.longNames ? LONG_TECH_500 : (ex.tech || '');
+    const techBlock = (!state.longNames && ex.steps && ex.steps.length)
+      ? `<div class="tech-card">${ex.steps.map((s, i) => `<div class="tech-step"><span class="tech-step-num">${i + 1}</span><span>${esc(s)}</span></div>`).join('')}</div>`
+      : techText
+        ? `<div class="tech-card"><div class="tech-prose">${esc(techText)}</div></div>`
+        : `<div class="tech-empty">Описание техники не указано.${ex.custom && !isPick ? ' Его можно добавить через кнопку редактирования наверху.' : ''}</div>`;
+
+    // Variant B header actions (✎ / ⋮) for custom exercise from Settings
+    const topBar = `
+      <div class="f-topbar">
+        <button type="button" class="f-back" data-act="back-catalog" aria-label="Назад">${ICO.back}</button>
+        <h1 class="d f-top-title">Упражнение</h1>
+        ${!isPick && ex.custom ? `
+          <button type="button" class="top-icon-btn" data-act="open-edit" aria-label="Редактировать">${ICO.edit}</button>
+          <button type="button" class="top-icon-btn" data-act="toggle-menu" aria-label="Ещё">${ICO.more}</button>
+        ` : ''}
+      </div>`;
+
+    const menuHtml = (state.menuOpen && !isPick && ex.custom) ? `
+      <div class="anchored-menu">
+        <button type="button" data-act="open-edit">${ICO.edit} Редактировать</button>
+        <button type="button" class="danger" data-act="try-delete">${ICO.trash} Удалить</button>
+      </div>` : '';
+
+    let headerAndFacts = '';
+    if (false) {
+      headerAndFacts = `
+        <div class="hero-b1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <span class="ex-type-pill t-${ex.type}" style="font-size:12px;padding:4px 9px">${typeIconSvg(ex.type, 14)} ${esc(tp.label)}</span>
+            ${ex.custom ? `<span class="badge-custom">Своё</span>` : ''}
+            ${inDay ? `<span class="badge-inday">Уже в дне</span>` : ''}
+          </div>
+          <h2 class="d" style="margin:0;font-size:26px;line-height:28px;overflow-wrap:anywhere">${esc(nm)}</h2>
+          <div class="b1-rows">
+            <div class="b1-row">
+              <span class="b1-ico" style="color:var(--f-on-primary-container)">${ICO.muscle(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="b1-k">Мышцы</div>
+                <div class="b1-v">${ex.primary ? `<span style="color:var(--f-on-primary-container)">${esc(muscleLbl(ex.primary))}</span>` : `<span class="dim" style="font-weight:400">Не указаны</span>`}</div>
+                ${assList.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">${assList.map(id => `<span class="tag">${esc(muscleLbl(id))}</span>`).join('')}</div>` : ''}
+              </div>
+            </div>
+            <div class="b1-row">
+              <span class="b1-ico" style="color:${noEq ? '#8CE8C2' : 'var(--f-muted)'}">${noEq ? ICO.bodyFree(16) : ICO.gear(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="b1-k">Инвентарь</div>
+                <div class="b1-v">
+                  ${noEq ? `<span style="color:#8CE8C2">Без инвентаря</span>`
+                    : eqList.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:3px">${eqList.map(id => `<span class="tag" style="color:var(--f-text)">${esc(equipLbl(id))}</span>`).join('')}</div>`
+                    : `<span class="dim" style="font-weight:400">Не указан</span>`}
+                </div>
+              </div>
+            </div>
+            <div class="b1-row">
+              <span class="b1-ico">${ICO.gauge(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="b1-k">Сложность техники</div>
+                <div class="b1-v">${df ? `<span style="display:inline-flex;align-items:center;gap:8px">${renderDiffBars(ex.diff, false)} ${esc(df.label)}</span>` : `<span class="dim" style="font-weight:400">Не указана</span>`}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    } else if (false) {
+      headerAndFacts = `
+        <div style="padding:2px 2px 12px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+            ${ex.custom ? `<span class="badge-custom">Своё упражнение</span>` : `<span class="badge-custom">Встроенное</span>`}
+            ${inDay ? `<span class="badge-inday">Уже в дне</span>` : ''}
+          </div>
+          <h2 class="d" style="margin:0;font-size:26px;line-height:28px;overflow-wrap:anywhere">${esc(nm)}</h2>
+        </div>
+        <div class="facts-grid-h2">
+          <div class="fact-h2">
+            <div class="fact-h2-head">${typeIconSvg(ex.type, 13)} Тип записи</div>
+            <div class="fact-h2-val">${esc(tp.label)}</div>
+          </div>
+          <div class="fact-h2">
+            <div class="fact-h2-head">${ICO.gauge(13)} Сложность</div>
+            <div class="fact-h2-val">${df ? `<div style="display:flex;flex-direction:column;gap:4px">${renderDiffBars(ex.diff, false)}<span>${esc(df.label)}</span></div>` : `<span class="dim" style="font-weight:400">Не указана</span>`}</div>
+          </div>
+          <div class="fact-h2 wide">
+            <div class="fact-h2-head">${ICO.muscle(13)} Мышцы</div>
+            ${ex.primary ? `
+              <div class="fact-h2-val" style="color:var(--f-on-primary-container)">${esc(muscleLbl(ex.primary))} <span class="dim" style="font-size:12px;font-weight:500">· основная</span></div>
+              ${assList.length ? `<div style="font-size:12.5px;color:var(--f-muted)">Помогают: ${esc(assList.map(muscleLbl).join(', '))}</div>` : ''}`
+              : `<div class="fact-h2-val dim" style="font-weight:400">Не указаны</div>`}
+          </div>
+          <div class="fact-h2 wide">
+            <div class="fact-h2-head">${noEq ? ICO.bodyFree(13) : ICO.gear(13)} Инвентарь</div>
+            <div class="fact-h2-val">
+              ${noEq ? `<span style="color:#8CE8C2">Без инвентаря — ничего не нужно</span>`
+                : eqList.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${eqList.map(id => `<span class="tag" style="color:var(--f-text)">${esc(equipLbl(id))}</span>`).join('')}</div>`
+                : `<span class="dim" style="font-weight:400">Не указан</span>`}
+            </div>
+          </div>
+        </div>`;
+    } else {
+      headerAndFacts = `
+        <div style="padding:2px 2px 12px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+            ${ex.custom ? `<span class="badge-custom">Своё упражнение</span>` : `<span class="badge-custom">Встроенное</span>`}
+            ${inDay ? `<span class="badge-inday">Уже в дне</span>` : ''}
+          </div>
+          <h2 class="d" style="margin:0;font-size:26px;line-height:28px;overflow-wrap:anywhere">${esc(nm)}</h2>
+        </div>
+        <div class="passport-card">
+          <div class="pass-row">
+            <span class="ex-type-ico t-${ex.type}" style="width:34px;height:34px;border-radius:10px">${typeIconSvg(ex.type, 17)}</span>
+            <div style="flex:1;min-width:0">
+              <div class="pass-lbl">Тип записи</div>
+              <div class="pass-val">${esc(tp.label)}</div>
+            </div>
+          </div>
+          <div class="pass-row">
+            <span class="pass-ico" style="color:var(--f-on-primary-container)">${ICO.muscle(16)}</span>
+            <div style="flex:1;min-width:0">
+              <div class="pass-lbl">Мышцы</div>
+              <div class="pass-val">${ex.primary ? `<span style="color:var(--f-on-primary-container)">${esc(muscleLbl(ex.primary))}</span>` : `<span class="dim" style="font-weight:400">Не указаны</span>`}</div>
+              ${assList.length ? `<div style="font-size:12.5px;color:var(--f-muted);margin-top:2px">Вспомогательные: ${esc(assList.map(muscleLbl).join(', '))}</div>` : ''}
+            </div>
+          </div>
+          <div class="pass-row">
+            <span class="pass-ico" style="color:${noEq ? '#8CE8C2' : 'var(--f-muted)'}">${noEq ? ICO.bodyFree(16) : ICO.gear(16)}</span>
+            <div style="flex:1;min-width:0">
+              <div class="pass-lbl">Инвентарь</div>
+              <div class="pass-val">${noEq ? `<span style="color:#8CE8C2">Без инвентаря</span>` : eqList.length ? esc(eqList.map(equipLbl).join(', ')) : `<span class="dim" style="font-weight:400">Не указан</span>`}</div>
+            </div>
+          </div>
+          <div class="pass-row">
+            <span class="pass-ico">${ICO.gauge(16)}</span>
+            <div style="flex:1;min-width:0">
+              <div class="pass-lbl">Сложность техники</div>
+              <div class="pass-val">${df ? `<span style="display:inline-flex;align-items:center;gap:8px">${renderDiffBars(ex.diff, false)} ${esc(df.label)}</span>` : `<span class="dim" style="font-weight:400">Не указана</span>`}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    const stickyFoot = isPick ? `<div class="f-sticky-foot solid"><button type="button" class="pb" data-act="pick-from-card">${inDay ? '+ Добавить ещё раз в день' : '+ Добавить в день'}</button></div>` : '';
+    return `${topBar}${menuHtml}<div class="f-scroll ${stickyFoot ? 'has-sticky' : ''}">${headerAndFacts}<div class="m d" style="font-size:12.5px;margin:0 0 8px 2px">Техника выполнения</div>${techBlock}</div>${stickyFoot}`;
+  }
+
+  function renderFormScreen() {
+    const f = state.form;
+    const { errors, dup, nameLen, techLen } = validateForm(f, state.exercises);
+    const showNameErr = f.validated && errors.name;
+    const showTypeErr = f.validated && errors.type;
+    const showTechErr = f.validated && errors.tech;
+    const showNameCnt = nameLen >= 48 || nameLen > 60;
+    const isEdit = f.mode === 'edit';
+    const isPick = state.entryMode === 'day_pick';
+
+    const sliderPos = f.diff ? diffIdx(f.diff) + 1 : 0; // 0..3
+    const sliderPct = (sliderPos / 3) * 100;
+    const sliderLbl = sliderPos === 0 ? 'Не указана' : DIFFS[sliderPos - 1].label;
+
+    const dupBanner = dup ? `
+      <div class="field-warn">
+        <span style="display:flex;margin-top:1px;color:var(--f-amber)">${ICO.warn}</span>
+        <span>Упражнение «${esc(dup.name)}» уже есть в каталоге. Можно сохранить всё равно или уточнить название.</span>
+      </div>` : '';
+
+    const lockedTypeBox = `
+      <div class="field-lock">
+        <span class="dim" style="display:flex;margin-top:2px">${ICO.lock}</span>
+        <div>
+          <div style="font-size:14.5px;font-weight:600;color:var(--f-text)">${esc((typeObj(f.type) || {}).label || '—')}</div>
+          <div style="font-size:12px;color:var(--f-muted);line-height:1.38;margin-top:2px">Тип записи нельзя изменить — упражнение уже используется в программе или истории.</div>
+        </div>
+      </div>`;
+
+    const assTags = f.assisting.length ? f.assisting.map(id => `<span class="tag" style="color:var(--f-text)">${esc(muscleLbl(id))}</span>`).join('') : `<span class="dim">Не указаны</span>`;
+    const eqTags = f.equip.length ? f.equip.map(id => `<span class="tag" style="color:var(--f-text)">${esc(equipLbl(id))}</span>`).join('') : `<span class="dim">Не указано</span>`;
+    const primTxt = f.primary ? `<span style="color:var(--f-text)">${esc(muscleLbl(f.primary))}</span>` : `<span class="dim">Не указана</span>`;
+
+    const ctaLabel = isEdit ? 'Сохранить изменения' : (isPick ? 'Создать и добавить в день' : 'Сохранить упражнение');
+
+    return `
+      <div class="f-topbar">
+        <button type="button" class="f-back" data-act="form-back" aria-label="Назад">${ICO.back}</button>
+        <h1 class="d f-top-title">${isEdit ? 'Редактирование' : 'Новое упражнение'}</h1>
+      </div>
+      <div class="f-scroll has-sticky">
+        <section class="form-sec">
+          <div class="form-sec-head"><h2 class="d">Основное</h2><span>обязательно</span></div>
+          <div>
+            <div class="out-field">
+              <label class="out-lbl ${showNameErr ? 'err' : ''}">Название <span style="color:var(--f-primary)">*</span></label>
+              <input class="out-input ${showNameErr ? 'err' : ''}" data-in="f-name" value="${esc(f.name)}" placeholder="Например: Тяга Т-грифа">
+            </div>
+            <div class="field-foot">
+              <span class="field-err">${showNameErr ? esc(errors.name) : ''}</span>
+              ${showNameCnt ? `<span class="fill-cnt ${nameLen > 60 ? 'err' : ''}">${nameLen} / 60</span>` : ''}
+            </div>
+            ${dupBanner}
+          </div>
+          <div>
+            ${f.lockedType ? lockedTypeBox : `
+              <div class="out-field">
+                <span class="out-lbl ${showTypeErr ? 'err' : ''}">Тип записи <span style="color:var(--f-primary)">*</span></span>
+                <button type="button" class="out-pick ${showTypeErr ? 'err' : ''}" data-act="open-picker" data-v="type">
+                  <span style="display:inline-flex;align-items:center;gap:8px">${f.type ? `${typeIconSvg(f.type, 17)} ${esc((typeObj(f.type) || {}).label)}` : `<span class="dim">Выберите тип записи</span>`}</span>
+                  <span class="m">${ICO.chevD}</span>
+                </button>
+              </div>
+              ${showTypeErr ? `<div class="field-foot"><span class="field-err">${esc(errors.type)}</span></div>` : ''}`}
+          </div>
+        </section>
+
+        <section class="form-sec">
+          <div class="form-sec-head"><h2 class="d">Мышцы и инвентарь</h2><span>необязательно</span></div>
+          <div class="out-field">
+            <span class="out-lbl">Основная группа мышц</span>
+            <button type="button" class="out-pick" data-act="open-picker" data-v="primary">
+              <span>${primTxt}</span><span class="m">${ICO.chevD}</span>
+            </button>
+          </div>
+          <div class="out-field">
+            <span class="out-lbl">Вспомогательные группы</span>
+            <button type="button" class="out-pick" data-act="open-picker" data-v="assisting">
+              <span style="display:flex;flex-wrap:wrap;gap:5px">${assTags}</span><span class="m">${ICO.chevD}</span>
+            </button>
+          </div>
+          <div class="out-field">
+            <span class="out-lbl">Оборудование</span>
+            <button type="button" class="out-pick" data-act="open-picker" data-v="equip">
+              <span style="display:flex;flex-wrap:wrap;gap:5px">${eqTags}</span><span class="m">${ICO.chevD}</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="form-sec">
+          <div class="form-sec-head"><h2 class="d">Техника</h2><span>необязательно</span></div>
+          <!-- Сложность техники СЛАЙДЕРОМ -->
+          <div>
+            <div style="font-size:12px;color:var(--f-muted);margin-bottom:6px">Сложность техники</div>
+            <div class="slider-box">
+              <div class="slider-head">
+                <span class="slider-val ${sliderPos === 0 ? 'muted' : ''}">${sliderPos > 0 ? renderDiffBars(f.diff, false) : ''}<span>${sliderLbl}</span></span>
+                ${sliderPos > 0 ? `<button type="button" style="border:0;background:transparent;color:var(--f-dim);font-size:12px;font-weight:600" data-act="set-diff-pos" data-v="0">Сбросить</button>` : ''}
+              </div>
+              <input class="f-range" type="range" min="0" max="3" step="1" value="${sliderPos}" style="--pct:${sliderPct}%" data-in="f-diff-slider" aria-label="Сложность техники">
+              <div class="slider-stops cols-4">
+                <button type="button" class="slider-stop-btn ${sliderPos === 0 ? 'on' : ''}" data-act="set-diff-pos" data-v="0">Нет</button>
+                <button type="button" class="slider-stop-btn ${sliderPos === 1 ? 'on' : ''}" data-act="set-diff-pos" data-v="1">Нач.</button>
+                <button type="button" class="slider-stop-btn ${sliderPos === 2 ? 'on' : ''}" data-act="set-diff-pos" data-v="2">Сред.</button>
+                <button type="button" class="slider-stop-btn ${sliderPos === 3 ? 'on' : ''}" data-act="set-diff-pos" data-v="3">Продв.</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="out-field">
+              <label class="out-lbl ${showTechErr ? 'err' : ''}">Техника выполнения</label>
+              <textarea class="out-textarea ${showTechErr ? 'err' : ''}" data-in="f-tech" placeholder="Например: локти прижаты, без раскачки">${esc(f.tech)}</textarea>
+            </div>
+            <div class="field-foot">
+              <span class="field-err">${showTechErr ? esc(errors.tech) : ''}</span>
+              <span class="fill-cnt ${techLen > 500 ? 'err' : ''}">${techLen} / 500</span>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="f-sticky-foot solid"><button type="button" class="pb" data-act="form-save">${ctaLabel}</button></div>`;
+  }
+
+  function renderFormPickerSheet() {
+    const f = state.form;
+    const p = f.pickerSheet;
+    if (!p) return '';
+    const q = norm(f.pickerSearch);
+
+    let title = '', inner = '', footBtn = 'Готово';
+    if (p === 'type') {
+      title = 'Тип записи *';
+      inner = TYPES.map(t => {
+        const on = f.type === t.id;
+        return `<button type="button" class="type-radio-card ${on ? 'on' : ''}" data-act="pick-type-sheet" data-v="${t.id}">
+          <span class="ex-type-ico t-${t.id}" style="width:36px;height:36px">${typeIconSvg(t.id, 18)}</span>
+          <span style="flex:1"><span style="display:block;font-size:15px;font-weight:600">${t.label}</span><span style="display:block;font-size:12px;color:var(--f-muted)">${t.hint}</span></span>
+          <span class="pick-box radio" style="${on ? 'background:var(--f-primary);border-color:var(--f-primary);color:var(--f-on-primary)' : ''}">${on ? ICO.check : ''}</span>
+        </button>`;
+      }).join('');
+      footBtn = 'Закрыть';
+    } else if (p === 'primary') {
+      title = 'Основная мышца';
+      const ms = MUSCLES.filter(m => !q || norm(m.label).includes(q));
+      inner = `
+        <div class="sheet-search-big">
+          <span class="m" style="display:flex">${ICO.search}</span>
+          <input type="text" maxlength="100" data-in="picker-search" value="${esc(f.pickerSearch)}" placeholder="Поиск мышцы">
+          ${f.pickerSearch ? `<button type="button" class="sheet-search-x" data-act="clear-picker-s">${ICO.xBig}</button>` : ''}
+        </div>
+        <button type="button" class="pick-row ${!f.primary ? 'on' : ''}" data-act="pick-primary" data-v=""><span class="pick-box radio">${!f.primary ? ICO.check : ''}</span><span>Не указана</span></button>
+        ${ms.map(m => `<button type="button" class="pick-row ${f.primary === m.id ? 'on' : ''}" data-act="pick-primary" data-v="${m.id}"><span class="pick-box radio">${f.primary === m.id ? ICO.check : ''}</span><span>${m.label}</span></button>`).join('')}`;
+    } else if (p === 'assisting') {
+      title = 'Вспомогательные группы';
+      const ms = MUSCLES.filter(m => !q || norm(m.label).includes(q));
+      inner = `
+        ${f.primary ? `<div style="font-size:12.5px;color:var(--f-muted)">Основная: <strong style="color:var(--f-on-primary-container)">${esc(muscleLbl(f.primary))}</strong> (исключена)</div>` : ''}
+        <div class="sheet-search-big">
+          <span class="m" style="display:flex">${ICO.search}</span>
+          <input type="text" maxlength="100" data-in="picker-search" value="${esc(f.pickerSearch)}" placeholder="Поиск мышцы">
+          ${f.pickerSearch ? `<button type="button" class="sheet-search-x" data-act="clear-picker-s">${ICO.xBig}</button>` : ''}
+        </div>
+        ${ms.map(m => {
+          const isPrim = f.primary === m.id;
+          const on = f.assisting.includes(m.id);
+          return `<button type="button" class="pick-row ${on ? 'on' : ''} ${isPrim ? 'disabled' : ''}" data-act="pick-assisting" data-v="${m.id}" ${isPrim ? 'disabled' : ''}><span class="pick-box">${on ? ICO.check : ''}</span><span style="flex:1">${m.label}</span>${isPrim ? `<span class="tag">Основная</span>` : ''}</button>`;
+        }).join('')}`;
+      footBtn = f.assisting.length ? `Готово · выбрано ${f.assisting.length}` : 'Готово';
+    } else if (p === 'equip') {
+      title = 'Оборудование';
+      inner = `<div style="font-size:12px;color:var(--f-muted)">«Без инвентаря» взаимоисключающий с конкретным инвентарём.</div>` + EQUIPMENT.map(eq => {
+        const on = f.equip.includes(eq.id);
+        return `<button type="button" class="pick-row ${on ? 'on' : ''}" data-act="toggle-form-equip" data-v="${eq.id}"><span class="pick-box">${on ? ICO.check : ''}</span><span style="flex:1">${eq.label}</span></button>`;
+      }).join('');
+      footBtn = f.equip.length ? `Готово · выбрано ${f.equip.length}` : 'Готово';
+    }
+
+    return `
+      <div class="f-scrim" data-act="close-picker">
+        <div class="f-sheet" style="height:82%" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head"><h3 class="d">${title}</h3></div>
+          <div class="f-sheet-body">${inner}</div>
+          <div class="f-sheet-foot"><button type="button" class="pb" data-act="close-picker">${footBtn}</button></div>
+        </div>
+      </div>`;
+  }
+
+  function renderDeleteOrDiscardSheet() {
+    if (state.sheet === 'discard') {
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div class="f-sheet-head"><h3 class="d">Выйти без сохранения?</h3></div>
+            <p style="margin:0;font-size:13.5px;color:var(--f-muted);line-height:1.45">Внесённые изменения не сохранятся.</p>
+            <div class="f-sheet-foot">
+              <button type="button" class="db" data-act="confirm-discard">Выйти без сохранения</button>
+              <button type="button" class="ob" data-act="close-sheet">Остаться в редакторе</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    const ex = state.exercises.find(e => e.id === state.selectedId) || state.exercises[0];
+    if (state.sheet === 'delete_blocked') {
+      const used = (ex.usedIn && ex.usedIn.length) ? ex.usedIn : [{ prog: 'Верх / Низ 4 дня', day: 'День Б · Спина и руки' }, { prog: 'Базовая 3 дня', day: 'День А · Фулбоди' }];
+      return `
+        <div class="f-scrim" data-act="close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div class="f-sheet-head"><h3 class="d">Нельзя удалить</h3></div>
+            <p style="margin:0;font-size:13.5px;color:var(--f-muted);line-height:1.45">Упражнение <strong style="color:var(--f-text)">«${esc(displayName(ex))}»</strong> используется в программах. Сначала замените или удалите его из этих дней:</p>
+            <div class="usage-list">${used.map(u => `<div class="usage-row"><strong>${esc(u.prog)}</strong><span>${esc(u.day)}</span></div>`).join('')}</div>
+            <div class="f-sheet-foot"><button type="button" class="pb" data-act="close-sheet">Понятно</button></div>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="f-scrim" data-act="close-sheet">
+        <div class="f-sheet" onclick="event.stopPropagation()">
+          <div class="f-sheet-handle"></div>
+          <div class="f-sheet-head"><h3 class="d">Удалить упражнение?</h3></div>
+          <div class="cd" style="padding:12px 14px">
+            <div style="font-size:15px;font-weight:700;overflow-wrap:anywhere">${esc(displayName(ex))}</div>
+            <div style="font-size:12.5px;color:var(--f-muted);margin-top:3px">${esc((typeObj(ex.type) || {}).label)}${ex.primary ? ` · ${esc(muscleLbl(ex.primary))}` : ''}</div>
+          </div>
+          <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">Упражнение исчезнет из каталога навсегда без отмены. Записи в истории тренировок сохранятся.</p>
+          <div class="f-sheet-foot">
+            <button type="button" class="db" data-act="confirm-delete">${ICO.trash} Удалить упражнение</button>
+            <button type="button" class="ob" data-act="close-sheet">Отмена</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderPhone(v) {
+    let screenHtml = '';
+    if (state.screen === 'catalog') screenHtml = renderCatalogScreen(v);
+    else if (state.screen === 'detail') screenHtml = renderDetailScreen(v);
+    else screenHtml = renderFormScreen();
+
+    let sheetHtml = '';
+    if (state.sheet === 'filters') sheetHtml = renderFilterSheet();
+    else if (state.sheet) sheetHtml = renderDeleteOrDiscardSheet();
+    else if (state.screen === 'form' && state.form.pickerSheet) sheetHtml = renderFormPickerSheet();
+
+    const toastHtml = state.toast ? `<div class="f-toast">${esc(state.toast)}</div>` : '';
+    return `<div class="phone ${state.width === 360 ? 'w360' : ''}" data-variant="${v}">${renderStatusBar()}${screenHtml}${sheetHtml}${toastHtml}</div>`;
+  }
+
+  function renderInspector() {
+    const meta = VARIANT_META[state.variant];
+    if (document.getElementById('swKey')) document.getElementById('swKey').textContent = 'Финал';
+    
+    document.getElementById('phoneCaption').textContent = `Утверждённый гибрид #124 (${state.width} dp) — список H1 + карточка H3 + фильтры/форма A со слайдерами`;
+    document.getElementById('varDesc').innerHTML = `<p style="margin:0 0 4px"><strong>Утверждённый финал #124</strong></p><ul><li><strong>Список (H1 + A):</strong> иконка типа слева, символы мышцы/инвентаря/сложности, быстрый чип <code>Только свои</code> с <code>×</code>, правая полоса <code>+</code> в режиме выбора и липкая кнопка <code>+ Создать упражнение</code>.</li><li><strong>Фильтры (A+):</strong> <code>Только свои</code> наверху, слайдер диапазона сложности, крупный поиск мышц <code>48 dp</code> и доступный инвентарь.</li><li><strong>Карточка (H3 + B):</strong> единый «паспорт» с 4 строками-иконками, действия <code>✎ / ⋮</code> в шапке и две шторки удаления.</li><li><strong>Форма (A+):</strong> 3 outlined-секции, шторки выбора (поиск мышц <code>48 dp</code>), 4-позиционный слайдер сложности и шторка <code>Выйти без сохранения?</code>.</li></ul>`;
+
+    document.getElementById('legW').innerHTML = `<span class="ex-type-ico t-WEIGHT_AND_REPS" style="width:26px;height:26px;border-radius:8px">${ICO.tWeight(14)}</span>`;
+    document.getElementById('legR').innerHTML = `<span class="ex-type-ico t-REPS" style="width:26px;height:26px;border-radius:8px">${ICO.tReps(14)}</span>`;
+    document.getElementById('legT').innerHTML = `<span class="ex-type-ico t-DURATION" style="width:26px;height:26px;border-radius:8px">${ICO.tDuration(14)}</span>`;
+    document.getElementById('legD').innerHTML = `<span class="ex-type-ico t-DISTANCE" style="width:26px;height:26px;border-radius:8px">${ICO.tDistance(14)}</span>`;
+    document.getElementById('legM').innerHTML = `<span class="sym-chip-muscle" style="padding:3px 6px">${ICO.muscle(13)}</span>`;
+    document.getElementById('legE').innerHTML = `<span class="sym-chip-free" style="padding:3px 6px">${ICO.bodyFree(13)}</span>`;
+
+    const mkBtns = (id, items) => {
+      document.getElementById(id).innerHTML = items.map(it => `<button type="button" class="cbtn ${it.active ? 'active' : ''}" data-host="${it.act}" data-v="${it.val || ''}">${it.label}</button>`).join('');
+    };
+    mkBtns('screenBtns', [
+      { act: 'go-screen', val: 'catalog', label: 'Список каталога', active: state.screen === 'catalog' && !state.sheet },
+      { act: 'go-filters-diff', label: 'Фильтры: слайдер сложности', active: state.sheet === 'filters' && state.filterAccOpen === 'diff' },
+      { act: 'go-filters-muscle', label: 'Фильтры: крупный поиск мышц', active: state.sheet === 'filters' && state.filterAccOpen === 'muscle' },
+      { act: 'go-screen', val: 'detail', label: 'Карточка упражнения', active: state.screen === 'detail' && !state.sheet },
+      { act: 'go-form', label: 'Форма (слайдер + шторки)', active: state.screen === 'form' && !state.form.pickerSheet },
+      { act: 'go-form-muscle-sheet', label: 'Форма: выбор мышцы (48dp)', active: state.screen === 'form' && state.form.pickerSheet === 'primary' }
+    ]);
+    mkBtns('entryBtns', [
+      { act: 'set-entry', val: 'day_pick', label: 'Выбор для Training day (+)', active: state.entryMode === 'day_pick' },
+      { act: 'set-entry', val: 'settings', label: 'Из Настроек (✎ / ⋮)', active: state.entryMode === 'settings' }
+    ]);
+    mkBtns('listPresetBtns', [
+      { act: 'preset-all', label: 'Все 39 (разные типы)' },
+      { act: 'preset-filtered', label: 'Активные чипы с ×' },
+      { act: 'preset-own', label: 'Только свои ×' },
+      { act: 'preset-empty', label: 'Пусто (с фильтрами)' }
+    ]);
+    mkBtns('cardFormBtns', [
+      { act: 'card-builtin', label: 'Карточка: встроенное' },
+      { act: 'card-custom', label: 'Карточка: своё (✎ / ⋮)' },
+      { act: 'card-del-block', label: 'Удалить (блок)' },
+      { act: 'form-locked', label: 'Редакт. (тип 🔒)' }
+    ]);
+
+    document.getElementById('compareQuickBtns').innerHTML = [
+      ['go-screen', 'catalog', 'Сравнить список (H1 / H2 / H3)'],
+      ['card-builtin', '', 'Сравнить карточку: встроенное'],
+      ['card-custom', '', 'Сравнить карточку: своё (✎ / ⋮)']
+    ].map(([act, val, lbl]) => `<button type="button" class="cbtn" data-host="${act}" data-v="${val}">${lbl}</button>`).join('');
+  }
+
+  function render() {
+    const activeEl = document.activeElement;
+    const focusKey = activeEl && activeEl.dataset ? activeEl.dataset.in : null;
+    const selStart = activeEl && typeof activeEl.selectionStart === 'number' ? activeEl.selectionStart : null;
+    const selEnd = activeEl && typeof activeEl.selectionEnd === 'number' ? activeEl.selectionEnd : null;
+
+    document.getElementById('modeInteractive').classList.toggle('active', state.viewMode === 'interactive');
+    
+    document.getElementById('w390').classList.toggle('active', state.width === 390);
+    document.getElementById('w360').classList.toggle('active', state.width === 360);
+    document.getElementById('toggleLong').classList.toggle('active', state.longNames);
+    document.getElementById('interactiveStage').classList.toggle('hidden', state.viewMode !== 'interactive');
+    document.getElementById('compareStage').classList.toggle('hidden', state.viewMode !== 'compare');
+
+    if (state.viewMode === 'interactive') {
+      document.getElementById('phoneHost').innerHTML = renderPhone(state.variant);
+    } else {
+      document.getElementById('compareGrid').innerHTML = ['H1', 'H2', 'H3'].map(v => `
+        <div class="compare-col">
+          <div class="compare-head">
+            <div><strong>${v}: ${VARIANT_META[v].name}</strong><div><span>${VARIANT_META[v].short}</span></div></div>
+            <button type="button" class="cbtn ${state.variant === v ? 'active' : ''}" data-host="pick-var" data-v="${v}">Открыть</button>
+          </div>
+          ${renderPhone(v)}
+        </div>`).join('');
+    }
+    renderInspector();
+
+    if (focusKey && !focusKey.includes('slider') && !focusKey.includes('diff-')) {
+      const next = document.querySelector(`[data-in="${focusKey}"]`);
+      if (next) { next.focus(); try { if (selStart !== null) next.setSelectionRange(selStart, selEnd); } catch (_) {} }
+    }
+  }
+
+  function openFiltersSheet(acc = 'muscle') {
+    state.screen = 'catalog';
+    state.filterDraft = { diffRange: [...state.filters.diffRange], muscle: state.filters.muscle, muscleRole: state.filters.muscleRole, equip: [...state.filters.equip], customOnly: state.filters.customOnly };
+    state.filterMuscleSearch = '';
+    state.filterAccOpen = acc;
+    state.sheet = 'filters';
+  }
+  function toggleEquipment(arr, id) {
+    if (id === 'NONE') return arr.includes('NONE') ? [] : ['NONE'];
+    const wo = arr.filter(x => x !== 'NONE');
+    return wo.includes(id) ? wo.filter(x => x !== id) : [...wo, id];
+  }
+
+  document.addEventListener('click', e => {
+    const hBtn = e.target.closest('[data-host]');
+    if (hBtn) {
+      const act = hBtn.dataset.host, v = hBtn.dataset.v;
+      state.menuOpen = false; state.hideCustomForEmptyTest = false;
+      if (act === 'pick-var') { state.variant = v; state.viewMode = 'interactive'; syncUrl(); }
+      else if (act === 'go-screen') { state.screen = v; state.sheet = null; }
+      else if (act === 'go-filters-diff') { openFiltersSheet('diff'); }
+      else if (act === 'go-filters-muscle') { openFiltersSheet('muscle'); }
+      else if (act === 'go-form') { state.screen = 'form'; state.sheet = null; state.form = makeEmptyForm(''); state.form.diff = 'INTERMEDIATE'; }
+      else if (act === 'go-form-muscle-sheet') { state.screen = 'form'; state.sheet = null; state.form = makeEmptyForm('Тяга Т-грифа'); state.form.pickerSheet = 'primary'; }
+      else if (act === 'set-entry') { state.entryMode = v; }
+      else if (act === 'preset-all') { state.screen = 'catalog'; state.sheet = null; state.search = ''; state.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; }
+      else if (act === 'preset-filtered') { state.screen = 'catalog'; state.sheet = null; state.search = ''; state.filters = { diffRange: [0, 1], muscle: 'CHEST', muscleRole: 'PRIMARY', equip: ['DUMBBELLS', 'BENCH'], customOnly: false }; }
+      else if (act === 'preset-own') { state.screen = 'catalog'; state.sheet = null; state.search = ''; state.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: true }; }
+      else if (act === 'preset-empty') { state.screen = 'catalog'; state.sheet = null; state.search = 'болгарские выпады'; state.filters = { diffRange: [2, 2], muscle: 'QUADRICEPS', muscleRole: 'PRIMARY', equip: ['NONE'], customOnly: false }; }
+      else if (act === 'card-builtin') { state.selectedId = 'barbell-bench-press'; state.screen = 'detail'; state.sheet = null; }
+      else if (act === 'card-custom') { state.entryMode = 'settings'; state.selectedId = 'custom:t-bar-row'; state.screen = 'detail'; state.sheet = null; }
+      else if (act === 'card-del-block') { state.entryMode = 'settings'; state.selectedId = 'custom:t-bar-row'; state.screen = 'detail'; state.sheet = 'delete_blocked'; }
+      else if (act === 'form-locked') { const ex = state.exercises.find(x => x.id === 'custom:t-bar-row'); state.selectedId = ex.id; state.screen = 'form'; state.sheet = null; state.form = makeEditForm(ex); }
+      render(); return;
+    }
+
+    const btn = e.target.closest('[data-act]');
+    if (!btn) { if (state.menuOpen && !e.target.closest('.anchored-menu')) { state.menuOpen = false; render(); } return; }
+    const act = btn.dataset.act, val = btn.dataset.v, id = btn.dataset.id, k = btn.dataset.k;
+
+    if (act === 'back-root') showToast(state.entryMode === 'day_pick' ? 'Возврат в редактор дня' : 'Возврат в Настройки');
+    else if (act === 'back-catalog') { state.screen = 'catalog'; state.menuOpen = false; state.sheet = null; }
+    else if (act === 'clear-search') state.search = '';
+    else if (act === 'open-filters') openFiltersSheet(state.filterAccOpen || 'diff');
+    else if (act === 'close-sheet') state.sheet = null;
+    else if (act === 'toggle-quick-own') state.filters.customOnly = !state.filters.customOnly;
+    else if (act === 'rm-chip') {
+      if (k === 'muscle') { state.filters.muscle = null; state.filters.muscleRole = 'PRIMARY'; }
+      else if (k === 'equip') state.filters.equip = state.filters.equip.filter(x => x !== val);
+      else if (k === 'diff') state.filters.diffRange = [0, 2];
+    }
+    else if (act === 'reset-filters') { state.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; state.hideCustomForEmptyTest = false; }
+    else if (act === 'flt-acc') state.filterAccOpen = state.filterAccOpen === val ? null : val;
+    else if (act === 'flt-custom') state.filterDraft.customOnly = !state.filterDraft.customOnly;
+    else if (act === 'flt-diff-any') state.filterDraft.diffRange = [0, 2];
+    else if (act === 'flt-diff-tap') {
+      const idx = parseInt(val, 10);
+      const [mn, mx] = state.filterDraft.diffRange;
+      if (mn === idx && mx === idx) state.filterDraft.diffRange = [0, 2];
+      else state.filterDraft.diffRange = [idx, idx];
+    }
+    else if (act === 'flt-muscle') {
+      if (state.filterDraft.muscle === val) { state.filterDraft.muscle = null; state.filterDraft.muscleRole = 'PRIMARY'; }
+      else state.filterDraft.muscle = val;
+    }
+    else if (act === 'flt-role') { if (state.filterDraft.muscle) state.filterDraft.muscleRole = val; }
+    else if (act === 'flt-equip') state.filterDraft.equip = toggleEquipment(state.filterDraft.equip, val);
+    else if (act === 'clear-flt-m') state.filterMuscleSearch = '';
+    else if (act === 'flt-reset-draft') { state.filterDraft = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; state.filterMuscleSearch = ''; }
+    else if (act === 'flt-apply') { state.filters = { ...state.filterDraft, diffRange: [...state.filterDraft.diffRange], equip: [...state.filterDraft.equip] }; state.sheet = null; }
+    else if (act === 'open-detail') { state.selectedId = id; state.screen = 'detail'; state.menuOpen = false; }
+    else if (act === 'quick-add') { const ex = state.exercises.find(x => x.id === id); if (ex) { DAY_EXISTING_IDS.add(ex.id); showToast(`Добавлено в день: «${ex.name}»`); } }
+    else if (act === 'pick-from-card') { const ex = state.exercises.find(x => x.id === state.selectedId); if (ex) { DAY_EXISTING_IDS.add(ex.id); state.screen = 'catalog'; showToast(`Добавлено в день: «${ex.name}»`); } }
+    else if (act === 'open-create') { state.screen = 'form'; state.sheet = null; state.menuOpen = false; state.form = makeEmptyForm(state.search); }
+    else if (act === 'open-edit') { const ex = state.exercises.find(x => x.id === state.selectedId); if (ex && ex.custom) { state.screen = 'form'; state.sheet = null; state.menuOpen = false; state.form = makeEditForm(ex); } }
+    else if (act === 'toggle-menu') state.menuOpen = !state.menuOpen;
+    else if (act === 'try-delete') { state.menuOpen = false; const ex = state.exercises.find(x => x.id === state.selectedId); state.sheet = (ex && ex.usedIn && ex.usedIn.length) ? 'delete_blocked' : 'delete_confirm'; }
+    else if (act === 'confirm-delete') {
+      const ex = state.exercises.find(x => x.id === state.selectedId);
+      state.exercises = state.exercises.filter(x => x.id !== state.selectedId);
+      state.sheet = null; state.screen = 'catalog'; showToast(`Удалено: «${ex ? ex.name : ''}»`);
+    }
+    else if (act === 'form-back') { if (isFormDirty(state.form)) state.sheet = 'discard'; else state.screen = state.form.mode === 'edit' ? 'detail' : 'catalog'; }
+    else if (act === 'confirm-discard') { state.sheet = null; state.screen = state.form.mode === 'edit' ? 'detail' : 'catalog'; }
+    else if (act === 'open-picker') { state.form.pickerSheet = val; state.form.pickerSearch = ''; }
+    else if (act === 'close-picker') state.form.pickerSheet = null;
+    else if (act === 'clear-picker-s') state.form.pickerSearch = '';
+    else if (act === 'pick-type-sheet') { state.form.type = val; state.form.pickerSheet = null; }
+    else if (act === 'pick-primary') { state.form.primary = val || null; if (val) state.form.assisting = state.form.assisting.filter(x => x !== val); state.form.pickerSheet = null; }
+    else if (act === 'pick-assisting') { if (val !== state.form.primary) state.form.assisting = state.form.assisting.includes(val) ? state.form.assisting.filter(x => x !== val) : [...state.form.assisting, val]; }
+    else if (act === 'toggle-form-equip') state.form.equip = toggleEquipment(state.form.equip, val);
+    else if (act === 'set-diff-pos') { const n = parseInt(val, 10); state.form.diff = n === 0 ? null : DIFFS[n - 1].id; }
+    else if (act === 'form-save') {
+      state.form.validated = true;
+      const { errors } = validateForm(state.form, state.exercises);
+      if (Object.keys(errors).length) { render(); return; }
+      const nm = state.form.name.replace(/\r?\n/g, ' ').trim();
+      const tc = state.form.tech.trim();
+      if (state.form.mode === 'edit') {
+        const i = state.exercises.findIndex(x => x.id === state.form.editId);
+        if (i >= 0) state.exercises[i] = { ...state.exercises[i], name: nm, type: state.form.type, primary: state.form.primary, assisting: [...state.form.assisting], equip: [...state.form.equip], diff: state.form.diff, tech: tc };
+        state.screen = 'detail'; showToast('Изменения сохранены');
+      } else {
+        const nid = 'custom:new-' + Date.now();
+        state.exercises.push({ id: nid, name: nm, type: state.form.type, primary: state.form.primary, assisting: [...state.form.assisting], equip: [...state.form.equip], diff: state.form.diff, tech: tc, custom: true, usedIn: [], hasHistory: false });
+        if (state.entryMode === 'day_pick') { DAY_EXISTING_IDS.add(nid); state.screen = 'catalog'; showToast(`Создано «${nm}» и добавлено в день`); }
+        else { state.selectedId = nid; state.screen = 'detail'; showToast(`Создано «${nm}» — открыта карточка`); }
+      }
+    }
+    render();
+  });
+
+  document.addEventListener('input', e => {
+    const key = e.target && e.target.dataset ? e.target.dataset.in : null;
+    if (!key) return;
+    if (key === 'search') state.search = e.target.value;
+    else if (key === 'flt-m-search') state.filterMuscleSearch = e.target.value;
+    else if (key === 'picker-search') state.form.pickerSearch = e.target.value;
+    else if (key === 'f-name') state.form.name = e.target.value.replace(/\r?\n/g, ' ');
+    else if (key === 'f-tech') state.form.tech = e.target.value;
+    else if (key === 'f-diff-slider') { const n = parseInt(e.target.value, 10); state.form.diff = n === 0 ? null : DIFFS[n - 1].id; }
+    else if (key === 'flt-diff-min') {
+      const v = parseInt(e.target.value, 10);
+      state.filterDraft.diffRange = [Math.min(v, state.filterDraft.diffRange[1]), state.filterDraft.diffRange[1]];
+    }
+    else if (key === 'flt-diff-max') {
+      const v = parseInt(e.target.value, 10);
+      state.filterDraft.diffRange = [state.filterDraft.diffRange[0], Math.max(v, state.filterDraft.diffRange[0])];
+    }
+    render();
+  });
+
+  document.getElementById('modeInteractive').onclick = () => { state.viewMode = 'interactive'; render(); };
+  
+  document.getElementById('w390').onclick = () => { state.width = 390; render(); };
+  document.getElementById('w360').onclick = () => { state.width = 360; render(); };
+  document.getElementById('toggleLong').onclick = () => { state.longNames = !state.longNames; render(); };
+
+  const cycle = dir => { const arr = ['H1', 'H2', 'H3']; state.variant = arr[(arr.indexOf(state.variant) + dir + 3) % 3]; syncUrl(); render(); };
+  
+  
+  document.addEventListener('keydown', e => {
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') cycle(-1); else if (e.key === 'ArrowRight') cycle(1);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
