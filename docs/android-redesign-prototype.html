@@ -2691,11 +2691,11 @@
       name: rep.name,
       longName: rep.longName || rep.name,
       type: rep.type,
-      muscle: rep.muscle || origEx.muscle,
+      muscle: rep.muscle != null ? rep.muscle : '',
       assisting: rep.assisting || '',
-      equip: rep.equip || 'Без инвентаря',
-      diff: rep.diff || 1,
-      diffLabel: rep.diffLabel || 'Начальный',
+      equip: rep.equip != null ? rep.equip : '',
+      diff: rep.diff || null,
+      diffLabel: rep.diffLabel || '',
       steps: rep.steps || null,
       tech: rep.tech || '',
       heavy: stripWeight(origEx.heavy, rep.type),
@@ -3376,8 +3376,16 @@
       sheetHtml = `<div class="f-scrim keep-header" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div>${!s.calFormulaPicker ? `<div style="display:flex;align-items:center;justify-content:space-between"><h3>Подобрать рабочий вес</h3><button class="prog-strip-x" data-act="close-sheet">${ICO.x}</button></div><div class="f-seg"><button class="${s.calTab === 'feel' ? 'active' : ''}" data-act="cal-tab" data-v="feel">По ощущениям <span class="f-rec-dot">Рек.</span></button><button class="${s.calTab === 'calc' ? 'active' : ''}" data-act="cal-tab" data-v="calc">По повторениям</button></div>` : ''}${calBody}</div></div>`;
     } else if (s.sheet === 'ex_detail') {
       // Approved Exercise Card / Technique sheet (Variant C · #114 + #94 + Unified Replacement Module B · #123/#125)
-      const diff = ex.diff || 2, diffLbl = ex.diffLabel || 'Средняя';
-      const diffBars = `<span class="diff-bars">${[1, 2, 3].map(n => `<i class="${n <= diff ? 'on' : ''}"></i>`).join('')}</span>`;
+      const diff = ex.diff || 0, diffLbl = ex.diffLabel || '';
+      const diffBars = diff ? `<span class="diff-bars">${[1, 2, 3].map(n => `<i class="${n <= diff ? 'on' : ''}"></i>`).join('')}</span>` : '';
+      const metaParts = [];
+      if (ex.muscle) metaParts.push(`<strong style="color:var(--f-on-primary-container)">${catEsc(ex.muscle)}</strong>`);
+      if (ex.assisting) metaParts.push(`<span>${catEsc(ex.assisting)}</span>`);
+      if (ex.equip) metaParts.push(`<span>${catEsc(ex.equip)}</span>`);
+      if (diff && diffLbl) metaParts.push(`<span style="display:inline-flex;align-items:center;gap:5px">${diffBars} ${catEsc(diffLbl)}</span>`);
+      const metaLineHtml = metaParts.length
+        ? `<div style="font-size:12.5px;color:var(--f-muted);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px">${metaParts.join('<span style="opacity:.6">·</span>')}</div>`
+        : '';
       const techBlock = s.longNames
         ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
         : (ex.steps && ex.steps.length)
@@ -3413,12 +3421,7 @@
             <div class="f-sheet-handle"></div>
             <div class="m d" style="font-size:12px">Упражнение ${s.exIndex + 1} из ${day.exercises.length} · План ${plan.label}</div>
             <h2 class="d" style="margin:0;font-size:25px;line-height:27px;overflow-wrap:anywhere">${exDisplayName(ex, s)}</h2>
-            <div style="font-size:12.5px;color:var(--f-muted);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
-              <strong style="color:var(--f-on-primary-container)">${ex.muscle}</strong>
-              ${ex.assisting ? `<span>· ${ex.assisting}</span>` : ''}
-              <span>· ${ex.equip}</span>
-              <span style="display:inline-flex;align-items:center;gap:5px">· ${diffBars} ${diffLbl}</span>
-            </div>
+            ${metaLineHtml}
             <div class="m d" style="font-size:12px;margin-top:2px">Техника выполнения</div>
             ${techBlock}
             ${repModule}
@@ -4580,12 +4583,19 @@
         }).join('');
       }
 
+      const wkCur = isWkReplace ? getEx(s) : null;
+      const liveCurName = (isWkReplace && wkCur && catNorm(wkCur.name) === catNorm(cat.replaceExcludeName || ''))
+        ? exDisplayName(wkCur, s)
+        : cat.replaceCurrentName;
+      const liveOrigName = (isWkReplace && wkCur && wkCur.isReplaced && cat.replaceOrigName)
+        ? (s.longNames ? (wkCur.origLongName || wkCur.origName) : wkCur.origName)
+        : cat.replaceOrigName;
       const showStickyCreate = canCreate && list.length > 0;
-      const showStickyRevert = isWkReplace && Boolean(cat.replaceOrigName);
+      const showStickyRevert = isWkReplace && Boolean(liveOrigName);
       const stickyFootHtml = showStickyCreate
         ? '<div class="cat-sticky-foot"><button type="button" class="pb" data-act="cat-open-create">+ Создать упражнение</button></div>'
         : showStickyRevert
-          ? `<div class="cat-sticky-foot"><button type="button" class="rep-foot-revert" data-act="wk-revert-from-cat"><span class="rep-ico revert" style="width:34px;height:34px;border-radius:11px">${ICO.revert}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:11px;font-weight:700;color:var(--f-on-primary-container)">Вернуть исходное</span><span class="cat-cl2" style="font-size:13.5px;font-weight:650;color:var(--f-text)">${catEsc(cat.replaceOrigName)}</span></span></button></div>`
+          ? `<div class="cat-sticky-foot"><button type="button" class="rep-foot-revert" data-act="wk-revert-from-cat"><span class="rep-ico revert" style="width:34px;height:34px;border-radius:11px">${ICO.revert}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:11px;font-weight:700;color:var(--f-on-primary-container)">Вернуть исходное</span><span class="cat-cl2" style="font-size:13.5px;font-weight:650;color:var(--f-text)">${catEsc(liveOrigName)}</span></span></button></div>`
           : '';
       const topHeading = isWkReplace ? 'Замена · на сегодня' : isDayReplace ? 'Замена · в дне' : isDayPick ? 'Выбор упражнения' : 'Каталог упражнений';
 
@@ -4594,7 +4604,7 @@
           <button type="button" class="cat-back" data-act="cat-exit" aria-label="Назад">${ICO.back}</button>
           <div style="flex:1;min-width:0">
             <h1 class="d cat-top-title">${topHeading}</h1>
-            ${isReplace && cat.replaceCurrentName ? `<div class="cat-top-sub">Вместо: ${catEsc(cat.replaceCurrentName)}</div>` : ''}
+            ${isReplace && liveCurName ? `<div class="cat-top-sub">Вместо: ${catEsc(liveCurName)}</div>` : ''}
           </div>
         </div>
         <div class="cat-search-row">
@@ -5185,7 +5195,7 @@
               entryMode: 'workout_replace', sub: 'list', search: '', sheet: null, menuOpen: false,
               filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
               replaceSourceType: peTypeToCatType(curEx.type),
-              replaceExcludeId: curEx.catId || null,
+              replaceExcludeId: curEx.catId || curEx.id || null,
               replaceExcludeName: curEx.name,
               replaceCurrentName: exDisplayName(curEx, st),
               replaceOrigName: curEx.isReplaced ? (st.longNames ? (curEx.origLongName || curEx.origName) : curEx.origName) : '',
@@ -5612,7 +5622,7 @@
           st.catalog.search = ''; st.catalog.sheet = null; st.catalog.menuOpen = false; st.snack = null;
           st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
           if (mode === 'workout_replace') { st.screen = 'workout'; st.sheet = 'ex_detail'; }
-          else if (mode === 'day_pick' || mode === 'day_replace') { st.screen = 'day_editor'; }
+          else if (mode === 'day_pick' || mode === 'day_replace') { if (st.progEditor) st.progEditor.replaceExId = null; st.screen = 'day_editor'; }
           else { st.screen = 'settings'; }
         }
         else if (act === 'cat-clear-snack') { st.snack = null; }
@@ -5668,11 +5678,11 @@
                 name: ex.name,
                 longName: ex.id === 'barbell-bench-press' || ex.id === 'custom:t-bar-row' ? 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке' : ex.name,
                 type: tp.peType,
-                muscle: ex.primary ? catMuscleLbl(ex.primary) : curEx.muscle,
+                muscle: ex.primary ? catMuscleLbl(ex.primary) : '',
                 assisting: (ex.assisting || []).map(catMuscleLbl).join(', '),
                 equip: catIsNoEquip(ex) ? 'Без инвентаря' : (ex.equip || []).map(catEquipLbl).join(', '),
-                diff: df ? df.bars : 1,
-                diffLabel: df ? df.label : 'Начальный',
+                diff: df ? df.bars : null,
+                diffLabel: df ? df.label : '',
                 steps: ex.steps || null,
                 tech: ex.tech || '',
                 hasHistory: Boolean(firstSet),
