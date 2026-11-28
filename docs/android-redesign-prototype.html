@@ -1584,7 +1584,7 @@
   .cat-pass-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--f-surface-hi); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
   .cat-pass-lbl { font-size: 12px; color: var(--f-dim); }
   .cat-pass-val { font-size: 14.5px; font-weight: 600; color: var(--f-text); margin-top: 1px; line-height: 1.35; }
-  .cat-menu { position: absolute; top: 82px; right: 14px; z-index: 36; width: 206px; background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi); border-radius: 16px; padding: 6px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.54); }
+  .cat-menu { position: absolute; top: 60px; right: 14px; z-index: 36; width: 206px; background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi); border-radius: 16px; padding: 6px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.54); }
   .cat-menu button { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--f-text); font-size: 14px; font-weight: 600; padding: 0 12px; display: flex; align-items: center; gap: 10px; text-align: left; }
   .cat-menu button:hover { background: var(--f-chip); }
   .cat-menu button.danger { color: var(--f-error); }
@@ -4806,7 +4806,8 @@
         </div>`;
     }
 
-    const snackHtml = s.snack ? `<div class="f-snack" style="bottom:78px"><span>${s.snack.text}</span></div>` : '';
+    const hasBottomCta = (cat.sub === 'list' && catFilterExercises(cat).length > 0) || (cat.sub === 'detail' && isPick) || cat.sub === 'form';
+    const snackHtml = s.snack ? `<div class="f-snack" style="bottom:${hasBottomCta ? '78px' : '16px'};cursor:pointer" data-act="cat-clear-snack"><span>${s.snack.text}</span></div>` : '';
     return `${mainHtml}${sheetHtml}${snackHtml}`;
   }
 
@@ -5406,21 +5407,24 @@
         }
         else if (act === 'cat-exit') {
           const mode = st.catalog.entryMode;
-          st.catalog.search = ''; st.catalog.sheet = null; st.catalog.menuOpen = false;
+          st.catalog.search = ''; st.catalog.sheet = null; st.catalog.menuOpen = false; st.snack = null;
           st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
           st.screen = mode === 'day_pick' ? 'day_editor' : 'settings';
         }
-        else if (act === 'cat-back-list') { st.catalog.sub = 'list'; st.catalog.menuOpen = false; st.catalog.sheet = null; }
-        else if (act === 'cat-clear-search') { st.catalog.search = ''; }
-        else if (act === 'cat-toggle-own') { st.catalog.filters.customOnly = !st.catalog.filters.customOnly; }
+        else if (act === 'cat-clear-snack') { st.snack = null; }
+        else if (act === 'cat-back-list') { st.catalog.sub = 'list'; st.catalog.menuOpen = false; st.catalog.sheet = null; st.snack = null; }
+        else if (act === 'cat-clear-search') { st.catalog.search = ''; st.snack = null; }
+        else if (act === 'cat-toggle-own') { st.catalog.filters.customOnly = !st.catalog.filters.customOnly; st.snack = null; }
         else if (act === 'cat-rm-chip') {
+          st.snack = null;
           const [ck, cv] = String(v || '').split(':');
           if (ck === 'muscle') { st.catalog.filters.muscle = null; st.catalog.filters.muscleRole = 'PRIMARY'; }
           else if (ck === 'equip') { st.catalog.filters.equip = st.catalog.filters.equip.filter(x => x !== cv); }
           else if (ck === 'diff') { st.catalog.filters.diffRange = [0, 2]; }
         }
-        else if (act === 'cat-reset-filters') { st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; }
+        else if (act === 'cat-reset-filters') { st.snack = null; st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; }
         else if (act === 'cat-open-filters') {
+          st.snack = null;
           st.catalog.filterDraft = { diffRange: [...st.catalog.filters.diffRange], muscle: st.catalog.filters.muscle, muscleRole: st.catalog.filters.muscleRole, equip: [...st.catalog.filters.equip], customOnly: st.catalog.filters.customOnly };
           st.catalog.filterMuscleSearch = ''; st.catalog.sheet = 'filters';
         }
@@ -5441,7 +5445,7 @@
         else if (act === 'cat-flt-equip') { st.catalog.filterDraft.equip = catToggleEquip(st.catalog.filterDraft.equip, v); }
         else if (act === 'cat-flt-reset-draft') { st.catalog.filterDraft = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; st.catalog.filterMuscleSearch = ''; }
         else if (act === 'cat-flt-apply') { st.catalog.filters = { ...st.catalog.filterDraft, diffRange: [...st.catalog.filterDraft.diffRange], equip: [...st.catalog.filterDraft.equip] }; st.catalog.sheet = null; }
-        else if (act === 'cat-open-detail') { st.catalog.selectedId = v; st.catalog.sub = 'detail'; st.catalog.menuOpen = false; }
+        else if (act === 'cat-open-detail') { st.snack = null; st.catalog.selectedId = v; st.catalog.sub = 'detail'; st.catalog.menuOpen = false; }
         else if (act === 'cat-quick-add' || act === 'cat-pick-from-card') {
           const exId = act === 'cat-quick-add' ? v : st.catalog.selectedId;
           const ex = st.catalog.exercises.find(x => x.id === exId);
@@ -6001,7 +6005,7 @@
   document.querySelector('.inspector').addEventListener('click', e => {
     const btn = e.target.closest('[data-host]'); if (!btn) return;
     const h = btn.dataset.host, v = btn.dataset.v;
-    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; st.mpCtxMenu = null; st.mpSheet = null; if (v !== 'history') st.historyDetailIdx = null; renderLive(); }
+    if (h === 'screen') { st.screen = v; st.sheet = null; st.snack = null; st.histEdit = null; st.histDelIdx = null; st.histSnack = null; st.mpCtxMenu = null; st.mpSheet = null; if (st.catalog) { st.catalog.sheet = null; st.catalog.menuOpen = false; } if (v !== 'history') st.historyDetailIdx = null; renderLive(); }
     else if (h === 'preset') { applyPreset(v); }
     else if (h === 'toggle') {
       if (v === 'activeWorkout') { st.activeWorkoutDayId = st.activeWorkoutDayId ? null : st.selectedDay; st.activeWorkoutProgramId = st.selectedProgramId; st.sheet = null; st.mpSheet = null; }
