@@ -1327,7 +1327,7 @@
   /* ==================== PROGRAM & DAY EDITOR (#100 + #120 + #121) ==================== */
   .pe-scroll { flex: 1; overflow-y: auto; padding: 2px 18px 98px; scrollbar-width: thin; scrollbar-color: #2B352A transparent; min-height: 0; }
   .phone.w360 .pe-scroll { padding: 2px 14px 96px; }
-  .pe-top { height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+  .pe-top { height: 54px; padding: 8px 16px 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
   .pe-back { width: 38px; height: 38px; border-radius: 12px; border: 0; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; margin-left: -8px; }
   .pe-top-tag { font-size: 11.5px; font-weight: 600; color: var(--f-muted); background: var(--f-surface); padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 0; }
   .pe-h1 { margin: 2px 0 12px; font-family: Inter, sans-serif; font-weight: 700; font-size: 23px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.3px; color: var(--f-text); }
@@ -2099,7 +2099,7 @@
     out.days = (ov.days || defaultDays).map(d => ({ ...d, exercises: (d.exercises || []).map(x => ({ ...x })) }));
     if (ov.exercises) out.days[0].exercises = ov.exercises.map(x => ({ ...x }));
     if (ov.dayName && out.days[0]) out.days[0].name = ov.dayName;
-    if (!out.initialSnap) out.initialSnap = JSON.stringify({ programName: out.programName, rule: out.rule, days: out.days });
+    if (!out.initialSnap) out.initialSnap = JSON.stringify({ programName: out.programName, alternating: ov.initialAlternating != null ? !!ov.initialAlternating : true, rule: out.rule, days: out.days });
     return out;
   }
 
@@ -2112,9 +2112,9 @@
     };
   }
   function peActiveDay(pe) { return (pe.days || []).find(d => d.id === pe.activeDayId) || pe.days[0] || null; }
-  function peIsDirty(pe) {
+  function peIsDirty(pe, alternating) {
     if (!pe || !pe.initialSnap) return false;
-    return JSON.stringify({ programName: pe.programName, rule: pe.rule, days: pe.days }) !== pe.initialSnap;
+    return JSON.stringify({ programName: pe.programName, alternating: !!alternating, rule: pe.rule, days: pe.days }) !== pe.initialSnap;
   }
   function peValidateSide(ex, side) {
     const errs = {};
@@ -3709,13 +3709,12 @@
 
     let sheetHtml = '';
     if (s.sheet === 'pe_rule') {
-      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><div style="font-size:18px;font-weight:700;color:var(--f-text);line-height:1.2">Правило лёгкой недели</div><div style="font-size:12.5px;color:var(--f-muted);margin:3px 0 11px;line-height:1.35">Автоматически пересчитывает цели с включённой прогрессией. Ручные правки сохранятся.</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">${PE_RULES.map(r => `<button type="button" class="pe-radio-card ${pe.rule === r.id ? 'on' : ''}" data-act="pe-set-rule" data-v="${r.id}"><span class="pe-radio-dot"></span><div><div style="font-size:14px;font-weight:650;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${r.title}${r.badge ? ` <span class="tag" style="background:var(--f-primary-container);color:var(--f-on-primary-container);font-size:10px;padding:1px 7px">${r.badge}</span>` : ''}</div><div style="font-size:12px;color:var(--f-muted);margin-top:3px;line-height:1.35">${r.desc}</div></div></button>`).join('')}</div><button type="button" class="pb" data-act="close-sheet">Готово</button></div></div>`;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><div style="font-size:18px;font-weight:700;color:var(--f-text);line-height:1.2">Правило лёгкой недели</div><div style="font-size:12.5px;color:var(--f-muted);margin:3px 0 11px;line-height:1.35">Автоматически пересчитывает цели с включённой прогрессией. Ручные правки сохранятся.</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">${PE_RULES.map(r => `<button type="button" class="pe-radio-card ${pe.rule === r.id ? 'on' : ''}" data-act="pe-set-rule" data-v="${r.id}"><span class="pe-radio-dot"></span><div><div style="font-size:14px;font-weight:650;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${r.title}${r.badge ? ` <span class="tag" style="background:var(--f-primary-container);color:var(--f-on-primary-container);font-size:10px;padding:1px 7px">${r.badge}</span>` : ''}</div><div style="font-size:12px;color:var(--f-muted);margin-top:3px;line-height:1.35">${r.desc}</div></div></button>`).join('')}</div><button type="button" class="pb" data-act="close-sheet">Готово</button></div></div>`;
     } else if (s.sheet === 'pe_discard') {
-      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><h3 style="margin:0;font-size:18px;font-weight:700;color:var(--f-text)">Выйти без сохранения?</h3><p style="margin:4px 0 12px;font-size:13px;color:var(--f-muted);line-height:1.4">Несохранённые изменения будут потеряны.</p><button type="button" class="f-sheet-danger" data-act="pe-confirm-discard" style="margin-bottom:8px">Выйти без сохранения</button><button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться в редакторе</button></div></div>`;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3 style="margin:0;font-size:18px;font-weight:700;color:var(--f-text)">Выйти без сохранения?</h3><p style="margin:4px 0 12px;font-size:13px;color:var(--f-muted);line-height:1.4">Несохранённые изменения будут потеряны.</p><button type="button" class="f-sheet-danger" data-act="pe-confirm-discard" style="margin-bottom:8px">Выйти без сохранения</button><button type="button" class="f-sheet-cancel" data-act="close-sheet">Остаться в редакторе</button></div></div>`;
     }
 
     return `
-      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
       <div class="pe-top">
         <button type="button" class="pe-back" data-act="pe-back" aria-label="Назад">${ICO.back}</button>
         ${s.alternating ? `<span class="pe-top-tag">${renderLamps('heavy', false)}${renderLamps('light', false)}Тяжёлая / Лёгкая</span>` : ''}
@@ -4047,11 +4046,10 @@
     let sheetHtml = '';
     if (s.sheet === 'pe_add_ex' || s.sheet === 'pe_rep_ex') {
       const isRep = s.sheet === 'pe_rep_ex';
-      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-grab"></div><h3 style="margin:0 0 8px;font-size:18px;font-weight:700;color:var(--f-text)">${isRep ? 'Заменить упражнение' : 'Добавить упражнение'}</h3><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">${PE_CATALOG_SAMPLES.map((c, i) => `<button type="button" class="pe-radio-card" style="align-items:center;justify-content:space-between" data-act="${isRep ? 'pe-pick-rep' : 'pe-pick-add'}" data-v="${i}"><span style="font-size:13.5px;font-weight:600">${c.name}</span><span style="color:var(--f-primary);font-size:12.5px;font-weight:700;flex:none">${isRep ? 'Выбрать' : '+ Добавить'}</span></button>`).join('')}</div><button type="button" class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
+      sheetHtml = `<div class="f-scrim" data-act="close-sheet"><div class="f-sheet" onclick="event.stopPropagation()"><div class="f-sheet-handle"></div><h3 style="margin:0 0 8px;font-size:18px;font-weight:700;color:var(--f-text)">${isRep ? 'Заменить упражнение' : 'Добавить упражнение'}</h3><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">${PE_CATALOG_SAMPLES.map((c, i) => `<button type="button" class="pe-radio-card" style="align-items:center;justify-content:space-between" data-act="${isRep ? 'pe-pick-rep' : 'pe-pick-add'}" data-v="${i}"><span style="font-size:13.5px;font-weight:600">${c.name}</span><span style="color:var(--f-primary);font-size:12.5px;font-weight:700;flex:none">${isRep ? 'Выбрать' : '+ Добавить'}</span></button>`).join('')}</div><button type="button" class="f-sheet-cancel" data-act="close-sheet">Отмена</button></div></div>`;
     }
 
     return `
-      <div class="f-status"><span>14:55</span><span>5G · 84%</span></div>
       <div class="pe-top">
         <button type="button" class="pe-back" data-act="pe-day-back" aria-label="К программе">${ICO.back}</button>
         ${s.alternating
@@ -4187,12 +4185,13 @@
         else if (act === 'mp-close-sheet') { st.mpSheet = null; }
         else if (act === 'mp-edit') {
           const target = (st.programs || []).find(x => x.id === v);
-          st.progEditor = peCreateInitial(target ? { programName: target.name } : {});
-          if (target) { st.alternating = !!target.alternating; }
+          const initAlt = target ? !!target.alternating : st.alternating;
+          st.progEditor = peCreateInitial(target ? { programName: target.name, initialAlternating: initAlt } : { initialAlternating: initAlt });
+          if (target) { st.alternating = initAlt; }
           st.peEditingProgramId = v; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
         }
         else if (act === 'mp-create') {
-          st.progEditor = peCreateInitial({ programName: '', days: [], activeDayId: null });
+          st.progEditor = peCreateInitial({ programName: '', days: [], activeDayId: null, initialAlternating: false });
           st.alternating = false;
           st.peEditingProgramId = '__new__'; st.peReturnTo = 'programs'; st.mpCtxMenu = null; st.mpSheet = null; st.screen = 'program_editor';
         }
@@ -4225,7 +4224,7 @@
                 st.snack = { text: 'Программа сохранена' };
               }
               pe.showProgVal = false;
-              pe.initialSnap = JSON.stringify({ programName: pe.programName, rule: pe.rule, days: pe.days });
+              pe.initialSnap = JSON.stringify({ programName: pe.programName, alternating: !!st.alternating, rule: pe.rule, days: pe.days });
               st.peEditingProgramId = null;
               st.screen = st.peReturnTo || 'home';
             }
@@ -4281,11 +4280,21 @@
         else if (act === 'pe-back') {
           peClearUndo();
           st.progEditor.ctxDayId = null;
-          if (peIsDirty(st.progEditor)) { st.sheet = 'pe_discard'; }
+          if (peIsDirty(st.progEditor, st.alternating)) { st.sheet = 'pe_discard'; }
           else { st.screen = st.peReturnTo || 'home'; st.sheet = null; }
         }
         else if (act === 'pe-confirm-discard') {
           peClearUndo();
+          if (st.progEditor && st.progEditor.initialSnap) {
+            try {
+              const orig = JSON.parse(st.progEditor.initialSnap);
+              st.progEditor.programName = orig.programName;
+              st.progEditor.rule = orig.rule;
+              st.progEditor.days = orig.days;
+              if (typeof orig.alternating === 'boolean') st.alternating = orig.alternating;
+            } catch (_) {}
+          }
+          st.progEditor.showProgVal = false;
           st.sheet = null;
           st.screen = st.peReturnTo || 'home';
         }
@@ -4823,11 +4832,20 @@
       inp.addEventListener('input', () => {
         const kind = inp.dataset.peIn;
         const day = peActiveDay(st.progEditor);
-        if (kind === 'prog-name') { st.progEditor.programName = inp.value.replace(/\r?\n/g, ' '); return; }
-        if (kind === 'day-name') { if (day) day.name = inp.value.replace(/\r?\n/g, ' '); return; }
+        const rawVal = inp.value;
+        const s0 = inp.selectionStart, s1 = inp.selectionEnd;
+        if (kind === 'prog-name' || kind === 'day-name') {
+          const clean = rawVal.replace(/\r?\n/g, ' ');
+          if (kind === 'prog-name') st.progEditor.programName = clean;
+          else if (day) day.name = clean;
+          renderLive();
+          const nextInp = document.querySelector(`#phone-live [data-pe-in="${kind}"]`);
+          if (nextInp) { nextInp.value = clean; nextInp.focus(); try { if (s0 != null) nextInp.setSelectionRange(s0, s1); } catch (_) {} }
+          return;
+        }
         const ex = (day?.exercises || []).find(x => x.id === inp.dataset.ex);
         if (!ex) return;
-        const side = inp.dataset.side, raw = inp.value.trim();
+        const side = inp.dataset.side, raw = rawVal.trim();
         if (side === 'light') peEnsureManual(ex, st.progEditor.rule);
         if (kind === 'sets') { const val = raw === '' ? null : parseInt(raw, 10); if (side === 'heavy') ex.heavySets = val; else ex.manualSets = val; }
         else if (kind === 'exact') { const val = raw === '' ? null : parseInt(raw, 10); if (side === 'heavy') ex.heavyExact = val; else ex.manualExact = val; }
@@ -4838,8 +4856,6 @@
           const m = raw === '' || isNaN(num) ? null : (unit === 'km' ? Math.round(num * 1000) : Math.round(num));
           if (side === 'heavy') ex.heavyMeters = m; else ex.manualMeters = m;
         }
-        const rawVal = inp.value;
-        const s0 = inp.selectionStart, s1 = inp.selectionEnd;
         renderLive();
         const nextInp = document.querySelector(`#phone-live [data-pe-in="${kind}"][data-side="${side}"][data-ex="${ex.id}"]`);
         if (nextInp) { nextInp.value = rawVal; nextInp.focus(); try { if (s0 != null) nextInp.setSelectionRange(s0, s1); } catch (_) {} }
@@ -5023,7 +5039,7 @@
         title: '6. Редактор программы и дня — база доски 05 + парные цели (#100) + управление днями и валидация (#120 + #121)',
         sub: '3-зонные карточки дней (⠿ слева · центр · ⋮ справа), единая ручка ⠿ слева в обоих экранах, баннер активной тренировки с полосой 3 dp, валидация с тонированием и «Проверь цель», «Заменить / Удалить» по краям, Undo-snackbar (~3 с) с заливкой и компактная шторка выхода',
         cards: [
-          { title: 'Редактор программы · Баннер, 3 зоны и меню ⋮ (#100 + #121)', note: 'Лента активной тренировки с полосой 3 dp, карточка «Недели и нагрузка», 3-зонные карточки дней (⠿ | центр | ⋮), контекстное меню и невалидный день.', state: snap({ screen: 'program_editor', alternating: true, activeWorkoutDayId: 'A', activeWorkoutProgramId: 'p1', progEditor: (() => { const p = peCreateInitial({ showProgVal: true, ctxDayId: 'ped1', ctxPos: { top: 446, right: 18 } }); p.days[2].exercises = []; return p; })() }) },
+          { title: 'Редактор программы · Баннер, 3 зоны и меню ⋮ (#100 + #121)', note: 'Лента активной тренировки с полосой 3 dp, карточка «Недели и нагрузка», 3-зонные карточки дней (⠿ | центр | ⋮), контекстное меню и невалидный день.', state: snap({ screen: 'program_editor', alternating: true, activeWorkoutDayId: 'A', activeWorkoutProgramId: 'p1', progEditor: (() => { const p = peCreateInitial({ showProgVal: true, ctxDayId: 'ped1', ctxPos: { top: 422, right: 18 } }); p.days[2].exercises = []; return p; })() }) },
           { title: 'Редактор программы · Undo-snackbar и шторка выхода (#120 + #121)', note: 'Плавающий Undo-бар (~3 с) с лаймовой заливкой над кнопкой «Сохранить» и компактная шторка #1C231C «Выйти без сохранения?».', state: snap({ screen: 'program_editor', alternating: true, sheet: 'pe_discard', progEditor: peCreateInitial({ undo: { kind: 'day', label: 'Удалён день «День В · Плечи и руки»', staticPct: 0.64 } }) }) },
           { title: 'Редактор дня · Единая ⠿ слева, 8–12 и «Заменить / Удалить» (#100 + #121)', note: 'Ручка ⠿ слева, «Прогрессия» сверху, [Точно | Диапазон | Без цели] + 8–12, парные блоки Тяжёлая/Лёгкая и строка «Заменить упражнение / Удалить» по краям.', state: snap({ screen: 'day_editor', alternating: true, progEditor: peCreateInitial({ expandedId: 'pe1' }) }) },
           { title: 'Редактор дня · Ошибки валидации и «Копия дня» (#120 + #121)', note: 'Чистая шапка «Копия дня», inline-ошибка ««От» должно быть меньше «до»» внутри блока, пауза авторасчёта лёгкой и «Проверь цель» на свёрнутой карточке.', state: snap({ screen: 'day_editor', alternating: true, progEditor: (() => { const p = peCreateInitial({ expandedId: 'pe1', showDayVal: true, dayDupSource: 'День А · Верх и тяга' }); p.days[0].name = 'День А · Верх и тяга (копия)'; p.days[0].exercises[0].heavyMin = 12; p.days[0].exercises[0].heavyMax = 8; p.days[0].exercises[1].heavySets = 0; return p; })() }) }
