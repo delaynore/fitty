@@ -1527,6 +1527,124 @@
   .phone.w360 .mp-sticky-cta { padding: 10px 16px 14px; }
   .mp-empty { min-height: 490px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px; gap: 10px; }
   .mp-empty-ico { width: 56px; height: 56px; border-radius: 18px; background: var(--f-surface); color: var(--f-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+
+  /* ==================== EXERCISE CATALOG (#122 + #124 APPROVED HYBRID H1+H3+A+) ==================== */
+  .cat-topbar { display: flex; align-items: center; gap: 6px; padding: 14px 14px 6px 8px; min-height: 58px; flex: none; }
+  .cat-back { width: 42px; height: 42px; border: 0; border-radius: 21px; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-back:hover { background: var(--f-surface); }
+  .cat-top-title { margin: 0; font-size: 21px; line-height: 1.05; color: var(--f-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phone.w360 .cat-top-title { font-size: 19px; }
+  .cat-top-icon { width: 40px; height: 40px; border-radius: 20px; border: 0; background: transparent; color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-top-icon:hover { background: var(--f-surface); }
+  .cat-search-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 8px; flex: none; }
+  .phone.w360 .cat-search-row { padding: 0 14px 8px; }
+  .cat-search-box { flex: 1; min-width: 0; height: 48px; border-radius: 24px; background: var(--f-surface); border: 1.5px solid transparent; display: flex; align-items: center; gap: 9px; padding: 0 10px 0 15px; }
+  .cat-search-box:focus-within { border-color: var(--f-primary-border); background: #161C16; }
+  .cat-search-box input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); font: 400 15.5px Inter, sans-serif; outline: none; }
+  .cat-search-box input::placeholder { color: var(--f-placeholder); }
+  .cat-clear-x { width: 32px; height: 32px; border-radius: 16px; border: 0; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-filter-btn { position: relative; flex: none; width: 48px; height: 48px; border-radius: 24px; border: 1.5px solid var(--f-outline); background: var(--f-surface); color: var(--f-text); display: inline-flex; align-items: center; justify-content: center; }
+  .cat-filter-btn.active { background: var(--f-primary-container); border-color: var(--f-primary-border); color: var(--f-on-primary-container); }
+  .cat-filter-cnt { position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; border-radius: 10px; background: var(--f-primary); color: var(--f-on-primary); font-size: 11px; font-weight: 800; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #0B0E0B; }
+  .cat-chips-bar { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 8px; scrollbar-width: none; flex: none; align-items: center; }
+  .phone.w360 .cat-chips-bar { padding: 0 14px 8px; }
+  .cat-chips-bar::-webkit-scrollbar { display: none; }
+  .cat-chip-rm { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 34px; padding: 0 9px 0 12px; border-radius: 11px; border: 1px solid var(--f-primary-border); background: var(--f-primary-container); color: var(--f-on-primary-container); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .cat-chip-rm .cat-x-dot { width: 18px; height: 18px; border-radius: 9px; background: rgba(197, 250, 85, 0.18); display: inline-flex; align-items: center; justify-content: center; }
+  .cat-chip-rm.clear-all { background: transparent; border-color: var(--f-outline); color: var(--f-muted); padding: 0 11px; }
+  .cat-quick-own { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 34px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--f-outline); background: var(--f-surface); color: var(--f-muted); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .cat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 20px; scrollbar-width: thin; scrollbar-color: #2B342A transparent; }
+  .phone.w360 .cat-scroll { padding: 4px 14px 20px; }
+  .cat-scroll.has-sticky { padding-bottom: 92px; }
+  .cat-sticky-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 12; padding: 10px 16px 16px; background: linear-gradient(180deg, rgba(11, 14, 11, 0) 0%, #0B0E0B 28%); }
+  .cat-sticky-foot.solid { background: #0B0E0B; border-top: 1px solid #222B22; padding-top: 12px; }
+  .cat-type-ico { width: 38px; height: 38px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+  .cat-type-ico.t-WEIGHT_AND_REPS { background: #263119; color: #C5FA55; }
+  .cat-type-ico.t-REPS { background: #1B2922; color: #7EE2B8; }
+  .cat-type-ico.t-DURATION { background: #162632; color: #5CC8FA; }
+  .cat-type-ico.t-DISTANCE { background: #2A2316; color: #F5C469; }
+  .cat-ex-card { background: var(--f-surface); border-radius: 18px; margin-bottom: 8px; display: flex; align-items: stretch; overflow: hidden; }
+  .cat-ex-main { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); text-align: left; padding: 11px 12px; display: flex; align-items: center; gap: 11px; }
+  .cat-ex-main:hover { background: #181E18; }
+  .cat-ex-plus { width: 50px; flex: none; border: 0; border-left: 1px solid #222B22; background: transparent; color: var(--f-primary); display: flex; align-items: center; justify-content: center; }
+  .phone.w360 .cat-ex-plus { width: 44px; }
+  .cat-ex-plus:hover { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .cat-cl2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .cat-cl1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-badge-own { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #1E251E; border: 1px solid #354134; font-size: 10.5px; font-weight: 600; color: var(--f-muted); white-space: nowrap; flex: none; }
+  .cat-badge-day { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; background: #232E19; border: 1px solid #415524; font-size: 10.5px; font-weight: 600; color: var(--f-on-primary-container); white-space: nowrap; flex: none; }
+  .cat-sym-line { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin-top: 6px; font-size: 12px; line-height: 1.3; }
+  .cat-sym-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+  .cat-sym-m { color: var(--f-on-primary-container); font-weight: 600; }
+  .cat-sym-e { color: var(--f-muted); }
+  .cat-sym-free { color: #8CE8C2; font-weight: 500; }
+  .cat-passport { background: var(--f-surface); border-radius: 20px; overflow: hidden; margin-bottom: 14px; }
+  .cat-pass-row { padding: 12px 15px; border-bottom: 1px solid #202720; display: flex; align-items: center; gap: 12px; }
+  .cat-pass-row:last-child { border-bottom: 0; }
+  .cat-pass-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--f-surface-hi); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-pass-lbl { font-size: 12px; color: var(--f-dim); }
+  .cat-pass-val { font-size: 14.5px; font-weight: 600; color: var(--f-text); margin-top: 1px; line-height: 1.35; }
+  .cat-menu { position: absolute; top: 82px; right: 14px; z-index: 36; width: 206px; background: var(--f-surface-hi); border: 1px solid var(--f-outline-hi); border-radius: 16px; padding: 6px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.54); }
+  .cat-menu button { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--f-text); font-size: 14px; font-weight: 600; padding: 0 12px; display: flex; align-items: center; gap: 10px; text-align: left; }
+  .cat-menu button:hover { background: var(--f-chip); }
+  .cat-menu button.danger { color: var(--f-error); }
+  .cat-empty { background: var(--f-surface); border-radius: 20px; padding: 26px 18px; text-align: center; margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .cat-empty-ico { width: 50px; height: 50px; border-radius: 16px; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; }
+  .cat-sheet-search { min-height: 48px; border-radius: 24px; background: #0C100C; border: 1.5px solid #2D382C; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; flex: none; }
+  .cat-sheet-search:focus-within { border-color: var(--f-primary-border); background: #0E130E; }
+  .cat-sheet-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--f-text); font: 400 16px Inter, sans-serif; outline: none; height: 46px; }
+  .cat-sheet-search input::placeholder { color: var(--f-placeholder); }
+  .cat-sheet-x { width: 36px; height: 36px; border-radius: 18px; border: 0; background: var(--f-chip); color: var(--f-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-acc { background: var(--f-surface); border-radius: 16px; overflow: hidden; flex: none; }
+  .cat-acc-btn { width: 100%; min-height: 58px; border: 0; background: transparent; color: var(--f-text); display: flex; align-items: center; gap: 11px; padding: 10px 14px; text-align: left; }
+  .cat-acc-cnt { min-width: 22px; height: 22px; border-radius: 11px; background: var(--f-primary); color: var(--f-on-primary); font-size: 11.5px; font-weight: 800; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-acc-body { padding: 0 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .cat-sw-row { background: var(--f-surface); border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; width: 100%; color: var(--f-text); text-align: left; flex: none; }
+  .cat-sw { width: 44px; height: 26px; border-radius: 13px; padding: 3px; flex: none; background: #2C352B; box-shadow: inset 0 0 0 1px #424E41; display: inline-flex; align-items: center; }
+  .cat-sw i { width: 20px; height: 20px; border-radius: 10px; background: #A2AEA0; transform: translateX(0); transition: transform 0.15s; display: block; }
+  .cat-sw.on { background: var(--f-primary); box-shadow: none; }
+  .cat-sw.on i { background: var(--f-on-primary); transform: translateX(18px); }
+  .cat-role-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: #0E120E; padding: 3px; border-radius: 13px; border: 1px solid #262F25; }
+  .cat-role-seg.disabled { opacity: 0.48; }
+  .cat-role-seg button { border: 0; border-radius: 10px; min-height: 40px; padding: 0 8px; background: transparent; color: var(--f-muted); font-size: 13px; font-weight: 600; }
+  .cat-role-seg button.active { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .cat-pick-row { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: transparent; color: var(--f-text); display: flex; align-items: center; gap: 12px; padding: 8px 12px; text-align: left; font-size: 15px; }
+  .cat-pick-row.on { background: var(--f-primary-container); color: var(--f-on-primary-container); }
+  .cat-pick-row.disabled { opacity: 0.45; cursor: default; }
+  .cat-pick-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--f-dim); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .cat-pick-box.radio { border-radius: 50%; }
+  .cat-pick-row.on .cat-pick-box { background: var(--f-primary); border-color: var(--f-primary); color: var(--f-on-primary); }
+  .cat-slider-box { background: #101510; border: 1px solid #263025; border-radius: 14px; padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 10px; }
+  .cat-range { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; cursor: pointer; }
+  .cat-range::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--f-primary) 0%, var(--f-primary) var(--pct, 0%), #283227 var(--pct, 0%), #283227 100%); }
+  .cat-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--f-primary); border: 3px solid #141914; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 0 1.5px var(--f-primary-border); margin-top: -9px; }
+  .cat-dual-wrap { position: relative; height: 34px; display: flex; align-items: center; }
+  .cat-dual-track { position: absolute; left: 0; right: 0; height: 8px; border-radius: 4px; background: #283227; }
+  .cat-dual-fill { position: absolute; height: 8px; border-radius: 4px; background: var(--f-primary); }
+  .cat-dual-wrap input[type=range] { position: absolute; left: 0; right: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; height: 34px; }
+  .cat-dual-wrap input[type=range]::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--f-primary); border: 3px solid #141914; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 0 1.5px var(--f-primary-border); cursor: pointer; }
+  .cat-stops { display: grid; gap: 4px; }
+  .cat-stops.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cat-stops.c4 { grid-template-columns: repeat(4, 1fr); }
+  .cat-stop-btn { border: 0; background: transparent; color: var(--f-dim); padding: 4px 2px; border-radius: 8px; font-size: 11.5px; font-weight: 600; text-align: center; }
+  .cat-stop-btn.on { color: var(--f-on-primary-container); background: rgba(197, 250, 85, 0.12); }
+  .cat-form-sec { background: var(--f-surface); border-radius: 20px; padding: 15px 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 14px; }
+  .cat-out-field { position: relative; padding-top: 6px; }
+  .cat-out-lbl { position: absolute; top: -2px; left: 12px; padding: 0 5px; background: var(--f-surface); font-size: 11.5px; font-weight: 500; color: var(--f-muted); z-index: 2; }
+  .cat-out-lbl.err { color: var(--f-error); }
+  .cat-out-input, .cat-out-pick, .cat-out-ta { width: 100%; border-radius: 14px; border: 1.5px solid var(--f-outline-hi); background: transparent; color: var(--f-text); font: 400 15.5px Inter, sans-serif; outline: none; }
+  .cat-out-input { height: 52px; padding: 0 14px; }
+  .cat-out-input:focus, .cat-out-ta:focus { border-color: var(--f-primary); }
+  .cat-out-ta { min-height: 98px; padding: 12px 14px; resize: none; line-height: 1.45; }
+  .cat-out-pick { min-height: 52px; padding: 10px 12px 10px 14px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cat-out-input.err, .cat-out-pick.err, .cat-out-ta.err { border-color: var(--f-error); background: #1C1414; }
+  .cat-warn-box { margin-top: 5px; padding: 8px 10px; border-radius: 11px; background: var(--f-amber-container); border: 1px solid var(--f-amber-border); color: var(--f-on-amber-container); font-size: 12px; line-height: 1.38; display: flex; align-items: flex-start; gap: 7px; }
+  .cat-lock-box { padding: 11px 12px; border-radius: 14px; background: #101410; border: 1px dashed var(--f-outline); display: flex; align-items: flex-start; gap: 9px; }
+  .cat-type-radio { width: 100%; border-radius: 14px; border: 1.5px solid #263025; background: var(--f-surface); color: var(--f-text); padding: 11px 12px; text-align: left; display: flex; align-items: center; gap: 12px; }
+  .cat-type-radio.on { border-color: var(--f-primary); background: var(--f-primary-container); }
+  .cat-usage-list { background: var(--f-surface); border-radius: 16px; overflow: hidden; }
+  .cat-usage-row { padding: 11px 14px; border-bottom: 1px solid #202720; display: flex; flex-direction: column; gap: 2px; }
+  .cat-usage-row:last-child { border-bottom: 0; }
 </style>
 </head>
 <body>
@@ -2025,8 +2143,200 @@
       finishHintUntil: 0, finishHintScope: null, holdPreviewPct: 0, finishHintStatic: false,
       history: cloneHistoryList(INITIAL_HISTORY), lockPlankState: 'overtime',
       installedVer: '2.0', installedCode: 200, updState: 'idle', updProgress: 0,
-      progEditor: peCreateInitial()
+      progEditor: peCreateInitial(),
+      catalog: catCreateInitial()
     };
+  }
+
+  /* ==================== EXERCISE CATALOG DATA & HELPERS (#122 + #124) ==================== */
+  const CAT_TYPES = [
+    { id: 'WEIGHT_AND_REPS', peType: 'weight_reps', label: 'Вес и повторы', hint: 'Штанга, гантели, тренажёры', progDef: true },
+    { id: 'REPS', peType: 'reps', label: 'Повторы', hint: 'Отжимания, подтягивания', progDef: true },
+    { id: 'DURATION', peType: 'duration', label: 'Время', hint: 'Планка, статические удержания', progDef: false },
+    { id: 'DISTANCE', peType: 'distance', label: 'Дистанция', hint: 'Бег, прогулка фермера', progDef: false }
+  ];
+  const CAT_DIFFS = [
+    { id: 'BEGINNER', label: 'Начальный', bars: 1 },
+    { id: 'INTERMEDIATE', label: 'Средний', bars: 2 },
+    { id: 'ADVANCED', label: 'Продвинутый', bars: 3 }
+  ];
+  const CAT_MUSCLES = [
+    { id: 'CHEST', label: 'Грудь' }, { id: 'BACK', label: 'Спина' }, { id: 'SHOULDERS', label: 'Плечи' },
+    { id: 'BICEPS', label: 'Бицепс' }, { id: 'TRICEPS', label: 'Трицепс' }, { id: 'FOREARMS', label: 'Предплечья' },
+    { id: 'UPPER_TRAPS', label: 'Верх трапеций' }, { id: 'ABS', label: 'Мышцы живота' }, { id: 'LOWER_BACK', label: 'Поясница' },
+    { id: 'GLUTES', label: 'Ягодицы' }, { id: 'QUADRICEPS', label: 'Квадрицепсы' },
+    { id: 'HAMSTRINGS', label: 'Задняя поверхность бедра' }, { id: 'HIP_FLEXORS', label: 'Сгибатели бедра' }, { id: 'CALVES', label: 'Икры' }
+  ];
+  const CAT_EQUIP = [
+    { id: 'NONE', label: 'Без инвентаря', exclusive: true }, { id: 'BARBELL', label: 'Штанга' }, { id: 'DUMBBELLS', label: 'Гантели' },
+    { id: 'BENCH', label: 'Скамья' }, { id: 'RACK', label: 'Стойка' }, { id: 'CABLE', label: 'Блочный тренажёр' },
+    { id: 'MACHINE', label: 'Тренажёр' }, { id: 'PULL_UP_BAR', label: 'Турник' }, { id: 'BAND', label: 'Резинка' },
+    { id: 'PLATES', label: 'Блины' }, { id: 'WEIGHT_BELT', label: 'Пояс для отягощений' }
+  ];
+  const CAT_INITIAL_EXERCISES = [
+    { id: 'running', name: 'Бег', type: 'DISTANCE', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'CALVES', 'HAMSTRINGS'], diff: 'BEGINNER', tech: 'Начни с лёгкого темпа. Держи плечи расслабленными и ставь стопу близко к проекции корпуса.' },
+    { id: 'side-plank', name: 'Боковая планка', type: 'DURATION', equip: ['NONE'], primary: 'ABS', assisting: ['GLUTES', 'SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Поставь локоть под плечо и подними таз. Выстрой плечи, таз и стопы в линию.' },
+    { id: 'reverse-lunge', name: 'Выпады назад', type: 'REPS', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Шагни назад и согни оба колена. Колено передней ноги направляй вдоль носка.' },
+    { id: 'dumbbell-bench-press', name: 'Жим гантелей лёжа', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Поставь стопы на пол и сведи лопатки. Опусти гантели по сторонам груди и выжми их вверх.' },
+    { id: 'dumbbell-shoulder-press', name: 'Жим гантелей над головой', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'SHOULDERS', assisting: ['TRICEPS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Подними гантели к плечам. Выжми их вверх, сохраняя рёбра над тазом.' },
+    { id: 'leg-press', name: 'Жим ногами', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'HAMSTRINGS'], diff: 'BEGINNER', tech: 'Поставь стопы на платформу и прижми таз к сиденью. Выжми платформу без рывка.' },
+    { id: 'chest-press', name: 'Жим от груди в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Прижми спину к опоре, выжми рукоятки и плавно верни их.' },
+    { id: 'barbell-bench-press', name: 'Жим штанги лёжа', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'BENCH', 'RACK'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'INTERMEDIATE', steps: ['Поставь стопы на пол и сведи лопатки.', 'Опусти гриф к нижней части груди и выжми его вверх.', 'Используй страховочные упоры или попроси подстраховать.'], tech: 'Поставь стопы на пол и сведи лопатки. Опусти гриф к нижней части груди и выжми его вверх.' },
+    { id: 'dead-bug', name: 'Мёртвый жук', type: 'REPS', equip: ['NONE'], primary: 'ABS', assisting: ['HIP_FLEXORS'], diff: 'BEGINNER', tech: 'Вытяни противоположные руку и ногу без прогиба в пояснице, верни и поменяй сторону.' },
+    { id: 'push-up', name: 'Отжимания', type: 'REPS', equip: ['NONE'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS', 'ABS'], diff: 'BEGINNER', tech: 'Поставь ладони чуть шире плеч. Сохраняй ровную линию от головы до пяток.' },
+    { id: 'incline-push-up', name: 'Отжимания от опоры', type: 'REPS', equip: ['BENCH'], primary: 'CHEST', assisting: ['TRICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Поставь ладони на устойчивую опору, подведи грудь и выпрями руки.' },
+    { id: 'plank', name: 'Планка на предплечьях', type: 'DURATION', equip: ['NONE'], primary: 'ABS', assisting: ['GLUTES', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Поставь локти под плечи. Напряги живот и ягодицы, держи корпус ровно.' },
+    { id: 'pull-up', name: 'Подтягивания', type: 'REPS', equip: ['PULL_UP_BAR'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'INTERMEDIATE', tech: 'Веди локти вниз, пока подбородок не окажется над перекладиной. Опустись без раскачки.' },
+    { id: 'weighted-pull-up', name: 'Подтягивания с отягощением', type: 'WEIGHT_AND_REPS', equip: ['PULL_UP_BAR', 'WEIGHT_BELT', 'PLATES'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'ADVANCED', tech: 'Закрепи груз на поясе и подтянись без рывка. Записывай вес добавленного груза.' },
+    { id: 'dumbbell-lateral-raise', name: 'Подъём гантелей в стороны', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'SHOULDERS', assisting: ['UPPER_TRAPS'], diff: 'BEGINNER', tech: 'Подними руки в стороны до уровня плеч без раскачки корпуса.' },
+    { id: 'calf-raise', name: 'Подъём на носки', type: 'REPS', equip: ['NONE'], primary: 'CALVES', assisting: [], diff: 'BEGINNER', tech: 'Поднимись на носки, задержись на мгновение и плавно опусти пятки.' },
+    { id: 'bodyweight-squat', name: 'Приседания без веса', type: 'REPS', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Направляй колени вдоль носков, вставай с опорой на всю стопу.' },
+    { id: 'goblet-squat', name: 'Приседания с гантелью у груди', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'BEGINNER', tech: 'Держи гантель у груди и приседай между бёдрами с опорой на всю стопу.' },
+    { id: 'barbell-squat', name: 'Приседания со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'RACK'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS', 'LOWER_BACK'], diff: 'ADVANCED', tech: 'Уложи гриф на верх спины, напряги корпус и выставь страховочные упоры.' },
+    { id: 'custom:farmers-walk', name: 'Прогулка фермера с гирями', type: 'DISTANCE', equip: ['DUMBBELLS'], primary: 'FOREARMS', assisting: ['UPPER_TRAPS', 'ABS'], diff: null, tech: '', custom: true, usedIn: [], hasHistory: false },
+    { id: 'dumbbell-fly', name: 'Разведение гантелей лёжа', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'CHEST', assisting: ['SHOULDERS'], diff: 'INTERMEDIATE', tech: 'Держи локти слегка согнутыми, разводи руки по дуге и сведи над грудью.' },
+    { id: 'leg-extension', name: 'Разгибание ног в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'QUADRICEPS', assisting: [], diff: 'BEGINNER', tech: 'Совмести колени с осью тренажёра, разогни ноги и плавно опусти валик.' },
+    { id: 'triceps-pushdown', name: 'Разгибание рук на блоке', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'TRICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Прижми локти к бокам и разогни руки вниз без движения плеч.' },
+    { id: 'romanian-deadlift', name: 'Румынская тяга со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'HAMSTRINGS', assisting: ['GLUTES', 'LOWER_BACK', 'FOREARMS'], diff: 'INTERMEDIATE', tech: 'Отводи таз назад и веди гриф близко к ногам с ровной спиной.' },
+    { id: 'leg-curl', name: 'Сгибание ног в тренажёре', type: 'WEIGHT_AND_REPS', equip: ['MACHINE'], primary: 'HAMSTRINGS', assisting: ['CALVES'], diff: 'BEGINNER', tech: 'Согни колени и плавно разогни их, удерживая таз на опоре.' },
+    { id: 'dumbbell-curl', name: 'Сгибания рук с гантелями', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Прижми локти к бокам, согни руки без раскачки и медленно опусти.' },
+    { id: 'band-curl', name: 'Сгибания рук с резинкой', type: 'REPS', equip: ['BAND'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Наступи на середину резинки и сгибай руки, не двигая локти вперёд.' },
+    { id: 'barbell-curl', name: 'Сгибания рук со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'BICEPS', assisting: ['FOREARMS'], diff: 'BEGINNER', tech: 'Держи гриф хватом снизу и сгибай руки с прижатыми локтями.' },
+    { id: 'dumbbell-split-squat', name: 'Сплит-приседания с гантелями', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS'], primary: 'QUADRICEPS', assisting: ['GLUTES', 'ABS'], diff: 'INTERMEDIATE', tech: 'Опусти заднее колено к полу и поднимись с опорой на переднюю стопу.' },
+    { id: 'deadlift', name: 'Становая тяга', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'QUADRICEPS', 'LOWER_BACK', 'FOREARMS'], diff: 'ADVANCED', tech: 'Напряги корпус, выпрями ноги и таз, ведя гриф близко к телу.' },
+    { id: 'wall-sit', name: 'Стульчик у стены', type: 'DURATION', equip: ['NONE'], primary: 'QUADRICEPS', assisting: ['GLUTES'], diff: 'BEGINNER', tech: 'Прижми спину к стене и удерживай положение с опорой на обе стопы.' },
+    { id: 'lat-pulldown', name: 'Тяга верхнего блока', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'BEGINNER', tech: 'Веди локти вниз и подтяни рукоятку к верхней части груди.' },
+    { id: 'dumbbell-row', name: 'Тяга гантели в наклоне', type: 'WEIGHT_AND_REPS', equip: ['DUMBBELLS', 'BENCH'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS'], diff: 'BEGINNER', tech: 'Веди локоть рабочей руки к тазу без поворота корпуса.' },
+    { id: 'cable-row', name: 'Тяга нижнего блока', type: 'WEIGHT_AND_REPS', equip: ['CABLE'], primary: 'BACK', assisting: ['BICEPS', 'SHOULDERS'], diff: 'BEGINNER', tech: 'Подтяни рукоятку к животу, ведя локти назад без рывка корпусом.' },
+    { id: 'custom:t-bar-row', name: 'Тяга Т-грифа в наклоне', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'PLATES'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS', 'LOWER_BACK'], diff: 'INTERMEDIATE', tech: 'Упри гриф в угол, сведи лопатки и тяни рукоять к нижней части груди без раскачки поясницы.', custom: true, usedIn: [{ prog: 'Базовая силовая', day: 'День А · Верх и тяга' }, { prog: 'Верх / Низ 4 дня', day: 'День Б · Спина и руки' }], hasHistory: true },
+    { id: 'barbell-row', name: 'Тяга штанги в наклоне', type: 'WEIGHT_AND_REPS', equip: ['BARBELL'], primary: 'BACK', assisting: ['BICEPS', 'FOREARMS', 'LOWER_BACK'], diff: 'INTERMEDIATE', tech: 'Удерживая наклон корпуса, подтяни гриф к животу и плавно опусти.' },
+    { id: 'barbell-hip-thrust', name: 'Ягодичный мост со штангой', type: 'WEIGHT_AND_REPS', equip: ['BARBELL', 'BENCH'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Опрись лопатками на скамью, подними таз и плавно опусти.' },
+    { id: 'glute-bridge', name: 'Ягодичный мостик', type: 'REPS', equip: ['NONE'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'BEGINNER', tech: 'Подними таз за счёт ягодиц, сохраняя рёбра опущенными.' },
+    { id: 'custom:single-leg-bridge', name: 'Ягодичный мостик на одной ноге', type: 'REPS', equip: ['NONE'], primary: 'GLUTES', assisting: ['HAMSTRINGS', 'ABS'], diff: 'INTERMEDIATE', tech: 'Подними одну ногу вверх, рабочей стопой упрись в пол и вытолкни таз до прямой линии.', custom: true, usedIn: [], hasHistory: true }
+  ];
+  function catMakeEmptyForm(prefill = '') {
+    return {
+      mode: 'create', editId: null, lockedType: false,
+      name: prefill, type: null, primary: null, assisting: [], equip: [], diff: null, tech: '',
+      initialSnap: JSON.stringify({ name: prefill, type: null, primary: null, assisting: [], equip: [], diff: null, tech: '' }),
+      validated: false, pickerSheet: null, pickerSearch: ''
+    };
+  }
+  function catMakeEditForm(ex) {
+    const snap = { name: ex.name, type: ex.type, primary: ex.primary || null, assisting: [...(ex.assisting || [])], equip: [...(ex.equip || [])], diff: ex.diff || null, tech: ex.tech || '' };
+    return { mode: 'edit', editId: ex.id, lockedType: Boolean((ex.usedIn && ex.usedIn.length) || ex.hasHistory), ...snap, initialSnap: JSON.stringify(snap), validated: false, pickerSheet: null, pickerSearch: '' };
+  }
+  function catCreateInitial(ov = {}) {
+    const base = {
+      entryMode: 'settings', sub: 'list', search: '',
+      filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false },
+      filterDraft: null, filterAccOpen: 'diff', filterMuscleSearch: '',
+      selectedId: 'custom:t-bar-row', menuOpen: false, sheet: null,
+      form: catMakeEmptyForm(''),
+      exercises: CAT_INITIAL_EXERCISES.map(e => ({ ...e, equip: [...e.equip], assisting: [...e.assisting], usedIn: e.usedIn ? e.usedIn.map(u => ({ ...u })) : [] }))
+    };
+    return Object.assign(base, ov);
+  }
+  function catClone(c) { return c ? JSON.parse(JSON.stringify(c)) : catCreateInitial(); }
+  function catNorm(s) { return String(s || '').trim().toLowerCase().replace(/ё/g, 'е'); }
+  function catEsc(s) { return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+  function catGraphemes(s) {
+    const t = String(s || '').trim();
+    if (!t) return 0;
+    return (typeof Intl !== 'undefined' && Intl.Segmenter) ? [...new Intl.Segmenter('ru', { granularity: 'grapheme' }).segment(t)].length : [...t].length;
+  }
+  function catTypeObj(id) { return CAT_TYPES.find(t => t.id === id); }
+  function catDiffObj(id) { return CAT_DIFFS.find(d => d.id === id); }
+  function catDiffIdx(id) { return CAT_DIFFS.findIndex(d => d.id === id); }
+  function catMuscleLbl(id) { return (CAT_MUSCLES.find(m => m.id === id) || {}).label || ''; }
+  function catEquipLbl(id) { return (CAT_EQUIP.find(e => e.id === id) || {}).label || ''; }
+  function catIsNoEquip(ex) { return ex.equip && ex.equip.length === 1 && ex.equip[0] === 'NONE'; }
+  function catEquipShort(ex) {
+    if (!ex.equip || !ex.equip.length) return '';
+    if (catIsNoEquip(ex)) return 'Без инвентаря';
+    return ex.equip.length <= 2 ? ex.equip.map(catEquipLbl).join(', ') : `${catEquipLbl(ex.equip[0])} +${ex.equip.length - 1}`;
+  }
+  function catDiffRangeActive(r) { return Boolean(r && !(r[0] === 0 && r[1] === 2)); }
+  function catDiffRangeLbl(r) {
+    if (!r || (r[0] === 0 && r[1] === 2)) return 'Любая';
+    return r[0] === r[1] ? CAT_DIFFS[r[0]].label : `${CAT_DIFFS[r[0]].label} – ${CAT_DIFFS[r[1]].label}`;
+  }
+  function catActiveFilterCount(flt) {
+    return (catDiffRangeActive(flt.diffRange) ? 1 : 0) + (flt.muscle ? 1 : 0) + flt.equip.length + (flt.customOnly ? 1 : 0);
+  }
+  function catFilterExercises(cat) {
+    const words = catNorm(cat.search).split(/\s+/).filter(Boolean);
+    const flt = cat.filters;
+    return [...cat.exercises].sort((a, b) => {
+      const c = a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' });
+      return c !== 0 ? c : (a.custom ? 1 : 0) - (b.custom ? 1 : 0);
+    }).filter(ex => {
+      if (words.length && !words.every(w => catNorm(ex.name).includes(w))) return false;
+      if (flt.customOnly && !ex.custom) return false;
+      if (catDiffRangeActive(flt.diffRange)) {
+        const idx = catDiffIdx(ex.diff);
+        if (idx < 0 || idx < flt.diffRange[0] || idx > flt.diffRange[1]) return false;
+      }
+      if (flt.muscle) {
+        if (flt.muscleRole === 'PRIMARY' ? ex.primary !== flt.muscle : !(ex.assisting && ex.assisting.includes(flt.muscle))) return false;
+      }
+      if (flt.equip.length) {
+        if (!ex.equip || !ex.equip.length) return false;
+        if (flt.equip.includes('NONE')) { if (!catIsNoEquip(ex)) return false; }
+        else if (!ex.equip.every(eq => eq === 'NONE' || flt.equip.includes(eq))) return false;
+      }
+      return true;
+    });
+  }
+  function catFormDirty(form) {
+    return JSON.stringify({ name: form.name, type: form.type, primary: form.primary, assisting: form.assisting, equip: form.equip, diff: form.diff, tech: form.tech }) !== form.initialSnap;
+  }
+  function catValidateForm(form, exercises) {
+    const errors = {};
+    const nameLen = catGraphemes(form.name);
+    if (nameLen === 0) errors.name = 'Введите название упражнения';
+    else if (nameLen > 60) errors.name = `Максимум 60 символов (сейчас ${nameLen})`;
+    if (!form.type) errors.type = 'Выберите тип записи';
+    const techLen = catGraphemes(form.tech);
+    if (techLen > 500) errors.tech = `Максимум 500 символов (сейчас ${techLen})`;
+    const n = catNorm(form.name);
+    const dup = n ? exercises.find(e => e.id !== form.editId && catNorm(e.name) === n) : null;
+    return { errors, dup, nameLen, techLen };
+  }
+  function catToggleEquip(arr, id) {
+    if (id === 'NONE') return arr.includes('NONE') ? [] : ['NONE'];
+    const wo = arr.filter(x => x !== 'NONE');
+    return wo.includes(id) ? wo.filter(x => x !== id) : [...wo, id];
+  }
+  const CAT_ICO = {
+    search: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+    filter: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
+    x: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+    xBig: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+    plus: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>',
+    lock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    tWeight: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10M18 7v10M3 9.5v5M21 9.5v5M6 12h12"/></svg>`,
+    tReps: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    tDuration: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/></svg>`,
+    tDistance: (sz = 18) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.5"/></svg>`,
+    muscle: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`,
+    gear: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5v7M17.5 8.5v7M3.5 10.5v3M20.5 10.5v3M6.5 12h11"/></svg>`,
+    bodyFree: (sz = 14) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><path d="M6 10l6 2 6-2M12 12v4.5M9 21l3-4.5 3 4.5"/></svg>`,
+    gauge: (sz = 16) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 14v4M12 10v8M17 6v12"/></svg>`,
+    spark: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2Z"/></svg>'
+  };
+  function catTypeSvg(id, sz = 18) {
+    return id === 'WEIGHT_AND_REPS' ? CAT_ICO.tWeight(sz) : id === 'REPS' ? CAT_ICO.tReps(sz) : id === 'DURATION' ? CAT_ICO.tDuration(sz) : CAT_ICO.tDistance(sz);
+  }
+  function catDiffBars(id, sm) {
+    const d = catDiffObj(id);
+    if (!d) return '';
+    return `<span class="diff-bars" style="${sm ? 'gap:2.5px' : ''}">${[1, 2, 3].map(n => `<i class="${n <= d.bars ? 'on' : ''}" style="${sm ? 'width:9px;height:3.5px' : ''}"></i>`).join('')}</span>`;
+  }
+  function catExDisplayName(ex, s) {
+    if (s.longNames && (ex.id === 'barbell-bench-press' || ex.id === 'custom:t-bar-row')) return 'Жим гантелей на наклонной скамье 30° с паузой в нижней точке';
+    return ex.name;
   }
 
   const PE_RULES = [
@@ -4067,12 +4377,437 @@
 
         <div class="pe-kicker"><span>Упражнения (${(day.exercises || []).length})</span><span style="font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--f-dim)">⠿ порядок · тап → цели</span></div>
         <div class="pe-ex-list" data-pe-list="ex">${listHtml}</div>
-        <button type="button" class="ob" style="margin-top:10px" data-act="open-sheet" data-v="pe_add_ex">+ Добавить упражнение</button>
+        <button type="button" class="ob" style="margin-top:10px" data-act="pe-open-catalog-add">+ Добавить упражнение</button>
       </div>
       <div class="pe-foot"><button type="button" class="pb" data-act="pe-save-day">Сохранить день</button></div>
       ${renderPeUndoHTML(pe, 'ex')}
       ${sheetHtml}
     `;
+  }
+
+  /* ==================== EXERCISE CATALOG SCREENS (#122 + #124 APPROVED HYBRID H1+H3+A+) ==================== */
+  function renderCatalogFlowHTML(s) {
+    const cat = s.catalog || catCreateInitial();
+    const isPick = cat.entryMode === 'day_pick';
+    const dayExNames = new Set((peActiveDay(s.progEditor)?.exercises || []).map(x => catNorm(x.name)));
+    let mainHtml = '';
+    let sheetHtml = '';
+
+    if (cat.sub === 'list') {
+      const list = catFilterExercises(cat);
+      const fCnt = catActiveFilterCount(cat.filters);
+      const otherChips = [];
+      if (cat.filters.muscle) otherChips.push({ k: 'muscle', v: '', lbl: `${catMuscleLbl(cat.filters.muscle)}${cat.filters.muscleRole === 'ASSISTING' ? ' (вспом.)' : ''}` });
+      cat.filters.equip.forEach(eq => otherChips.push({ k: 'equip', v: eq, lbl: catEquipLbl(eq) }));
+      if (catDiffRangeActive(cat.filters.diffRange)) otherChips.push({ k: 'diff', v: '', lbl: catDiffRangeLbl(cat.filters.diffRange) });
+
+      let listBody = '';
+      if (list.length === 0) {
+        const qTrim = cat.search.trim();
+        const onlyOwnEmpty = cat.filters.customOnly && !qTrim && fCnt === 1 && cat.exercises.filter(e => e.custom).length === 0;
+        listBody = onlyOwnEmpty ? `
+          <div class="cat-empty">
+            <div class="cat-empty-ico">${CAT_ICO.spark}</div>
+            <h3 style="margin:0;font-size:16px">Своих упражнений пока нет</h3>
+            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">Создайте своё упражнение — оно появится в каталоге и будет доступно во всех программах.</p>
+            <button type="button" class="pb" style="margin-top:4px" data-act="cat-open-create">+ Создать упражнение</button>
+          </div>` : `
+          <div class="cat-empty">
+            <div class="cat-empty-ico">${CAT_ICO.search}</div>
+            <h3 style="margin:0;font-size:16px">Ничего не найдено</h3>
+            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">${fCnt ? 'Попробуйте сбросить активные фильтры или создайте своё упражнение.' : 'В каталоге нет такого упражнения — можно добавить своё.'}</p>
+            <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px">
+              ${fCnt ? `<button type="button" class="ob" data-act="cat-reset-filters">Сбросить фильтры (${fCnt})</button>` : ''}
+              <button type="button" class="pb" data-act="cat-open-create">${qTrim ? `+ Создать «${catEsc(qTrim.length > 24 ? qTrim.slice(0, 23) + '…' : qTrim)}»` : '+ Создать упражнение'}</button>
+            </div>
+          </div>`;
+      } else {
+        listBody = `<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;font-size:12px;color:var(--f-dim)"><span>Найдено: ${list.length}</span>${isPick ? '<span>Тап — карточка · + в день</span>' : ''}</div>` + list.map(ex => {
+          const nm = catExDisplayName(ex, s);
+          const inDay = isPick && dayExNames.has(catNorm(ex.name));
+          const eqShort = catEquipShort(ex);
+          const noEq = catIsNoEquip(ex);
+          return `
+            <div class="cat-ex-card">
+              <button type="button" class="cat-ex-main" data-act="cat-open-detail" data-v="${ex.id}">
+                <span class="cat-type-ico t-${ex.type}">${catTypeSvg(ex.type, 19)}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:flex-start;gap:6px">
+                    <span class="cat-cl2" style="font-size:15px;font-weight:600;line-height:19px;flex:1;min-width:0">${catEsc(nm)}</span>
+                    ${ex.custom ? '<span class="cat-badge-own">Своё</span>' : ''}
+                    ${inDay ? '<span class="cat-badge-day">В дне</span>' : ''}
+                  </div>
+                  <div class="cat-sym-line">
+                    ${ex.primary ? `<span class="cat-sym-item cat-sym-m">${CAT_ICO.muscle(13)}<span>${catEsc(catMuscleLbl(ex.primary))}</span></span>` : ''}
+                    ${eqShort ? `<span class="cat-sym-item ${noEq ? 'cat-sym-free' : 'cat-sym-e'}">${noEq ? CAT_ICO.bodyFree(13) : CAT_ICO.gear(13)}<span>${catEsc(eqShort)}</span></span>` : ''}
+                    ${ex.diff ? `<span class="cat-sym-item" style="margin-left:auto">${catDiffBars(ex.diff, true)}</span>` : ''}
+                  </div>
+                </div>
+                ${!isPick ? `<span class="m" style="display:flex;opacity:0.65">${ICO.chevR}</span>` : ''}
+              </button>
+              ${isPick ? `<button type="button" class="cat-ex-plus" data-act="cat-quick-add" data-v="${ex.id}" aria-label="Добавить в день">${CAT_ICO.plus}</button>` : ''}
+            </div>`;
+        }).join('');
+      }
+
+      mainHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="cat-exit" aria-label="Назад">${ICO.back}</button>
+          <h1 class="d cat-top-title">${isPick ? 'Выбор упражнения' : 'Каталог упражнений'}</h1>
+        </div>
+        <div class="cat-search-row">
+          <div class="cat-search-box">
+            <span class="m" style="display:flex">${CAT_ICO.search}</span>
+            <input type="text" maxlength="100" data-cat-in="search" value="${catEsc(cat.search)}" placeholder="Поиск по названию">
+            ${cat.search ? `<button type="button" class="cat-clear-x" data-act="cat-clear-search" aria-label="Очистить">${CAT_ICO.x}</button>` : ''}
+          </div>
+          <button type="button" class="cat-filter-btn ${fCnt ? 'active' : ''}" data-act="cat-open-filters" aria-label="Фильтры">
+            ${CAT_ICO.filter}${fCnt ? `<span class="cat-filter-cnt">${fCnt}</span>` : ''}
+          </button>
+        </div>
+        <div class="cat-chips-bar">
+          ${cat.filters.customOnly
+            ? `<button type="button" class="cat-chip-rm" data-act="cat-toggle-own"><span>Только свои</span><span class="cat-x-dot">${CAT_ICO.x}</span></button>`
+            : `<button type="button" class="cat-quick-own" data-act="cat-toggle-own">Только свои</button>`}
+          ${otherChips.map(c => `<button type="button" class="cat-chip-rm" data-act="cat-rm-chip" data-v="${c.k}:${c.v}"><span>${catEsc(c.lbl)}</span><span class="cat-x-dot">${CAT_ICO.x}</span></button>`).join('')}
+          ${fCnt >= 2 ? '<button type="button" class="cat-chip-rm clear-all" data-act="cat-reset-filters">Сбросить</button>' : ''}
+        </div>
+        <div class="cat-scroll ${list.length > 0 ? 'has-sticky' : ''}">${listBody}</div>
+        ${list.length > 0 ? '<div class="cat-sticky-foot"><button type="button" class="pb" data-act="cat-open-create">+ Создать упражнение</button></div>' : ''}`;
+    } else if (cat.sub === 'detail') {
+      const ex = cat.exercises.find(e => e.id === cat.selectedId) || cat.exercises[0];
+      const nm = catExDisplayName(ex, s);
+      const inDay = isPick && dayExNames.has(catNorm(ex.name));
+      const tp = catTypeObj(ex.type), df = catDiffObj(ex.diff), noEq = catIsNoEquip(ex);
+      const assList = ex.assisting || [], eqList = ex.equip || [];
+      const techBlock = s.longNames
+        ? `<div class="tech-card"><div class="tech-prose">${LONG_TECH_500}</div></div>`
+        : (ex.steps && ex.steps.length)
+          ? `<div class="tech-card">${ex.steps.map((st, idx) => `<div class="tech-step"><span class="tech-step-num">${idx + 1}</span><span>${catEsc(st)}</span></div>`).join('')}</div>`
+          : ex.tech
+            ? `<div class="tech-card"><div class="tech-prose">${catEsc(ex.tech)}</div></div>`
+            : `<div class="tech-empty">Описание техники не указано.${ex.custom && !isPick ? ' Его можно добавить через кнопку редактирования наверху.' : ''}</div>`;
+
+      mainHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="cat-back-list" aria-label="Назад">${ICO.back}</button>
+          <h1 class="d cat-top-title">Упражнение</h1>
+          ${!isPick && ex.custom ? `
+            <button type="button" class="cat-top-icon" data-act="cat-open-edit" aria-label="Редактировать">${ICO.edit}</button>
+            <button type="button" class="cat-top-icon" data-act="cat-toggle-menu" aria-label="Ещё">${CAT_ICO.more}</button>` : ''}
+        </div>
+        ${cat.menuOpen && !isPick && ex.custom ? `
+          <div class="mp-ctx-backdrop" data-act="cat-toggle-menu"></div>
+          <div class="cat-menu">
+            <button type="button" data-act="cat-open-edit">${ICO.edit} Редактировать</button>
+            <button type="button" class="danger" data-act="cat-try-delete">${ICO.trash} Удалить</button>
+          </div>` : ''}
+        <div class="cat-scroll ${isPick ? 'has-sticky' : ''}">
+          <div style="padding:2px 2px 12px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+              <span class="cat-badge-own">${ex.custom ? 'Своё упражнение' : 'Встроенное'}</span>
+              ${inDay ? '<span class="cat-badge-day">Уже в дне</span>' : ''}
+            </div>
+            <h2 class="d" style="margin:0;font-size:26px;line-height:28px;overflow-wrap:anywhere">${catEsc(nm)}</h2>
+          </div>
+          <div class="cat-passport">
+            <div class="cat-pass-row">
+              <span class="cat-type-ico t-${ex.type}" style="width:34px;height:34px;border-radius:10px">${catTypeSvg(ex.type, 17)}</span>
+              <div style="flex:1;min-width:0"><div class="cat-pass-lbl">Тип записи</div><div class="cat-pass-val">${catEsc(tp ? tp.label : '')}</div></div>
+            </div>
+            <div class="cat-pass-row">
+              <span class="cat-pass-ico" style="color:var(--f-on-primary-container)">${CAT_ICO.muscle(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="cat-pass-lbl">Мышцы</div>
+                <div class="cat-pass-val">${ex.primary ? `<span style="color:var(--f-on-primary-container)">${catEsc(catMuscleLbl(ex.primary))}</span>` : '<span style="color:var(--f-dim);font-weight:400">Не указаны</span>'}</div>
+                ${assList.length ? `<div style="font-size:12.5px;color:var(--f-muted);margin-top:2px">Вспомогательные: ${catEsc(assList.map(catMuscleLbl).join(', '))}</div>` : ''}
+              </div>
+            </div>
+            <div class="cat-pass-row">
+              <span class="cat-pass-ico" style="color:${noEq ? '#8CE8C2' : 'var(--f-muted)'}">${noEq ? CAT_ICO.bodyFree(16) : CAT_ICO.gear(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="cat-pass-lbl">Инвентарь</div>
+                <div class="cat-pass-val">${noEq ? '<span style="color:#8CE8C2">Без инвентаря</span>' : eqList.length ? catEsc(eqList.map(catEquipLbl).join(', ')) : '<span style="color:var(--f-dim);font-weight:400">Не указан</span>'}</div>
+              </div>
+            </div>
+            <div class="cat-pass-row">
+              <span class="cat-pass-ico">${CAT_ICO.gauge(16)}</span>
+              <div style="flex:1;min-width:0">
+                <div class="cat-pass-lbl">Сложность техники</div>
+                <div class="cat-pass-val">${df ? `<span style="display:inline-flex;align-items:center;gap:8px">${catDiffBars(ex.diff, false)} ${catEsc(df.label)}</span>` : '<span style="color:var(--f-dim);font-weight:400">Не указана</span>'}</div>
+              </div>
+            </div>
+          </div>
+          <div class="m d" style="font-size:12.5px;margin:0 0 8px 2px">Техника выполнения</div>
+          ${techBlock}
+        </div>
+        ${isPick ? `<div class="cat-sticky-foot solid"><button type="button" class="pb" data-act="cat-pick-from-card">${inDay ? '+ Добавить ещё раз в день' : '+ Добавить в день'}</button></div>` : ''}`;
+    } else {
+      const f = cat.form || catMakeEmptyForm('');
+      const { errors, dup, nameLen, techLen } = catValidateForm(f, cat.exercises);
+      const showNameErr = f.validated && errors.name, showTypeErr = f.validated && errors.type, showTechErr = f.validated && errors.tech;
+      const showNameCnt = nameLen >= 48 || nameLen > 60;
+      const sliderPos = f.diff ? catDiffIdx(f.diff) + 1 : 0;
+      const sliderPct = (sliderPos / 3) * 100;
+      const sliderLbl = sliderPos === 0 ? 'Не указана' : CAT_DIFFS[sliderPos - 1].label;
+      const assTags = f.assisting.length ? f.assisting.map(id => `<span class="tag" style="color:var(--f-text)">${catEsc(catMuscleLbl(id))}</span>`).join('') : '<span style="color:var(--f-dim)">Не указаны</span>';
+      const eqTags = f.equip.length ? f.equip.map(id => `<span class="tag" style="color:var(--f-text)">${catEsc(catEquipLbl(id))}</span>`).join('') : '<span style="color:var(--f-dim)">Не указано</span>';
+      const ctaLbl = f.mode === 'edit' ? 'Сохранить изменения' : (isPick ? 'Создать и добавить в день' : 'Сохранить упражнение');
+
+      mainHtml = `
+        <div class="cat-topbar">
+          <button type="button" class="cat-back" data-act="cat-form-back" aria-label="Назад">${ICO.back}</button>
+          <h1 class="d cat-top-title">${f.mode === 'edit' ? 'Редактирование' : 'Новое упражнение'}</h1>
+        </div>
+        <div class="cat-scroll has-sticky">
+          <section class="cat-form-sec">
+            <div style="display:flex;align-items:center;justify-content:space-between"><h2 class="d" style="margin:0;font-size:16.5px">Основное</h2><span style="font-size:11.5px;color:var(--f-dim)">обязательно</span></div>
+            <div>
+              <div class="cat-out-field">
+                <label class="cat-out-lbl ${showNameErr ? 'err' : ''}">Название <span style="color:var(--f-primary)">*</span></label>
+                <input class="cat-out-input ${showNameErr ? 'err' : ''}" data-cat-in="f-name" value="${catEsc(f.name)}" placeholder="Например: Тяга Т-грифа">
+              </div>
+              <div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12px">
+                <span style="color:var(--f-error)">${showNameErr ? catEsc(errors.name) : ''}</span>
+                ${showNameCnt ? `<span style="color:${nameLen > 60 ? 'var(--f-error)' : 'var(--f-dim)'};font-variant-numeric:tabular-nums;font-weight:${nameLen > 60 ? '700' : '500'}">${nameLen} / 60</span>` : ''}
+              </div>
+              ${dup ? `<div class="cat-warn-box"><span style="display:flex;margin-top:1px;color:var(--f-amber)">${ICO.warn}</span><span>Упражнение «${catEsc(dup.name)}» уже есть в каталоге. Можно сохранить всё равно или уточнить название.</span></div>` : ''}
+            </div>
+            <div>
+              ${f.lockedType ? `
+                <div class="cat-lock-box">
+                  <span style="color:var(--f-dim);display:flex;margin-top:2px">${CAT_ICO.lock}</span>
+                  <div>
+                    <div style="font-size:14.5px;font-weight:600">${catEsc((catTypeObj(f.type) || {}).label || '')}</div>
+                    <div style="font-size:12px;color:var(--f-muted);margin-top:2px">Тип записи нельзя изменить — упражнение уже используется в программе или истории.</div>
+                  </div>
+                </div>` : `
+                <div class="cat-out-field">
+                  <span class="cat-out-lbl ${showTypeErr ? 'err' : ''}">Тип записи <span style="color:var(--f-primary)">*</span></span>
+                  <button type="button" class="cat-out-pick ${showTypeErr ? 'err' : ''}" data-act="cat-open-picker" data-v="type">
+                    <span style="display:inline-flex;align-items:center;gap:8px">${f.type ? `${catTypeSvg(f.type, 17)} ${catEsc((catTypeObj(f.type) || {}).label)}` : '<span style="color:var(--f-dim)">Выберите тип записи</span>'}</span>
+                    <span class="m">${ICO.mpChevD}</span>
+                  </button>
+                </div>
+                ${showTypeErr ? `<div style="margin-top:4px;font-size:12px;color:var(--f-error)">${catEsc(errors.type)}</div>` : ''}`}
+            </div>
+          </section>
+
+          <section class="cat-form-sec">
+            <div style="display:flex;align-items:center;justify-content:space-between"><h2 class="d" style="margin:0;font-size:16.5px">Мышцы и инвентарь</h2><span style="font-size:11.5px;color:var(--f-dim)">необязательно</span></div>
+            <div class="cat-out-field">
+              <span class="cat-out-lbl">Основная группа мышц</span>
+              <button type="button" class="cat-out-pick" data-act="cat-open-picker" data-v="primary">
+                <span>${f.primary ? catEsc(catMuscleLbl(f.primary)) : '<span style="color:var(--f-dim)">Не указана</span>'}</span><span class="m">${ICO.mpChevD}</span>
+              </button>
+            </div>
+            <div class="cat-out-field">
+              <span class="cat-out-lbl">Вспомогательные группы</span>
+              <button type="button" class="cat-out-pick" data-act="cat-open-picker" data-v="assisting">
+                <span style="display:flex;flex-wrap:wrap;gap:5px">${assTags}</span><span class="m">${ICO.mpChevD}</span>
+              </button>
+            </div>
+            <div class="cat-out-field">
+              <span class="cat-out-lbl">Оборудование</span>
+              <button type="button" class="cat-out-pick" data-act="cat-open-picker" data-v="equip">
+                <span style="display:flex;flex-wrap:wrap;gap:5px">${eqTags}</span><span class="m">${ICO.mpChevD}</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="cat-form-sec">
+            <div style="display:flex;align-items:center;justify-content:space-between"><h2 class="d" style="margin:0;font-size:16.5px">Техника</h2><span style="font-size:11.5px;color:var(--f-dim)">необязательно</span></div>
+            <div>
+              <div style="font-size:12px;color:var(--f-muted);margin-bottom:6px">Сложность техники</div>
+              <div class="cat-slider-box">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span style="font-size:14px;font-weight:600;color:${sliderPos ? 'var(--f-on-primary-container)' : 'var(--f-dim)'};display:inline-flex;align-items:center;gap:7px">${sliderPos ? catDiffBars(f.diff, false) : ''}<span>${sliderLbl}</span></span>
+                  ${sliderPos ? '<button type="button" style="border:0;background:transparent;color:var(--f-dim);font-size:12px;font-weight:600" data-act="cat-set-diff-pos" data-v="0">Сбросить</button>' : ''}
+                </div>
+                <input class="cat-range" type="range" min="0" max="3" step="1" value="${sliderPos}" style="--pct:${sliderPct}%" data-cat-in="f-diff-slider">
+                <div class="cat-stops c4">
+                  <button type="button" class="cat-stop-btn ${sliderPos === 0 ? 'on' : ''}" data-act="cat-set-diff-pos" data-v="0">Нет</button>
+                  <button type="button" class="cat-stop-btn ${sliderPos === 1 ? 'on' : ''}" data-act="cat-set-diff-pos" data-v="1">Нач.</button>
+                  <button type="button" class="cat-stop-btn ${sliderPos === 2 ? 'on' : ''}" data-act="cat-set-diff-pos" data-v="2">Сред.</button>
+                  <button type="button" class="cat-stop-btn ${sliderPos === 3 ? 'on' : ''}" data-act="cat-set-diff-pos" data-v="3">Продв.</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="cat-out-field">
+                <label class="cat-out-lbl ${showTechErr ? 'err' : ''}">Техника выполнения</label>
+                <textarea class="cat-out-ta ${showTechErr ? 'err' : ''}" data-cat-in="f-tech" placeholder="Например: локти прижаты, без раскачки">${catEsc(f.tech)}</textarea>
+              </div>
+              <div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12px">
+                <span style="color:var(--f-error)">${showTechErr ? catEsc(errors.tech) : ''}</span>
+                <span style="color:${techLen > 500 ? 'var(--f-error)' : 'var(--f-dim)'};font-variant-numeric:tabular-nums">${techLen} / 500</span>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="cat-sticky-foot solid"><button type="button" class="pb" data-act="cat-form-save">${ctaLbl}</button></div>`;
+    }
+
+    // Catalog sheets
+    if (cat.sheet === 'filters') {
+      const d = cat.filterDraft || cat.filters;
+      const matchCnt = catFilterExercises({ ...cat, filters: d }).length;
+      const totalAct = catActiveFilterCount(d);
+      const [mn, mx] = d.diffRange, diffAct = catDiffRangeActive(d.diffRange);
+      const mQ = catNorm(cat.filterMuscleSearch);
+      const visMuscles = CAT_MUSCLES.filter(m => !mQ || catNorm(m.label).includes(mQ));
+      sheetHtml = `
+        <div class="f-scrim" data-act="cat-close-sheet">
+          <div class="f-sheet" style="max-height:88%" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <h3 class="d" style="margin:0;font-size:20px">Фильтры</h3>
+              <button type="button" style="border:0;background:transparent;color:${totalAct ? 'var(--f-primary)' : 'var(--f-disabled)'};font-size:14px;font-weight:600;padding:6px 8px" data-act="cat-flt-reset-draft" ${totalAct ? '' : 'disabled'}>Сбросить</button>
+            </div>
+            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+              <button type="button" class="cat-sw-row" data-act="cat-flt-custom">
+                <div><div style="font-size:15px;font-weight:600">Только свои упражнения</div><div style="font-size:12px;color:var(--f-muted)">Показать только созданные вручную</div></div>
+                <span class="cat-sw ${d.customOnly ? 'on' : ''}"><i></i></span>
+              </button>
+              <div class="cat-acc">
+                <button type="button" class="cat-acc-btn" data-act="cat-flt-acc" data-v="diff">
+                  <span class="m" style="display:flex">${CAT_ICO.gauge(19)}</span>
+                  <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Сложность</span><span class="cat-cl1" style="display:block;font-size:12.5px;color:${diffAct ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${catEsc(catDiffRangeLbl(d.diffRange))}</span></span>
+                  ${diffAct ? '<span class="cat-acc-cnt">1</span>' : ''}
+                  <span class="m" style="display:flex;transform:${cat.filterAccOpen === 'diff' ? 'rotate(180deg)' : 'none'}">${ICO.mpChevD}</span>
+                </button>
+                ${cat.filterAccOpen === 'diff' ? `
+                  <div class="cat-acc-body">
+                    <div class="cat-slider-box">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <span style="font-size:14px;font-weight:600;color:${diffAct ? 'var(--f-on-primary-container)' : 'var(--f-dim)'}">${catEsc(catDiffRangeLbl(d.diffRange))}</span>
+                        ${diffAct ? '<button type="button" style="border:0;background:transparent;color:var(--f-muted);font-size:12px;font-weight:600" data-act="cat-flt-diff-any">Любая</button>' : '<span style="font-size:11.5px;color:var(--f-dim)">диапазон от — до</span>'}
+                      </div>
+                      <div class="cat-dual-wrap">
+                        <div class="cat-dual-track"></div>
+                        <div class="cat-dual-fill" style="left:${(mn / 2) * 100}%;width:${Math.max(((mx - mn) / 2) * 100, 2)}%"></div>
+                        <input type="range" min="0" max="2" step="1" value="${mn}" data-cat-in="flt-diff-min">
+                        <input type="range" min="0" max="2" step="1" value="${mx}" data-cat-in="flt-diff-max">
+                      </div>
+                      <div class="cat-stops c3">
+                        ${CAT_DIFFS.map((df, i) => `<button type="button" class="cat-stop-btn ${diffAct && i >= mn && i <= mx ? 'on' : ''}" data-act="cat-flt-diff-tap" data-v="${i}">${df.label}</button>`).join('')}
+                      </div>
+                    </div>
+                  </div>` : ''}
+              </div>
+              <div class="cat-acc">
+                <button type="button" class="cat-acc-btn" data-act="cat-flt-acc" data-v="muscle">
+                  <span class="m" style="display:flex">${CAT_ICO.muscle(19)}</span>
+                  <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Мышцы</span><span class="cat-cl1" style="display:block;font-size:12.5px;color:${d.muscle ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${d.muscle ? `${catMuscleLbl(d.muscle)} (${d.muscleRole === 'PRIMARY' ? 'основная' : 'вспом.'})` : 'Любая'}</span></span>
+                  ${d.muscle ? '<span class="cat-acc-cnt">1</span>' : ''}
+                  <span class="m" style="display:flex;transform:${cat.filterAccOpen === 'muscle' ? 'rotate(180deg)' : 'none'}">${ICO.mpChevD}</span>
+                </button>
+                ${cat.filterAccOpen === 'muscle' ? `
+                  <div class="cat-acc-body">
+                    <div class="cat-role-seg ${!d.muscle ? 'disabled' : ''}">
+                      <button type="button" class="${d.muscleRole === 'PRIMARY' ? 'active' : ''}" data-act="cat-flt-role" data-v="PRIMARY" ${!d.muscle ? 'disabled' : ''}>Основная</button>
+                      <button type="button" class="${d.muscleRole === 'ASSISTING' ? 'active' : ''}" data-act="cat-flt-role" data-v="ASSISTING" ${!d.muscle ? 'disabled' : ''}>Вспомогательная</button>
+                    </div>
+                    <div class="cat-sheet-search">
+                      <span class="m" style="display:flex">${CAT_ICO.search}</span>
+                      <input type="text" maxlength="100" data-cat-in="flt-m-search" value="${catEsc(cat.filterMuscleSearch)}" placeholder="Поиск мышцы">
+                      ${cat.filterMuscleSearch ? `<button type="button" class="cat-sheet-x" data-act="cat-clear-flt-m">${CAT_ICO.xBig}</button>` : ''}
+                    </div>
+                    <div style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+                      ${visMuscles.map(m => `<button type="button" class="cat-pick-row ${d.muscle === m.id ? 'on' : ''}" data-act="cat-flt-muscle" data-v="${m.id}"><span class="cat-pick-box radio">${d.muscle === m.id ? ICO.check : ''}</span><span style="flex:1">${m.label}</span></button>`).join('') || '<div style="padding:12px;text-align:center;color:var(--f-dim);font-size:13px">Мышца не найдена</div>'}
+                    </div>
+                  </div>` : ''}
+              </div>
+              <div class="cat-acc">
+                <button type="button" class="cat-acc-btn" data-act="cat-flt-acc" data-v="equip">
+                  <span class="m" style="display:flex">${CAT_ICO.gear(19)}</span>
+                  <span style="flex:1;min-width:0"><span class="d" style="display:block;font-size:16.5px">Доступный инвентарь</span><span class="cat-cl1" style="display:block;font-size:12.5px;color:${d.equip.length ? 'var(--f-on-primary-container)' : 'var(--f-muted)'}">${d.equip.length ? catEsc(d.equip.map(catEquipLbl).join(', ')) : 'Любой'}</span></span>
+                  ${d.equip.length ? `<span class="cat-acc-cnt">${d.equip.length}</span>` : ''}
+                  <span class="m" style="display:flex;transform:${cat.filterAccOpen === 'equip' ? 'rotate(180deg)' : 'none'}">${ICO.mpChevD}</span>
+                </button>
+                ${cat.filterAccOpen === 'equip' ? `
+                  <div class="cat-acc-body">
+                    <div style="font-size:12px;color:var(--f-dim)">Показываем упражнения, для которых хватит отмеченного инвентаря.</div>
+                    <div style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+                      ${CAT_EQUIP.map(eq => `<button type="button" class="cat-pick-row ${d.equip.includes(eq.id) ? 'on' : ''}" data-act="cat-flt-equip" data-v="${eq.id}"><span class="cat-pick-box">${d.equip.includes(eq.id) ? ICO.check : ''}</span><span style="flex:1">${eq.label}</span></button>`).join('')}
+                    </div>
+                  </div>` : ''}
+              </div>
+            </div>
+            <button type="button" class="pb" data-act="cat-flt-apply">Показать ${matchCnt}</button>
+          </div>
+        </div>`;
+    } else if (cat.sheet === 'delete_blocked') {
+      const ex = cat.exercises.find(e => e.id === cat.selectedId) || cat.exercises[0];
+      const used = (ex.usedIn && ex.usedIn.length) ? ex.usedIn : [{ prog: 'Базовая силовая', day: 'День А · Верх и тяга' }];
+      sheetHtml = `
+        <div class="f-scrim" data-act="cat-close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3 class="d" style="margin:0;font-size:20px">Нельзя удалить</h3>
+            <p style="margin:0;font-size:13.5px;color:var(--f-muted);line-height:1.45">Упражнение <strong style="color:var(--f-text)">«${catEsc(catExDisplayName(ex, s))}»</strong> используется в программах. Сначала замените или удалите его из этих дней:</p>
+            <div class="cat-usage-list">${used.map(u => `<div class="cat-usage-row"><strong style="font-size:14px">${catEsc(u.prog)}</strong><span style="font-size:12px;color:var(--f-muted)">${catEsc(u.day)}</span></div>`).join('')}</div>
+            <button type="button" class="pb" data-act="cat-close-sheet">Понятно</button>
+          </div>
+        </div>`;
+    } else if (cat.sheet === 'delete_confirm') {
+      const ex = cat.exercises.find(e => e.id === cat.selectedId) || cat.exercises[0];
+      sheetHtml = `
+        <div class="f-scrim" data-act="cat-close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3 class="d" style="margin:0;font-size:20px">Удалить упражнение?</h3>
+            <div class="cd" style="padding:12px 14px"><div style="font-size:15px;font-weight:700;overflow-wrap:anywhere">${catEsc(catExDisplayName(ex, s))}</div><div style="font-size:12.5px;color:var(--f-muted);margin-top:3px">${catEsc((catTypeObj(ex.type) || {}).label)}${ex.primary ? ` · ${catEsc(catMuscleLbl(ex.primary))}` : ''}</div></div>
+            <p style="margin:0;font-size:13px;color:var(--f-muted);line-height:1.45">Упражнение исчезнет из каталога навсегда без отмены. Записи в истории тренировок сохранятся.</p>
+            <button type="button" class="f-sheet-danger" data-act="cat-confirm-delete" style="display:inline-flex;align-items:center;justify-content:center;gap:7px">${ICO.trash} Удалить упражнение</button>
+            <button type="button" class="f-sheet-cancel" data-act="cat-close-sheet">Отмена</button>
+          </div>
+        </div>`;
+    } else if (cat.sheet === 'discard') {
+      sheetHtml = `
+        <div class="f-scrim" data-act="cat-close-sheet">
+          <div class="f-sheet" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3 class="d" style="margin:0;font-size:20px">Выйти без сохранения?</h3>
+            <p style="margin:0;font-size:13.5px;color:var(--f-muted);line-height:1.45">Внесённые изменения не сохранятся.</p>
+            <button type="button" class="f-sheet-danger" data-act="cat-confirm-discard">Выйти без сохранения</button>
+            <button type="button" class="f-sheet-cancel" data-act="cat-close-sheet">Остаться в редакторе</button>
+          </div>
+        </div>`;
+    } else if (cat.sub === 'form' && cat.form && cat.form.pickerSheet) {
+      const f = cat.form, p = f.pickerSheet, q = catNorm(f.pickerSearch);
+      let title = '', inner = '', btnLbl = 'Готово';
+      if (p === 'type') {
+        title = 'Тип записи *'; btnLbl = 'Закрыть';
+        inner = CAT_TYPES.map(t => `<button type="button" class="cat-type-radio ${f.type === t.id ? 'on' : ''}" data-act="cat-pick-type" data-v="${t.id}"><span class="cat-type-ico t-${t.id}" style="width:36px;height:36px">${catTypeSvg(t.id, 18)}</span><span style="flex:1"><span style="display:block;font-size:15px;font-weight:600">${t.label}</span><span style="display:block;font-size:12px;color:var(--f-muted)">${t.hint}</span></span><span class="cat-pick-box radio" style="${f.type === t.id ? 'background:var(--f-primary);border-color:var(--f-primary);color:var(--f-on-primary)' : ''}">${f.type === t.id ? ICO.check : ''}</span></button>`).join('');
+      } else if (p === 'primary') {
+        title = 'Основная мышца';
+        const ms = CAT_MUSCLES.filter(m => !q || catNorm(m.label).includes(q));
+        inner = `<div class="cat-sheet-search"><span class="m" style="display:flex">${CAT_ICO.search}</span><input type="text" maxlength="100" data-cat-in="picker-search" value="${catEsc(f.pickerSearch)}" placeholder="Поиск мышцы">${f.pickerSearch ? `<button type="button" class="cat-sheet-x" data-act="cat-clear-picker-s">${CAT_ICO.xBig}</button>` : ''}</div><button type="button" class="cat-pick-row ${!f.primary ? 'on' : ''}" data-act="cat-pick-primary" data-v=""><span class="cat-pick-box radio">${!f.primary ? ICO.check : ''}</span><span>Не указана</span></button>` + ms.map(m => `<button type="button" class="cat-pick-row ${f.primary === m.id ? 'on' : ''}" data-act="cat-pick-primary" data-v="${m.id}"><span class="cat-pick-box radio">${f.primary === m.id ? ICO.check : ''}</span><span>${m.label}</span></button>`).join('');
+      } else if (p === 'assisting') {
+        title = 'Вспомогательные группы'; btnLbl = f.assisting.length ? `Готово · выбрано ${f.assisting.length}` : 'Готово';
+        const ms = CAT_MUSCLES.filter(m => !q || catNorm(m.label).includes(q));
+        inner = `${f.primary ? `<div style="font-size:12.5px;color:var(--f-muted)">Основная: <strong style="color:var(--f-on-primary-container)">${catEsc(catMuscleLbl(f.primary))}</strong> (исключена)</div>` : ''}<div class="cat-sheet-search"><span class="m" style="display:flex">${CAT_ICO.search}</span><input type="text" maxlength="100" data-cat-in="picker-search" value="${catEsc(f.pickerSearch)}" placeholder="Поиск мышцы">${f.pickerSearch ? `<button type="button" class="cat-sheet-x" data-act="cat-clear-picker-s">${CAT_ICO.xBig}</button>` : ''}</div>` + ms.map(m => {
+          const isPrim = f.primary === m.id, on = f.assisting.includes(m.id);
+          return `<button type="button" class="cat-pick-row ${on ? 'on' : ''} ${isPrim ? 'disabled' : ''}" data-act="cat-pick-assisting" data-v="${m.id}" ${isPrim ? 'disabled' : ''}><span class="cat-pick-box">${on ? ICO.check : ''}</span><span style="flex:1">${m.label}</span>${isPrim ? '<span class="tag">Основная</span>' : ''}</button>`;
+        }).join('');
+      } else if (p === 'equip') {
+        title = 'Оборудование'; btnLbl = f.equip.length ? `Готово · выбрано ${f.equip.length}` : 'Готово';
+        inner = '<div style="font-size:12px;color:var(--f-muted)">«Без инвентаря» взаимоисключающий с конкретным инвентарём.</div>' + CAT_EQUIP.map(eq => `<button type="button" class="cat-pick-row ${f.equip.includes(eq.id) ? 'on' : ''}" data-act="cat-pick-equip" data-v="${eq.id}"><span class="cat-pick-box">${f.equip.includes(eq.id) ? ICO.check : ''}</span><span style="flex:1">${eq.label}</span></button>`).join('');
+      }
+      sheetHtml = `
+        <div class="f-scrim" data-act="cat-close-picker">
+          <div class="f-sheet" style="height:82%" onclick="event.stopPropagation()">
+            <div class="f-sheet-handle"></div>
+            <h3 class="d" style="margin:0;font-size:20px">${title}</h3>
+            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px">${inner}</div>
+            <button type="button" class="pb" data-act="cat-close-picker">${btnLbl}</button>
+          </div>
+        </div>`;
+    }
+
+    const snackHtml = s.snack ? `<div class="f-snack" style="bottom:78px"><span>${s.snack.text}</span></div>` : '';
+    return `${mainHtml}${sheetHtml}${snackHtml}`;
   }
 
   function renderPhoneContent(s) {
@@ -4084,6 +4819,7 @@
     if (s.screen === 'settings') return renderSettingsHTML(s);
     if (s.screen === 'program_editor') return renderProgramEditorHTML(s);
     if (s.screen === 'day_editor') return renderDayEditorHTML(s);
+    if (s.screen === 'catalog') return renderCatalogFlowHTML(s);
     return renderLockHTML(s);
   }
 
@@ -4100,7 +4836,7 @@
 
   function renderInspector() {
     document.getElementById('ctrl-screen').innerHTML = [
-      ['home', 'Главная'], ['programs', 'Мои программы'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['program_editor', 'Редактор программы'], ['day_editor', 'Редактор дня'], ['lock', 'Экран блокировки']
+      ['home', 'Главная'], ['programs', 'Мои программы'], ['workout', 'Тренировка'], ['summary', 'Итоги'], ['history', 'История'], ['settings', 'Настройки'], ['catalog', 'Каталог упражнений'], ['program_editor', 'Редактор программы'], ['day_editor', 'Редактор дня'], ['lock', 'Экран блокировки']
     ].map(([k, lbl]) => `<button type="button" class="cbtn ${st.screen === k ? 'active' : ''}" data-host="screen" data-v="${k}">${lbl}</button>`).join('');
 
     document.getElementById('ctrl-preset').innerHTML = [
@@ -4133,7 +4869,8 @@
       workout: 'Листайте упражнения (№1 прибавить, №2 снизить, №3 Подобрать вес, №4 Планка 280px). Правый клик по кругу отдыха → шторка.',
       summary: 'Итоги зависят от облегчения: обычная/тяжёлая — hero-прирост и цветные капсулы; облегчённая — без негативных дельт.',
       history: 'Согласованная История (#117 + #118 + #119): календарь с датой, временем и длительностью слева, Hero 2 детали без нижнего бара, правка подходов с живым итогом, Undo и удаление тренировки.',
-      settings: 'Согласованные Настройки (#106 + #115/#116): 3 темы, плитки «Таймер отдыха» и «Формула 1RM», строка и шторка «Сигнал таймеров» (вариант A) с предпрослушкой, фиксированная карточка обновлений.',
+      settings: 'Согласованные Настройки (#106 + #115/#116): 3 темы, плитки «Таймер отдыха» и «Формула 1RM», строка и шторка «Сигнал таймеров» (вариант A) с предпрослушкой, переход в Каталог и фиксированная карточка обновлений.',
+      catalog: 'Согласованный Каталог упражнений (#122 + #124 · H1 + H3 + A+): иконки типа слева, символы мышцы/инвентаря, чип «Только свои» с ×, фильтры со слайдером сложности и 48 dp поиском мышц, карточка-паспорт с ✎ / ⋮ и форма со слайдером сложности.',
       program_editor: 'Согласованный Редактор программы (#100 + #119 + #120 + #121): баннер активной тренировки с полосой 3 dp, карточка «Недели и нагрузка», 3-зонные карточки дней (⠿ слева · центр · ⋮ справа), плавный drag-and-drop, Undo-snackbar (~3 с) и компактная шторка выхода.',
       day_editor: 'Согласованный Редактор дня (#100 + #113 + #120 + #121): единая ручка ⠿ слева, «Прогрессия» сверху, [Точно | Диапазон | Без цели] + 8–12, валидация с «Проверь цель», «Заменить упражнение / Удалить» по краям и чистая «Копия дня».',
       lock: 'Точный стиль доски 18 (#0B0E0B, часы 96px, Fitty · сейчас) + согласованные в #83 кнопки «■ Стоп» и «+30 с / Сброс».'
@@ -4653,7 +5390,136 @@
         else if (act === 'set-pick-formula') { st.formulaId = v; }
         else if (act === 'pick-timer-sound') { st.timerSoundId = v; playTimerSoundPreview(v); return; }
         else if (act === 'toggle-timer-vib') { st.timerVibration = !st.timerVibration; if (st.timerVibration) { triggerTimerVibPulse(); return; } }
-        else if (act === 'open-catalog') { st.snack = { text: 'Переход в «Каталог упражнений» (отдельный экран)' }; }
+        else if (act === 'open-catalog') {
+          st.catalog = Object.assign(st.catalog || catCreateInitial(), {
+            entryMode: 'settings', sub: 'list', search: '', sheet: null, menuOpen: false,
+            filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }
+          });
+          st.screen = 'catalog'; st.sheet = null; st.snack = null;
+        }
+        else if (act === 'pe-open-catalog-add') {
+          st.catalog = Object.assign(st.catalog || catCreateInitial(), {
+            entryMode: 'day_pick', sub: 'list', search: '', sheet: null, menuOpen: false,
+            filters: { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }
+          });
+          st.screen = 'catalog'; st.sheet = null; st.snack = null;
+        }
+        else if (act === 'cat-exit') {
+          const mode = st.catalog.entryMode;
+          st.catalog.search = ''; st.catalog.sheet = null; st.catalog.menuOpen = false;
+          st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
+          st.screen = mode === 'day_pick' ? 'day_editor' : 'settings';
+        }
+        else if (act === 'cat-back-list') { st.catalog.sub = 'list'; st.catalog.menuOpen = false; st.catalog.sheet = null; }
+        else if (act === 'cat-clear-search') { st.catalog.search = ''; }
+        else if (act === 'cat-toggle-own') { st.catalog.filters.customOnly = !st.catalog.filters.customOnly; }
+        else if (act === 'cat-rm-chip') {
+          const [ck, cv] = String(v || '').split(':');
+          if (ck === 'muscle') { st.catalog.filters.muscle = null; st.catalog.filters.muscleRole = 'PRIMARY'; }
+          else if (ck === 'equip') { st.catalog.filters.equip = st.catalog.filters.equip.filter(x => x !== cv); }
+          else if (ck === 'diff') { st.catalog.filters.diffRange = [0, 2]; }
+        }
+        else if (act === 'cat-reset-filters') { st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; }
+        else if (act === 'cat-open-filters') {
+          st.catalog.filterDraft = { diffRange: [...st.catalog.filters.diffRange], muscle: st.catalog.filters.muscle, muscleRole: st.catalog.filters.muscleRole, equip: [...st.catalog.filters.equip], customOnly: st.catalog.filters.customOnly };
+          st.catalog.filterMuscleSearch = ''; st.catalog.sheet = 'filters';
+        }
+        else if (act === 'cat-close-sheet') { st.catalog.sheet = null; }
+        else if (act === 'cat-flt-custom') { st.catalog.filterDraft.customOnly = !st.catalog.filterDraft.customOnly; }
+        else if (act === 'cat-flt-acc') { st.catalog.filterAccOpen = st.catalog.filterAccOpen === v ? null : v; }
+        else if (act === 'cat-flt-diff-any') { st.catalog.filterDraft.diffRange = [0, 2]; }
+        else if (act === 'cat-flt-diff-tap') {
+          const idx = parseInt(v, 10), [mn, mx] = st.catalog.filterDraft.diffRange;
+          st.catalog.filterDraft.diffRange = (mn === idx && mx === idx) ? [0, 2] : [idx, idx];
+        }
+        else if (act === 'cat-flt-muscle') {
+          if (st.catalog.filterDraft.muscle === v) { st.catalog.filterDraft.muscle = null; st.catalog.filterDraft.muscleRole = 'PRIMARY'; }
+          else st.catalog.filterDraft.muscle = v;
+        }
+        else if (act === 'cat-flt-role') { if (st.catalog.filterDraft.muscle) st.catalog.filterDraft.muscleRole = v; }
+        else if (act === 'cat-clear-flt-m') { st.catalog.filterMuscleSearch = ''; }
+        else if (act === 'cat-flt-equip') { st.catalog.filterDraft.equip = catToggleEquip(st.catalog.filterDraft.equip, v); }
+        else if (act === 'cat-flt-reset-draft') { st.catalog.filterDraft = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false }; st.catalog.filterMuscleSearch = ''; }
+        else if (act === 'cat-flt-apply') { st.catalog.filters = { ...st.catalog.filterDraft, diffRange: [...st.catalog.filterDraft.diffRange], equip: [...st.catalog.filterDraft.equip] }; st.catalog.sheet = null; }
+        else if (act === 'cat-open-detail') { st.catalog.selectedId = v; st.catalog.sub = 'detail'; st.catalog.menuOpen = false; }
+        else if (act === 'cat-quick-add' || act === 'cat-pick-from-card') {
+          const exId = act === 'cat-quick-add' ? v : st.catalog.selectedId;
+          const ex = st.catalog.exercises.find(x => x.id === exId);
+          const d = peActiveDay(st.progEditor);
+          if (ex && d) {
+            const tp = catTypeObj(ex.type) || CAT_TYPES[0];
+            const nex = { id: peNextId('pe'), name: ex.name, type: tp.peType, progression: tp.progDef, heavySets: 3, heavyMode: 'range', heavyMin: 8, heavyMax: 12, heavyExact: 10, heavySec: tp.peType === 'duration' ? 30 : null, heavyMeters: tp.peType === 'distance' ? 500 : null, heavyUnit: 'm', lightManual: false, manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8, manualSec: 25, manualMeters: 400, manualUnit: 'm' };
+            d.exercises.push(nex); st.progEditor.expandedId = nex.id;
+            st.catalog.sub = 'list'; st.catalog.search = ''; st.catalog.filters = { diffRange: [0, 2], muscle: null, muscleRole: 'PRIMARY', equip: [], customOnly: false };
+            st.screen = 'day_editor'; st.snack = { text: `Добавлено: «${ex.name}»` };
+          }
+        }
+        else if (act === 'cat-open-create') { st.catalog.form = catMakeEmptyForm(st.catalog.search); st.catalog.sub = 'form'; st.catalog.sheet = null; st.catalog.menuOpen = false; }
+        else if (act === 'cat-open-edit') {
+          const ex = st.catalog.exercises.find(x => x.id === st.catalog.selectedId);
+          if (ex && ex.custom) { st.catalog.form = catMakeEditForm(ex); st.catalog.sub = 'form'; st.catalog.sheet = null; st.catalog.menuOpen = false; }
+        }
+        else if (act === 'cat-toggle-menu') { st.catalog.menuOpen = !st.catalog.menuOpen; }
+        else if (act === 'cat-try-delete') {
+          st.catalog.menuOpen = false;
+          const ex = st.catalog.exercises.find(x => x.id === st.catalog.selectedId);
+          st.catalog.sheet = (ex && ex.usedIn && ex.usedIn.length) ? 'delete_blocked' : 'delete_confirm';
+        }
+        else if (act === 'cat-confirm-delete') {
+          const ex = st.catalog.exercises.find(x => x.id === st.catalog.selectedId);
+          st.catalog.exercises = st.catalog.exercises.filter(x => x.id !== st.catalog.selectedId);
+          st.catalog.sheet = null; st.catalog.sub = 'list';
+          st.snack = { text: `Удалено: «${ex ? ex.name : ''}»` };
+        }
+        else if (act === 'cat-form-back') {
+          if (catFormDirty(st.catalog.form)) st.catalog.sheet = 'discard';
+          else st.catalog.sub = st.catalog.form.mode === 'edit' ? 'detail' : 'list';
+        }
+        else if (act === 'cat-confirm-discard') { st.catalog.sheet = null; st.catalog.sub = st.catalog.form.mode === 'edit' ? 'detail' : 'list'; }
+        else if (act === 'cat-open-picker') { st.catalog.form.pickerSheet = v; st.catalog.form.pickerSearch = ''; }
+        else if (act === 'cat-close-picker') { st.catalog.form.pickerSheet = null; }
+        else if (act === 'cat-clear-picker-s') { st.catalog.form.pickerSearch = ''; }
+        else if (act === 'cat-pick-type') { st.catalog.form.type = v; st.catalog.form.pickerSheet = null; }
+        else if (act === 'cat-pick-primary') {
+          st.catalog.form.primary = v || null;
+          if (v) st.catalog.form.assisting = st.catalog.form.assisting.filter(x => x !== v);
+          st.catalog.form.pickerSheet = null;
+        }
+        else if (act === 'cat-pick-assisting') {
+          if (v !== st.catalog.form.primary) {
+            const arr = st.catalog.form.assisting;
+            st.catalog.form.assisting = arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+          }
+        }
+        else if (act === 'cat-pick-equip') { st.catalog.form.equip = catToggleEquip(st.catalog.form.equip, v); }
+        else if (act === 'cat-set-diff-pos') { const n = parseInt(v, 10); st.catalog.form.diff = n === 0 ? null : CAT_DIFFS[n - 1].id; }
+        else if (act === 'cat-form-save') {
+          const f = st.catalog.form;
+          f.validated = true;
+          const { errors } = catValidateForm(f, st.catalog.exercises);
+          if (!Object.keys(errors).length) {
+            const nm = f.name.replace(/\r?\n/g, ' ').trim(), tc = f.tech.trim();
+            if (f.mode === 'edit') {
+              const i = st.catalog.exercises.findIndex(x => x.id === f.editId);
+              if (i >= 0) st.catalog.exercises[i] = { ...st.catalog.exercises[i], name: nm, type: f.type, primary: f.primary, assisting: [...f.assisting], equip: [...f.equip], diff: f.diff, tech: tc };
+              st.catalog.sub = 'detail'; st.snack = { text: 'Изменения сохранены' };
+            } else {
+              const nid = 'custom:new-' + Date.now();
+              const created = { id: nid, name: nm, type: f.type, primary: f.primary, assisting: [...f.assisting], equip: [...f.equip], diff: f.diff, tech: tc, custom: true, usedIn: [], hasHistory: false };
+              st.catalog.exercises.push(created);
+              if (st.catalog.entryMode === 'day_pick') {
+                const d = peActiveDay(st.progEditor), tp = catTypeObj(created.type) || CAT_TYPES[0];
+                if (d) {
+                  const nex = { id: peNextId('pe'), name: created.name, type: tp.peType, progression: tp.progDef, heavySets: 3, heavyMode: 'range', heavyMin: 8, heavyMax: 12, heavyExact: 10, heavySec: tp.peType === 'duration' ? 30 : null, heavyMeters: tp.peType === 'distance' ? 500 : null, heavyUnit: 'm', lightManual: false, manualSets: 3, manualMode: 'range', manualMin: 6, manualMax: 10, manualExact: 8, manualSec: 25, manualMeters: 400, manualUnit: 'm' };
+                  d.exercises.push(nex); st.progEditor.expandedId = nex.id;
+                }
+                st.catalog.sub = 'list'; st.catalog.search = ''; st.screen = 'day_editor'; st.snack = { text: `Создано «${nm}» и добавлено в день` };
+              } else {
+                st.catalog.selectedId = nid; st.catalog.sub = 'detail'; st.snack = { text: `Создано «${nm}»` };
+              }
+            }
+          }
+        }
         else if (act === 'check-upd') {
           st.updState = 'checking'; renderLive();
           setTimeout(() => { st.updState = st.installedCode >= 210 ? 'uptodate' : 'available'; renderLive(); }, 1100);
@@ -4924,6 +5790,22 @@
         document.addEventListener('pointercancel', onUp);
       });
     });
+
+    // Exercise catalog inputs & sliders (#122 + #124)
+    phone.querySelectorAll('[data-cat-in]').forEach(el => {
+      el.addEventListener('input', () => {
+        const k = el.dataset.catIn;
+        if (k === 'search') st.catalog.search = el.value;
+        else if (k === 'flt-m-search') st.catalog.filterMuscleSearch = el.value;
+        else if (k === 'picker-search') st.catalog.form.pickerSearch = el.value;
+        else if (k === 'f-name') st.catalog.form.name = el.value.replace(/\r?\n/g, ' ');
+        else if (k === 'f-tech') st.catalog.form.tech = el.value;
+        else if (k === 'f-diff-slider') { const n = parseInt(el.value, 10); st.catalog.form.diff = n === 0 ? null : CAT_DIFFS[n - 1].id; }
+        else if (k === 'flt-diff-min') { const n = parseInt(el.value, 10); st.catalog.filterDraft.diffRange = [Math.min(n, st.catalog.filterDraft.diffRange[1]), st.catalog.filterDraft.diffRange[1]]; }
+        else if (k === 'flt-diff-max') { const n = parseInt(el.value, 10); st.catalog.filterDraft.diffRange = [st.catalog.filterDraft.diffRange[0], Math.max(n, st.catalog.filterDraft.diffRange[0])]; }
+        renderLive();
+      });
+    });
   }
   let peUndoRaf = null;
   function peClearUndo() {
@@ -4945,16 +5827,24 @@
 
   function renderLive() {
     const phone = document.getElementById('phone-live');
-    const prevScrollEl = phone.querySelector('.pe-scroll, .mp-scroll');
+    const activeEl = document.activeElement;
+    const catFocusKey = (activeEl && phone.contains(activeEl) && activeEl.dataset && activeEl.dataset.catIn && activeEl.type !== 'range') ? activeEl.dataset.catIn : null;
+    const catSelStart = catFocusKey && typeof activeEl.selectionStart === 'number' ? activeEl.selectionStart : null;
+    const catSelEnd = catFocusKey && typeof activeEl.selectionEnd === 'number' ? activeEl.selectionEnd : null;
+    const prevScrollEl = phone.querySelector('.pe-scroll, .mp-scroll, .cat-scroll');
     const savedScrollTop = prevScrollEl ? prevScrollEl.scrollTop : 0;
     const prevScreen = phone.dataset.screen;
     phone.dataset.screen = st.screen;
     phone.className = `phone ${st.width === 360 ? 'w360' : ''}`;
     phone.innerHTML = renderPhoneContent(st);
-    const nextScrollEl = phone.querySelector('.pe-scroll, .mp-scroll');
+    const nextScrollEl = phone.querySelector('.pe-scroll, .mp-scroll, .cat-scroll');
     if (nextScrollEl && prevScreen === st.screen) nextScrollEl.scrollTop = savedScrollTop;
     bindPhoneEvents(phone);
     renderInspector();
+    if (catFocusKey) {
+      const nextIn = phone.querySelector(`[data-cat-in="${catFocusKey}"]`);
+      if (nextIn) { nextIn.focus(); try { if (catSelStart !== null) nextIn.setSelectionRange(catSelStart, catSelEnd); } catch (_) {} }
+    }
   }
 
   function snap(ov) {
@@ -4965,7 +5855,8 @@
       drafts: Object.assign({}, b.drafts, ov.drafts || {}),
       distUnit: Object.assign({}, b.distUnit, ov.distUnit || {}),
       programs: ov.programs ? cloneProgramList(ov.programs) : cloneProgramList(INITIAL_PROGRAMS),
-      progEditor: ov.progEditor ? peClone(ov.progEditor) : peCreateInitial()
+      progEditor: ov.progEditor ? peClone(ov.progEditor) : peCreateInitial(),
+      catalog: ov.catalog ? catClone(ov.catalog) : catCreateInitial()
     });
   }
 
@@ -5044,6 +5935,16 @@
           { title: 'Редактор дня · Единая ⠿ слева, 8–12 и «Заменить / Удалить» (#100 + #121)', note: 'Ручка ⠿ слева, «Прогрессия» сверху, [Точно | Диапазон | Без цели] + 8–12, парные блоки Тяжёлая/Лёгкая и строка «Заменить упражнение / Удалить» по краям.', state: snap({ screen: 'day_editor', alternating: true, progEditor: peCreateInitial({ expandedId: 'pe1' }) }) },
           { title: 'Редактор дня · Ошибки валидации и «Копия дня» (#120 + #121)', note: 'Чистая шапка «Копия дня», inline-ошибка ««От» должно быть меньше «до»» внутри блока, пауза авторасчёта лёгкой и «Проверь цель» на свёрнутой карточке.', state: snap({ screen: 'day_editor', alternating: true, progEditor: (() => { const p = peCreateInitial({ expandedId: 'pe1', showDayVal: true, dayDupSource: 'День А · Верх и тяга' }); p.days[0].name = 'День А · Верх и тяга (копия)'; p.days[0].exercises[0].heavyMin = 12; p.days[0].exercises[0].heavyMax = 8; p.days[0].exercises[1].heavySets = 0; return p; })() }) }
         ]
+      },
+      {
+        title: '7. Каталог упражнений — список с символами (H1), фильтры со слайдером, карточка-паспорт (H3) и форма (#122 + #124)',
+        sub: 'Иконка Exercise type слева + символы мышцы и инвентаря, чип «Только свои» с ×, 2-зонная полоса + в режиме выбора дня, «Только свои» наверху фильтров, слайдер сложности, крупный 48 dp поиск мышц, карточка-паспорт с ✎ / ⋮ в шапке и форма A+ со слайдером',
+        cards: [
+          { title: 'Каталог · Список с символами, чипы × и полоса + (H1 · #124)', note: 'Режим выбора для Training day: иконка типа слева, символы мышцы/инвентаря, «В дне», «Своё», активные чипы с × и правая полоса +.', state: snap({ screen: 'catalog', catalog: catCreateInitial({ entryMode: 'day_pick', sub: 'list', filters: { diffRange: [0, 1], muscle: 'CHEST', muscleRole: 'PRIMARY', equip: [], customOnly: false } }) }) },
+          { title: 'Каталог · Шторка фильтров: «Только свои» сверху и слайдер (#124)', note: 'Тумблер «Только свои» закреплён вверху, диапазон сложности на слайдере «от — до», крупный 48 dp поиск мышц и живая кнопка «Показать N».', state: snap({ screen: 'catalog', catalog: catCreateInitial({ entryMode: 'settings', sub: 'list', sheet: 'filters', filterAccOpen: 'diff', filterDraft: { diffRange: [0, 1], muscle: 'BACK', muscleRole: 'PRIMARY', equip: [], customOnly: false } }) }) },
+          { title: 'Каталог · Карточка-паспорт и меню ✎ / ⋮ (H3 + B · #124)', note: 'Полное название без обрезки, 4-строчная паспортная карточка #141914 с иконками, «Техника выполнения» и ✎ / ⋮ для своего упражнения из Настроек.', state: snap({ screen: 'catalog', catalog: catCreateInitial({ entryMode: 'settings', sub: 'detail', selectedId: 'custom:t-bar-row', menuOpen: true }) }) },
+          { title: 'Каталог · Форма своего упражнения: слайдер и валидация (A+ · #124)', note: '3 outlined-секции, мягкое предупреждение о дубликате, выбор типа/мышц (поиск 48 dp) через шторки и 4-позиционный слайдер сложности техники.', state: snap({ screen: 'catalog', catalog: (() => { const c = catCreateInitial({ entryMode: 'settings', sub: 'form' }); c.form = catMakeEmptyForm('жим штанги лежа'); c.form.diff = 'INTERMEDIATE'; c.form.validated = true; return c; })() }) }
+        ]
       }
     ];
 
@@ -5073,7 +5974,8 @@
           history: cloneHistoryList(target.history || INITIAL_HISTORY),
           programs: cloneProgramList(target.programs || INITIAL_PROGRAMS),
           histEdit: target.histEdit ? { ...target.histEdit, draft: { ...target.histEdit.draft } } : null,
-          progEditor: peClone(target.progEditor)
+          progEditor: peClone(target.progEditor),
+          catalog: catClone(target.catalog)
         });
         syncHostTabs(); renderLive(); window.scrollTo({ top: 0, behavior: 'smooth' });
       });
